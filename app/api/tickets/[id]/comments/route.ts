@@ -1,0 +1,215 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import { z } from 'zod';
+
+// Validation schema for creating comments
+const createCommentSchema = z.object({
+  content: z.string().min(1, 'Comment content is required').max(2000),
+  isInternal: z.boolean().default(false),
+  attachments: z.array(z.object({
+    filename: z.string(),
+    mimeType: z.string(),
+    size: z.number(),
+    content: z.string() // base64 encoded content
+  })).optional()
+});
+
+// GET /api/tickets/[id]/comments - Get ticket comments
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Check if ticket exists and user has access
+    const ticket = await prisma.ticket.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        createdById: true,
+        assignedToId: true
+      }
+    });
+
+    if (!ticket) {
+      return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
+    }
+
+    // Check access permissions
+    const canAccess = 
+      session.user.role === 'ADMIN' ||
+      session.user.role === 'MANAGER' ||
+      ticket.createdById === session.user.id ||
+      ticket.assignedToId === session.user.id;
+
+    if (!canAccess) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
+    // Filter comments based on user role
+    const whereClause: any = {
+      ticketId: id
+    };
+
+    // Regular users can't see internal comments
+    if (session.user.role === 'USER') {
+      whereClause.isInternal = false;
+    }
+
+    const comments = await prisma.ticketComment.findMany({
+      where: whereClause,
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true
+          }
+        },
+        attachments: true
+      },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    return NextResponse.json(comments);
+  } catch (error) {
+    console.error('Error fetching comments:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+// POST /api/tickets/[id]/comments - Add comment to ticket
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const validatedData = createCommentSchema.parse(body);
+
+    // Check if ticket exists and user has access
+    const ticket = await prisma.ticket.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        createdById: true,
+        assignedToId: true,
+        status: true
+      }
+    });
+
+    if (!ticket) {
+      return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
+    }
+
+    // Check access permissions
+    const canComment = 
+      session.user.role === 'ADMIN' ||
+      session.user.role === 'MANAGER' ||
+      session.user.role === 'TECHNICIAN' ||
+      ticket.createdById === session.user.id ||
+      ticket.assignedToId === session.user.id;
+
+    if (!canComment) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
+    // Regular users cannot create internal comments
+    if (session.user.role === 'USER' && validatedData.isInternal) {
+      return NextResponse.json(
+        { error: 'Users cannot create internal comments' },
+        { status: 403 }
+      );
+    }
+
+    // Handle comment attachments
+    const attachmentData = [];
+    if (validatedData.attachments && validatedData.attachments.length > 0) {
+      const fs = require('fs').promises;
+      const path = require('path');
+      
+      for (const attachment of validatedData.attachments) {
+        // Create uploads directory if it doesn't exist
+        const uploadsDir = path.join(process.cwd(), 'uploads', 'comments');
+        await fs.mkdir(uploadsDir, { recursive: true });
+        
+        // Generate unique filename
+        const timestamp = Date.now();
+        const filename = `${timestamp}-${attachment.filename}`;
+        const filePath = path.join(uploadsDir, filename);
+        
+        // Save file
+        const buffer = Buffer.from(attachment.content, 'base64');
+        await fs.writeFile(filePath, buffer);
+        
+        attachmentData.push({
+          filename: attachment.filename,
+          mimeType: attachment.mimeType,
+          size: attachment.size,
+          path: `uploads/comments/${filename}`
+        });
+      }
+    }
+
+    // Create comment with attachments
+    const comment = await prisma.ticketComment.create({
+      data: {
+        ticketId: id,
+        userId: session.user.id,
+        content: validatedData.content,
+        isInternal: validatedData.isInternal,
+        attachments: attachmentData.length > 0 ? {
+          create: attachmentData
+        } : undefined
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true
+          }
+        },
+        attachments: true
+      }
+    });
+
+    // Update ticket's updatedAt timestamp
+    await prisma.ticket.update({
+      where: { id },
+      data: { updatedAt: new Date() }
+    });
+
+    return NextResponse.json(comment, { status: 201 });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Validation error', details: error.errors },
+        { status: 400 }
+      );
+    }
+    
+    console.error('Error creating comment:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}

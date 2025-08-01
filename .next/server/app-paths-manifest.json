@@ -1,0 +1,10 @@
+{
+  "/api/categories/route": "app/api/categories/route.js",
+  "/api/services/route": "app/api/services/route.js",
+  "/api/tier-categories/route": "app/api/tier-categories/route.js",
+  "/admin/import/page": "app/admin/import/page.js",
+  "/tickets/page": "app/tickets/page.js",
+  "/auth/signin/page": "app/auth/signin/page.js",
+  "/admin/categories/page": "app/admin/categories/page.js",
+  "/admin/services/page": "app/admin/services/page.js"
+}

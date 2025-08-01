@@ -1,0 +1,241 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import { z } from 'zod';
+
+const updateServiceSchema = z.object({
+  name: z.string().min(1).optional(),
+  description: z.string().min(1).optional(),
+  helpText: z.string().optional(),
+  categoryId: z.string().optional(),
+  subcategoryId: z.string().optional(),
+  itemId: z.string().optional(),
+  supportGroup: z.enum(['IT_HELPDESK', 'NETWORK_TEAM', 'SECURITY_TEAM', 'VENDOR_SUPPORT']).optional(),
+  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL', 'EMERGENCY']).optional(),
+  estimatedHours: z.number().min(1).optional(),
+  slaHours: z.number().min(1).optional(),
+  requiresApproval: z.boolean().optional(),
+  isConfidential: z.boolean().optional(),
+  isActive: z.boolean().optional()
+});
+
+// GET /api/admin/services/[id] - Get specific service
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await auth();
+    
+    if (!session || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const service = await prisma.service.findUnique({
+      where: { id: params.id },
+      include: {
+        category: true,
+        subcategory: true,
+        item: true,
+        fields: {
+          orderBy: {
+            order: 'asc'
+          }
+        },
+        _count: {
+          select: {
+            tickets: true
+          }
+        }
+      }
+    });
+
+    if (!service) {
+      return NextResponse.json(
+        { error: 'Service not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(service);
+  } catch (error) {
+    console.error('Error fetching service:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+// PUT /api/admin/services/[id] - Update service
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await auth();
+    
+    if (!session || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json();
+    const validatedData = updateServiceSchema.parse(body);
+
+    // Check if service exists
+    const existingService = await prisma.service.findUnique({
+      where: { id: params.id }
+    });
+
+    if (!existingService) {
+      return NextResponse.json(
+        { error: 'Service not found' },
+        { status: 404 }
+      );
+    }
+
+    // If updating name, check for duplicates
+    if (validatedData.name && validatedData.name !== existingService.name) {
+      const duplicateService = await prisma.service.findFirst({
+        where: {
+          name: validatedData.name,
+          id: { not: params.id }
+        }
+      });
+
+      if (duplicateService) {
+        return NextResponse.json(
+          { error: 'Service with this name already exists' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // If updating category, verify it exists
+    if (validatedData.categoryId) {
+      const category = await prisma.serviceCategory.findUnique({
+        where: { id: validatedData.categoryId }
+      });
+
+      if (!category) {
+        return NextResponse.json(
+          { error: 'Invalid category' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Update the service
+    const updatedService = await prisma.service.update({
+      where: { id: params.id },
+      data: {
+        ...validatedData,
+        updatedAt: new Date()
+      },
+      include: {
+        category: true,
+        subcategory: true,
+        item: true,
+        fields: {
+          orderBy: {
+            order: 'asc'
+          }
+        },
+        _count: {
+          select: {
+            tickets: true
+          }
+        }
+      }
+    });
+
+    return NextResponse.json(updatedService);
+  } catch (error) {
+    console.error('Error updating service:', error);
+    
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Validation error', details: error.errors },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE /api/admin/services/[id] - Delete service
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await auth();
+    
+    if (!session || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Check if service exists
+    const existingService = await prisma.service.findUnique({
+      where: { id: params.id },
+      include: {
+        _count: {
+          select: {
+            tickets: true
+          }
+        }
+      }
+    });
+
+    if (!existingService) {
+      return NextResponse.json(
+        { error: 'Service not found' },
+        { status: 404 }
+      );
+    }
+
+    // Check if service has associated tickets
+    if (existingService._count.tickets > 0) {
+      return NextResponse.json(
+        { 
+          error: `Cannot delete service with ${existingService._count.tickets} associated tickets. Please deactivate instead.` 
+        },
+        { status: 400 }
+      );
+    }
+
+    // Delete associated fields first
+    await prisma.serviceField.deleteMany({
+      where: { serviceId: params.id }
+    });
+
+    // Delete the service
+    await prisma.service.delete({
+      where: { id: params.id }
+    });
+
+    return NextResponse.json(
+      { message: 'Service deleted successfully' },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error('Error deleting service:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
