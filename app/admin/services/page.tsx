@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Plus, Edit, Trash2, Eye, Settings, Save, X, ArrowUp, ArrowDown } from 'lucide-react';
 import { toast } from 'sonner';
+import { ServiceFieldTemplatesDialog } from '@/components/admin/service-field-templates-dialog';
 
 interface ServiceCategory {
   id: string;
@@ -48,6 +49,9 @@ interface Service {
   categoryId: string;
   subcategoryId?: string;
   itemId?: string;
+  tier1CategoryId?: string;
+  tier2SubcategoryId?: string;
+  tier3ItemId?: string;
   supportGroup: 'IT_HELPDESK' | 'NETWORK_TEAM' | 'SECURITY_TEAM' | 'VENDOR_SUPPORT';
   priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | 'EMERGENCY';
   estimatedHours?: number;
@@ -57,8 +61,10 @@ interface Service {
   isConfidential: boolean;
   category?: ServiceCategory;
   fields: ServiceField[];
+  serviceFieldTemplates?: any[];
   _count?: {
     tickets: number;
+    serviceFieldTemplates?: number;
   };
 }
 
@@ -69,6 +75,9 @@ interface NewService {
   categoryId: string;
   subcategoryId: string;
   itemId: string;
+  tier1CategoryId?: string;
+  tier2SubcategoryId?: string;
+  tier3ItemId?: string;
   supportGroup: 'IT_HELPDESK' | 'NETWORK_TEAM' | 'SECURITY_TEAM' | 'VENDOR_SUPPORT';
   priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | 'EMERGENCY';
   estimatedHours: number;
@@ -330,10 +339,18 @@ export default function AdminServicesPage() {
 
   const handleCreateService = async () => {
     try {
+      // Clean up empty strings for optional fields
+      const cleanedService = { ...newService };
+      if (cleanedService.tier1CategoryId === '') cleanedService.tier1CategoryId = undefined;
+      if (cleanedService.tier2SubcategoryId === '') cleanedService.tier2SubcategoryId = undefined;
+      if (cleanedService.tier3ItemId === '') cleanedService.tier3ItemId = undefined;
+      if (cleanedService.subcategoryId === '') cleanedService.subcategoryId = undefined;
+      if (cleanedService.itemId === '') cleanedService.itemId = undefined;
+      
       const response = await fetch('/api/admin/services', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newService)
+        body: JSON.stringify(cleanedService)
       });
 
       if (response.ok) {
@@ -366,10 +383,18 @@ export default function AdminServicesPage() {
 
   const handleUpdateService = async (serviceId: string, updates: Partial<Service>) => {
     try {
+      // Clean up empty strings for optional fields
+      const cleanedUpdates = { ...updates };
+      if (cleanedUpdates.tier1CategoryId === '') cleanedUpdates.tier1CategoryId = undefined;
+      if (cleanedUpdates.tier2SubcategoryId === '') cleanedUpdates.tier2SubcategoryId = undefined;
+      if (cleanedUpdates.tier3ItemId === '') cleanedUpdates.tier3ItemId = undefined;
+      if (cleanedUpdates.subcategoryId === '') cleanedUpdates.subcategoryId = undefined;
+      if (cleanedUpdates.itemId === '') cleanedUpdates.itemId = undefined;
+      
       const response = await fetch(`/api/admin/services/${serviceId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates)
+        body: JSON.stringify(cleanedUpdates)
       });
 
       if (response.ok) {
@@ -427,6 +452,9 @@ export default function AdminServicesPage() {
       categoryId: service.categoryId,
       subcategoryId: service.subcategoryId || '',
       itemId: service.itemId || '',
+      tier1CategoryId: service.tier1CategoryId || '',
+      tier2SubcategoryId: service.tier2SubcategoryId || '',
+      tier3ItemId: service.tier3ItemId || '',
       supportGroup: service.supportGroup,
       priority: service.priority,
       estimatedHours: service.estimatedHours || 4,
@@ -437,6 +465,15 @@ export default function AdminServicesPage() {
       defaultItilCategory: 'INCIDENT',
       defaultIssueClassification: ''
     });
+    
+    // Load subcategories and items if tier1CategoryId exists
+    if (service.tier1CategoryId) {
+      fetchSubcategories(service.tier1CategoryId);
+      if (service.tier2SubcategoryId) {
+        fetchItems(service.tier2SubcategoryId);
+      }
+    }
+    
     setEditingService(service.id);
   };
 
@@ -507,8 +544,9 @@ export default function AdminServicesPage() {
   };
 
   const filteredServices = services.filter(service => {
-    const matchesSearch = service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         service.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = !searchTerm || 
+                         (service.name && service.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                         (service.description && service.description.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesCategory = categoryFilter === 'all' || service.categoryId === categoryFilter;
     const matchesStatus = statusFilter === 'all' || 
                          (statusFilter === 'active' && service.isActive) ||
@@ -611,8 +649,15 @@ export default function AdminServicesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredServices.map((service) => (
-                <TableRow key={service.id}>
+              {filteredServices.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="text-center py-8 text-gray-500">
+                    {searchTerm ? `No services found matching "${searchTerm}"` : 'No services available'}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredServices.map((service) => (
+                  <TableRow key={service.id}>
                   <TableCell>
                     <div>
                       <div className="font-medium">{service.name}</div>
@@ -647,7 +692,7 @@ export default function AdminServicesPage() {
                       className="flex items-center gap-1"
                     >
                       <Settings className="h-3 w-3" />
-                      {service.fields.length} fields
+                      {(service._count?.serviceFieldTemplates || 0) + service.fields.length} fields
                     </Button>
                   </TableCell>
                   <TableCell>{service._count?.tickets || 0}</TableCell>
@@ -677,7 +722,8 @@ export default function AdminServicesPage() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ))}
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>
@@ -958,201 +1004,261 @@ export default function AdminServicesPage() {
         </Dialog>
       )}
 
-      {/* Fields Management Dialog */}
-      {showFieldsDialog && selectedService && (
-        <Dialog open={showFieldsDialog} onOpenChange={setShowFieldsDialog}>
-          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+      {/* Edit Service Dialog */}
+      {editingService && (
+        <Dialog open={!!editingService} onOpenChange={() => setEditingService(null)}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Manage Fields - {selectedService.name}</DialogTitle>
+              <DialogTitle>Edit Service Template</DialogTitle>
               <DialogDescription>
-                Configure dynamic fields for this service template
+                Update the service template configuration
               </DialogDescription>
             </DialogHeader>
-            
             <div className="space-y-6">
-              {/* Existing Fields */}
-              <div>
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-medium">Current Fields</h3>
-                  <Button onClick={() => setShowAddField(true)} size="sm">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Field
-                  </Button>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit-name">Service Name</Label>
+                  <Input
+                    id="edit-name"
+                    value={editService.name}
+                    onChange={(e) => setEditService(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="Enter service name"
+                  />
                 </div>
-                
-                {editFields.length === 0 ? (
-                  <p className="text-gray-500 text-center py-8">No fields configured</p>
-                ) : (
-                  <div className="space-y-2">
-                    {editFields.map((field, index) => (
-                      <Card key={index} className="p-4">
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Badge variant="outline">{field.type}</Badge>
-                              <span className="font-medium">{field.label}</span>
-                              {field.isRequired && <Badge variant="destructive" className="text-xs">Required</Badge>}
-                              {!field.isUserVisible && <Badge variant="secondary" className="text-xs">Technician Only</Badge>}
-                            </div>
-                            <p className="text-sm text-gray-600">{field.helpText}</p>
-                            {field.options && (
-                              <p className="text-xs text-gray-500 mt-1">
-                                Options: {Array.isArray(field.options) ? field.options.join(', ') : field.options}
-                              </p>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleMoveField(index, 'up')}
-                              disabled={index === 0}
-                            >
-                              <ArrowUp className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleMoveField(index, 'down')}
-                              disabled={index === editFields.length - 1}
-                            >
-                              <ArrowDown className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleRemoveField(index)}
-                              className="text-red-600 hover:text-red-700"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-                )}
+                <div>
+                  <Label htmlFor="edit-category">Service Catalog Category</Label>
+                  <Select
+                    value={editService.categoryId}
+                    onValueChange={(value) => setEditService(prev => ({ ...prev, categoryId: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select service catalog category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map(category => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
-              {/* Add New Field Form */}
-              {showAddField && (
-                <Card className="p-4">
-                  <div className="flex justify-between items-center mb-4">
-                    <h4 className="font-medium">Add New Field</h4>
-                    <Button variant="outline" size="sm" onClick={() => setShowAddField(false)}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* 3-Tier Categorization Section for Edit */}
+              <div className="space-y-4">
+                <div className="border-t pt-4">
+                  <h3 className="text-lg font-medium mb-4">3-Tier Categorization (Tech-facing)</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
-                      <Label htmlFor="fieldName">Field Name</Label>
-                      <Input
-                        id="fieldName"
-                        value={newField.name}
-                        onChange={(e) => setNewField(prev => ({ ...prev, name: e.target.value }))}
-                        placeholder="field_name"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="fieldLabel">Field Label</Label>
-                      <Input
-                        id="fieldLabel"
-                        value={newField.label}
-                        onChange={(e) => setNewField(prev => ({ ...prev, label: e.target.value }))}
-                        placeholder="Field Label"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="fieldType">Field Type</Label>
+                      <Label htmlFor="edit-tier1Category">Category (Tier 1)</Label>
                       <Select
-                        value={newField.type}
-                        onValueChange={(value: any) => setNewField(prev => ({ ...prev, type: value }))}
+                        value={editService.tier1CategoryId || ''}
+                        onValueChange={(value) => {
+                          setEditService(prev => ({ 
+                            ...prev, 
+                            tier1CategoryId: value,
+                            tier2SubcategoryId: '',
+                            tier3ItemId: ''
+                          }));
+                          if (value) {
+                            fetchSubcategories(value);
+                          } else {
+                            setSubcategories([]);
+                            setItems([]);
+                          }
+                        }}
                       >
                         <SelectTrigger>
-                          <SelectValue />
+                          <SelectValue placeholder="Select category" />
                         </SelectTrigger>
                         <SelectContent>
-                          {fieldTypes.map(type => (
-                            <SelectItem key={type.value} value={type.value}>
-                              {type.label}
+                          {tierCategories.map((category) => (
+                            <SelectItem key={category.id} value={category.id}>
+                              {category.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
                     <div>
-                      <Label htmlFor="placeholder">Placeholder</Label>
-                      <Input
-                        id="placeholder"
-                        value={newField.placeholder}
-                        onChange={(e) => setNewField(prev => ({ ...prev, placeholder: e.target.value }))}
-                        placeholder="Enter placeholder text"
-                      />
+                      <Label htmlFor="edit-tier2Subcategory">Subcategory (Tier 2)</Label>
+                      <Select
+                        value={editService.tier2SubcategoryId || ''}
+                        onValueChange={(value) => {
+                          setEditService(prev => ({ 
+                            ...prev, 
+                            tier2SubcategoryId: value,
+                            tier3ItemId: ''
+                          }));
+                          if (value) {
+                            fetchItems(value);
+                          } else {
+                            setItems([]);
+                          }
+                        }}
+                        disabled={!editService.tier1CategoryId || subcategories.length === 0}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select subcategory" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {subcategories.map(subcategory => (
+                            <SelectItem key={subcategory.id} value={subcategory.id}>
+                              {subcategory.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
-                    <div className="md:col-span-2">
-                      <Label htmlFor="helpText">Help Text</Label>
-                      <Input
-                        id="helpText"
-                        value={newField.helpText}
-                        onChange={(e) => setNewField(prev => ({ ...prev, helpText: e.target.value }))}
-                        placeholder="Help text for users"
-                      />
-                    </div>
-                    {['SELECT', 'RADIO', 'CHECKBOX'].includes(newField.type) && (
-                      <div className="md:col-span-2">
-                        <Label htmlFor="options">Options (comma-separated)</Label>
-                        <Input
-                          id="options"
-                          value={newField.options}
-                          onChange={(e) => setNewField(prev => ({ ...prev, options: e.target.value }))}
-                          placeholder="Option 1, Option 2, Option 3"
-                        />
-                      </div>
-                    )}
-                    <div className="md:col-span-2 flex gap-4">
-                      <div className="flex items-center space-x-2">
-                        <Switch
-                          id="isRequired"
-                          checked={newField.isRequired}
-                          onCheckedChange={(checked) => setNewField(prev => ({ ...prev, isRequired: checked }))}
-                        />
-                        <Label htmlFor="isRequired">Required</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Switch
-                          id="isUserVisible"
-                          checked={newField.isUserVisible}
-                          onCheckedChange={(checked) => setNewField(prev => ({ ...prev, isUserVisible: checked }))}
-                        />
-                        <Label htmlFor="isUserVisible">User Visible</Label>
-                      </div>
+                    <div>
+                      <Label htmlFor="edit-tier3Item">Item (Tier 3)</Label>
+                      <Select
+                        value={editService.tier3ItemId || ''}
+                        onValueChange={(value) => setEditService(prev => ({ ...prev, tier3ItemId: value }))}
+                        disabled={!editService.tier2SubcategoryId || items.length === 0}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select item" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {items.map(item => (
+                            <SelectItem key={item.id} value={item.id}>
+                              {item.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
-                  
-                  <div className="flex justify-end gap-2 mt-4">
-                    <Button variant="outline" onClick={() => setShowAddField(false)}>
-                      Cancel
-                    </Button>
-                    <Button onClick={handleAddField}>
-                      Add Field
-                    </Button>
-                  </div>
-                </Card>
-              )}
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="edit-description">Description</Label>
+                <Textarea
+                  id="edit-description"
+                  value={editService.description}
+                  onChange={(e) => setEditService(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Enter service description"
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="edit-helpText">Help Text</Label>
+                <Textarea
+                  id="edit-helpText"
+                  value={editService.helpText}
+                  onChange={(e) => setEditService(prev => ({ ...prev, helpText: e.target.value }))}
+                  placeholder="Enter help text for users"
+                  rows={2}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit-supportGroup">Support Group</Label>
+                  <Select
+                    value={editService.supportGroup}
+                    onValueChange={(value: any) => setEditService(prev => ({ ...prev, supportGroup: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select support group" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {supportGroups.map(group => (
+                        <SelectItem key={group.value} value={group.value}>
+                          {group.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="edit-priority">Priority</Label>
+                  <Select
+                    value={editService.priority}
+                    onValueChange={(value: any) => setEditService(prev => ({ ...prev, priority: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select priority" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {priorities.map(priority => (
+                        <SelectItem key={priority.value} value={priority.value}>
+                          {priority.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit-estimatedHours">Estimated Hours</Label>
+                  <Input
+                    id="edit-estimatedHours"
+                    type="number"
+                    value={editService.estimatedHours}
+                    onChange={(e) => setEditService(prev => ({ ...prev, estimatedHours: parseInt(e.target.value) || 0 }))}
+                    placeholder="Enter estimated hours"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-slaHours">SLA Hours</Label>
+                  <Input
+                    id="edit-slaHours"
+                    type="number"
+                    value={editService.slaHours}
+                    onChange={(e) => setEditService(prev => ({ ...prev, slaHours: parseInt(e.target.value) || 0 }))}
+                    placeholder="Enter SLA hours"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="edit-requiresApproval"
+                    checked={editService.requiresApproval}
+                    onCheckedChange={(checked) => setEditService(prev => ({ ...prev, requiresApproval: checked }))}
+                  />
+                  <Label htmlFor="edit-requiresApproval">Requires Approval</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="edit-isConfidential"
+                    checked={editService.isConfidential}
+                    onCheckedChange={(checked) => setEditService(prev => ({ ...prev, isConfidential: checked }))}
+                  />
+                  <Label htmlFor="edit-isConfidential">Confidential</Label>
+                </div>
+              </div>
 
               <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setShowFieldsDialog(false)}>
+                <Button variant="outline" onClick={() => setEditingService(null)}>
                   Cancel
                 </Button>
-                <Button onClick={handleSaveFields}>
-                  <Save className="h-4 w-4 mr-2" />
-                  Save Fields
+                <Button onClick={() => handleUpdateService(editingService, editService)}>
+                  Update Service
                 </Button>
               </div>
             </div>
           </DialogContent>
         </Dialog>
+      )}
+
+      {/* Fields Management Dialog */}
+      {showFieldsDialog && selectedService && (
+        <ServiceFieldTemplatesDialog
+          serviceId={selectedService.id}
+          serviceName={selectedService.name}
+          isOpen={showFieldsDialog}
+          onClose={() => setShowFieldsDialog(false)}
+          onUpdate={fetchServices}
+        />
       )}
     </div>
   );

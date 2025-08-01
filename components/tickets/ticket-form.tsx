@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -25,9 +25,35 @@ interface Service {
     level: number;
   };
   fields: ServiceField[];
+  fieldTemplates?: ServiceFieldTemplate[];
   priority: string;
   estimatedHours: number;
   requiresApproval: boolean;
+  tier1CategoryId?: string;
+  tier2SubcategoryId?: string;
+  tier3ItemId?: string;
+  defaultTitle?: string;
+  defaultItilCategory?: string;
+  defaultIssueClassification?: string;
+}
+
+interface ServiceFieldTemplate {
+  id: string;
+  order: number;
+  isRequired?: boolean;
+  isUserVisible: boolean;
+  helpText?: string;
+  defaultValue?: string;
+  fieldTemplate: {
+    id: string;
+    name: string;
+    label: string;
+    type: string;
+    placeholder?: string;
+    options?: any;
+    validation?: any;
+    category?: string;
+  };
 }
 
 interface ServiceField {
@@ -53,6 +79,30 @@ interface Category {
     services: number;
     children: number;
   };
+}
+
+interface TierCategory {
+  id: string;
+  name: string;
+  description?: string;
+  isActive: boolean;
+  order: number;
+}
+
+interface TierSubcategory {
+  id: string;
+  name: string;
+  description?: string;
+  isActive: boolean;
+  order: number;
+}
+
+interface TierItem {
+  id: string;
+  name: string;
+  description?: string;
+  isActive: boolean;
+  order: number;
 }
 
 
@@ -84,15 +134,24 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [isAutofilling, setIsAutofilling] = useState(false);
+  
+  // 3-tier categorization state
+  const [tierCategories, setTierCategories] = useState<TierCategory[]>([]);
+  const [tierSubcategories, setTierSubcategories] = useState<TierSubcategory[]>([]);
+  const [tierItems, setTierItems] = useState<TierItem[]>([]);
+  const [pendingItemId, setPendingItemId] = useState<string | null>(null);
 
   const {
     register,
     handleSubmit,
     setValue,
     watch,
+    reset,
     formState: { errors },
     clearErrors,
     trigger,
@@ -106,38 +165,227 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
   });
 
   const watchedServiceId = watch('serviceId');
+  const watchedCategoryId = watch('categoryId');
+  const watchedSubcategoryId = watch('subcategoryId');
+  const watchedItemId = watch('itemId');
 
   // Load categories on mount
   useEffect(() => {
     loadCategories();
+    loadTierCategories();
   }, []);
 
-  // Load services when category changes
+  // Debounce search term
   useEffect(() => {
-    if (selectedCategory) {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Load services when category or debounced search term changes
+  useEffect(() => {
+    if (selectedCategory || debouncedSearchTerm) {
       loadServices(selectedCategory);
     } else {
       setServices([]);
     }
-  }, [selectedCategory]);
+  }, [selectedCategory, debouncedSearchTerm]);
 
   // Update selected service when serviceId changes
   useEffect(() => {
-    if (watchedServiceId) {
-      const service = services.find(s => s.id === watchedServiceId);
-      setSelectedService(service || null);
-      if (service) {
-        setValue('priority', service.priority as any);
+    const autofillServiceData = async () => {
+      if (watchedServiceId) {
+        console.log('🔍 Autofill Debug: Starting autofill for serviceId:', watchedServiceId);
+        const service = services.find(s => s.id === watchedServiceId);
+        console.log('🔍 Autofill Debug: Found service:', service);
+        console.log('🔍 Autofill Debug: Service tier data:', {
+          tier1CategoryId: service?.tier1CategoryId,
+          tier2SubcategoryId: service?.tier2SubcategoryId,
+          tier3ItemId: service?.tier3ItemId
+        });
+        console.log('🔍 Autofill Debug: Full service data (stringified):', JSON.stringify(service, null, 2));
+        setSelectedService(service || null);
+        if (service) {
+          setIsAutofilling(true);
+          
+          // Prepare form data with service defaults
+          const formData: Partial<TicketFormData> = {
+            serviceId: watchedServiceId,
+            priority: service.priority as any,
+            category: 'INCIDENT' // Keep default
+          };
+          
+          console.log('🔍 Autofill Debug: Initial form data:', formData);
+          
+          // Add optional fields if they exist
+          if (service.defaultTitle) {
+            formData.title = service.defaultTitle;
+            console.log('🔍 Autofill Debug: Added default title:', service.defaultTitle);
+          }
+          if (service.defaultItilCategory) {
+            formData.category = service.defaultItilCategory as any;
+            console.log('🔍 Autofill Debug: Added default ITIL category:', service.defaultItilCategory);
+          }
+          if (service.defaultIssueClassification) {
+            formData.issueClassification = service.defaultIssueClassification as any;
+            console.log('🔍 Autofill Debug: Added default issue classification:', service.defaultIssueClassification);
+          }
+          
+          // Handle service field default values
+          const fieldValues: Record<string, string> = {};
+          
+          // Regular fields
+          if (service.fields && service.fields.length > 0) {
+            service.fields
+              .filter(field => field.isUserVisible && field.defaultValue)
+              .forEach(field => {
+                fieldValues[field.name] = field.defaultValue!;
+                console.log('🔍 Autofill Debug: Added field default value:', field.name, '=', field.defaultValue);
+              });
+          }
+          
+          // Field templates
+          if (service.fieldTemplates && service.fieldTemplates.length > 0) {
+            service.fieldTemplates
+              .filter(template => template.isUserVisible)
+              .forEach(template => {
+                const defaultValue = template.defaultValue || template.fieldTemplate.defaultValue;
+                if (defaultValue) {
+                  fieldValues[template.fieldTemplate.name] = defaultValue;
+                  console.log('🔍 Autofill Debug: Added field template default value:', template.fieldTemplate.name, '=', defaultValue);
+                }
+              });
+          }
+          
+          if (Object.keys(fieldValues).length > 0) {
+            formData.fieldValues = fieldValues;
+            console.log('🔍 Autofill Debug: All field values to autofill:', fieldValues);
+          }
+          
+          // Handle 3-tier categorization with proper async loading
+          let loadedSubcategories: any[] = [];
+          let loadedItems: any[] = [];
+          
+          if (service.tier1CategoryId) {
+            console.log('🔍 Autofill Debug: Setting tier1CategoryId:', service.tier1CategoryId);
+            formData.categoryId = service.tier1CategoryId;
+            
+            // Load subcategories and wait for completion
+            console.log('🔍 Autofill Debug: Loading subcategories for categoryId:', service.tier1CategoryId);
+            loadedSubcategories = await loadTierSubcategories(service.tier1CategoryId);
+            console.log('🔍 Autofill Debug: Subcategories loaded, current count:', loadedSubcategories.length);
+            
+            if (service.tier2SubcategoryId) {
+              console.log('🔍 Autofill Debug: Setting tier2SubcategoryId:', service.tier2SubcategoryId);
+              formData.subcategoryId = service.tier2SubcategoryId;
+              
+              // Load items and wait for completion
+              console.log('🔍 Autofill Debug: Loading items for subcategoryId:', service.tier2SubcategoryId);
+              loadedItems = await loadTierItems(service.tier2SubcategoryId);
+              console.log('🔍 Autofill Debug: Items loaded, current count:', loadedItems.length);
+              
+              if (service.tier3ItemId) {
+                console.log('🔍 Autofill Debug: Setting tier3ItemId:', service.tier3ItemId);
+                console.log('🔍 Autofill Debug: Checking if tier3ItemId exists in loaded items:', 
+                  loadedItems.some(item => item.id === service.tier3ItemId));
+                formData.itemId = service.tier3ItemId;
+                // Also set as pending in case items haven't loaded in state yet
+                setPendingItemId(service.tier3ItemId);
+              }
+            }
+          }
+          
+          console.log('🔍 Autofill Debug: Final form data before reset:', formData);
+          // Use reset to set all form values at once after async operations complete
+          reset(formData);
+          console.log('🔍 Autofill Debug: Form reset completed');
+          
+          // If we have an itemId, ensure the tierItems state is properly set
+          if (formData.itemId && loadedItems.length > 0) {
+            console.log('🔍 Autofill Debug: Ensuring tierItems state is updated with loaded items');
+            // Force a delay to ensure React state updates and Select component can find the value
+            setTimeout(() => {
+              console.log('🔍 Autofill Debug: Re-checking itemId after delay:', watch('itemId'));
+              console.log('🔍 Autofill Debug: tierItems state after delay:', tierItems.length);
+              // If the itemId is still not set properly, try setting it again
+              if (watch('itemId') !== formData.itemId) {
+                console.log('🔍 Autofill Debug: itemId mismatch, attempting to set again');
+                setValue('itemId', formData.itemId);
+                // Trigger form state update
+                trigger('itemId');
+              }
+            }, 150); // Increased delay to ensure state updates
+          }
+          
+          // Store loaded data references for debugging
+          const loadedSubcategoriesCount = loadedSubcategories.length;
+          const loadedItemsCount = loadedItems.length;
+          
+          // Wait for state updates to complete before finishing autofill
+          setTimeout(() => {
+            const currentValues = watch();
+            console.log('🔍 Autofill Debug: Current form values after reset:', currentValues);
+            console.log('🔍 Autofill Debug: categoryId value:', watch('categoryId'));
+            console.log('🔍 Autofill Debug: subcategoryId value:', watch('subcategoryId'));
+            console.log('🔍 Autofill Debug: itemId value:', watch('itemId'));
+            console.log('🔍 Autofill Debug: Loaded subcategories count:', loadedSubcategoriesCount);
+            console.log('🔍 Autofill Debug: Loaded items count:', loadedItemsCount);
+            console.log('🔍 Autofill Debug: Current tierItems state count:', tierItems.length);
+            console.log('🔍 Autofill Debug: Subcategory dropdown should be enabled:', watch('categoryId') && loadedSubcategoriesCount > 0);
+            console.log('🔍 Autofill Debug: Item dropdown should be enabled:', watch('subcategoryId') && loadedItemsCount > 0);
+            console.log('🔍 Autofill Debug: Item Select value check - formData.itemId:', formData.itemId, 'watched itemId:', watch('itemId'));
+            setIsAutofilling(false);
+          }, 100);
+        }
+      } else {
+        console.log('🔍 Autofill Debug: No serviceId, clearing form');
+        setSelectedService(null);
+        // Reset form to defaults when no service is selected
+        reset({
+          priority: 'MEDIUM',
+          category: 'INCIDENT'
+        });
       }
-    } else {
-      setSelectedService(null);
-    }
-  }, [watchedServiceId, services, setValue]);
+    };
+    
+    autofillServiceData();
+  }, [watchedServiceId, services, reset]);
 
   // Clear field validation errors when service changes
   useEffect(() => {
     clearErrors('fieldValues');
   }, [selectedService, clearErrors]);
+
+  // Debug effect to watch itemId changes
+  useEffect(() => {
+    console.log('🔍 Item Debug: watchedItemId changed to:', watchedItemId);
+    console.log('🔍 Item Debug: Current tierItems count:', tierItems.length);
+    console.log('🔍 Item Debug: Is autofilling:', isAutofilling);
+    if (watchedItemId && tierItems.length > 0) {
+      const itemExists = tierItems.some(item => item.id === watchedItemId);
+      console.log('🔍 Item Debug: Item exists in tierItems:', itemExists);
+      if (!itemExists) {
+        console.log('🔍 Item Debug: WARNING - Selected itemId not found in current tierItems!');
+      }
+    }
+  }, [watchedItemId, tierItems.length, isAutofilling]);
+
+  // Effect to handle tierItems updates and pending itemId
+  useEffect(() => {
+    if (tierItems.length > 0 && pendingItemId) {
+      const itemExists = tierItems.some(item => item.id === pendingItemId);
+      console.log('🔍 Item Debug: Checking pending itemId in newly loaded tierItems:', pendingItemId, 'exists:', itemExists);
+      if (itemExists && watch('itemId') !== pendingItemId) {
+        console.log('🔍 Item Debug: Setting pending itemId now that tierItems are loaded');
+        setValue('itemId', pendingItemId);
+        setPendingItemId(null);
+      }
+    }
+  }, [tierItems, pendingItemId, setValue]);
+
+
 
   const loadCategories = async () => {
     try {
@@ -145,7 +393,12 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
       const response = await fetch('/api/categories?level=1&includeChildren=true');
       if (response.ok) {
         const data = await response.json();
+        console.log('Loaded categories:', data);
         setCategories(data);
+      } else {
+        const error = await response.json();
+        console.error('Failed to load categories:', response.status, error);
+        toast.error(error.error || 'Failed to load categories');
       }
     } catch (error) {
       console.error('Error loading categories:', error);
@@ -155,18 +408,85 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
     }
   };
 
-  const loadServices = async (categoryId: string) => {
+  const loadTierCategories = async () => {
+    try {
+      const response = await fetch('/api/tier-categories');
+      if (response.ok) {
+        const data = await response.json();
+        setTierCategories(data);
+      }
+    } catch (error) {
+      console.error('Failed to load tier categories:', error);
+    }
+  };
+
+  const loadTierSubcategories = async (categoryId: string) => {
+    try {
+      console.log('🔍 Debug: Loading subcategories for categoryId:', categoryId);
+      const response = await fetch(`/api/subcategories?categoryId=${categoryId}`);
+      console.log('🔍 Debug: Subcategories API response status:', response.status);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('🔍 Debug: Subcategories data received:', data);
+        setTierSubcategories(data);
+        setTierItems([]); // Reset items when subcategories change
+        console.log('🔍 Debug: Subcategories state updated, count:', data.length);
+        return data; // Return the data for immediate use
+      }
+      return [];
+    } catch (error) {
+      console.error('Failed to load tier subcategories:', error);
+      return [];
+    }
+  };
+
+  const loadTierItems = async (subcategoryId: string) => {
+    try {
+      console.log('🔍 Debug: Loading items for subcategoryId:', subcategoryId);
+      const response = await fetch(`/api/items?subcategoryId=${subcategoryId}`);
+      console.log('🔍 Debug: Items API response status:', response.status);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('🔍 Debug: Items data received:', data);
+        setTierItems(data);
+        console.log('🔍 Debug: Items state updated, count:', data.length);
+        
+        // Check if we have a pending itemId to set
+        if (pendingItemId && data.some((item: TierItem) => item.id === pendingItemId)) {
+          console.log('🔍 Debug: Found pending itemId in loaded items, setting value:', pendingItemId);
+          setValue('itemId', pendingItemId);
+          setPendingItemId(null); // Clear the pending state
+        }
+        
+        return data; // Return the data for immediate use
+      }
+      return [];
+    } catch (error) {
+      console.error('Failed to load tier items:', error);
+      return [];
+    }
+  };
+
+  const loadServices = async (categoryId?: string) => {
     try {
       setIsLoading(true);
-      const params = new URLSearchParams({ categoryId });
-      if (searchTerm) {
-        params.append('search', searchTerm);
+      const params = new URLSearchParams();
+      if (categoryId) {
+        params.append('categoryId', categoryId);
+      }
+      if (debouncedSearchTerm) {
+        params.append('search', debouncedSearchTerm);
       }
       
       const response = await fetch(`/api/services?${params}`);
       if (response.ok) {
         const data = await response.json();
+        console.log('Loaded services:', data);
         setServices(data);
+      } else {
+        const error = await response.json();
+        console.error('Failed to load services:', response.status, error);
+        toast.error(error.error || 'Failed to load services');
       }
     } catch (error) {
       console.error('Error loading services:', error);
@@ -222,9 +542,10 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
       
       // Validate required dynamic fields
       if (selectedService) {
-        const requiredFields = selectedService.fields.filter(field => field.isUserVisible && field.isRequired);
         let hasValidationErrors = false;
         
+        // Validate regular fields
+        const requiredFields = selectedService.fields.filter(field => field.isUserVisible && field.isRequired);
         console.log('Required fields:', requiredFields);
         
         for (const field of requiredFields) {
@@ -239,6 +560,26 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
           }
         }
         
+        // Validate field templates
+        if (selectedService.fieldTemplates) {
+          const requiredTemplates = selectedService.fieldTemplates.filter(
+            template => template.isUserVisible && template.isRequired
+          );
+          console.log('Required field templates:', requiredTemplates);
+          
+          for (const template of requiredTemplates) {
+            const value = data.fieldValues?.[template.fieldTemplate.name];
+            console.log(`Field template ${template.fieldTemplate.name}: value = "${value}"`);
+            if (!value || value.trim() === '') {
+              setError(`fieldValues.${template.fieldTemplate.name}` as any, {
+                type: 'required',
+                message: `${template.fieldTemplate.label} is required`
+              });
+              hasValidationErrors = true;
+            }
+          }
+        }
+        
         if (hasValidationErrors) {
           console.log('Validation errors found, stopping submission');
           setIsSubmitting(false);
@@ -249,6 +590,7 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
       // Collect dynamic field values
       const fieldValues: Array<{ fieldId: string; value: string }> = [];
       if (selectedService && data.fieldValues) {
+        // Collect values from regular service fields
         selectedService.fields
           .filter(field => field.isUserVisible)
           .forEach(field => {
@@ -257,6 +599,19 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
               fieldValues.push({ fieldId: field.id, value });
             }
           });
+        
+        // Collect values from field templates
+        if (selectedService.fieldTemplates) {
+          selectedService.fieldTemplates
+            .filter(template => template.isUserVisible)
+            .forEach(template => {
+              const value = data.fieldValues?.[template.fieldTemplate.name];
+              if (value) {
+                // For field templates, we need to store the field template ID, not the service field ID
+                fieldValues.push({ fieldId: template.fieldTemplate.id, value });
+              }
+            });
+        }
       }
 
       // Process attachments
@@ -315,6 +670,32 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
     }
   };
 
+  const renderFieldTemplate = (template: ServiceFieldTemplate) => {
+    const field = template.fieldTemplate;
+    const isRequired = template.isRequired ?? false;
+    const helpText = template.helpText || field.helpText;
+    const defaultValue = template.defaultValue || field.defaultValue;
+    
+    // Convert field template to service field format for rendering
+    const serviceField: ServiceField = {
+      id: field.id,
+      name: field.name,
+      label: field.label,
+      type: field.type as any,
+      isRequired,
+      isUserVisible: template.isUserVisible,
+      placeholder: field.placeholder,
+      helpText,
+      defaultValue,
+      options: field.options,
+      validation: field.validation,
+      order: template.order,
+      isActive: true
+    };
+    
+    return renderDynamicField(serviceField);
+  };
+
   const renderDynamicField = (field: ServiceField) => {
     const fieldName = `fieldValues.${field.name}`;
     const isRequired = field.isRequired;
@@ -323,6 +704,7 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
       case 'TEXT':
       case 'EMAIL':
       case 'URL':
+      case 'PHONE':
         return (
           <div key={field.id} className="space-y-2">
             <Label htmlFor={field.name}>
@@ -331,7 +713,7 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
             </Label>
             <Input
               id={field.name}
-              type={field.type.toLowerCase()}
+              type={field.type === 'PHONE' ? 'tel' : field.type.toLowerCase()}
               placeholder={field.placeholder}
               {...register(fieldName as any, { required: isRequired })}
             />
@@ -372,16 +754,29 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
               {field.label}
               {isRequired && <span className="text-red-500 ml-1">*</span>}
             </Label>
-            <Select onValueChange={(value: string) => setValue(fieldName as any, value)}>
+            <Select 
+              value={watch(`fieldValues.${field.name}`) || ''}
+              onValueChange={(value: string) => setValue(fieldName as any, value)}
+            >
               <SelectTrigger>
                 <SelectValue placeholder={field.placeholder || `Select ${field.label}`} />
               </SelectTrigger>
               <SelectContent>
-                {field.options?.map((option: any) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
+                {Array.isArray(field.options) ? (
+                  // Handle options as array of strings
+                  field.options.map((option: string) => (
+                    <SelectItem key={option} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))
+                ) : field.options && typeof field.options === 'object' ? (
+                  // Handle options as array of objects with value/label
+                  Object.entries(field.options).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label as string}
+                    </SelectItem>
+                  ))
+                ) : null}
               </SelectContent>
             </Select>
             {field.helpText && (
@@ -418,6 +813,133 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
           </div>
         );
 
+      case 'DATE':
+        return (
+          <div key={field.id} className="space-y-2">
+            <Label htmlFor={field.name}>
+              {field.label}
+              {isRequired && <span className="text-red-500 ml-1">*</span>}
+            </Label>
+            <Input
+              id={field.name}
+              type="date"
+              placeholder={field.placeholder}
+              {...register(fieldName as any, { required: isRequired })}
+            />
+            {field.helpText && (
+              <p className="text-sm text-gray-500">{field.helpText}</p>
+            )}
+            {errors.fieldValues?.[field.name] && (
+              <p className="text-sm text-red-500">{errors.fieldValues[field.name]?.message}</p>
+            )}
+          </div>
+        );
+
+      case 'DATETIME':
+        return (
+          <div key={field.id} className="space-y-2">
+            <Label htmlFor={field.name}>
+              {field.label}
+              {isRequired && <span className="text-red-500 ml-1">*</span>}
+            </Label>
+            <Input
+              id={field.name}
+              type="datetime-local"
+              placeholder={field.placeholder}
+              {...register(fieldName as any, { required: isRequired })}
+            />
+            {field.helpText && (
+              <p className="text-sm text-gray-500">{field.helpText}</p>
+            )}
+            {errors.fieldValues?.[field.name] && (
+              <p className="text-sm text-red-500">{errors.fieldValues[field.name]?.message}</p>
+            )}
+          </div>
+        );
+
+      case 'CHECKBOX':
+        return (
+          <div key={field.id} className="space-y-2">
+            <div className="flex items-center space-x-2">
+              <input
+                id={field.name}
+                type="checkbox"
+                className="h-4 w-4 rounded border-gray-300"
+                {...register(fieldName as any)}
+              />
+              <Label htmlFor={field.name} className="text-sm font-medium">
+                {field.label}
+                {isRequired && <span className="text-red-500 ml-1">*</span>}
+              </Label>
+            </div>
+            {field.helpText && (
+              <p className="text-sm text-gray-500 ml-6">{field.helpText}</p>
+            )}
+          </div>
+        );
+
+      case 'RADIO':
+        return (
+          <div key={field.id} className="space-y-2">
+            <Label>
+              {field.label}
+              {isRequired && <span className="text-red-500 ml-1">*</span>}
+            </Label>
+            <div className="space-y-2">
+              {(Array.isArray(field.options) ? field.options : []).map((option: string) => (
+                <div key={option} className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id={`${field.name}-${option}`}
+                    value={option}
+                    className="h-4 w-4"
+                    {...register(fieldName as any, { required: isRequired })}
+                  />
+                  <Label htmlFor={`${field.name}-${option}`} className="text-sm font-normal">
+                    {option}
+                  </Label>
+                </div>
+              ))}
+            </div>
+            {field.helpText && (
+              <p className="text-sm text-gray-500">{field.helpText}</p>
+            )}
+            {errors.fieldValues?.[field.name] && (
+              <p className="text-sm text-red-500">{errors.fieldValues[field.name]?.message}</p>
+            )}
+          </div>
+        );
+
+      case 'MULTISELECT':
+        // For now, render as checkboxes
+        return (
+          <div key={field.id} className="space-y-2">
+            <Label>
+              {field.label}
+              {isRequired && <span className="text-red-500 ml-1">*</span>}
+            </Label>
+            <div className="space-y-2">
+              {(Array.isArray(field.options) ? field.options : []).map((option: string) => (
+                <div key={option} className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id={`${field.name}-${option}`}
+                    value={option}
+                    className="h-4 w-4 rounded border-gray-300"
+                    {...register(`${fieldName}.${option}` as any)}
+                  />
+                  <Label htmlFor={`${field.name}-${option}`} className="text-sm font-normal">
+                    {option}
+                  </Label>
+                </div>
+              ))}
+            </div>
+            {field.helpText && (
+              <p className="text-sm text-gray-500">{field.helpText}</p>
+            )}
+          </div>
+        );
+
       default:
         return null;
     }
@@ -426,7 +948,8 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Service Selection */}
-      <Card>
+      {!selectedService ? (
+        <Card>
         <CardHeader>
           <CardTitle>Select Service</CardTitle>
           <CardDescription>
@@ -474,9 +997,11 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
           </div>
 
           {/* Services */}
-          {selectedCategory && (
+          {(selectedCategory || (debouncedSearchTerm && services.length > 0)) && (
             <div className="space-y-2">
-              <h3 className="font-medium">Available Services</h3>
+              <h3 className="font-medium">
+                {selectedCategory ? 'Available Services' : 'Search Results'}
+              </h3>
               {isLoading ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin" />
@@ -525,6 +1050,42 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
           <input type="hidden" {...register('serviceId')} />
         </CardContent>
       </Card>
+      ) : (
+        /* Selected Service Summary */
+        <Card>
+          <CardHeader>
+            <CardTitle>Selected Service</CardTitle>
+            <CardDescription>
+              {selectedService.name}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">{selectedService.description}</p>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline">{selectedService.priority}</Badge>
+                <Badge variant="outline">~{selectedService.estimatedHours}h</Badge>
+                {selectedService.requiresApproval && (
+                  <Badge variant="outline">Requires Approval</Badge>
+                )}
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setValue('serviceId', '');
+                  setSelectedService(null);
+                  setSelectedCategory('');
+                  setSearchTerm('');
+                }}
+              >
+                Change Service
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Ticket Form */}
       {selectedService && (
@@ -568,10 +1129,24 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
                 )}
               </div>
 
-              {/* Dynamic Fields */}
+              {/* Dynamic Fields - Regular Fields */}
               {selectedService.fields
                 .filter(field => field.isUserVisible)
                 .map(renderDynamicField)}
+              
+              {/* Dynamic Fields - Field Templates */}
+              {selectedService.fieldTemplates && selectedService.fieldTemplates.length > 0 && (
+                <>
+                  {selectedService.fieldTemplates
+                    .filter(template => template.isUserVisible)
+                    .sort((a, b) => a.order - b.order)
+                    .map((template) => (
+                      <div key={template.id}>
+                        {renderFieldTemplate(template)}
+                      </div>
+                    ))}
+                </>
+              )}
 
               {/* Priority */}
               <div className="space-y-2">
@@ -648,21 +1223,25 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
                      Category
                    </Label>
                    <Select
-                     value={watch('categoryId') || ''}
+                     value={watchedCategoryId || ''}
                      onValueChange={(value: string) => {
                        setValue('categoryId', value);
-                       setValue('subcategoryId', '');
-                       setValue('itemId', '');
+                       if (!isAutofilling) {
+                         setValue('subcategoryId', '');
+                         setValue('itemId', '');
+                       }
+                       loadTierSubcategories(value);
                      }}
                    >
                      <SelectTrigger>
                        <SelectValue placeholder="Select category (optional)" />
                      </SelectTrigger>
                      <SelectContent>
-                       <SelectItem value="hardware">Hardware</SelectItem>
-                       <SelectItem value="software">Software</SelectItem>
-                       <SelectItem value="network">Network</SelectItem>
-                       <SelectItem value="security">Security</SelectItem>
+                       {tierCategories.map((category) => (
+                         <SelectItem key={category.id} value={category.id}>
+                           {category.name}
+                         </SelectItem>
+                       ))}
                      </SelectContent>
                    </Select>
                  </div>
@@ -671,45 +1250,25 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
                  <div className="space-y-2">
                    <Label htmlFor="subcategoryId">Subcategory</Label>
                    <Select
-                     value={watch('subcategoryId') || ''}
+                     value={watchedSubcategoryId || ''}
                      onValueChange={(value: string) => {
                        setValue('subcategoryId', value);
-                       setValue('itemId', '');
+                       if (!isAutofilling) {
+                         setValue('itemId', '');
+                       }
+                       loadTierItems(value);
                      }}
-                     disabled={!watch('categoryId')}
+                     disabled={!watchedCategoryId || tierSubcategories.length === 0}
                    >
                      <SelectTrigger>
                        <SelectValue placeholder="Select subcategory (optional)" />
                      </SelectTrigger>
                      <SelectContent>
-                       {watch('categoryId') === 'hardware' && (
-                         <>
-                           <SelectItem value="computer">Computer</SelectItem>
-                           <SelectItem value="printer">Printer</SelectItem>
-                           <SelectItem value="mobile">Mobile Device</SelectItem>
-                         </>
-                       )}
-                       {watch('categoryId') === 'software' && (
-                         <>
-                           <SelectItem value="application">Application</SelectItem>
-                           <SelectItem value="os">Operating System</SelectItem>
-                           <SelectItem value="utility">Utility</SelectItem>
-                         </>
-                       )}
-                       {watch('categoryId') === 'network' && (
-                         <>
-                           <SelectItem value="connectivity">Connectivity</SelectItem>
-                           <SelectItem value="vpn">VPN</SelectItem>
-                           <SelectItem value="wifi">WiFi</SelectItem>
-                         </>
-                       )}
-                       {watch('categoryId') === 'security' && (
-                         <>
-                           <SelectItem value="access_control">Access Control</SelectItem>
-                           <SelectItem value="malware">Malware</SelectItem>
-                           <SelectItem value="data_protection">Data Protection</SelectItem>
-                         </>
-                       )}
+                       {tierSubcategories.map((subcategory) => (
+                         <SelectItem key={subcategory.id} value={subcategory.id}>
+                           {subcategory.name}
+                         </SelectItem>
+                       ))}
                      </SelectContent>
                    </Select>
                  </div>
@@ -718,37 +1277,36 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
                  <div className="space-y-2">
                    <Label htmlFor="itemId">Item</Label>
                    <Select
-                     value={watch('itemId') || ''}
-                     onValueChange={(value: string) => setValue('itemId', value)}
-                     disabled={!watch('subcategoryId')}
+                     value={watchedItemId || ''}
+                     onValueChange={(value: string) => {
+                       console.log('🔍 Item Select: Manual value change to:', value);
+                       setValue('itemId', value);
+                     }}
+                     disabled={!watchedSubcategoryId || tierItems.length === 0}
                    >
                      <SelectTrigger>
                        <SelectValue placeholder="Select item (optional)" />
                      </SelectTrigger>
                      <SelectContent>
-                       {watch('subcategoryId') === 'computer' && (
-                         <>
-                           <SelectItem value="desktop_pc">Desktop PC</SelectItem>
-                           <SelectItem value="laptop">Laptop</SelectItem>
-                           <SelectItem value="monitor">Monitor</SelectItem>
-                         </>
-                       )}
-                       {watch('subcategoryId') === 'application' && (
-                         <>
-                           <SelectItem value="core_banking">Core Banking System</SelectItem>
-                           <SelectItem value="email_client">Email Client</SelectItem>
-                           <SelectItem value="office_suite">Office Suite</SelectItem>
-                         </>
-                       )}
-                       {watch('subcategoryId') === 'access_control' && (
-                         <>
-                           <SelectItem value="user_account">User Account</SelectItem>
-                           <SelectItem value="permissions">Permissions</SelectItem>
-                           <SelectItem value="password_reset">Password Reset</SelectItem>
-                         </>
-                       )}
+                       {tierItems.map((item) => (
+                         <SelectItem key={item.id} value={item.id}>
+                           {item.name}
+                         </SelectItem>
+                       ))}
                      </SelectContent>
                    </Select>
+                   {/* Debug info */}
+                   {process.env.NODE_ENV === 'development' && (
+                     <div className="text-xs text-gray-500 space-y-1">
+                       <div>Watched itemId: {watchedItemId || 'none'}</div>
+                       <div>Tier items count: {tierItems.length}</div>
+                       <div>Subcategory selected: {watchedSubcategoryId || 'none'}</div>
+                       <div>Item dropdown disabled: {(!watchedSubcategoryId || tierItems.length === 0).toString()}</div>
+                       {tierItems.length > 0 && (
+                         <div>Available items: {tierItems.map(i => `${i.name} (${i.id})`).join(', ')}</div>
+                       )}
+                     </div>
+                   )}
                  </div>
                </div>
 

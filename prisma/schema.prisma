@@ -151,14 +151,15 @@ model Service {
   updatedAt         DateTime      @updatedAt
 
   // Relations
-  category       ServiceCategory @relation(fields: [categoryId], references: [id])
-  tier1Category  Category?       @relation(fields: [tier1CategoryId], references: [id])
-  tier2Subcategory Subcategory?  @relation(fields: [tier2SubcategoryId], references: [id])
-  tier3Item      Item?           @relation(fields: [tier3ItemId], references: [id])
-  fields         ServiceField[]
-  tickets        Ticket[]
-  slaTemplate    SLATemplate?
-  taskTemplates  TaskTemplate[]
+  category         ServiceCategory @relation(fields: [categoryId], references: [id])
+  tier1Category    Category?       @relation(fields: [tier1CategoryId], references: [id])
+  tier2Subcategory Subcategory?    @relation(fields: [tier2SubcategoryId], references: [id])
+  tier3Item        Item?           @relation(fields: [tier3ItemId], references: [id])
+  fields           ServiceField[]
+  fieldTemplates   ServiceFieldTemplate[]
+  tickets          Ticket[]
+  slaTemplate      SLATemplate?
+  taskTemplates    TaskTemplate[]
 
   @@map("services")
 }
@@ -186,6 +187,50 @@ model ServiceField {
   fieldValues  TicketFieldValue[]
 
   @@map("service_fields")
+}
+
+// Field Template Management - Reusable fields across services
+model FieldTemplate {
+  id            String              @id @default(cuid())
+  name          String              @unique // Internal name for the template
+  label         String              // Display label
+  description   String?             // Description of what this field is for
+  type          FieldType
+  isRequired    Boolean             @default(false)
+  placeholder   String?
+  helpText      String?
+  defaultValue  String?
+  options       Json?               // For select, radio, checkbox fields
+  validation    Json?               // Validation rules
+  category      String?             // Category to group templates (e.g., "Contact Info", "Technical Details")
+  isActive      Boolean             @default(true)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  createdBy     String?
+  
+  // Relations
+  serviceFieldTemplates ServiceFieldTemplate[]
+  
+  @@map("field_templates")
+}
+
+// Many-to-many relationship between Services and Field Templates
+model ServiceFieldTemplate {
+  id              String          @id @default(cuid())
+  serviceId       String
+  fieldTemplateId String
+  order           Int             @default(0)
+  isRequired      Boolean?        // Override template's isRequired for this service
+  isUserVisible   Boolean         @default(true) // false = technician-only
+  helpText        String?         // Override template's helpText for this service
+  defaultValue    String?         // Override template's defaultValue for this service
+  
+  // Relations
+  service         Service         @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  fieldTemplate   FieldTemplate   @relation(fields: [fieldTemplateId], references: [id])
+  
+  @@unique([serviceId, fieldTemplateId])
+  @@map("service_field_templates")
 }
 
 // Ticket Management

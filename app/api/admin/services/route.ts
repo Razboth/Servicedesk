@@ -10,6 +10,9 @@ const createServiceSchema = z.object({
   categoryId: z.string().min(1, 'Category is required'),
   subcategoryId: z.string().optional(),
   itemId: z.string().optional(),
+  tier1CategoryId: z.string().optional(),
+  tier2SubcategoryId: z.string().optional(),
+  tier3ItemId: z.string().optional(),
   supportGroup: z.enum(['IT_HELPDESK', 'NETWORK_TEAM', 'SECURITY_TEAM', 'VENDOR_SUPPORT']),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL', 'EMERGENCY']),
   estimatedHours: z.number().min(1).optional(),
@@ -46,7 +49,16 @@ export async function GET(request: NextRequest) {
         },
         _count: {
           select: {
-            tickets: true
+            tickets: true,
+            serviceFieldTemplates: true
+          }
+        },
+        serviceFieldTemplates: {
+          include: {
+            fieldTemplate: true
+          },
+          orderBy: {
+            order: 'asc'
           }
         }
       },
@@ -106,14 +118,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create the service with 3-tier categorization mapping
+    // Create the service
     const service = await prisma.service.create({
       data: {
         ...validatedData,
-        // Map to 3-tier categorization fields
-        tier1CategoryId: validatedData.categoryId,
-        tier2SubcategoryId: validatedData.subcategoryId,
-        tier3ItemId: validatedData.itemId,
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date()

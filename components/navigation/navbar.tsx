@@ -81,7 +81,7 @@ export function Navbar() {
                   Approvals
                 </Link>
               )}
-              {(['ADMIN', 'SUPER_ADMIN'].includes(session.user?.role)) && (
+              {session.user?.role === 'ADMIN' && (
                 <>
                   <Link
                     href="/admin/task-templates"
@@ -104,6 +104,16 @@ export function Navbar() {
                     Service Templates
                   </Link>
                   <Link
+                    href="/admin/field-templates"
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      pathname === '/admin/field-templates' 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    }`}
+                  >
+                    Field Templates
+                  </Link>
+                  <Link
                     href="/admin/categories"
                     className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                       pathname === '/admin/categories' 
@@ -112,6 +122,36 @@ export function Navbar() {
                     }`}
                   >
                     Categories
+                  </Link>
+                  <Link
+                    href="/admin/tier-categories"
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      pathname === '/admin/tier-categories' 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    }`}
+                  >
+                    Tier Categories
+                  </Link>
+                  <Link
+                    href="/admin/branches"
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      pathname === '/admin/branches' 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    }`}
+                  >
+                    Branches
+                  </Link>
+                  <Link
+                    href="/admin/atms"
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      pathname === '/admin/atms' 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    }`}
+                  >
+                    ATMs
                   </Link>
                   <Link
                     href="/admin/import"

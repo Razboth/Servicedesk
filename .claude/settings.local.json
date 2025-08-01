@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node:*)",
+      "Bash(rm:*)",
+      "Bash(cp:*)",
+      "Bash(sed:*)",
+      "Bash(python:*)",
+      "Bash(npx prisma migrate dev:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npx prisma generate:*)",
+      "WebFetch(domain:localhost)",
+      "Bash(awk:*)",
+      "Bash(grep:*)"
+    ],
+    "deny": []
+  }
+}

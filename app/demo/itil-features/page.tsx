@@ -177,14 +177,9 @@ export default function ITILFeaturesDemo() {
             issue classification, SLA management, and attachment capabilities.
           </p>
           <div className="flex gap-4">
-            <Link href="/tickets/create-enhanced">
+            <Link href="/tickets">
               <Button size="lg">
                 <FileText className="mr-2 h-5 w-5" />
-                Create Enhanced Ticket
-              </Button>
-            </Link>
-            <Link href="/tickets">
-              <Button variant="outline" size="lg">
                 View All Tickets
               </Button>
             </Link>

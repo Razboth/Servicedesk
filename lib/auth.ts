@@ -5,7 +5,7 @@ import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+export const authOptions = {
   providers: [
     Credentials({
       name: 'credentials',
@@ -24,6 +24,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             where: {
               email: credentials.email as string,
               isActive: true
+            },
+            include: {
+              branch: true
             }
           })
 
@@ -46,6 +49,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             email: user.email,
             name: user.name,
             role: user.role,
+            branchId: user.branchId,
+            branchName: user.branch?.name
           }
         } catch (error) {
           console.error('Auth error:', error)
@@ -61,6 +66,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async jwt({ token, user }: any) {
       if (user) {
         token.role = user.role;
+        token.branchId = user.branchId;
+        token.branchName = user.branchName;
       }
       return token;
     },
@@ -68,6 +75,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (token) {
         session.user.id = token.sub!;
         session.user.role = token.role as string;
+        session.user.branchId = token.branchId as string | null;
+        session.user.branchName = token.branchName as string | null;
       }
       return session;
     }
@@ -76,4 +85,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     signIn: '/auth/signin',
     error: '/auth/error',
   },
-})
+}
+
+export const { handlers, auth, signIn, signOut } = NextAuth(authOptions)

@@ -1,10 +1,16 @@
 {
-  "/api/categories/route": "app/api/categories/route.js",
+  "/api/admin/branches/route": "app/api/admin/branches/route.js",
+  "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
+  "/api/dashboard/route": "app/api/dashboard/route.js",
+  "/api/admin/atms/route": "app/api/admin/atms/route.js",
+  "/api/test-db/route": "app/api/test-db/route.js",
+  "/api/tickets/route": "app/api/tickets/route.js",
+  "/api/task-templates/route": "app/api/task-templates/route.js",
   "/api/services/route": "app/api/services/route.js",
-  "/api/tier-categories/route": "app/api/tier-categories/route.js",
   "/admin/import/page": "app/admin/import/page.js",
+  "/admin/atms/page": "app/admin/atms/page.js",
+  "/page": "app/page.js",
+  "/admin/branches/page": "app/admin/branches/page.js",
   "/tickets/page": "app/tickets/page.js",
-  "/auth/signin/page": "app/auth/signin/page.js",
-  "/admin/categories/page": "app/admin/categories/page.js",
-  "/admin/services/page": "app/admin/services/page.js"
+  "/admin/task-templates/page": "app/admin/task-templates/page.js"
 }

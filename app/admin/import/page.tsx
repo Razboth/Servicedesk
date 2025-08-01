@@ -97,7 +97,7 @@ export default function ImportPage() {
       <div className="mb-6">
         <h1 className="text-3xl font-bold">Import Service Catalog</h1>
         <p className="text-gray-600 mt-2">
-          Import services from CSV file. The file should contain columns: SERVICE CATALOG, SERVICE NAME, SLA, RESPONSE TIME, RESOLUTION TIME
+          Import services from CSV file. Supports both complete format with 3-tier categorization and legacy format.
         </p>
       </div>
 
@@ -253,18 +253,47 @@ export default function ImportPage() {
             <CardTitle>CSV Format Instructions</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="text-sm space-y-2">
-              <p><strong>Required columns (semicolon separated):</strong></p>
-              <ul className="list-disc list-inside space-y-1 ml-4">
-                <li><Badge variant="outline">SERVICE CATALOG</Badge> - The category name for the service</li>
-                <li><Badge variant="outline">SERVICE NAME</Badge> - The name of the service</li>
-                <li><Badge variant="outline">SLA</Badge> - Service Level Agreement time</li>
-                <li><Badge variant="outline">RESPONSE TIME</Badge> - Expected response time</li>
-                <li><Badge variant="outline">RESOLUTION TIME</Badge> - Expected resolution time</li>
-              </ul>
+            <div className="text-sm space-y-4">
+              <div>
+                <p><strong>Complete Format (Recommended - with 3-tier categorization):</strong></p>
+                <ul className="list-disc list-inside space-y-1 ml-4 mt-2">
+                  <li><Badge variant="outline">Original_Service_Catalog</Badge> - Original service catalog</li>
+                  <li><Badge variant="outline">Original_Service_Name</Badge> - The name of the service</li>
+                  <li><Badge variant="outline">Tier_1_Category</Badge> - Level 1 category</li>
+                  <li><Badge variant="outline">Tier_2_SubCategory</Badge> - Level 2 subcategory</li>
+                  <li><Badge variant="outline">Tier_3_Service_Type</Badge> - Level 3 service type</li>
+                  <li><Badge variant="outline">SLA_Days</Badge> - Service Level Agreement time</li>
+                  <li><Badge variant="outline">First_Response</Badge> - Expected response time</li>
+                  <li><Badge variant="outline">Resolution_Time</Badge> - Expected resolution time</li>
+                  <li><Badge variant="outline">ITIL_Category</Badge> - ITIL category (Incident, Service Request, etc.)</li>
+                  <li><Badge variant="outline">Issue_Classification</Badge> - Issue classification type</li>
+                  <li><Badge variant="outline">Priority</Badge> - Priority level (Low, Medium, High, Critical, Emergency)</li>
+                  <li><Badge variant="outline">Title</Badge> - Default title template for tickets</li>
+                </ul>
+              </div>
+              
+              <div>
+                <p><strong>Legacy Format (Basic support):</strong></p>
+                <ul className="list-disc list-inside space-y-1 ml-4 mt-2">
+                  <li><Badge variant="outline">SERVICE CATALOG</Badge> - The category name for the service</li>
+                  <li><Badge variant="outline">SERVICE NAME</Badge> - The name of the service</li>
+                  <li><Badge variant="outline">SLA</Badge> - Service Level Agreement time</li>
+                  <li><Badge variant="outline">RESPONSE TIME</Badge> - Expected response time</li>
+                  <li><Badge variant="outline">RESOLUTION TIME</Badge> - Expected resolution time</li>
+                </ul>
+              </div>
               
               <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                <p className="font-medium mb-2">Example CSV format:</p>
+                <p className="font-medium mb-2">Example Complete Format:</p>
+                <code className="text-xs">
+                  Original_Service_Catalog;Original_Service_Name;Tier_1_Category;Tier_2_SubCategory;Tier_3_Service_Type;SLA_Days;First_Response;Resolution_Time;ITIL_Category;Issue_Classification;Priority;Title<br/>
+                  ATM;Pendaftaran Terminal Baru;Hardware;ATM;Cash Dispenser;5 Days;30 Mins;5 Days;Service Request;Hardware Failure;High;ATM Cash Dispenser Issue<br/>
+                  User;Reset Password;Security;Access Control;Password Reset;1 Day;60 Mins;1 Day;Service Request;Human Error;Medium;Password Reset Request
+                </code>
+              </div>
+              
+              <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                <p className="font-medium mb-2">Example Legacy Format:</p>
                 <code className="text-xs">
                   SERVICE CATALOG;SERVICE NAME;SLA;RESPONSE TIME;RESOLUTION TIME<br/>
                   ATM;Pendaftaran Terminal Baru;5 Days;30 Mins;5 Days<br/>

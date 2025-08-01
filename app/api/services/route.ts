@@ -6,7 +6,10 @@ import { prisma } from '@/lib/prisma';
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
+    console.log('Services API - Session:', session);
+    
     if (!session?.user?.id) {
+      console.log('Services API - No session found');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -30,67 +33,157 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    const services = await prisma.service.findMany({
-      where,
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        helpText: true,
-        supportGroup: true,
-        priority: true,
-        estimatedHours: true,
-        slaHours: true,
-        requiresApproval: true,
-        isConfidential: true,
-        defaultTitle: true,
-        defaultItilCategory: true,
-        defaultIssueClassification: true,
-        tier1CategoryId: true,
-        tier2SubcategoryId: true,
-        tier3ItemId: true,
-        category: {
-          select: {
-            id: true,
-            name: true,
-            level: true
+    let services;
+    
+    try {
+      // Try to fetch with field templates
+      services = await prisma.service.findMany({
+        where,
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          helpText: true,
+          supportGroup: true,
+          priority: true,
+          estimatedHours: true,
+          slaHours: true,
+          requiresApproval: true,
+          isConfidential: true,
+          defaultTitle: true,
+          defaultItilCategory: true,
+          defaultIssueClassification: true,
+          tier1CategoryId: true,
+          tier2SubcategoryId: true,
+          tier3ItemId: true,
+          category: {
+            select: {
+              id: true,
+              name: true,
+              level: true
+            }
+          },
+          fields: {
+            where: { isActive: true },
+            orderBy: { order: 'asc' },
+            select: {
+              id: true,
+              name: true,
+              label: true,
+              type: true,
+              isRequired: true,
+              isUserVisible: true,
+              placeholder: true,
+              helpText: true,
+              defaultValue: true,
+              options: true,
+              validation: true,
+              order: true
+            }
+          },
+          fieldTemplates: {
+            orderBy: { order: 'asc' },
+            where: {
+              isUserVisible: true
+            },
+            select: {
+              id: true,
+              order: true,
+              isRequired: true,
+              isUserVisible: true,
+              helpText: true,
+              defaultValue: true,
+              fieldTemplate: {
+                select: {
+                  id: true,
+                  name: true,
+                  label: true,
+                  type: true,
+                  placeholder: true,
+                  options: true,
+                  validation: true,
+                  category: true
+                }
+              }
+            }
+          },
+          _count: {
+            select: {
+              tickets: true
+            }
           }
         },
-        fields: {
-          where: { isActive: true },
-          orderBy: { order: 'asc' },
-          select: {
-            id: true,
-            name: true,
-            label: true,
-            type: true,
-            isRequired: true,
-            isUserVisible: true,
-            placeholder: true,
-            helpText: true,
-            defaultValue: true,
-            options: true,
-            validation: true,
-            order: true
+        orderBy: [
+          { category: { name: 'asc' } },
+          { name: 'asc' }
+        ]
+      });
+    } catch (error: any) {
+      // If fieldTemplates relation doesn't exist, fetch without it
+      console.log('Field templates not available, fetching without them');
+      services = await prisma.service.findMany({
+        where,
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          helpText: true,
+          supportGroup: true,
+          priority: true,
+          estimatedHours: true,
+          slaHours: true,
+          requiresApproval: true,
+          isConfidential: true,
+          defaultTitle: true,
+          defaultItilCategory: true,
+          defaultIssueClassification: true,
+          tier1CategoryId: true,
+          tier2SubcategoryId: true,
+          tier3ItemId: true,
+          category: {
+            select: {
+              id: true,
+              name: true,
+              level: true
+            }
+          },
+          fields: {
+            where: { isActive: true },
+            orderBy: { order: 'asc' },
+            select: {
+              id: true,
+              name: true,
+              label: true,
+              type: true,
+              isRequired: true,
+              isUserVisible: true,
+              placeholder: true,
+              helpText: true,
+              defaultValue: true,
+              options: true,
+              validation: true,
+              order: true
+            }
+          },
+          _count: {
+            select: {
+              tickets: true
+            }
           }
         },
-        _count: {
-          select: {
-            tickets: true
-          }
-        }
-      },
-      orderBy: [
-        { category: { name: 'asc' } },
-        { name: 'asc' }
-      ]
-    });
+        orderBy: [
+          { category: { name: 'asc' } },
+          { name: 'asc' }
+        ]
+      });
+    }
 
+    console.log(`Services API - Returning ${services.length} services`);
     return NextResponse.json(services);
   } catch (error) {
     console.error('Error fetching services:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
