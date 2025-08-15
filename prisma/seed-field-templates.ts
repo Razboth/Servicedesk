@@ -158,14 +158,25 @@ async function seedFieldTemplates() {
       
       for (const field of category.fields) {
         try {
-          const fieldTemplate = await prisma.fieldTemplate.create({
-            data: {
+          const fieldTemplate = await prisma.fieldTemplate.upsert({
+            where: {
+              name: field.name
+            },
+            create: {
               name: field.name,
               label: field.label,
               type: field.type as any,
               category: category.category,
               isRequired: field.isRequired,
               isUserVisible: true,
+              helpText: `Enter ${field.label}`,
+              order: category.fields.indexOf(field) + 1
+            },
+            update: {
+              label: field.label,
+              type: field.type as any,
+              category: category.category,
+              isRequired: field.isRequired,
               helpText: `Enter ${field.label}`,
               order: category.fields.indexOf(field) + 1
             }

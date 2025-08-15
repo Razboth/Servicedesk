@@ -25,6 +25,14 @@ interface ServiceCategory {
   level: number;
 }
 
+interface SupportGroup {
+  id: string;
+  code: string;
+  name: string;
+  description?: string;
+  isActive: boolean;
+}
+
 interface ServiceField {
   id?: string;
   name: string;
@@ -52,7 +60,8 @@ interface Service {
   tier1CategoryId?: string;
   tier2SubcategoryId?: string;
   tier3ItemId?: string;
-  supportGroup: 'IT_HELPDESK' | 'NETWORK_TEAM' | 'SECURITY_TEAM' | 'VENDOR_SUPPORT';
+  supportGroupId?: string;
+  supportGroup?: SupportGroup;
   priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | 'EMERGENCY';
   estimatedHours?: number;
   slaHours: number;
@@ -64,7 +73,7 @@ interface Service {
   serviceFieldTemplates?: any[];
   _count?: {
     tickets: number;
-    serviceFieldTemplates?: number;
+    fieldTemplates?: number;
   };
 }
 
@@ -78,7 +87,7 @@ interface NewService {
   tier1CategoryId?: string;
   tier2SubcategoryId?: string;
   tier3ItemId?: string;
-  supportGroup: 'IT_HELPDESK' | 'NETWORK_TEAM' | 'SECURITY_TEAM' | 'VENDOR_SUPPORT';
+  supportGroupId: string;
   priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | 'EMERGENCY';
   estimatedHours: number;
   slaHours: number;
@@ -98,29 +107,24 @@ interface NewField {
   placeholder: string;
   helpText: string;
   defaultValue: string;
-  options: string;
+  options: string[];
+  validation: any;
   order: number;
+  isActive: boolean;
 }
 
 const fieldTypes = [
-  { value: 'TEXT', label: 'Text Input' },
-  { value: 'NUMBER', label: 'Number Input' },
-  { value: 'EMAIL', label: 'Email Input' },
-  { value: 'PHONE', label: 'Phone Input' },
-  { value: 'URL', label: 'URL Input' },
+  { value: 'TEXT', label: 'Text' },
+  { value: 'NUMBER', label: 'Number' },
+  { value: 'EMAIL', label: 'Email' },
+  { value: 'PHONE', label: 'Phone' },
+  { value: 'URL', label: 'URL' },
   { value: 'TEXTAREA', label: 'Text Area' },
-  { value: 'SELECT', label: 'Dropdown Select' },
+  { value: 'SELECT', label: 'Dropdown' },
   { value: 'RADIO', label: 'Radio Buttons' },
-  { value: 'CHECKBOX', label: 'Checkboxes' },
-  { value: 'DATE', label: 'Date Picker' },
+  { value: 'CHECKBOX', label: 'Checkbox' },
+  { value: 'DATE', label: 'Date' },
   { value: 'FILE', label: 'File Upload' }
-];
-
-const supportGroups = [
-  { value: 'IT_HELPDESK', label: 'IT Helpdesk' },
-  { value: 'NETWORK_TEAM', label: 'Network Team' },
-  { value: 'SECURITY_TEAM', label: 'Security Team' },
-  { value: 'VENDOR_SUPPORT', label: 'Vendor Support' }
 ];
 
 const priorities = [
@@ -149,23 +153,28 @@ const issueClassifications = [
   { value: 'EXTERNAL_FACTOR', label: 'External Factor' }
 ];
 
-export default function AdminServicesPage() {
-  const { data: session, status } = useSession();
+export default function ServicesPage() {
+  const { data: session } = useSession();
   const router = useRouter();
   const [services, setServices] = useState<Service[]>([]);
+  const [filteredServices, setFilteredServices] = useState<Service[]>([]);
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
-  const [tierCategories, setTierCategories] = useState<any[]>([]);
-  const [subcategories, setSubcategories] = useState<any[]>([]);
-  const [items, setItems] = useState<any[]>([]);
+  const [supportGroups, setSupportGroups] = useState<SupportGroup[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showNewForm, setShowNewForm] = useState(false);
-  const [editingService, setEditingService] = useState<string | null>(null);
+  const [isNewServiceOpen, setIsNewServiceOpen] = useState(false);
+  const [isEditServiceOpen, setIsEditServiceOpen] = useState(false);
+  const [isManageFieldsOpen, setIsManageFieldsOpen] = useState(false);
+  const [isFieldTemplatesOpen, setIsFieldTemplatesOpen] = useState(false);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
-  const [showFieldsDialog, setShowFieldsDialog] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
-
+  const [editService, setEditService] = useState<Partial<Service>>({});
+  
+  // Filter states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedSupportGroup, setSelectedSupportGroup] = useState('all');
+  const [selectedPriority, setSelectedPriority] = useState('all');
+  const [selectedStatus, setSelectedStatus] = useState('all');
+  
   const [newService, setNewService] = useState<NewService>({
     name: '',
     description: '',
@@ -173,7 +182,7 @@ export default function AdminServicesPage() {
     categoryId: '',
     subcategoryId: '',
     itemId: '',
-    supportGroup: 'IT_HELPDESK',
+    supportGroupId: '',
     priority: 'MEDIUM',
     estimatedHours: 4,
     slaHours: 24,
@@ -181,69 +190,63 @@ export default function AdminServicesPage() {
     isConfidential: false,
     defaultTitle: '',
     defaultItilCategory: 'INCIDENT',
-    defaultIssueClassification: ''
+    defaultIssueClassification: 'SYSTEM_ERROR'
   });
 
-  const [newField, setNewField] = useState<NewField>({
-    name: '',
-    label: '',
-    type: 'TEXT',
-    isRequired: false,
-    isUserVisible: true,
-    placeholder: '',
-    helpText: '',
-    defaultValue: '',
-    options: '',
-    order: 0
-  });
+  const [defaultSupportGroupId, setDefaultSupportGroupId] = useState<string>('');
 
-  const [editFields, setEditFields] = useState<ServiceField[]>([]);
-  const [showAddField, setShowAddField] = useState(false);
-  const [editService, setEditService] = useState<NewService>({
-    name: '',
-    description: '',
-    helpText: '',
-    categoryId: '',
-    subcategoryId: '',
-    itemId: '',
-    supportGroup: 'IT_HELPDESK',
-    priority: 'MEDIUM',
-    estimatedHours: 4,
-    slaHours: 24,
-    requiresApproval: true,
-    isConfidential: false,
-    defaultTitle: '',
-    defaultItilCategory: 'INCIDENT',
-    defaultIssueClassification: ''
-  });
-
-  // Redirect if not admin
   useEffect(() => {
-    if (status === 'loading') return;
-    if (!session || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
-      router.push('/dashboard');
-      return;
-    }
-  }, [session, status, router]);
+    fetchServices();
+    fetchCategories();
+    fetchSupportGroups();
+  }, []);
 
-  // Fetch data
+  // Filter services based on search and filters
   useEffect(() => {
-    if (session && ['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
-      fetchServices();
-      fetchCategories();
+    let filtered = [...services];
+
+    // Search filter
+    if (searchQuery) {
+      filtered = filtered.filter(service => 
+        service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        service.description.toLowerCase().includes(searchQuery.toLowerCase())
+      );
     }
-  }, [session]);
+
+    // Category filter
+    if (selectedCategory !== 'all') {
+      filtered = filtered.filter(service => service.categoryId === selectedCategory);
+    }
+
+    // Support group filter
+    if (selectedSupportGroup !== 'all') {
+      filtered = filtered.filter(service => service.supportGroupId === selectedSupportGroup);
+    }
+
+    // Priority filter
+    if (selectedPriority !== 'all') {
+      filtered = filtered.filter(service => service.priority === selectedPriority);
+    }
+
+    // Status filter
+    if (selectedStatus !== 'all') {
+      filtered = filtered.filter(service => 
+        selectedStatus === 'active' ? service.isActive : !service.isActive
+      );
+    }
+
+    setFilteredServices(filtered);
+  }, [services, searchQuery, selectedCategory, selectedSupportGroup, selectedPriority, selectedStatus]);
 
   const fetchServices = async () => {
     try {
-      const response = await fetch('/api/services');
-      if (response.ok) {
-        const data = await response.json();
-        setServices(data);
-      }
+      const response = await fetch('/api/admin/services');
+      if (!response.ok) throw new Error('Failed to fetch services');
+      const data = await response.json();
+      setServices(data);
     } catch (error) {
       console.error('Error fetching services:', error);
-      toast.error('Failed to fetch services');
+      toast.error('Failed to load services');
     } finally {
       setLoading(false);
     }
@@ -251,347 +254,184 @@ export default function AdminServicesPage() {
 
   const fetchCategories = async () => {
     try {
-      // Fetch both ServiceCategory (for service catalog) and Category (for 3-tier)
-      const [serviceCategoriesRes, categoriesRes] = await Promise.all([
-        fetch('/api/categories'), // ServiceCategory for service catalog
-        fetch('/api/tier-categories') // Category for 3-tier categorization
-      ]);
-      
-      if (serviceCategoriesRes.ok) {
-        const serviceCategories = await serviceCategoriesRes.json();
-        setCategories(serviceCategories);
-      }
-      
-      if (categoriesRes.ok) {
-        const tierCategories = await categoriesRes.json();
-        setTierCategories(tierCategories);
-      }
+      const response = await fetch('/api/categories');
+      if (!response.ok) throw new Error('Failed to fetch categories');
+      const data = await response.json();
+      setCategories(data);
     } catch (error) {
       console.error('Error fetching categories:', error);
+      toast.error('Failed to load categories');
     }
   };
 
-  const fetchSubcategories = async (categoryId: string) => {
+  const fetchSupportGroups = async () => {
     try {
-      console.log('Fetching subcategories from API for categoryId:', categoryId);
-      const response = await fetch(`/api/subcategories?categoryId=${categoryId}`);
-      console.log('Subcategories API response status:', response.status);
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Subcategories data received:', data);
-        setSubcategories(data);
-      } else {
-        console.error('Failed to fetch subcategories:', response.status, response.statusText);
+      const response = await fetch('/api/admin/support-groups?status=active');
+      if (!response.ok) throw new Error('Failed to fetch support groups');
+      const data = await response.json();
+      setSupportGroups(data);
+      
+      // Set default support group
+      const defaultGroup = data.find((g: SupportGroup) => g.code === 'IT_HELPDESK');
+      if (defaultGroup) {
+        setDefaultSupportGroupId(defaultGroup.id);
+        setNewService(prev => ({ ...prev, supportGroupId: defaultGroup.id }));
       }
     } catch (error) {
-      console.error('Error fetching subcategories:', error);
-      setSubcategories([]);
+      console.error('Error fetching support groups:', error);
+      toast.error('Failed to load support groups');
     }
-  };
-
-  const fetchItems = async (subcategoryId: string) => {
-    try {
-      const response = await fetch(`/api/items?subcategoryId=${subcategoryId}`);
-      if (response.ok) {
-        const data = await response.json();
-        setItems(data);
-      }
-    } catch (error) {
-      console.error('Error fetching items:', error);
-      setItems([]);
-    }
-  };
-
-  const handleCategoryChange = (categoryId: string) => {
-    console.log('Category selected:', categoryId);
-    setNewService(prev => ({ 
-      ...prev, 
-      categoryId, 
-      subcategoryId: '', 
-      itemId: '' 
-    }));
-    setSubcategories([]);
-    setItems([]);
-    if (categoryId) {
-      console.log('Fetching subcategories for category:', categoryId);
-      fetchSubcategories(categoryId);
-    }
-  };
-
-  const handleSubcategoryChange = (subcategoryId: string) => {
-    setNewService(prev => ({ 
-      ...prev, 
-      subcategoryId, 
-      itemId: '' 
-    }));
-    setItems([]);
-    if (subcategoryId) {
-      fetchItems(subcategoryId);
-    }
-  };
-
-  const handleItemChange = (itemId: string) => {
-    setNewService(prev => ({ 
-      ...prev, 
-      itemId 
-    }));
   };
 
   const handleCreateService = async () => {
     try {
-      // Clean up empty strings for optional fields
-      const cleanedService = { ...newService };
-      if (cleanedService.tier1CategoryId === '') cleanedService.tier1CategoryId = undefined;
-      if (cleanedService.tier2SubcategoryId === '') cleanedService.tier2SubcategoryId = undefined;
-      if (cleanedService.tier3ItemId === '') cleanedService.tier3ItemId = undefined;
-      if (cleanedService.subcategoryId === '') cleanedService.subcategoryId = undefined;
-      if (cleanedService.itemId === '') cleanedService.itemId = undefined;
-      
       const response = await fetch('/api/admin/services', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(cleanedService)
+        body: JSON.stringify(newService)
       });
 
-      if (response.ok) {
-        toast.success('Service created successfully');
-        setShowNewForm(false);
-        setNewService({
-          name: '',
-          description: '',
-          helpText: '',
-          categoryId: '',
-          subcategoryId: '',
-          itemId: '',
-          supportGroup: 'IT_HELPDESK',
-          priority: 'MEDIUM',
-          estimatedHours: 4,
-          slaHours: 24,
-          requiresApproval: true,
-          isConfidential: false
-        });
-        fetchServices();
-      } else {
+      if (!response.ok) {
         const error = await response.json();
-        toast.error(error.error || 'Failed to create service');
+        throw new Error(error.details?.[0]?.message || error.error || 'Failed to create service');
       }
-    } catch (error) {
-      console.error('Error creating service:', error);
-      toast.error('Failed to create service');
-    }
-  };
 
-  const handleUpdateService = async (serviceId: string, updates: Partial<Service>) => {
-    try {
-      // Clean up empty strings for optional fields
-      const cleanedUpdates = { ...updates };
-      if (cleanedUpdates.tier1CategoryId === '') cleanedUpdates.tier1CategoryId = undefined;
-      if (cleanedUpdates.tier2SubcategoryId === '') cleanedUpdates.tier2SubcategoryId = undefined;
-      if (cleanedUpdates.tier3ItemId === '') cleanedUpdates.tier3ItemId = undefined;
-      if (cleanedUpdates.subcategoryId === '') cleanedUpdates.subcategoryId = undefined;
-      if (cleanedUpdates.itemId === '') cleanedUpdates.itemId = undefined;
-      
-      const response = await fetch(`/api/admin/services/${serviceId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(cleanedUpdates)
+      toast.success('Service created successfully');
+      setIsNewServiceOpen(false);
+      setNewService({
+        name: '',
+        description: '',
+        helpText: '',
+        categoryId: '',
+        subcategoryId: '',
+        itemId: '',
+        supportGroupId: defaultSupportGroupId,
+        priority: 'MEDIUM',
+        estimatedHours: 4,
+        slaHours: 24,
+        requiresApproval: true,
+        isConfidential: false,
+        defaultTitle: '',
+        defaultItilCategory: 'INCIDENT',
+        defaultIssueClassification: 'SYSTEM_ERROR'
       });
-
-      if (response.ok) {
-        toast.success('Service updated successfully');
-        setEditingService(null);
-        fetchServices();
-      } else {
-        const error = await response.json();
-        toast.error(error.error || 'Failed to update service');
-      }
-    } catch (error) {
-      console.error('Error updating service:', error);
-      toast.error('Failed to update service');
+      fetchServices();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to create service');
     }
   };
 
-  const handleDeleteService = async (serviceId: string) => {
-    if (!confirm('Are you sure you want to delete this service? This action cannot be undone.')) {
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/admin/services/${serviceId}`, {
-        method: 'DELETE'
-      });
-
-      if (response.ok) {
-        toast.success('Service deleted successfully');
-        fetchServices();
-      } else {
-        const error = await response.json();
-        toast.error(error.error || 'Failed to delete service');
-      }
-    } catch (error) {
-      console.error('Error deleting service:', error);
-      toast.error('Failed to delete service');
-    }
-  };
-
-  const handleToggleStatus = async (serviceId: string, isActive: boolean) => {
-    await handleUpdateService(serviceId, { isActive });
-  };
-
-  const openFieldsDialog = (service: Service) => {
-    setSelectedService(service);
-    setEditFields([...service.fields]);
-    setShowFieldsDialog(true);
-  };
-
-  const startEditService = (service: Service) => {
-    setEditService({
-      name: service.name,
-      description: service.description,
-      helpText: service.helpText || '',
-      categoryId: service.categoryId,
-      subcategoryId: service.subcategoryId || '',
-      itemId: service.itemId || '',
-      tier1CategoryId: service.tier1CategoryId || '',
-      tier2SubcategoryId: service.tier2SubcategoryId || '',
-      tier3ItemId: service.tier3ItemId || '',
-      supportGroup: service.supportGroup,
-      priority: service.priority,
-      estimatedHours: service.estimatedHours || 4,
-      slaHours: service.slaHours,
-      requiresApproval: service.requiresApproval,
-      isConfidential: service.isConfidential,
-      defaultTitle: '',
-      defaultItilCategory: 'INCIDENT',
-      defaultIssueClassification: ''
-    });
-    
-    // Load subcategories and items if tier1CategoryId exists
-    if (service.tier1CategoryId) {
-      fetchSubcategories(service.tier1CategoryId);
-      if (service.tier2SubcategoryId) {
-        fetchItems(service.tier2SubcategoryId);
-      }
-    }
-    
-    setEditingService(service.id);
-  };
-
-  const handleAddField = () => {
-    const field: ServiceField = {
-      ...newField,
-      options: newField.options ? newField.options.split(',').map(o => o.trim()) : undefined,
-      order: editFields.length,
-      isActive: true
-    };
-    setEditFields([...editFields, field]);
-    setNewField({
-      name: '',
-      label: '',
-      type: 'TEXT',
-      isRequired: false,
-      isUserVisible: true,
-      placeholder: '',
-      helpText: '',
-      defaultValue: '',
-      options: '',
-      order: 0
-    });
-    setShowAddField(false);
-  };
-
-  const handleRemoveField = (index: number) => {
-    const updatedFields = editFields.filter((_, i) => i !== index);
-    setEditFields(updatedFields);
-  };
-
-  const handleMoveField = (index: number, direction: 'up' | 'down') => {
-    const newFields = [...editFields];
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    
-    if (targetIndex >= 0 && targetIndex < newFields.length) {
-      [newFields[index], newFields[targetIndex]] = [newFields[targetIndex], newFields[index]];
-      // Update order values
-      newFields.forEach((field, i) => {
-        field.order = i;
-      });
-      setEditFields(newFields);
-    }
-  };
-
-  const handleSaveFields = async () => {
+  const handleUpdateService = async () => {
     if (!selectedService) return;
 
     try {
-      const response = await fetch(`/api/admin/services/${selectedService.id}/fields`, {
+      const response = await fetch(`/api/admin/services/${selectedService.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fields: editFields })
+        body: JSON.stringify(editService)
       });
 
-      if (response.ok) {
-        toast.success('Service fields updated successfully');
-        setShowFieldsDialog(false);
-        fetchServices();
-      } else {
+      if (!response.ok) {
         const error = await response.json();
-        toast.error(error.error || 'Failed to update service fields');
+        throw new Error(error.error || 'Failed to update service');
       }
-    } catch (error) {
-      console.error('Error updating service fields:', error);
-      toast.error('Failed to update service fields');
+
+      toast.success('Service updated successfully');
+      setIsEditServiceOpen(false);
+      setEditService({});
+      setSelectedService(null);
+      fetchServices();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update service');
     }
   };
 
-  const filteredServices = services.filter(service => {
-    const matchesSearch = !searchTerm || 
-                         (service.name && service.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                         (service.description && service.description.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesCategory = categoryFilter === 'all' || service.categoryId === categoryFilter;
-    const matchesStatus = statusFilter === 'all' || 
-                         (statusFilter === 'active' && service.isActive) ||
-                         (statusFilter === 'inactive' && !service.isActive);
-    
-    return matchesSearch && matchesCategory && matchesStatus;
-  });
+  const handleDeleteService = async (service: Service) => {
+    if (!confirm(`Are you sure you want to delete "${service.name}"?`)) return;
+
+    try {
+      const response = await fetch(`/api/admin/services/${service.id}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete service');
+      }
+
+      toast.success('Service deleted successfully');
+      fetchServices();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete service');
+    }
+  };
+
+  const openEditDialog = (service: Service) => {
+    setSelectedService(service);
+    setEditService({
+      name: service.name,
+      description: service.description,
+      helpText: service.helpText,
+      categoryId: service.categoryId,
+      supportGroupId: service.supportGroupId,
+      priority: service.priority,
+      estimatedHours: service.estimatedHours,
+      slaHours: service.slaHours,
+      requiresApproval: service.requiresApproval,
+      isConfidential: service.isConfidential,
+      isActive: service.isActive
+    });
+    setIsEditServiceOpen(true);
+  };
+
+  const getPriorityBadgeVariant = (priority: string) => {
+    switch (priority) {
+      case 'LOW': return 'secondary';
+      case 'MEDIUM': return 'default';
+      case 'HIGH': return 'warning';
+      case 'CRITICAL': return 'destructive';
+      case 'EMERGENCY': return 'destructive';
+      default: return 'default';
+    }
+  };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-64">Loading...</div>;
+    return (
+      <div className="container mx-auto py-10">
+        <p>Loading services...</p>
+      </div>
+    );
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
+    <div className="container mx-auto py-10">
+      <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold">Service Templates</h1>
-          <p className="text-gray-600 mt-2">
-            Manage service catalog templates and dynamic fields
-          </p>
+          <h1 className="text-3xl font-bold">Service Management</h1>
+          <p className="text-gray-600">Manage service catalog and configurations</p>
         </div>
-        <Button onClick={() => setShowNewForm(true)} className="flex items-center gap-2">
-          <Plus className="h-4 w-4" />
-          New Service Template
+        <Button onClick={() => setIsNewServiceOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          New Service
         </Button>
       </div>
 
       {/* Filters */}
       <Card className="mb-6">
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <Label htmlFor="search">Search</Label>
+        <CardContent className="p-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div className="md:col-span-1">
               <Input
-                id="search"
                 placeholder="Search services..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full"
               />
             </div>
             <div>
-              <Label htmlFor="category">Category</Label>
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
                 <SelectTrigger>
-                  <SelectValue placeholder="All categories" />
+                  <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Categories</SelectItem>
@@ -604,10 +444,39 @@ export default function AdminServicesPage() {
               </Select>
             </div>
             <div>
-              <Label htmlFor="status">Status</Label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <Select value={selectedSupportGroup} onValueChange={setSelectedSupportGroup}>
                 <SelectTrigger>
-                  <SelectValue placeholder="All statuses" />
+                  <SelectValue placeholder="All Support Groups" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Support Groups</SelectItem>
+                  {supportGroups.map(group => (
+                    <SelectItem key={group.id} value={group.id}>
+                      {group.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Select value={selectedPriority} onValueChange={setSelectedPriority}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Priorities" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Priorities</SelectItem>
+                  {priorities.map(priority => (
+                    <SelectItem key={priority.value} value={priority.value}>
+                      {priority.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Statuses" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
@@ -616,32 +485,41 @@ export default function AdminServicesPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-end">
-              <Button variant="outline" onClick={fetchServices} className="w-full">
-                Refresh
+          </div>
+          <div className="mt-4 flex items-center justify-between">
+            <p className="text-sm text-gray-600">
+              Showing {filteredServices.length} of {services.length} services
+            </p>
+            {(searchQuery || selectedCategory !== 'all' || selectedSupportGroup !== 'all' || 
+              selectedPriority !== 'all' || selectedStatus !== 'all') && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSearchQuery('');
+                  setSelectedCategory('all');
+                  setSelectedSupportGroup('all');
+                  setSelectedPriority('all');
+                  setSelectedStatus('all');
+                }}
+              >
+                Clear Filters
               </Button>
-            </div>
+            )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Services Table */}
       <Card>
-        <CardHeader>
-          <CardTitle>Service Templates ({filteredServices.length})</CardTitle>
-          <CardDescription>
-            Manage your service catalog templates and their configurations
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
+                <TableHead>Service Name</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead>Support Group</TableHead>
                 <TableHead>Priority</TableHead>
-                <TableHead>SLA Hours</TableHead>
+                <TableHead>SLA</TableHead>
                 <TableHead>Fields</TableHead>
                 <TableHead>Tickets</TableHead>
                 <TableHead>Status</TableHead>
@@ -649,615 +527,412 @@ export default function AdminServicesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredServices.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8 text-gray-500">
-                    {searchTerm ? `No services found matching "${searchTerm}"` : 'No services available'}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredServices.map((service) => (
-                  <TableRow key={service.id}>
-                  <TableCell>
+              {filteredServices.map((service) => (
+                <TableRow key={service.id}>
+                  <TableCell className="font-medium">
                     <div>
-                      <div className="font-medium">{service.name}</div>
-                      <div className="text-sm text-gray-500 truncate max-w-xs">
-                        {service.description}
-                      </div>
+                      <p>{service.name}</p>
+                      <p className="text-sm text-gray-500">{service.description}</p>
                     </div>
                   </TableCell>
+                  <TableCell>{service.category?.name}</TableCell>
                   <TableCell>
                     <Badge variant="outline">
-                      {service.category?.name || 'No Category'}
+                      {service.supportGroup?.name || 'Not Assigned'}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="secondary">
-                      {supportGroups.find(g => g.value === service.supportGroup)?.label}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge 
-                      variant={service.priority === 'CRITICAL' || service.priority === 'EMERGENCY' ? 'destructive' : 'default'}
-                    >
+                    <Badge variant={getPriorityBadgeVariant(service.priority)}>
                       {service.priority}
                     </Badge>
                   </TableCell>
                   <TableCell>{service.slaHours}h</TableCell>
                   <TableCell>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openFieldsDialog(service)}
-                      className="flex items-center gap-1"
-                    >
-                      <Settings className="h-3 w-3" />
-                      {(service._count?.serviceFieldTemplates || 0) + service.fields.length} fields
-                    </Button>
+                    <Badge variant="secondary">{service.fields?.length || 0}</Badge>
                   </TableCell>
                   <TableCell>{service._count?.tickets || 0}</TableCell>
                   <TableCell>
-                    <Switch
-                      checked={service.isActive}
-                      onCheckedChange={(checked) => handleToggleStatus(service.id, checked)}
-                    />
+                    <Badge variant={service.isActive ? 'success' : 'secondary'}>
+                      {service.isActive ? 'Active' : 'Inactive'}
+                    </Badge>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
+                    <div className="flex gap-2">
                       <Button
-                        variant="outline"
+                        variant="ghost"
                         size="sm"
-                        onClick={() => startEditService(service)}
+                        onClick={() => openEditDialog(service)}
                       >
-                        <Edit className="h-3 w-3" />
+                        <Edit className="h-4 w-4" />
                       </Button>
                       <Button
-                        variant="outline"
+                        variant="ghost"
                         size="sm"
-                        onClick={() => handleDeleteService(service.id)}
-                        className="text-red-600 hover:text-red-700"
+                        onClick={() => {
+                          setSelectedService(service);
+                          setIsManageFieldsOpen(true);
+                        }}
                       >
-                        <Trash2 className="h-3 w-3" />
+                        <Settings className="h-4 w-4" />
                       </Button>
+                      {(!service._count?.tickets || service._count.tickets === 0) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteService(service)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
-                ))
-              )}
+              ))}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
 
-      {/* New Service Form */}
-      {showNewForm && (
-        <Dialog open={showNewForm} onOpenChange={setShowNewForm}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Create New Service Template</DialogTitle>
-              <DialogDescription>
-                Define a new service template with custom fields and configuration
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="name">Service Name</Label>
-                  <Input
-                    id="name"
-                    value={newService.name}
-                    onChange={(e) => setNewService(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="Enter service name"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="category">Service Catalog Category</Label>
-                  <Select
-                    value={newService.categoryId}
-                    onValueChange={(value) => setNewService(prev => ({ ...prev, categoryId: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select service catalog category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map(category => (
-                        <SelectItem key={category.id} value={category.id}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* 3-Tier Categorization Section */}
-              <div className="space-y-4">
-                <div className="border-t pt-4">
-                  <h3 className="text-lg font-medium mb-4">3-Tier Categorization (Tech-facing)</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <Label htmlFor="tier1Category">Category (Tier 1)</Label>
-                      <Select
-                        value={newService.categoryId}
-                        onValueChange={handleCategoryChange}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                        {tierCategories.map((category) => (
-                          <SelectItem key={category.id} value={category.id}>
-                            {category.name}
-                          </SelectItem>
-                        ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="tier2Subcategory">Subcategory (Tier 2)</Label>
-                      <Select
-                        value={newService.subcategoryId}
-                        onValueChange={handleSubcategoryChange}
-                        disabled={!newService.categoryId || subcategories.length === 0}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select subcategory" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {subcategories.map(subcategory => (
-                            <SelectItem key={subcategory.id} value={subcategory.id}>
-                              {subcategory.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="tier3Item">Item (Tier 3)</Label>
-                      <Select
-                        value={newService.itemId}
-                        onValueChange={handleItemChange}
-                        disabled={!newService.subcategoryId || items.length === 0}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select item" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {items.map(item => (
-                            <SelectItem key={item.id} value={item.id}>
-                              {item.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={newService.description}
-                  onChange={(e) => setNewService(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Enter service description"
-                  rows={3}
+      {/* Create Service Dialog */}
+      <Dialog open={isNewServiceOpen} onOpenChange={setIsNewServiceOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create New Service</DialogTitle>
+            <DialogDescription>
+              Add a new service to the catalog with its configuration.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Service Name</Label>
+                <Input
+                  id="name"
+                  value={newService.name}
+                  onChange={(e) => setNewService(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="e.g., Password Reset"
                 />
               </div>
-
-              <div>
-                <Label htmlFor="helpText">Help Text</Label>
-                <Textarea
-                  id="helpText"
-                  value={newService.helpText}
-                  onChange={(e) => setNewService(prev => ({ ...prev, helpText: e.target.value }))}
-                  placeholder="Enter help text for users"
-                  rows={2}
-                />
-              </div>
-
-              {/* Default Values Section */}
-              <div className="space-y-4">
-                <div className="border-t pt-4">
-                  <h3 className="text-lg font-medium mb-4">Default Ticket Values</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <Label htmlFor="defaultTitle">Default Title</Label>
-                      <Input
-                        id="defaultTitle"
-                        value={newService.defaultTitle}
-                        onChange={(e) => setNewService(prev => ({ ...prev, defaultTitle: e.target.value }))}
-                        placeholder="Enter default ticket title"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="defaultItilCategory">Default ITIL Category</Label>
-                      <Select
-                        value={newService.defaultItilCategory}
-                        onValueChange={(value: any) => setNewService(prev => ({ ...prev, defaultItilCategory: value }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {itilCategories.map(category => (
-                            <SelectItem key={category.value} value={category.value}>
-                              {category.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="defaultIssueClassification">Default Issue Classification</Label>
-                      <Select
-                        value={newService.defaultIssueClassification}
-                        onValueChange={(value: any) => setNewService(prev => ({ ...prev, defaultIssueClassification: value }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select classification" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {issueClassifications.map(classification => (
-                            <SelectItem key={classification.value} value={classification.value}>
-                              {classification.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="supportGroup">Support Group</Label>
-                  <Select
-                    value={newService.supportGroup}
-                    onValueChange={(value: any) => setNewService(prev => ({ ...prev, supportGroup: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {supportGroups.map(group => (
-                        <SelectItem key={group.value} value={group.value}>
-                          {group.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="priority">Default Priority</Label>
-                  <Select
-                    value={newService.priority}
-                    onValueChange={(value: any) => setNewService(prev => ({ ...prev, priority: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {priorities.map(priority => (
-                        <SelectItem key={priority.value} value={priority.value}>
-                          {priority.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="slaHours">SLA Hours</Label>
-                  <Input
-                    id="slaHours"
-                    type="number"
-                    value={newService.slaHours}
-                    onChange={(e) => setNewService(prev => ({ ...prev, slaHours: parseInt(e.target.value) || 24 }))}
-                    min="1"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="estimatedHours">Estimated Hours</Label>
-                  <Input
-                    id="estimatedHours"
-                    type="number"
-                    value={newService.estimatedHours}
-                    onChange={(e) => setNewService(prev => ({ ...prev, estimatedHours: parseInt(e.target.value) || 4 }))}
-                    min="1"
-                  />
-                </div>
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="requiresApproval"
-                      checked={newService.requiresApproval}
-                      onCheckedChange={(checked) => setNewService(prev => ({ ...prev, requiresApproval: checked }))}
-                    />
-                    <Label htmlFor="requiresApproval">Requires Approval</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="isConfidential"
-                      checked={newService.isConfidential}
-                      onCheckedChange={(checked) => setNewService(prev => ({ ...prev, isConfidential: checked }))}
-                    />
-                    <Label htmlFor="isConfidential">Confidential</Label>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setShowNewForm(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleCreateService}>
-                  Create Service
-                </Button>
+              <div className="space-y-2">
+                <Label htmlFor="categoryId">Category</Label>
+                <Select
+                  value={newService.categoryId}
+                  onValueChange={(value) => setNewService(prev => ({ ...prev, categoryId: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map(category => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-          </DialogContent>
-        </Dialog>
-      )}
+
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                value={newService.description}
+                onChange={(e) => setNewService(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Detailed description of the service"
+                rows={3}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="helpText">Help Text (Optional)</Label>
+              <Textarea
+                id="helpText"
+                value={newService.helpText}
+                onChange={(e) => setNewService(prev => ({ ...prev, helpText: e.target.value }))}
+                placeholder="Additional help or instructions for users"
+                rows={2}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="supportGroupId">Support Group</Label>
+                <Select
+                  value={newService.supportGroupId}
+                  onValueChange={(value) => setNewService(prev => ({ ...prev, supportGroupId: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select support group" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {supportGroups.map(group => (
+                      <SelectItem key={group.id} value={group.id}>
+                        {group.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="priority">Default Priority</Label>
+                <Select
+                  value={newService.priority}
+                  onValueChange={(value: any) => setNewService(prev => ({ ...prev, priority: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {priorities.map(priority => (
+                      <SelectItem key={priority.value} value={priority.value}>
+                        {priority.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="estimatedHours">Estimated Hours</Label>
+                <Input
+                  id="estimatedHours"
+                  type="number"
+                  value={newService.estimatedHours}
+                  onChange={(e) => setNewService(prev => ({ ...prev, estimatedHours: parseInt(e.target.value) || 4 }))}
+                  min="1"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="slaHours">SLA Hours</Label>
+                <Input
+                  id="slaHours"
+                  type="number"
+                  value={newService.slaHours}
+                  onChange={(e) => setNewService(prev => ({ ...prev, slaHours: parseInt(e.target.value) || 24 }))}
+                  min="1"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="defaultItilCategory">ITIL Category</Label>
+                <Select
+                  value={newService.defaultItilCategory}
+                  onValueChange={(value: any) => setNewService(prev => ({ ...prev, defaultItilCategory: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {itilCategories.map(category => (
+                      <SelectItem key={category.value} value={category.value}>
+                        {category.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="requiresApproval"
+                  checked={newService.requiresApproval}
+                  onCheckedChange={(checked) => setNewService(prev => ({ ...prev, requiresApproval: checked }))}
+                />
+                <Label htmlFor="requiresApproval">Requires Approval</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="isConfidential"
+                  checked={newService.isConfidential}
+                  onCheckedChange={(checked) => setNewService(prev => ({ ...prev, isConfidential: checked }))}
+                />
+                <Label htmlFor="isConfidential">Confidential</Label>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setIsNewServiceOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleCreateService}>
+                Create Service
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Service Dialog */}
-      {editingService && (
-        <Dialog open={!!editingService} onOpenChange={() => setEditingService(null)}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Edit Service Template</DialogTitle>
-              <DialogDescription>
-                Update the service template configuration
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="edit-name">Service Name</Label>
-                  <Input
-                    id="edit-name"
-                    value={editService.name}
-                    onChange={(e) => setEditService(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="Enter service name"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="edit-category">Service Catalog Category</Label>
-                  <Select
-                    value={editService.categoryId}
-                    onValueChange={(value) => setEditService(prev => ({ ...prev, categoryId: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select service catalog category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map(category => (
-                        <SelectItem key={category.id} value={category.id}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* 3-Tier Categorization Section for Edit */}
-              <div className="space-y-4">
-                <div className="border-t pt-4">
-                  <h3 className="text-lg font-medium mb-4">3-Tier Categorization (Tech-facing)</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <Label htmlFor="edit-tier1Category">Category (Tier 1)</Label>
-                      <Select
-                        value={editService.tier1CategoryId || ''}
-                        onValueChange={(value) => {
-                          setEditService(prev => ({ 
-                            ...prev, 
-                            tier1CategoryId: value,
-                            tier2SubcategoryId: '',
-                            tier3ItemId: ''
-                          }));
-                          if (value) {
-                            fetchSubcategories(value);
-                          } else {
-                            setSubcategories([]);
-                            setItems([]);
-                          }
-                        }}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {tierCategories.map((category) => (
-                            <SelectItem key={category.id} value={category.id}>
-                              {category.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="edit-tier2Subcategory">Subcategory (Tier 2)</Label>
-                      <Select
-                        value={editService.tier2SubcategoryId || ''}
-                        onValueChange={(value) => {
-                          setEditService(prev => ({ 
-                            ...prev, 
-                            tier2SubcategoryId: value,
-                            tier3ItemId: ''
-                          }));
-                          if (value) {
-                            fetchItems(value);
-                          } else {
-                            setItems([]);
-                          }
-                        }}
-                        disabled={!editService.tier1CategoryId || subcategories.length === 0}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select subcategory" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {subcategories.map(subcategory => (
-                            <SelectItem key={subcategory.id} value={subcategory.id}>
-                              {subcategory.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="edit-tier3Item">Item (Tier 3)</Label>
-                      <Select
-                        value={editService.tier3ItemId || ''}
-                        onValueChange={(value) => setEditService(prev => ({ ...prev, tier3ItemId: value }))}
-                        disabled={!editService.tier2SubcategoryId || items.length === 0}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select item" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {items.map(item => (
-                            <SelectItem key={item.id} value={item.id}>
-                              {item.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="edit-description">Description</Label>
-                <Textarea
-                  id="edit-description"
-                  value={editService.description}
-                  onChange={(e) => setEditService(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Enter service description"
-                  rows={3}
+      <Dialog open={isEditServiceOpen} onOpenChange={setIsEditServiceOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Service</DialogTitle>
+            <DialogDescription>
+              Update service configuration and settings.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Service Name</Label>
+                <Input
+                  id="edit-name"
+                  value={editService.name || ''}
+                  onChange={(e) => setEditService(prev => ({ ...prev, name: e.target.value }))}
                 />
               </div>
-
-              <div>
-                <Label htmlFor="edit-helpText">Help Text</Label>
-                <Textarea
-                  id="edit-helpText"
-                  value={editService.helpText}
-                  onChange={(e) => setEditService(prev => ({ ...prev, helpText: e.target.value }))}
-                  placeholder="Enter help text for users"
-                  rows={2}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="edit-supportGroup">Support Group</Label>
-                  <Select
-                    value={editService.supportGroup}
-                    onValueChange={(value: any) => setEditService(prev => ({ ...prev, supportGroup: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select support group" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {supportGroups.map(group => (
-                        <SelectItem key={group.value} value={group.value}>
-                          {group.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="edit-priority">Priority</Label>
-                  <Select
-                    value={editService.priority}
-                    onValueChange={(value: any) => setEditService(prev => ({ ...prev, priority: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select priority" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {priorities.map(priority => (
-                        <SelectItem key={priority.value} value={priority.value}>
-                          {priority.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="edit-estimatedHours">Estimated Hours</Label>
-                  <Input
-                    id="edit-estimatedHours"
-                    type="number"
-                    value={editService.estimatedHours}
-                    onChange={(e) => setEditService(prev => ({ ...prev, estimatedHours: parseInt(e.target.value) || 0 }))}
-                    placeholder="Enter estimated hours"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="edit-slaHours">SLA Hours</Label>
-                  <Input
-                    id="edit-slaHours"
-                    type="number"
-                    value={editService.slaHours}
-                    onChange={(e) => setEditService(prev => ({ ...prev, slaHours: parseInt(e.target.value) || 0 }))}
-                    placeholder="Enter SLA hours"
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-4">
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="edit-requiresApproval"
-                    checked={editService.requiresApproval}
-                    onCheckedChange={(checked) => setEditService(prev => ({ ...prev, requiresApproval: checked }))}
-                  />
-                  <Label htmlFor="edit-requiresApproval">Requires Approval</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="edit-isConfidential"
-                    checked={editService.isConfidential}
-                    onCheckedChange={(checked) => setEditService(prev => ({ ...prev, isConfidential: checked }))}
-                  />
-                  <Label htmlFor="edit-isConfidential">Confidential</Label>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setEditingService(null)}>
-                  Cancel
-                </Button>
-                <Button onClick={() => handleUpdateService(editingService, editService)}>
-                  Update Service
-                </Button>
+              <div className="space-y-2">
+                <Label htmlFor="edit-categoryId">Category</Label>
+                <Select
+                  value={editService.categoryId}
+                  onValueChange={(value) => setEditService(prev => ({ ...prev, categoryId: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map(category => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-          </DialogContent>
-        </Dialog>
-      )}
 
-      {/* Fields Management Dialog */}
-      {showFieldsDialog && selectedService && (
+            <div className="space-y-2">
+              <Label htmlFor="edit-description">Description</Label>
+              <Textarea
+                id="edit-description"
+                value={editService.description || ''}
+                onChange={(e) => setEditService(prev => ({ ...prev, description: e.target.value }))}
+                rows={3}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-helpText">Help Text</Label>
+              <Textarea
+                id="edit-helpText"
+                value={editService.helpText || ''}
+                onChange={(e) => setEditService(prev => ({ ...prev, helpText: e.target.value }))}
+                rows={2}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-supportGroupId">Support Group</Label>
+                <Select
+                  value={editService.supportGroupId}
+                  onValueChange={(value) => setEditService(prev => ({ ...prev, supportGroupId: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select support group" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {supportGroups.map(group => (
+                      <SelectItem key={group.id} value={group.id}>
+                        {group.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-priority">Default Priority</Label>
+                <Select
+                  value={editService.priority}
+                  onValueChange={(value: any) => setEditService(prev => ({ ...prev, priority: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {priorities.map(priority => (
+                      <SelectItem key={priority.value} value={priority.value}>
+                        {priority.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-estimatedHours">Estimated Hours</Label>
+                <Input
+                  id="edit-estimatedHours"
+                  type="number"
+                  value={editService.estimatedHours || ''}
+                  onChange={(e) => setEditService(prev => ({ ...prev, estimatedHours: parseInt(e.target.value) || 4 }))}
+                  min="1"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-slaHours">SLA Hours</Label>
+                <Input
+                  id="edit-slaHours"
+                  type="number"
+                  value={editService.slaHours || ''}
+                  onChange={(e) => setEditService(prev => ({ ...prev, slaHours: parseInt(e.target.value) || 24 }))}
+                  min="1"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="edit-requiresApproval"
+                  checked={editService.requiresApproval}
+                  onCheckedChange={(checked) => setEditService(prev => ({ ...prev, requiresApproval: checked }))}
+                />
+                <Label htmlFor="edit-requiresApproval">Requires Approval</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="edit-isConfidential"
+                  checked={editService.isConfidential}
+                  onCheckedChange={(checked) => setEditService(prev => ({ ...prev, isConfidential: checked }))}
+                />
+                <Label htmlFor="edit-isConfidential">Confidential</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="edit-isActive"
+                  checked={editService.isActive}
+                  onCheckedChange={(checked) => setEditService(prev => ({ ...prev, isActive: checked }))}
+                />
+                <Label htmlFor="edit-isActive">Active</Label>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setIsEditServiceOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleUpdateService}>
+                Update Service
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manage Fields Dialog */}
+      {selectedService && (
         <ServiceFieldTemplatesDialog
-          serviceId={selectedService.id}
-          serviceName={selectedService.name}
-          isOpen={showFieldsDialog}
-          onClose={() => setShowFieldsDialog(false)}
-          onUpdate={fetchServices}
+          open={isManageFieldsOpen}
+          onOpenChange={setIsManageFieldsOpen}
+          service={selectedService}
+          onUpdate={() => fetchServices()}
         />
       )}
     </div>

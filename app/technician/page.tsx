@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Clock, User, AlertCircle, CheckCircle, ArrowRight, Plus, Eye, X } from 'lucide-react';
+import { Clock, User, AlertCircle, CheckCircle, ArrowRight, Plus, Eye, X, Edit } from 'lucide-react';
 
 interface Ticket {
   id: string;
@@ -72,6 +72,7 @@ export default function TechnicianWorkbench() {
   const [resolutionComment, setResolutionComment] = useState('');
   const [isSubmittingResolution, setIsSubmittingResolution] = useState(false);
   const [resolveTicketId, setResolveTicketId] = useState<string | null>(null);
+  const [selectedResolutionStatus, setSelectedResolutionStatus] = useState<string>('RESOLVED');
 
   useEffect(() => {
     if (session?.user?.role !== 'TECHNICIAN') {
@@ -182,7 +183,7 @@ export default function TechnicianWorkbench() {
     setShowResolveModal(true);
   };
 
-  const handleResolutionSubmit = async (action: 'RESOLVED' | 'CLOSED' | 'CANCELLED') => {
+  const handleResolutionSubmit = async () => {
     if (!resolveTicketId) return;
     
     setIsSubmittingResolution(true);
@@ -203,7 +204,7 @@ export default function TechnicianWorkbench() {
       }
       
       // Update ticket status
-      await updateTicketStatus(resolveTicketId, action);
+      await updateTicketStatus(resolveTicketId, selectedResolutionStatus);
       
       // Close modal and reset state
       handleModalClose();
@@ -219,6 +220,7 @@ export default function TechnicianWorkbench() {
     setShowResolveModal(false);
     setResolutionComment('');
     setResolveTicketId(null);
+    setSelectedResolutionStatus('RESOLVED');
   };
 
   const getPriorityColor = (priority: string) => {
@@ -242,12 +244,12 @@ export default function TechnicianWorkbench() {
   };
 
   const renderTicketCard = (ticket: Ticket, showClaimButton = false) => (
-    <Card key={ticket.id} className="mb-4">
-      <CardHeader className="pb-3">
+    <Card key={ticket.id} className="mb-4 min-h-[200px]">
+      <CardHeader className="pb-4">
         <div className="flex justify-between items-start">
           <div className="flex-1">
-            <CardTitle className="text-lg font-semibold">{ticket.title}</CardTitle>
-            <CardDescription className="mt-1">
+            <CardTitle className="text-xl font-semibold mb-2">{ticket.title}</CardTitle>
+            <CardDescription className="text-base">
               {ticket.service?.name} • Created {new Date(ticket.createdAt).toLocaleDateString()}
             </CardDescription>
           </div>
@@ -261,9 +263,11 @@ export default function TechnicianWorkbench() {
           </div>
         </div>
       </CardHeader>
-      <CardContent>
-        <p className="text-gray-600 mb-4 line-clamp-2">{ticket.description}</p>
-        <div className="flex justify-between items-center">
+      <CardContent className="flex flex-col justify-between h-full">
+        <div className="mb-6">
+          <p className="text-gray-600 text-base leading-relaxed">{ticket.description}</p>
+        </div>
+        <div className="flex justify-between items-center mt-auto">
           <div className="flex items-center gap-4 text-sm text-gray-500">
             <div className="flex items-center gap-1">
               <User className="h-4 w-4" />
@@ -301,8 +305,8 @@ export default function TechnicianWorkbench() {
                 onClick={() => handleResolveClick(ticket.id)}
                 className="flex items-center gap-1"
               >
-                <CheckCircle className="h-4 w-4" />
-                Resolve
+                <Edit className="h-4 w-4" />
+                Update Status
               </Button>
             )}
             <Button
@@ -333,12 +337,12 @@ export default function TechnicianWorkbench() {
     );
   }
 
-  if (!session || session.user?.role !== 'TECHNICIAN') {
+  if (!session || !['TECHNICIAN', 'SECURITY_ANALYST'].includes(session.user?.role)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
-          <p className="text-gray-600">This page is only accessible to technicians.</p>
+          <p className="text-gray-600">This page is only accessible to technicians and security analysts.</p>
         </div>
       </div>
     );
@@ -505,7 +509,7 @@ export default function TechnicianWorkbench() {
                   <SelectContent>
                     <SelectItem value="OPEN">Open</SelectItem>
                     <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-                    <SelectItem value="RESOLVED">Resolved</SelectItem>
+                    <SelectItem value="CLOSED">Closed</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -513,7 +517,7 @@ export default function TechnicianWorkbench() {
             <div className="text-sm text-gray-500 mt-2">
               <strong>Open:</strong> Ticket is claimed but work hasn't started yet<br/>
               <strong>In Progress:</strong> Work has begun on this ticket<br/>
-              <strong>Resolved:</strong> Issue has been fixed and ticket is complete
+              <strong>Closed:</strong> Issue has been fixed and ticket is complete
             </div>
           </div>
           <DialogFooter>
@@ -529,60 +533,59 @@ export default function TechnicianWorkbench() {
 
       {/* Resolution Modal */}
       <Dialog open={showResolveModal} onOpenChange={setShowResolveModal}>
-        <DialogContent className="sm:max-w-[550px]">
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Resolve Ticket</DialogTitle>
+            <DialogTitle>Update Ticket Status</DialogTitle>
             <DialogDescription>
-              Add an optional resolution comment and choose the final status for this ticket.
+              Add an optional comment and select the new status for this ticket.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="resolution-comment">Resolution Comment (Optional)</Label>
+              <Label htmlFor="status-select">New Status</Label>
+              <Select value={selectedResolutionStatus} onValueChange={setSelectedResolutionStatus}>
+                <SelectTrigger id="status-select">
+                  <SelectValue placeholder="Select new status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="OPEN">Open</SelectItem>
+                  <SelectItem value="PENDING">Pending</SelectItem>
+                  <SelectItem value="PENDING_APPROVAL">Pending Approval</SelectItem>
+                  <SelectItem value="APPROVED">Approved</SelectItem>
+                  <SelectItem value="REJECTED">Rejected</SelectItem>
+                  <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+                  <SelectItem value="PENDING_VENDOR">Pending Vendor</SelectItem>
+                  <SelectItem value="RESOLVED">Resolved</SelectItem>
+                  <SelectItem value="CLOSED">Closed</SelectItem>
+                  <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="resolution-comment">Comment (Optional)</Label>
               <Textarea
                 id="resolution-comment"
-                placeholder="Describe how the issue was resolved..."
+                placeholder="Add a comment about this status change..."
                 value={resolutionComment}
                 onChange={(e) => setResolutionComment(e.target.value)}
                 className="min-h-[100px] resize-none"
               />
             </div>
           </div>
-          <DialogFooter className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-            <div className="flex flex-col gap-2 sm:flex-row sm:gap-2">
-              <Button
-                variant="outline"
-                onClick={handleModalClose}
-                disabled={isSubmittingResolution}
-                className="w-full sm:w-auto"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={() => handleResolutionSubmit('RESOLVED')}
-                disabled={isSubmittingResolution}
-                className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white"
-              >
-                {isSubmittingResolution ? 'Processing...' : 'Mark Resolved'}
-              </Button>
-            </div>
-            <div className="flex flex-col gap-2 sm:flex-row sm:gap-2">
-              <Button
-                onClick={() => handleResolutionSubmit('CLOSED')}
-                disabled={isSubmittingResolution}
-                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                {isSubmittingResolution ? 'Processing...' : 'Close Ticket'}
-              </Button>
-              <Button
-                onClick={() => handleResolutionSubmit('CANCELLED')}
-                disabled={isSubmittingResolution}
-                variant="destructive"
-                className="w-full sm:w-auto"
-              >
-                {isSubmittingResolution ? 'Processing...' : 'Cancel Ticket'}
-              </Button>
-            </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={handleModalClose}
+              disabled={isSubmittingResolution}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleResolutionSubmit}
+              disabled={isSubmittingResolution}
+            >
+              {isSubmittingResolution ? 'Processing...' : 'Update Status'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

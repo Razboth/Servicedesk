@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -16,8 +16,9 @@ export async function GET(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    const { id } = await params;
     const fieldTemplate = await prisma.fieldTemplate.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         serviceFieldTemplates: {
           include: {
@@ -48,7 +49,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -60,6 +61,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    const { id } = await params;
     const body = await request.json();
     const { name, label, type } = body;
 
@@ -72,7 +74,7 @@ export async function PUT(
 
     // Check if template exists
     const existing = await prisma.fieldTemplate.findUnique({
-      where: { id: params.id }
+      where: { id }
     });
 
     if (!existing) {
@@ -84,7 +86,7 @@ export async function PUT(
       const nameExists = await prisma.fieldTemplate.findFirst({
         where: {
           name,
-          NOT: { id: params.id }
+          NOT: { id }
         }
       });
 
@@ -129,7 +131,7 @@ export async function PUT(
     }
 
     const fieldTemplate = await prisma.fieldTemplate.update({
-      where: { id: params.id },
+      where: { id },
       data,
       include: {
         _count: {
@@ -152,7 +154,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -164,9 +166,11 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    const { id } = await params;
+
     // Check if template is being used
     const usage = await prisma.serviceFieldTemplate.count({
-      where: { fieldTemplateId: params.id }
+      where: { fieldTemplateId: id }
     });
 
     if (usage > 0) {
@@ -177,7 +181,7 @@ export async function DELETE(
     }
 
     await prisma.fieldTemplate.delete({
-      where: { id: params.id }
+      where: { id }
     });
 
     return NextResponse.json({ message: 'Field template deleted successfully' });

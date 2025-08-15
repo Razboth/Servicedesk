@@ -1,8 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    serverComponentsExternalPackages: ['@prisma/client', 'bcryptjs']
-  },
+  serverExternalPackages: ['@prisma/client', 'bcryptjs'],
   images: {
     domains: ['localhost'],
     unoptimized: true
@@ -14,7 +12,8 @@ const nextConfig = {
     ignoreDuringBuilds: false
   },
   env: {
-    NEXTAUTH_URL: process.env.NEXTAUTH_URL || 'http://localhost:3000',
+    // NEXTAUTH_URL is now dynamically detected based on the request host
+    NEXTAUTH_URL: process.env.NEXTAUTH_URL,
     NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET
   }
 }

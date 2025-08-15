@@ -1,0 +1,15 @@
+{
+    "keep": {
+        "days": false,
+        "amount": 7
+    },
+    "auditLog": "/mnt/c/Project/servicedesk6/network-monitor/logs/.164a6621a4e7bc33a84afb3a675eb044e081e129-audit.json",
+    "files": [
+        {
+            "date": 1754560790694,
+            "name": "/mnt/c/Project/servicedesk6/network-monitor/logs/monitoring-2025-08-07.log",
+            "hash": "bb782feceb63be8cdf31c2fbd683939dd18b90aee019bd28a7bea61670b6e0dc"
+        }
+    ],
+    "hashType": "sha256"
+}

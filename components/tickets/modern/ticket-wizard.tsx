@@ -1,0 +1,2092 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Checkbox } from '@/components/ui/checkbox'
+import { LockedInput } from '@/components/ui/locked-input'
+import { 
+  X, 
+  ChevronLeft, 
+  ChevronRight,
+  ChevronDown,
+  ChevronUp, 
+  Check, 
+  Search,
+  Star,
+  StarOff,
+  Eye,
+  Clock,
+  AlertTriangle,
+  FileText,
+  Building2,
+  Tag,
+  Zap,
+  Upload,
+  Loader2
+} from 'lucide-react'
+import { toast } from 'sonner'
+
+interface Service {
+  id: string
+  name: string
+  description: string
+  category: {
+    id: string
+    name: string
+    level: number
+  }
+  priority: string
+  estimatedHours: number
+  slaHours?: number
+  requiresApproval: boolean
+  supportGroups?: Array<{
+    id: string
+    name: string
+  }>
+}
+
+interface Category {
+  id: string
+  name: string
+  description?: string
+  level: number
+  icon: string
+  color: string
+  children?: Category[]
+  subcategories?: Category[]
+  _count?: {
+    services: number
+    children: number
+  }
+}
+
+interface FavoriteService {
+  id: string
+  name: string
+  categoryName: string
+  lastUsed: string
+}
+
+
+interface TicketPreview {
+  title: string
+  description: string
+  service: Service | null
+  priority: string
+  estimatedSLA: string
+  requiresApproval: boolean
+}
+
+interface TicketWizardProps {
+  onClose: () => void
+  onSuccess: () => void
+}
+
+export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
+  const { data: session } = useSession()
+  const router = useRouter()
+  
+  // Wizard state
+  const [currentStep, setCurrentStep] = useState(1)
+  const [isLoading, setIsLoading] = useState(false)
+  
+  // Data state
+  const [categories, setCategories] = useState<Category[]>([])
+  const [favoriteServices, setFavoriteServices] = useState<FavoriteService[]>([])
+  const [services, setServices] = useState<Service[]>([])
+  const [popularServices, setPopularServices] = useState<{
+    user: Service[]
+    branch: Service[]
+    trending: Service[]
+  }>({ user: [], branch: [], trending: [] })
+  
+  // Form state
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
+  const [selectedService, setSelectedService] = useState<Service | null>(null)
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    priority: 'MEDIUM',
+    category: 'INCIDENT',
+    issueClassification: '',
+    categoryId: '',
+    subcategoryId: '',
+    itemId: '',
+    branchId: '',
+    fieldValues: {} as Record<string, any>,
+    isConfidential: false,
+    securityClassification: '',
+    securityFindings: ''
+  })
+  
+  // Additional state for form features
+  const [attachments, setAttachments] = useState<File[]>([])
+  const [tierCategories, setTierCategories] = useState<any[]>([])
+  const [tierSubcategories, setTierSubcategories] = useState<any[]>([])
+  const [tierItems, setTierItems] = useState<any[]>([])
+  
+  // UI state
+  const [searchTerm, setSearchTerm] = useState('')
+  const [serviceSearchTerm, setServiceSearchTerm] = useState('')
+  const [isLoadingServices, setIsLoadingServices] = useState(false)
+  const [showPreview, setShowPreview] = useState(false)
+  const [showBranchPopular, setShowBranchPopular] = useState(false)
+  const [showTrending, setShowTrending] = useState(false)
+  
+  // Global service search state
+  const [globalSearchTerm, setGlobalSearchTerm] = useState('')
+  const [globalSearchResults, setGlobalSearchResults] = useState<Service[]>([])
+  const [isSearchingGlobal, setIsSearchingGlobal] = useState(false)
+  
+  // Field locking state
+  const [lockedFields, setLockedFields] = useState<Record<string, {
+    isLocked: boolean
+    source: 'default' | 'user' | 'service'
+    canOverride: boolean
+  }>>({})
+  
+  // Track if autofill is in progress
+  const [isAutofilling, setIsAutofilling] = useState(false)
+
+  const steps = [
+    { number: 1, title: 'Category Selection', description: 'Choose your service category' },
+    { number: 2, title: 'Service Selection', description: 'Select specific service' },
+    { number: 3, title: 'Ticket Information', description: 'Provide details' },
+    { number: 4, title: 'Review & Submit', description: 'Confirm your request' }
+  ]
+
+  useEffect(() => {
+    loadCategories()
+    loadFavoriteServices()
+    loadTierCategories()
+    loadPopularServices()
+  }, [])
+
+  useEffect(() => {
+    if (selectedCategory) {
+      // Debounce service search
+      const timer = setTimeout(() => {
+        loadServices(selectedCategory.id, serviceSearchTerm)
+      }, 300)
+      
+      return () => clearTimeout(timer)
+    }
+  }, [selectedCategory, serviceSearchTerm])
+
+  // Debounced global search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      searchAllServices(globalSearchTerm)
+    }, 300)
+    
+    return () => clearTimeout(timer)
+  }, [globalSearchTerm])
+
+  // Autofill form data when service is selected
+  useEffect(() => {
+    const autofillServiceData = async () => {
+      if (selectedService) {
+        setIsAutofilling(true)
+        console.log('🔧 Modern Autofill: Starting autofill for service:', selectedService.name)
+        console.log('🔧 Modern Autofill: Service data:', selectedService)
+        
+        // Prepare form data with service defaults
+        const updatedFormData = { ...formData }
+        const updatedLockedFields = { ...lockedFields }
+        
+        // Auto-fill basic fields with lock information
+        if (selectedService.defaultTitle) {
+          updatedFormData.title = selectedService.defaultTitle
+          updatedLockedFields.title = {
+            isLocked: true,
+            source: 'service',
+            canOverride: true
+          }
+          console.log('🔧 Modern Autofill: Set default title:', selectedService.defaultTitle)
+        }
+        
+        if (selectedService.defaultItilCategory) {
+          updatedFormData.category = selectedService.defaultItilCategory as any
+          updatedLockedFields.category = {
+            isLocked: true,
+            source: 'service',
+            canOverride: true
+          }
+          console.log('🔧 Modern Autofill: Set default ITIL category:', selectedService.defaultItilCategory)
+        }
+        
+        if (selectedService.defaultIssueClassification) {
+          updatedFormData.issueClassification = selectedService.defaultIssueClassification as any
+          updatedLockedFields.issueClassification = {
+            isLocked: true,
+            source: 'service',
+            canOverride: true
+          }
+          console.log('🔧 Modern Autofill: Set default issue classification:', selectedService.defaultIssueClassification)
+        }
+        
+        if (selectedService.priority) {
+          updatedFormData.priority = selectedService.priority as any
+          updatedLockedFields.priority = {
+            isLocked: true,
+            source: 'service',
+            canOverride: true
+          }
+          console.log('🔧 Modern Autofill: Set default priority:', selectedService.priority)
+        }
+        
+        // Handle field template default values
+        const fieldValues: Record<string, any> = { ...formData.fieldValues }
+        
+        // Process fieldTemplates
+        if (selectedService.fieldTemplates && selectedService.fieldTemplates.length > 0) {
+          selectedService.fieldTemplates
+            .filter((template: any) => template.isUserVisible)
+            .forEach((template: any) => {
+              const defaultValue = template.defaultValue || template.fieldTemplate.defaultValue || ''
+              if (defaultValue) {
+                fieldValues[template.fieldTemplate.name] = defaultValue
+                console.log('🔧 Modern Autofill: Set field template default:', template.fieldTemplate.name, '=', defaultValue)
+              }
+            })
+        }
+        
+        // Process regular fields
+        if (selectedService.fields && selectedService.fields.length > 0) {
+          selectedService.fields
+            .filter((field: any) => field.isUserVisible && field.defaultValue)
+            .forEach((field: any) => {
+              fieldValues[field.name] = field.defaultValue
+              console.log('🔧 Modern Autofill: Set field default:', field.name, '=', field.defaultValue)
+            })
+        }
+        
+        updatedFormData.fieldValues = fieldValues
+        
+        // Handle 3-tier categorization
+        let loadedSubcategories: any[] = []
+        let loadedItems: any[] = []
+        
+        if (selectedService.tier1CategoryId) {
+          updatedFormData.categoryId = selectedService.tier1CategoryId
+          updatedLockedFields.categoryId = {
+            isLocked: true,
+            source: 'service',
+            canOverride: true
+          }
+          console.log('🔧 Modern Autofill: Set tier1CategoryId:', selectedService.tier1CategoryId)
+          
+          // Load subcategories
+          loadedSubcategories = await loadTierSubcategories(selectedService.tier1CategoryId)
+          console.log('🔧 Modern Autofill: Loaded subcategories:', loadedSubcategories.length)
+          
+          if (selectedService.tier2SubcategoryId) {
+            updatedFormData.subcategoryId = selectedService.tier2SubcategoryId
+            updatedLockedFields.subcategoryId = {
+              isLocked: true,
+              source: 'service',
+              canOverride: true
+            }
+            console.log('🔧 Modern Autofill: Set tier2SubcategoryId:', selectedService.tier2SubcategoryId)
+            
+            // Load items
+            loadedItems = await loadTierItems(selectedService.tier2SubcategoryId)
+            console.log('🔧 Modern Autofill: Loaded items:', loadedItems.length)
+            
+            if (selectedService.tier3ItemId) {
+              updatedFormData.itemId = selectedService.tier3ItemId
+              updatedLockedFields.itemId = {
+                isLocked: true,
+                source: 'service',
+                canOverride: true
+              }
+              console.log('🔧 Modern Autofill: Set tier3ItemId:', selectedService.tier3ItemId)
+            }
+          }
+        }
+        
+        // Update form data and field locks
+        setFormData(updatedFormData)
+        setLockedFields(updatedLockedFields)
+        console.log('🔧 Modern Autofill: Updated form data:', updatedFormData)
+        console.log('🔧 Modern Autofill: Updated locked fields:', updatedLockedFields)
+        
+        // Complete autofill with a small delay for smooth UX
+        setTimeout(() => {
+          setIsAutofilling(false)
+        }, 500)
+        
+      } else if (formData.title || formData.description) {
+        // Clear form when no service is selected
+        console.log('🔧 Modern Autofill: Clearing form data')
+        setFormData({
+          title: '',
+          description: '',
+          priority: 'MEDIUM',
+          category: 'INCIDENT',
+          issueClassification: '',
+          categoryId: '',
+          subcategoryId: '',
+          itemId: '',
+          branchId: '',
+          fieldValues: {},
+          isConfidential: false,
+          securityClassification: '',
+          securityFindings: ''
+        })
+        setLockedFields({})
+      }
+    }
+    
+    autofillServiceData()
+  }, [selectedService])
+
+  const loadCategories = async () => {
+    try {
+      const response = await fetch('/api/categories?level=1&includeChildren=true')
+      if (response.ok) {
+        const data = await response.json()
+        console.log('Loaded categories:', data)
+        // Transform categories to include visual information
+        const transformedCategories = data?.map((cat: any) => ({
+          ...cat,
+          icon: getCategoryIcon(cat.name),
+          color: getCategoryColor(cat.name),
+          subcategories: cat.children || []
+        })) || []
+        setCategories(transformedCategories)
+      } else {
+        console.error('Failed to load categories:', response.status)
+      }
+    } catch (error) {
+      console.error('Error loading categories:', error)
+    }
+  }
+
+  const loadServices = async (categoryId: string, search?: string) => {
+    try {
+      setIsLoadingServices(true)
+      const params = new URLSearchParams({ categoryId })
+      if (search) {
+        params.append('search', search)
+      }
+      
+      const response = await fetch(`/api/services?${params}`)
+      if (response.ok) {
+        const data = await response.json()
+        console.log('Loaded services:', data)
+        setServices(data || [])
+      } else {
+        console.error('Failed to load services:', response.status)
+      }
+    } catch (error) {
+      console.error('Error loading services:', error)
+    } finally {
+      setIsLoadingServices(false)
+    }
+  }
+
+  const loadFavoriteServices = async () => {
+    try {
+      const response = await fetch('/api/services/favorites')
+      if (response.ok) {
+        const data = await response.json()
+        // Transform API response to match the component's expected format
+        const transformedFavorites = data.map((fav: any) => ({
+          id: fav.service.id,
+          name: fav.service.name,
+          categoryName: fav.service.category.name,
+          lastUsed: fav.lastUsedAt || fav.createdAt
+        }))
+        setFavoriteServices(transformedFavorites)
+      } else if (response.status !== 401) {
+        // Fallback to localStorage for compatibility
+        const saved = localStorage.getItem('favoriteServices')
+        if (saved) {
+          setFavoriteServices(JSON.parse(saved))
+        }
+      }
+    } catch (error) {
+      console.error('Error loading favorites:', error)
+      // Fallback to localStorage
+      try {
+        const saved = localStorage.getItem('favoriteServices')
+        if (saved) {
+          setFavoriteServices(JSON.parse(saved))
+        }
+      } catch (localError) {
+        console.error('Error loading from localStorage:', localError)
+      }
+    }
+  }
+
+  const saveFavoriteService = async (service: Service) => {
+    try {
+      const response = await fetch('/api/services/favorites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serviceId: service.id })
+      })
+      
+      if (response.ok) {
+        await loadFavoriteServices()
+        toast.success('Service added to favorites')
+      } else {
+        throw new Error('API call failed')
+      }
+    } catch (error) {
+      console.error('Error saving favorite via API, falling back to localStorage:', error)
+      
+      // Fallback to localStorage
+      try {
+        const favorites = [...favoriteServices]
+        const existingIndex = favorites.findIndex(f => f.id === service.id)
+        
+        const newFavorite: FavoriteService = {
+          id: service.id,
+          name: service.name,
+          categoryName: service.category.name,
+          lastUsed: new Date().toISOString()
+        }
+
+        if (existingIndex >= 0) {
+          favorites[existingIndex] = newFavorite
+        } else {
+          favorites.unshift(newFavorite)
+        }
+
+        const limitedFavorites = favorites.slice(0, 10)
+        setFavoriteServices(limitedFavorites)
+        localStorage.setItem('favoriteServices', JSON.stringify(limitedFavorites))
+        toast.success('Service added to favorites')
+      } catch (localError) {
+        console.error('Error saving to localStorage:', localError)
+        toast.error('Failed to add to favorites')
+      }
+    }
+  }
+
+  const removeFavoriteService = async (serviceId: string) => {
+    try {
+      const response = await fetch(`/api/services/favorites?serviceId=${serviceId}`, {
+        method: 'DELETE'
+      })
+      
+      if (response.ok) {
+        await loadFavoriteServices()
+        toast.success('Service removed from favorites')
+      } else {
+        throw new Error('API call failed')
+      }
+    } catch (error) {
+      console.error('Error removing favorite via API, falling back to localStorage:', error)
+      
+      // Fallback to localStorage
+      try {
+        const filtered = favoriteServices.filter(f => f.id !== serviceId)
+        setFavoriteServices(filtered)
+        localStorage.setItem('favoriteServices', JSON.stringify(filtered))
+        toast.success('Service removed from favorites')
+      } catch (localError) {
+        console.error('Error removing from localStorage:', localError)
+        toast.error('Failed to remove from favorites')
+      }
+    }
+  }
+
+  const isServiceFavorited = (serviceId: string): boolean => {
+    return favoriteServices.some(fav => fav.id === serviceId)
+  }
+
+  const loadPopularServices = async () => {
+    try {
+      const response = await fetch('/api/services/popular?type=all')
+      if (response.ok) {
+        const data = await response.json()
+        setPopularServices({
+          user: data.user || [],
+          branch: data.branch || [],
+          trending: data.trending || []
+        })
+        console.log('📊 Loaded popular services:', data)
+      }
+    } catch (error) {
+      console.error('Error loading popular services:', error)
+    }
+  }
+
+  const searchAllServices = async (searchQuery: string) => {
+    if (!searchQuery.trim()) {
+      setGlobalSearchResults([])
+      return
+    }
+
+    try {
+      setIsSearchingGlobal(true)
+      console.log('🔍 Global Search: Searching for:', searchQuery)
+      
+      const response = await fetch(`/api/services?search=${encodeURIComponent(searchQuery)}`)
+      if (response.ok) {
+        const data = await response.json()
+        setGlobalSearchResults(data || [])
+        console.log('🔍 Global Search: Found', data?.length || 0, 'services')
+      } else {
+        console.error('Failed to search services:', response.status)
+        setGlobalSearchResults([])
+      }
+    } catch (error) {
+      console.error('Error searching services:', error)
+      setGlobalSearchResults([])
+    } finally {
+      setIsSearchingGlobal(false)
+    }
+  }
+
+  const loadTierCategories = async () => {
+    try {
+      const response = await fetch('/api/tier-categories')
+      if (response.ok) {
+        const data = await response.json()
+        setTierCategories(data || [])
+      }
+    } catch (error) {
+      console.error('Error loading tier categories:', error)
+    }
+  }
+
+  const loadTierSubcategories = async (categoryId: string) => {
+    try {
+      const response = await fetch(`/api/subcategories?categoryId=${categoryId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setTierSubcategories(data || [])
+        return data || []
+      }
+      return []
+    } catch (error) {
+      console.error('Error loading tier subcategories:', error)
+      return []
+    }
+  }
+
+  const loadTierItems = async (subcategoryId: string) => {
+    try {
+      const response = await fetch(`/api/items?subcategoryId=${subcategoryId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setTierItems(data || [])
+        return data || []
+      }
+      return []
+    } catch (error) {
+      console.error('Error loading tier items:', error)
+      return []
+    }
+  }
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || [])
+    const maxSize = 10 * 1024 * 1024 // 10MB
+    const validFiles: File[] = []
+
+    for (const file of files) {
+      if (file.size > maxSize) {
+        toast.error(`File ${file.name} is too large. Maximum size is 10MB.`)
+        continue
+      }
+      validFiles.push(file)
+    }
+
+    setAttachments(prev => [...prev, ...validFiles])
+    event.target.value = '' // Reset input
+  }
+
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const convertFileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.readAsDataURL(file)
+      reader.onload = () => {
+        const result = reader.result as string
+        const base64 = result.split(',')[1]
+        resolve(base64)
+      }
+      reader.onerror = error => reject(error)
+    })
+  }
+
+
+  const getCategoryIcon = (name: string): string => {
+    const iconMap: { [key: string]: string } = {
+      'Hardware': '💻',
+      'Software': '🖥️',
+      'Network': '🌐',
+      'Security': '🔒',
+      'Access': '🔑',
+      'Email': '📧',
+      'Facilities': '🏢',
+      'Other': '📋'
+    }
+    return iconMap[name] || '📋'
+  }
+
+  const getCategoryColor = (name: string): string => {
+    const colorMap: { [key: string]: string } = {
+      'Hardware': 'from-blue-500 to-blue-600',
+      'Software': 'from-green-500 to-green-600',
+      'Network': 'from-purple-500 to-purple-600',
+      'Security': 'from-red-500 to-red-600',
+      'Access': 'from-yellow-500 to-yellow-600',
+      'Email': 'from-indigo-500 to-indigo-600',
+      'Facilities': 'from-gray-500 to-gray-600',
+      'Other': 'from-teal-500 to-teal-600'
+    }
+    return colorMap[name] || 'from-gray-500 to-gray-600'
+  }
+
+  const selectServiceDirectly = async (service: any) => {
+    try {
+      console.log('🚀 Smart Discovery: Selecting service directly:', service.name)
+      console.log('🚀 Smart Discovery: Service data:', service)
+      
+      // Find and set the category
+      const serviceCategory = categories.find(cat => cat.id === service.category.id)
+      if (serviceCategory) {
+        setSelectedCategory(serviceCategory)
+        console.log('📂 Smart Discovery: Set category:', serviceCategory.name)
+      }
+
+      // Initialize field values similar to the standard ticket form
+      if (service.fields || service.fieldTemplates) {
+        console.log('🔧 Smart Discovery: Initializing form fields')
+        
+        // Initialize all field values to prevent controlled/uncontrolled issues
+        const allFields = [
+          ...(service.fields || []),
+          ...(service.fieldTemplates || []).map((template: any) => template.fieldTemplate)
+        ].filter((field: any) => field && (field.isUserVisible || 
+          (service.fieldTemplates && service.fieldTemplates.some((t: any) => t.fieldTemplate.id === field.id && t.isUserVisible))))
+
+        console.log('🔧 Smart Discovery: Found', allFields.length, 'visible fields to initialize')
+        
+        // Initialize field values in formData to prevent controlled/uncontrolled issues
+        const initialFieldValues: Record<string, any> = { ...formData.fieldValues }
+        allFields.forEach((field: any) => {
+          if (initialFieldValues[field.name] === undefined) {
+            initialFieldValues[field.name] = ''
+            console.log('🔧 Smart Discovery: Initialized field', field.name, 'with empty string')
+          }
+        })
+        
+        // Set field values in form data
+        setFormData(prev => ({
+          ...prev,
+          fieldValues: initialFieldValues
+        }))
+      }
+      
+      // Set the selected service (this will trigger autofill with complete data)
+      setSelectedService(service)
+      console.log('🎯 Smart Discovery: Set service with complete data:', service.name)
+      
+      // Move to the next step (ticket information) 
+      setCurrentStep(3)
+      console.log('➡️ Smart Discovery: Advanced to step 3 (ticket information)')
+      
+      // Show success toast
+      toast.success(`Selected ${service.name} - ready for ticket details!`)
+    } catch (error) {
+      console.error('Error selecting service directly:', error)
+      toast.error('Failed to select service')
+    }
+  }
+
+  const handleNextStep = () => {
+    if (currentStep < steps.length) {
+      setCurrentStep(currentStep + 1)
+    }
+  }
+
+  const handlePrevStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1)
+    }
+  }
+
+  const handleSubmit = async () => {
+    if (!selectedService || !formData.title || !formData.description) {
+      toast.error('Please fill in all required fields')
+      return
+    }
+
+    setIsLoading(true)
+    
+    try {
+      // Process attachments
+      const processedAttachments = []
+      for (const file of attachments) {
+        try {
+          const base64Content = await convertFileToBase64(file)
+          processedAttachments.push({
+            filename: file.name,
+            mimeType: file.type,
+            size: file.size,
+            content: base64Content
+          })
+        } catch (error) {
+          console.error('Error processing file:', file.name, error)
+          toast.error(`Failed to process file: ${file.name}`)
+        }
+      }
+
+      // Prepare field values with proper fieldId mapping
+      const fieldValues: Array<{ fieldId: string; value: string }> = []
+      if (selectedService && formData.fieldValues) {
+        // Process field templates first (if they exist)
+        if (selectedService.fieldTemplates && selectedService.fieldTemplates.length > 0) {
+          selectedService.fieldTemplates
+            .filter((template: any) => template.isUserVisible)
+            .forEach((template: any) => {
+              const value = formData.fieldValues[template.fieldTemplate.name]
+              if (value !== undefined && value !== null && value !== '') {
+                fieldValues.push({ fieldId: template.fieldTemplate.id, value: String(value) })
+                console.log('🎯 Submit: Added field template value:', template.fieldTemplate.name, '=', value)
+              }
+            })
+        }
+
+        // Process regular service fields
+        if (selectedService.fields && selectedService.fields.length > 0) {
+          selectedService.fields
+            .filter((field: any) => field.isUserVisible)
+            .forEach((field: any) => {
+              const value = formData.fieldValues[field.name]
+              if (value !== undefined && value !== null && value !== '') {
+                fieldValues.push({ fieldId: field.id, value: String(value) })
+                console.log('🎯 Submit: Added service field value:', field.name, '=', value)
+              }
+            })
+        }
+      }
+
+      const payload = {
+        title: formData.title,
+        description: formData.description,
+        serviceId: selectedService.id,
+        priority: formData.priority,
+        category: formData.category,
+        issueClassification: formData.issueClassification || undefined,
+        categoryId: formData.categoryId || undefined,
+        subcategoryId: formData.subcategoryId || undefined,
+        itemId: formData.itemId || undefined,
+        branchId: formData.branchId || session?.user?.branchId,
+        fieldValues: fieldValues.length > 0 ? fieldValues : undefined,
+        attachments: processedAttachments.length > 0 ? processedAttachments : undefined,
+        isConfidential: formData.isConfidential,
+        securityClassification: formData.securityClassification || undefined,
+        securityFindings: formData.securityFindings || undefined
+      }
+
+      const response = await fetch('/api/tickets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        toast.success('Ticket created successfully!')
+        onSuccess()
+        router.push(`/tickets/${result.id}`)
+        
+        // Save favorite service after successful ticket creation
+        try {
+          await saveFavoriteService(selectedService)
+        } catch (favoriteError) {
+          console.log('Note: Could not save favorite service preference:', favoriteError)
+          // Don't show error to user as this is not critical
+        }
+      } else {
+        const error = await response.json()
+        toast.error(error.message || 'Failed to create ticket')
+      }
+    } catch (error) {
+      console.error('Error creating ticket:', error)
+      toast.error('Failed to create ticket')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const getTicketPreview = (): TicketPreview => {
+    return {
+      title: formData.title,
+      description: formData.description,
+      service: selectedService,
+      priority: formData.priority,
+      estimatedSLA: selectedService ? `${selectedService.slaHours || selectedService.estimatedHours} hours` : 'Not selected',
+      requiresApproval: selectedService?.requiresApproval || false
+    }
+  }
+
+  const filteredCategories = categories.filter(cat =>
+    cat.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    cat.description.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-6 text-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold">Create New Ticket</h2>
+              <p className="text-blue-100 mt-1">Enhanced ticket creation experience</p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              className="text-white hover:bg-white/20 h-8 w-8 p-0"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Progress Steps */}
+          <div className="mt-6 flex items-center space-x-4">
+            {steps.map((step, index) => (
+              <div key={step.number} className="flex items-center">
+                <div className={`flex items-center justify-center w-8 h-8 rounded-full border-2 transition-all ${
+                  step.number <= currentStep
+                    ? 'border-white bg-white text-blue-600'
+                    : 'border-blue-300 text-blue-300'
+                }`}>
+                  {step.number < currentStep ? (
+                    <Check className="h-4 w-4" />
+                  ) : (
+                    <span className="text-sm font-bold">{step.number}</span>
+                  )}
+                </div>
+                <div className="ml-3 hidden md:block">
+                  <p className="text-sm font-medium text-white">{step.title}</p>
+                  <p className="text-xs text-blue-100">{step.description}</p>
+                </div>
+                {index < steps.length - 1 && (
+                  <div className="w-8 h-px bg-blue-300 mx-4 hidden md:block" />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="h-[60vh] p-6 overflow-y-auto">
+            {/* Step 1: Category Selection */}
+            {currentStep === 1 && (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                    Choose Service Category
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    Select the category that best describes your request, or search for a specific service
+                  </p>
+                </div>
+
+                {/* Global Service Search */}
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <h4 className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-3 flex items-center">
+                    <Search className="h-4 w-4 mr-1" />
+                    Search All Services
+                  </h4>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      placeholder="Search for any service (e.g., 'password reset', 'olibs', 'account unlock')..."
+                      value={globalSearchTerm}
+                      onChange={(e) => setGlobalSearchTerm(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') {
+                          setGlobalSearchTerm('')
+                        }
+                      }}
+                      className="pl-10 bg-white dark:bg-gray-800 border-blue-300 dark:border-blue-600 focus:ring-blue-500"
+                    />
+                    {globalSearchTerm && (
+                      <button
+                        onClick={() => setGlobalSearchTerm('')}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Global Search Results */}
+                  {globalSearchTerm && (
+                    <div className="mt-4">
+                      {isSearchingGlobal ? (
+                        <div className="text-center py-4">
+                          <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-blue-500" />
+                          <p className="text-sm text-gray-600 dark:text-gray-400">Searching all services...</p>
+                        </div>
+                      ) : globalSearchResults.length > 0 ? (
+                        <div>
+                          <p className="text-sm text-blue-800 dark:text-blue-200 mb-3">
+                            Found {globalSearchResults.length} service{globalSearchResults.length !== 1 ? 's' : ''}:
+                          </p>
+                          <div className="grid gap-2 max-h-60 overflow-y-auto">
+                            {globalSearchResults.map((service) => (
+                              <Card 
+                                key={service.id}
+                                className="cursor-pointer transition-all hover:shadow-md border-blue-300 hover:border-blue-500 bg-white dark:bg-gray-800"
+                                onClick={() => selectServiceDirectly(service)}
+                              >
+                                <CardContent className="p-3">
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex-1 min-w-0">
+                                      <p className="font-medium text-gray-900 dark:text-white text-sm truncate">
+                                        {service.name}
+                                      </p>
+                                      <p className="text-xs text-blue-600 dark:text-blue-400 truncate">
+                                        {service.category.name} → {service.name}
+                                      </p>
+                                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+                                        {service.description}
+                                      </p>
+                                      <div className="flex items-center gap-2 mt-2">
+                                        <Badge variant="outline" className="text-xs h-5">
+                                          SLA: {service.slaHours || service.estimatedHours}h
+                                        </Badge>
+                                        {service.requiresApproval && (
+                                          <Badge variant="secondary" className="text-xs h-5">
+                                            Approval Required
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <Zap className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center py-4">
+                          <Search className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            No services found for "{globalSearchTerm}"
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Try different keywords or browse categories below
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Smart Service Discovery */}
+                <div className="space-y-6 mb-8">
+                  {/* Your Favorites */}
+                  {favoriteServices.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center">
+                        <Star className="h-4 w-4 mr-1 text-yellow-500" />
+                        Your Favorites
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {favoriteServices.slice(0, 6).map((favorite) => (
+                          <Card 
+                            key={favorite.id} 
+                            className="hover:shadow-md transition-all cursor-pointer border-yellow-200 hover:border-yellow-400"
+                            onClick={async () => {
+                              // For favorites, we need to load the full service details first
+                              try {
+                                const response = await fetch(`/api/services/${favorite.id}`)
+                                if (response.ok) {
+                                  const serviceData = await response.json()
+                                  selectServiceDirectly(serviceData)
+                                } else {
+                                  toast.error('Service not found')
+                                }
+                              } catch (error) {
+                                console.error('Error loading favorite service:', error)
+                                toast.error('Failed to load service')
+                              }
+                            }}
+                          >
+                            <CardContent className="p-3">
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-gray-900 dark:text-white text-sm truncate">{favorite.name}</p>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{favorite.categoryName}</p>
+                                  {favorite.lastUsed && (
+                                    <span className="text-xs text-gray-400">
+                                      {new Date(favorite.lastUsed).toLocaleDateString()}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Star className="h-3 w-3 text-yellow-500" />
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      removeFavoriteService(favorite.id)
+                                    }}
+                                    className="h-5 w-5 p-0 hover:bg-red-100"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Recently Used Services */}
+                  {popularServices.user.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center">
+                        <Clock className="h-4 w-4 mr-1 text-blue-500" />
+                        Recently Used
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {popularServices.user.slice(0, 6).map((service: any) => (
+                          <Card 
+                            key={service.id} 
+                            className="hover:shadow-md transition-all cursor-pointer border-blue-200 hover:border-blue-400"
+                            onClick={() => selectServiceDirectly(service)}
+                          >
+                            <CardContent className="p-3">
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-gray-900 dark:text-white text-sm truncate">{service.name}</p>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{service.category.name}</p>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <Badge variant="outline" className="text-xs h-5">
+                                      Used {service.usageCount || 0}x
+                                    </Badge>
+                                    {service.lastUsed && (
+                                      <span className="text-xs text-gray-400">
+                                        {new Date(service.lastUsed).toLocaleDateString()}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <Clock className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Popular in Your Branch */}
+                  {popularServices.branch.length > 0 && (
+                    <div>
+                      <Button
+                        variant="ghost"
+                        onClick={() => setShowBranchPopular(!showBranchPopular)}
+                        className="w-full justify-between p-3 h-auto text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 mb-3"
+                      >
+                        <div className="flex items-center">
+                          <Building2 className="h-4 w-4 mr-2 text-green-500" />
+                          Popular in Your Branch ({popularServices.branch.length})
+                        </div>
+                        {showBranchPopular ? (
+                          <ChevronUp className="h-4 w-4 text-gray-400" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 text-gray-400" />
+                        )}
+                      </Button>
+                      
+                      {showBranchPopular && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 transition-all duration-300 ease-in-out">
+                          {popularServices.branch.slice(0, 6).map((service: any) => (
+                            <Card 
+                              key={service.id} 
+                              className="hover:shadow-md transition-all cursor-pointer border-green-200 hover:border-green-400"
+                              onClick={() => selectServiceDirectly(service)}
+                            >
+                              <CardContent className="p-3">
+                                <div className="flex items-start justify-between">
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-medium text-gray-900 dark:text-white text-sm truncate">{service.name}</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{service.category.name}</p>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <Badge variant="outline" className="text-xs h-5">
+                                        {service.usageCount || 0} uses
+                                      </Badge>
+                                      <span className="text-xs text-green-600">Branch popular</span>
+                                    </div>
+                                  </div>
+                                  <Building2 className="h-4 w-4 text-green-500 flex-shrink-0" />
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Trending Services */}
+                  {popularServices.trending.length > 0 && (
+                    <div>
+                      <Button
+                        variant="ghost"
+                        onClick={() => setShowTrending(!showTrending)}
+                        className="w-full justify-between p-3 h-auto text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 mb-3"
+                      >
+                        <div className="flex items-center">
+                          <Zap className="h-4 w-4 mr-2 text-purple-500" />
+                          Trending This Week ({popularServices.trending.length})
+                        </div>
+                        {showTrending ? (
+                          <ChevronUp className="h-4 w-4 text-gray-400" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 text-gray-400" />
+                        )}
+                      </Button>
+                      
+                      {showTrending && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 transition-all duration-300 ease-in-out">
+                          {popularServices.trending.slice(0, 6).map((service: any) => (
+                            <Card 
+                              key={service.id} 
+                              className="hover:shadow-md transition-all cursor-pointer border-purple-200 hover:border-purple-400"
+                              onClick={() => selectServiceDirectly(service)}
+                            >
+                              <CardContent className="p-3">
+                                <div className="flex items-start justify-between">
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-medium text-gray-900 dark:text-white text-sm truncate">{service.name}</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{service.category.name}</p>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <Badge variant="outline" className="text-xs h-5">
+                                        {service.usageCount || 0} this week
+                                      </Badge>
+                                      <span className="text-xs text-purple-600">Trending</span>
+                                    </div>
+                                  </div>
+                                  <Zap className="h-4 w-4 text-purple-500 flex-shrink-0" />
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+
+                  {/* Show message if no smart suggestions available */}
+                  {favoriteServices.length === 0 && popularServices.user.length === 0 && popularServices.branch.length === 0 && 
+                   popularServices.trending.length === 0 && (
+                    <div className="text-center py-6 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                      <Zap className="h-8 w-8 text-blue-500 mx-auto mb-2" />
+                      <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-1">
+                        Welcome to Smart Service Discovery
+                      </h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        As you create tickets, we'll show your most-used services and trending options here for quick access.
+                      </p>
+                    </div>
+                  )}
+
+                  <Separator className="my-6" />
+                </div>
+
+
+                {/* Search */}
+                <div className="relative mb-6">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search categories..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+
+                {/* Category Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredCategories.map((category) => (
+                    <Card 
+                      key={category.id}
+                      className={`cursor-pointer transition-all hover:shadow-lg border-2 ${
+                        selectedCategory?.id === category.id
+                          ? 'border-blue-500 shadow-lg'
+                          : 'border-gray-200 dark:border-gray-700'
+                      }`}
+                      onClick={() => setSelectedCategory(category)}
+                    >
+                      <CardContent className="p-6 text-center">
+                        <div className={`w-16 h-16 mx-auto mb-4 bg-gradient-to-r ${category.color} rounded-full flex items-center justify-center text-2xl`}>
+                          {category.icon}
+                        </div>
+                        <h4 className="font-semibold text-gray-900 dark:text-white mb-2">{category.name}</h4>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{category.description}</p>
+                        <Badge variant="outline" className="mt-2">
+                          {category._count?.services || 0} services
+                        </Badge>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Service Selection */}
+            {currentStep === 2 && selectedCategory && (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                    Select Service
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    Choose the specific service for your request in <strong>{selectedCategory.name}</strong>
+                  </p>
+                </div>
+
+                {/* Service Search */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search services..."
+                    value={serviceSearchTerm}
+                    onChange={(e) => setServiceSearchTerm(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') {
+                        setServiceSearchTerm('')
+                      }
+                    }}
+                    className="pl-10 bg-white/[0.5] dark:bg-gray-800/[0.5] border-gray-300 dark:border-gray-600"
+                  />
+                  {serviceSearchTerm && (
+                    <button
+                      onClick={() => setServiceSearchTerm('')}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid gap-3">
+                  {isLoadingServices ? (
+                    <div className="text-center py-8">
+                      <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                      <p className="text-gray-600 dark:text-gray-400">
+                        {serviceSearchTerm ? 'Searching services...' : 'Loading services...'}
+                      </p>
+                    </div>
+                  ) : services.length === 0 ? (
+                    <div className="text-center py-8">
+                      <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
+                        <Search className="h-8 w-8 text-gray-400" />
+                      </div>
+                      <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                        {serviceSearchTerm ? 'No services found' : 'No services available'}
+                      </h4>
+                      <p className="text-gray-600 dark:text-gray-400">
+                        {serviceSearchTerm 
+                          ? <>No services match &quot;{serviceSearchTerm}&quot;. Try a different search term.</>
+                          : 'There are no services available in this category.'
+                        }
+                      </p>
+                      {serviceSearchTerm && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setServiceSearchTerm('')}
+                          className="mt-4"
+                        >
+                          Clear search
+                        </Button>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      {serviceSearchTerm && (
+                        <div className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                          Found {services.length} service{services.length !== 1 ? 's' : ''} matching &quot;{serviceSearchTerm}&quot;
+                        </div>
+                      )}
+                      {services.map((service) => (
+                      <Card 
+                        key={service.id}
+                        className={`cursor-pointer transition-all hover:shadow-md border ${
+                          selectedService?.id === service.id
+                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/[0.2]'
+                            : 'border-gray-200 dark:border-gray-700'
+                        }`}
+                        onClick={() => setSelectedService(service)}
+                      >
+                        <CardContent className="p-4 relative">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              if (isServiceFavorited(service.id)) {
+                                removeFavoriteService(service.id)
+                              } else {
+                                saveFavoriteService(service)
+                              }
+                            }}
+                            className="absolute top-2 right-2 h-8 w-8 p-0 hover:bg-yellow-100"
+                          >
+                            <Star className={`h-4 w-4 ${isServiceFavorited(service.id) ? 'text-yellow-500 fill-current' : 'text-gray-400'}`} />
+                          </Button>
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1 pr-8">
+                              <h6 className="font-medium text-gray-900 dark:text-white">{service.name}</h6>
+                              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{service.description}</p>
+                              <div className="flex items-center gap-4 mt-2">
+                                <Badge variant="outline" className="text-xs">
+                                  <Clock className="h-3 w-3 mr-1" />
+                                  SLA: {service.slaHours || service.estimatedHours}h
+                                </Badge>
+                                {service.requiresApproval && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    <AlertTriangle className="h-3 w-3 mr-1" />
+                                    Requires Approval
+                                  </Badge>
+                                )}
+                                <Badge variant="outline" className="text-xs">
+                                  Priority: {service.priority}
+                                </Badge>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      ))}
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Ticket Information */}
+            {currentStep === 3 && (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                    Ticket Information
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    Provide details for your {selectedService?.name} request
+                  </p>
+                </div>
+
+                <div className="space-y-6">
+                  {/* Basic Information */}
+                  <Card className="border-blue-200 dark:border-blue-800">
+                    <CardHeader>
+                      <CardTitle className="text-base">Basic Information</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <LockedInput
+                        label="Title"
+                        value={formData.title}
+                        onChange={(value) => setFormData({ ...formData, title: value })}
+                        placeholder="Brief description of your issue or request"
+                        isLocked={lockedFields.title?.isLocked}
+                        source={lockedFields.title?.source}
+                        canOverride={lockedFields.title?.canOverride}
+                        onUnlock={() => setLockedFields({ 
+                          ...lockedFields, 
+                          title: { ...lockedFields.title!, isLocked: false } 
+                        })}
+                        required={true}
+                      />
+
+                      <LockedInput
+                        type="textarea"
+                        label="Description"
+                        value={formData.description}
+                        onChange={(value) => setFormData({ ...formData, description: value })}
+                        placeholder="Provide detailed information about your request..."
+                        isLocked={lockedFields.description?.isLocked}
+                        source={lockedFields.description?.source}
+                        canOverride={lockedFields.description?.canOverride}
+                        onUnlock={() => setLockedFields({ 
+                          ...lockedFields, 
+                          description: { ...lockedFields.description!, isLocked: false } 
+                        })}
+                        required={true}
+                      />
+                    </CardContent>
+                  </Card>
+
+                  {/* Dynamic Fields - Service Fields */}
+                  {selectedService && selectedService.fields && selectedService.fields.length > 0 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Service Specific Information</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {selectedService.fields
+                          .filter((field: any) => field.isUserVisible)
+                          .sort((a: any, b: any) => a.order - b.order)
+                          .map((field: any) => (
+                            <div key={field.id}>
+                              <Label className="text-base font-medium">
+                                {field.label}
+                                {field.isRequired && <span className="text-red-500 ml-1">*</span>}
+                              </Label>
+                              {field.type === 'TEXT' && (
+                                <Input
+                                  value={formData.fieldValues[field.name] || ''}
+                                  onChange={(e) => setFormData({
+                                    ...formData,
+                                    fieldValues: {
+                                      ...formData.fieldValues,
+                                      [field.name]: e.target.value
+                                    }
+                                  })}
+                                  placeholder={field.placeholder || ''}
+                                  className="mt-2"
+                                />
+                              )}
+                              {field.type === 'TEXTAREA' && (
+                                <Textarea
+                                  value={formData.fieldValues[field.name] || ''}
+                                  onChange={(e) => setFormData({
+                                    ...formData,
+                                    fieldValues: {
+                                      ...formData.fieldValues,
+                                      [field.name]: e.target.value
+                                    }
+                                  })}
+                                  placeholder={field.placeholder || ''}
+                                  className="mt-2"
+                                />
+                              )}
+                              {field.type === 'NUMBER' && (
+                                <Input
+                                  type="number"
+                                  value={formData.fieldValues[field.name] || ''}
+                                  onChange={(e) => setFormData({
+                                    ...formData,
+                                    fieldValues: {
+                                      ...formData.fieldValues,
+                                      [field.name]: e.target.value
+                                    }
+                                  })}
+                                  placeholder={field.placeholder || ''}
+                                  className="mt-2"
+                                />
+                              )}
+                              {field.type === 'SELECT' && (
+                                <Select
+                                  value={formData.fieldValues[field.name] || ''}
+                                  onValueChange={(value) => setFormData({
+                                    ...formData,
+                                    fieldValues: {
+                                      ...formData.fieldValues,
+                                      [field.name]: value
+                                    }
+                                  })}
+                                >
+                                  <SelectTrigger className="mt-2">
+                                    <SelectValue placeholder={field.placeholder || 'Select option'} />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {field.options && typeof field.options === 'string' ? 
+                                      field.options.split(',').map((option: string) => (
+                                        <SelectItem key={option.trim()} value={option.trim()}>
+                                          {option.trim()}
+                                        </SelectItem>
+                                      )) :
+                                      field.options && Array.isArray(field.options) ?
+                                        field.options.map((option: any) => (
+                                          <SelectItem key={option.value || option} value={option.value || option}>
+                                            {option.label || option}
+                                          </SelectItem>
+                                        )) : null
+                                    }
+                                  </SelectContent>
+                                </Select>
+                              )}
+                              {field.type === 'CHECKBOX' && (
+                                <div className="flex items-center space-x-2 mt-2">
+                                  <Checkbox
+                                    checked={formData.fieldValues[field.name] === 'true'}
+                                    onCheckedChange={(checked) => setFormData({
+                                      ...formData,
+                                      fieldValues: {
+                                        ...formData.fieldValues,
+                                        [field.name]: checked ? 'true' : 'false'
+                                      }
+                                    })}
+                                  />
+                                  <Label>{field.label}</Label>
+                                </div>
+                              )}
+                              {field.helpText && (
+                                <p className="text-sm text-gray-500 mt-1">{field.helpText}</p>
+                              )}
+                            </div>
+                          ))}
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Dynamic Fields - Field Templates */}
+                  {selectedService && selectedService.fieldTemplates && selectedService.fieldTemplates.length > 0 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Additional Service Information</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {selectedService.fieldTemplates
+                          .filter((template: any) => template.isUserVisible)
+                          .sort((a: any, b: any) => a.order - b.order)
+                          .map((template: any) => (
+                            <div key={template.id}>
+                              <Label className="text-base font-medium">
+                                {template.fieldTemplate.label}
+                                {template.isRequired && <span className="text-red-500 ml-1">*</span>}
+                              </Label>
+                              {template.fieldTemplate.type === 'text' && (
+                                <Input
+                                  value={formData.fieldValues[template.fieldTemplate.name] || ''}
+                                  onChange={(e) => setFormData({
+                                    ...formData,
+                                    fieldValues: {
+                                      ...formData.fieldValues,
+                                      [template.fieldTemplate.name]: e.target.value
+                                    }
+                                  })}
+                                  placeholder={template.fieldTemplate.placeholder || ''}
+                                  className="mt-2"
+                                />
+                              )}
+                              {template.fieldTemplate.type === 'textarea' && (
+                                <Textarea
+                                  value={formData.fieldValues[template.fieldTemplate.name] || ''}
+                                  onChange={(e) => setFormData({
+                                    ...formData,
+                                    fieldValues: {
+                                      ...formData.fieldValues,
+                                      [template.fieldTemplate.name]: e.target.value
+                                    }
+                                  })}
+                                  placeholder={template.fieldTemplate.placeholder || ''}
+                                  className="mt-2"
+                                />
+                              )}
+                              {template.fieldTemplate.type === 'number' && (
+                                <Input
+                                  type="number"
+                                  value={formData.fieldValues[template.fieldTemplate.name] || ''}
+                                  onChange={(e) => setFormData({
+                                    ...formData,
+                                    fieldValues: {
+                                      ...formData.fieldValues,
+                                      [template.fieldTemplate.name]: e.target.value
+                                    }
+                                  })}
+                                  placeholder={template.fieldTemplate.placeholder || ''}
+                                  className="mt-2"
+                                />
+                              )}
+                              {template.fieldTemplate.type === 'select' && (
+                                <Select
+                                  value={formData.fieldValues[template.fieldTemplate.name] || ''}
+                                  onValueChange={(value) => setFormData({
+                                    ...formData,
+                                    fieldValues: {
+                                      ...formData.fieldValues,
+                                      [template.fieldTemplate.name]: value
+                                    }
+                                  })}
+                                >
+                                  <SelectTrigger className="mt-2">
+                                    <SelectValue placeholder={template.fieldTemplate.placeholder || 'Select option'} />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {template.fieldTemplate.options?.split(',').map((option: string) => (
+                                      <SelectItem key={option.trim()} value={option.trim()}>
+                                        {option.trim()}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              )}
+                              {template.fieldTemplate.type === 'checkbox' && (
+                                <div className="flex items-center space-x-2 mt-2">
+                                  <Checkbox
+                                    checked={formData.fieldValues[template.fieldTemplate.name] === 'true'}
+                                    onCheckedChange={(checked) => setFormData({
+                                      ...formData,
+                                      fieldValues: {
+                                        ...formData.fieldValues,
+                                        [template.fieldTemplate.name]: checked ? 'true' : 'false'
+                                      }
+                                    })}
+                                  />
+                                  <Label>{template.fieldTemplate.label}</Label>
+                                </div>
+                              )}
+                              {template.helpText && (
+                                <p className="text-sm text-gray-500 mt-1">{template.helpText}</p>
+                              )}
+                            </div>
+                          ))}
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Classification */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Classification</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <LockedInput
+                        type="select"
+                        label="Priority Level"
+                        value={formData.priority}
+                        onChange={(value) => setFormData({ ...formData, priority: value })}
+                        options={[
+                          { value: 'LOW', label: 'Low - General inquiry' },
+                          { value: 'MEDIUM', label: 'Medium - Standard request' },
+                          { value: 'HIGH', label: 'High - Business impact' },
+                          { value: 'CRITICAL', label: 'Critical - System down' }
+                        ]}
+                        isLocked={lockedFields.priority?.isLocked}
+                        source={lockedFields.priority?.source}
+                        canOverride={lockedFields.priority?.canOverride}
+                        onUnlock={() => setLockedFields({ 
+                          ...lockedFields, 
+                          priority: { ...lockedFields.priority!, isLocked: false } 
+                        })}
+                      />
+
+                      <LockedInput
+                        type="select"
+                        label="ITIL Category"
+                        value={formData.category}
+                        onChange={(value) => setFormData({ ...formData, category: value })}
+                        options={[
+                          { value: 'INCIDENT', label: 'Incident' },
+                          { value: 'SERVICE_REQUEST', label: 'Service Request' },
+                          { value: 'CHANGE_REQUEST', label: 'Change Request' },
+                          { value: 'EVENT_REQUEST', label: 'Event Request' }
+                        ]}
+                        isLocked={lockedFields.category?.isLocked}
+                        source={lockedFields.category?.source}
+                        canOverride={lockedFields.category?.canOverride}
+                        onUnlock={() => setLockedFields({ 
+                          ...lockedFields, 
+                          category: { ...lockedFields.category!, isLocked: false } 
+                        })}
+                      />
+
+                      <LockedInput
+                        type="select"
+                        label="Issue Classification"
+                        value={formData.issueClassification}
+                        onChange={(value) => setFormData({ ...formData, issueClassification: value })}
+                        placeholder="Select classification (optional)"
+                        options={[
+                          { value: 'HUMAN_ERROR', label: 'Human Error' },
+                          { value: 'SYSTEM_ERROR', label: 'System Error' },
+                          { value: 'HARDWARE_FAILURE', label: 'Hardware Failure' },
+                          { value: 'NETWORK_ISSUE', label: 'Network Issue' },
+                          { value: 'SECURITY_INCIDENT', label: 'Security Incident' },
+                          { value: 'DATA_ISSUE', label: 'Data Issue' },
+                          { value: 'PROCESS_GAP', label: 'Process Gap' },
+                          { value: 'EXTERNAL_FACTOR', label: 'External Factor' }
+                        ]}
+                        isLocked={lockedFields.issueClassification?.isLocked}
+                        source={lockedFields.issueClassification?.source}
+                        canOverride={lockedFields.issueClassification?.canOverride}
+                        onUnlock={() => setLockedFields({ 
+                          ...lockedFields, 
+                          issueClassification: { ...lockedFields.issueClassification!, isLocked: false } 
+                        })}
+                      />
+                    </CardContent>
+                  </Card>
+
+                  {/* 3-Tier Categorization */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">3-Tier Categorization</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <LockedInput
+                        type="select"
+                        label="Category"
+                        value={formData.categoryId}
+                        onChange={(value) => {
+                          setFormData({ 
+                            ...formData, 
+                            categoryId: value,
+                            subcategoryId: '',
+                            itemId: ''
+                          })
+                          if (value) loadTierSubcategories(value)
+                        }}
+                        placeholder="Select category (optional)"
+                        options={tierCategories.map(cat => ({ value: cat.id, label: cat.name }))}
+                        isLocked={lockedFields.categoryId?.isLocked}
+                        source={lockedFields.categoryId?.source}
+                        canOverride={lockedFields.categoryId?.canOverride}
+                        onUnlock={() => setLockedFields({ 
+                          ...lockedFields, 
+                          categoryId: { ...lockedFields.categoryId!, isLocked: false } 
+                        })}
+                      />
+
+                      <LockedInput
+                        type="select"
+                        label="Subcategory"
+                        value={formData.subcategoryId}
+                        onChange={(value) => {
+                          setFormData({
+                            ...formData,
+                            subcategoryId: value,
+                            itemId: ''
+                          })
+                          if (value) loadTierItems(value)
+                        }}
+                        placeholder="Select subcategory (optional)"
+                        options={tierSubcategories.map(sub => ({ value: sub.id, label: sub.name }))}
+                        isLocked={lockedFields.subcategoryId?.isLocked}
+                        source={lockedFields.subcategoryId?.source}
+                        canOverride={lockedFields.subcategoryId?.canOverride}
+                        onUnlock={() => setLockedFields({ 
+                          ...lockedFields, 
+                          subcategoryId: { ...lockedFields.subcategoryId!, isLocked: false } 
+                        })}
+                      />
+
+                      <LockedInput
+                        type="select"
+                        label="Item"
+                        value={formData.itemId}
+                        onChange={(value) => setFormData({ ...formData, itemId: value })}
+                        placeholder="Select item (optional)"
+                        options={tierItems.map(item => ({ value: item.id, label: item.name }))}
+                        isLocked={lockedFields.itemId?.isLocked}
+                        source={lockedFields.itemId?.source}
+                        canOverride={lockedFields.itemId?.canOverride}
+                        onUnlock={() => setLockedFields({ 
+                          ...lockedFields, 
+                          itemId: { ...lockedFields.itemId!, isLocked: false } 
+                        })}
+                      />
+                    </CardContent>
+                  </Card>
+
+                  {/* Attachments */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Attachments</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center">
+                        <input
+                          type="file"
+                          multiple
+                          onChange={handleFileUpload}
+                          className="hidden"
+                          id="file-upload"
+                          accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.gif,.zip,.rar,.csv,.xml,.json"
+                        />
+                        <label
+                          htmlFor="file-upload"
+                          className="cursor-pointer flex flex-col items-center space-y-2"
+                        >
+                          <Upload className="h-8 w-8 text-gray-400" />
+                          <span className="text-sm text-gray-600 dark:text-gray-400">
+                            Click to upload files or drag and drop
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            Maximum file size: 10MB
+                          </span>
+                        </label>
+                      </div>
+
+                      {/* Attachment List */}
+                      {attachments.length > 0 && (
+                        <div className="space-y-2">
+                          <Label>Selected Files ({attachments.length})</Label>
+                          <div className="space-y-2">
+                            {attachments.map((file, index) => (
+                              <div
+                                key={index}
+                                className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
+                              >
+                                <div className="flex items-center space-x-3">
+                                  <div className="flex-shrink-0">
+                                    <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
+                                      <Upload className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                    </div>
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                      {file.name}
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                      {(file.size / 1024 / 1024).toFixed(2)} MB
+                                    </p>
+                                  </div>
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeAttachment(index)}
+                                  className="text-red-600 hover:text-red-800"
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            )}
+
+            {/* Step 4: Review & Submit */}
+            {currentStep === 4 && (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                    Review & Submit
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    Please review your ticket before submitting
+                  </p>
+                </div>
+
+                <Card className="border-2 border-blue-200 dark:border-blue-800">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Eye className="h-5 w-5" />
+                      Ticket Preview
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Title</Label>
+                      <p className="text-gray-900 dark:text-white">{formData.title}</p>
+                    </div>
+                    
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Service</Label>
+                      <p className="text-gray-900 dark:text-white">{selectedService?.name}</p>
+                    </div>
+                    
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Priority</Label>
+                      <Badge className="ml-2">{formData.priority}</Badge>
+                    </div>
+                    
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">Description</Label>
+                      <p className="text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+                        {formData.description}
+                      </p>
+                    </div>
+
+                    {/* Custom Fields Preview */}
+                    {selectedService && formData.fieldValues && Object.keys(formData.fieldValues).length > 0 && (
+                      <div>
+                        <Label className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3 block">Service Specific Information</Label>
+                        <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md space-y-3">
+                          {/* Service Fields */}
+                          {selectedService.fields && selectedService.fields
+                            .filter((field: any) => field.isUserVisible && formData.fieldValues[field.name])
+                            .map((field: any) => (
+                              <div key={field.id} className="flex justify-between items-start">
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                  {field.label}:
+                                </span>
+                                <span className="text-sm text-gray-900 dark:text-white max-w-xs text-right">
+                                  {field.type === 'CHECKBOX' 
+                                    ? (formData.fieldValues[field.name] === 'true' ? 'Yes' : 'No')
+                                    : formData.fieldValues[field.name]
+                                  }
+                                </span>
+                              </div>
+                            ))}
+                          
+                          {/* Field Templates */}
+                          {selectedService.fieldTemplates && selectedService.fieldTemplates
+                            .filter((template: any) => template.isUserVisible && formData.fieldValues[template.fieldTemplate.name])
+                            .map((template: any) => (
+                              <div key={template.id} className="flex justify-between items-start">
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                  {template.fieldTemplate.label}:
+                                </span>
+                                <span className="text-sm text-gray-900 dark:text-white max-w-xs text-right">
+                                  {template.fieldTemplate.type === 'checkbox' 
+                                    ? (formData.fieldValues[template.fieldTemplate.name] === 'true' ? 'Yes' : 'No')
+                                    : formData.fieldValues[template.fieldTemplate.name]
+                                  }
+                                </span>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Category Information */}
+                    {(formData.categoryId || formData.subcategoryId || formData.itemId) && (
+                      <div>
+                        <Label className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3 block">Categorization</Label>
+                        <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md space-y-2">
+                          {formData.categoryId && (
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Category:</span>
+                              <span className="text-sm text-gray-900 dark:text-white">
+                                {tierCategories.find(cat => cat.id === formData.categoryId)?.name || 'Unknown'}
+                              </span>
+                            </div>
+                          )}
+                          {formData.subcategoryId && (
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Subcategory:</span>
+                              <span className="text-sm text-gray-900 dark:text-white">
+                                {tierSubcategories.find(sub => sub.id === formData.subcategoryId)?.name || 'Unknown'}
+                              </span>
+                            </div>
+                          )}
+                          {formData.itemId && (
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Item:</span>
+                              <span className="text-sm text-gray-900 dark:text-white">
+                                {tierItems.find(item => item.id === formData.itemId)?.name || 'Unknown'}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Attachments Preview */}
+                    {attachments.length > 0 && (
+                      <div>
+                        <Label className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3 block">Attachments ({attachments.length})</Label>
+                        <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md">
+                          <div className="space-y-2">
+                            {attachments.map((file, index) => (
+                              <div key={index} className="flex items-center justify-between text-sm">
+                                <span className="text-gray-900 dark:text-white">{file.name}</span>
+                                <span className="text-gray-500">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-blue-500" />
+                        <span className="text-sm">SLA: {selectedService?.slaHours || selectedService?.estimatedHours}h</span>
+                      </div>
+                      {selectedService?.requiresApproval && (
+                        <div className="flex items-center gap-2">
+                          <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                          <span className="text-sm">Requires Approval</span>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-gray-200 dark:border-gray-700 p-6 bg-gray-50 dark:bg-gray-800/50">
+          <div className="flex items-center justify-between">
+            <Button
+              variant="outline"
+              onClick={handlePrevStep}
+              disabled={currentStep === 1}
+              className="flex items-center gap-2"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Previous
+            </Button>
+
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              Step {currentStep} of {steps.length}
+            </div>
+
+            {currentStep < steps.length ? (
+              <Button
+                onClick={handleNextStep}
+                disabled={
+                  (currentStep === 1 && !selectedCategory) ||
+                  (currentStep === 2 && !selectedService) ||
+                  (currentStep === 3 && (!formData.title || !formData.description))
+                }
+                className="flex items-center gap-2"
+              >
+                Next
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            ) : (
+              <Button
+                onClick={handleSubmit}
+                disabled={isLoading || !formData.title || !formData.description}
+                className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-600"
+              >
+                {isLoading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="h-4 w-4" />
+                    Create Ticket
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

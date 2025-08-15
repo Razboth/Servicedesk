@@ -54,20 +54,25 @@ interface ServiceField {
 }
 
 interface Props {
-  serviceId: string;
-  serviceName: string;
-  isOpen: boolean;
-  onClose: () => void;
+  service: {
+    id: string;
+    name: string;
+  };
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   onUpdate: () => void;
 }
 
 export function ServiceFieldTemplatesDialog({
-  serviceId,
-  serviceName,
-  isOpen,
-  onClose,
+  service,
+  open,
+  onOpenChange,
   onUpdate
 }: Props) {
+  const serviceId = service.id;
+  const serviceName = service.name;
+  const isOpen = open;
+  const onClose = () => onOpenChange(false);
   const [activeTab, setActiveTab] = useState('templates');
   const [fieldTemplates, setFieldTemplates] = useState<FieldTemplate[]>([]);
   const [serviceFieldTemplates, setServiceFieldTemplates] = useState<ServiceFieldTemplate[]>([]);
@@ -253,9 +258,55 @@ export function ServiceFieldTemplatesDialog({
     }
   };
 
+  const [editingField, setEditingField] = useState<ServiceField | null>(null);
+  const [editForm, setEditForm] = useState<Partial<ServiceField>>({});
+
   const handleEditCustomField = (field: ServiceField) => {
-    // TODO: Implement edit dialog for custom fields
-    toast.info('Edit functionality coming soon');
+    setEditingField(field);
+    setEditForm({
+      name: field.name,
+      label: field.label,
+      type: field.type,
+      isRequired: field.isRequired,
+      isUserVisible: field.isUserVisible,
+      placeholder: field.placeholder,
+      helpText: field.helpText,
+      defaultValue: field.defaultValue,
+      isActive: field.isActive
+    });
+  };
+
+  const handleSaveEditField = async () => {
+    if (!editingField || !editForm.name || !editForm.label) {
+      toast.error('Name and label are required');
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/admin/services/${serviceId}/fields/${editingField.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm)
+      });
+
+      if (response.ok) {
+        toast.success('Custom field updated');
+        setEditingField(null);
+        setEditForm({});
+        fetchData();
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Failed to update custom field');
+      }
+    } catch (error) {
+      console.error('Error updating custom field:', error);
+      toast.error('Failed to update custom field');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingField(null);
+    setEditForm({});
   };
 
   const handleDeleteCustomField = async (fieldId: string) => {
@@ -675,6 +726,109 @@ export function ServiceFieldTemplatesDialog({
           </Button>
         </div>
       </DialogContent>
+      
+      {/* Edit Field Dialog */}
+      {editingField && (
+        <Dialog open={!!editingField} onOpenChange={(open) => !open && handleCancelEdit()}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Edit Custom Field</DialogTitle>
+              <DialogDescription>
+                Modify the properties of this custom field
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Field Name</Label>
+                <Input
+                  id="edit-name"
+                  value={editForm.name || ''}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  placeholder="field_name"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="edit-label">Display Label</Label>
+                <Input
+                  id="edit-label"
+                  value={editForm.label || ''}
+                  onChange={(e) => setEditForm({ ...editForm, label: e.target.value })}
+                  placeholder="Field Label"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="edit-placeholder">Placeholder Text</Label>
+                <Input
+                  id="edit-placeholder"
+                  value={editForm.placeholder || ''}
+                  onChange={(e) => setEditForm({ ...editForm, placeholder: e.target.value })}
+                  placeholder="Enter placeholder text..."
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="edit-help">Help Text</Label>
+                <Textarea
+                  id="edit-help"
+                  value={editForm.helpText || ''}
+                  onChange={(e) => setEditForm({ ...editForm, helpText: e.target.value })}
+                  placeholder="Additional help text for users..."
+                  rows={3}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="edit-default">Default Value</Label>
+                <Input
+                  id="edit-default"
+                  value={editForm.defaultValue || ''}
+                  onChange={(e) => setEditForm({ ...editForm, defaultValue: e.target.value })}
+                  placeholder="Default value..."
+                />
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="edit-required"
+                  checked={editForm.isRequired || false}
+                  onCheckedChange={(checked) => setEditForm({ ...editForm, isRequired: checked })}
+                />
+                <Label htmlFor="edit-required">Required Field</Label>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="edit-visible"
+                  checked={editForm.isUserVisible || false}
+                  onCheckedChange={(checked) => setEditForm({ ...editForm, isUserVisible: checked })}
+                />
+                <Label htmlFor="edit-visible">User Visible</Label>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="edit-active"
+                  checked={editForm.isActive || false}
+                  onCheckedChange={(checked) => setEditForm({ ...editForm, isActive: checked })}
+                />
+                <Label htmlFor="edit-active">Active</Label>
+              </div>
+            </div>
+            
+            <div className="flex justify-end gap-2 mt-6">
+              <Button variant="outline" onClick={handleCancelEdit}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveEditField}>
+                Save Changes
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </Dialog>
   );
 }

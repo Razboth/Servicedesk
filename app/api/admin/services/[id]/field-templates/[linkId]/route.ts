@@ -14,7 +14,7 @@ const updateSchema = z.object({
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string; linkId: string } }
+  { params }: { params: Promise<{ id: string; linkId: string }> }
 ) {
   try {
     const session = await auth();
@@ -22,7 +22,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id: serviceId, linkId } = params;
+    const { id: serviceId, linkId } = await params;
     const body = await request.json();
     const validatedData = updateSchema.parse(body);
 
@@ -67,7 +67,7 @@ export async function PATCH(
 // DELETE /api/admin/services/[id]/field-templates/[linkId] - Remove a field template from a service
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string; linkId: string } }
+  { params }: { params: Promise<{ id: string; linkId: string }> }
 ) {
   try {
     const session = await auth();
@@ -75,7 +75,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id: serviceId, linkId } = params;
+    const { id: serviceId, linkId } = await params;
 
     // Check if link exists
     const existingLink = await prisma.serviceFieldTemplate.findFirst({

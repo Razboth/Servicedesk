@@ -2,10 +2,153 @@ import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
+import { headers } from 'next/headers'
 
 const prisma = new PrismaClient()
 
-export const authOptions = {
+// Account lockout configuration
+const MAX_LOGIN_ATTEMPTS = 5
+const LOCKOUT_DURATION = 30 * 60 * 1000 // 30 minutes in milliseconds
+
+// Helper function to extract IP address from request headers
+function getClientIP(): string | undefined {
+  try {
+    const headersList = headers()
+    
+    // Helper function to normalize IPv4-mapped IPv6 addresses
+    const normalizeIP = (ip: string): string => {
+      // Remove IPv4-mapped IPv6 prefix ::ffff:
+      if (ip.startsWith('::ffff:')) {
+        return ip.substring(7)
+      }
+      return ip
+    }
+    
+    // Check for forwarded IP from proxy/load balancer
+    const forwardedFor = headersList.get('x-forwarded-for')
+    if (forwardedFor) {
+      // x-forwarded-for can contain multiple IPs, take the first one
+      return normalizeIP(forwardedFor.split(',')[0].trim())
+    }
+    
+    // Check for real IP from proxy
+    const realIP = headersList.get('x-real-ip')
+    if (realIP) {
+      return normalizeIP(realIP.trim())
+    }
+    
+    // Check for client IP
+    const clientIP = headersList.get('x-client-ip')
+    if (clientIP) {
+      return normalizeIP(clientIP.trim())
+    }
+    
+    // Check for CF-Connecting-IP (Cloudflare)
+    const cfConnectingIP = headersList.get('cf-connecting-ip')
+    if (cfConnectingIP) {
+      return normalizeIP(cfConnectingIP.trim())
+    }
+    
+    // Check for true-client-ip
+    const trueClientIP = headersList.get('true-client-ip')
+    if (trueClientIP) {
+      return normalizeIP(trueClientIP.trim())
+    }
+    
+    return undefined
+  } catch (error) {
+    console.error('Error extracting client IP:', error)
+    return undefined
+  }
+}
+
+// Helper function to check if account is locked
+async function isAccountLocked(email: string): Promise<boolean> {
+  const user = await prisma.user.findUnique({
+    where: { email },
+    select: { loginAttempts: true, lockedAt: true }
+  })
+
+  if (!user || !user.lockedAt) return false
+
+  // Check if lockout period has expired
+  const lockoutExpired = new Date().getTime() - new Date(user.lockedAt).getTime() > LOCKOUT_DURATION
+  
+  if (lockoutExpired) {
+    // Reset lockout if expired
+    await prisma.user.update({
+      where: { email },
+      data: {
+        loginAttempts: 0,
+        lockedAt: null,
+        lastLoginAttempt: null
+      }
+    })
+    return false
+  }
+
+  return user.loginAttempts >= MAX_LOGIN_ATTEMPTS
+}
+
+// Helper function to record login attempt
+async function recordLoginAttempt(email: string, success: boolean, ipAddress?: string, userAgent?: string): Promise<void> {
+  const user = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true, loginAttempts: true }
+  })
+
+  if (!user) {
+    // Record attempt even for non-existent users
+    await prisma.loginAttempt.create({
+      data: {
+        email,
+        success: false,
+        ipAddress,
+        userAgent
+      }
+    })
+    return
+  }
+
+  const newAttempts = success ? 0 : user.loginAttempts + 1
+  const shouldLock = !success && newAttempts >= MAX_LOGIN_ATTEMPTS
+  
+  // Update user login tracking
+  await prisma.user.update({
+    where: { email },
+    data: {
+      loginAttempts: newAttempts,
+      lastLoginAttempt: new Date(),
+      lockedAt: shouldLock ? new Date() : undefined,
+      lastActivity: success ? new Date() : undefined
+    }
+  })
+
+  // Record in audit log
+  await prisma.loginAttempt.create({
+    data: {
+      email,
+      success,
+      ipAddress,
+      userAgent,
+      lockTriggered: shouldLock
+    }
+  })
+}
+
+const authOptions = {
+  // Use secure cookies in production
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === 'production' ? '__Secure-next-auth.session-token' : 'next-auth.session-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'strict' as const,
+        path: '/',
+        secure: process.env.NODE_ENV === 'production'
+      }
+    }
+  },
   providers: [
     Credentials({
       name: 'credentials',
@@ -13,16 +156,33 @@ export const authOptions = {
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' }
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) {
           return null
         }
 
+        const email = credentials.email as string
+        const password = credentials.password as string
+
+        // Extract IP and User Agent from request headers
+        const ipAddress = getClientIP()
+        const headersList = headers()
+        const userAgent = headersList.get('user-agent')
+        
+        // Log for debugging
+        console.log('Login attempt:', { email, ipAddress, userAgent: userAgent?.slice(0, 50) })
+
         try {
+          // Check if account is locked
+          if (await isAccountLocked(email)) {
+            await recordLoginAttempt(email, false, ipAddress, userAgent)
+            throw new Error('ACCOUNT_LOCKED')
+          }
+
           // Find user in database
           const user = await prisma.user.findUnique({
             where: {
-              email: credentials.email as string,
+              email: email,
               isActive: true
             },
             include: {
@@ -31,18 +191,28 @@ export const authOptions = {
           })
 
           if (!user || !user.password) {
+            await recordLoginAttempt(email, false, ipAddress, userAgent)
             return null
           }
 
           // Verify password
-          const isPasswordValid = await bcrypt.compare(
-            credentials.password as string,
-            user.password
-          )
+          const isPasswordValid = await bcrypt.compare(password, user.password)
 
           if (!isPasswordValid) {
+            await recordLoginAttempt(email, false, ipAddress, userAgent)
             return null
           }
+
+          // Successful login - record attempt and update activity
+          await recordLoginAttempt(email, true, ipAddress, userAgent)
+
+          // Get user with support group
+          const userWithSupportGroup = await prisma.user.findUnique({
+            where: { id: user.id },
+            include: {
+              supportGroup: true
+            }
+          })
 
           return {
             id: user.id,
@@ -50,9 +220,14 @@ export const authOptions = {
             name: user.name,
             role: user.role,
             branchId: user.branchId,
-            branchName: user.branch?.name
+            branchName: user.branch?.name,
+            supportGroupId: userWithSupportGroup?.supportGroupId,
+            supportGroupCode: userWithSupportGroup?.supportGroup?.code
           }
         } catch (error) {
+          if (error.message === 'ACCOUNT_LOCKED') {
+            throw new Error('Your account has been locked due to too many failed login attempts. Please contact your administrator.')
+          }
           console.error('Auth error:', error)
           return null
         }
@@ -60,7 +235,7 @@ export const authOptions = {
     })
   ],
   session: {
-    strategy: 'jwt'
+    strategy: 'jwt' as const
   },
   callbacks: {
     async jwt({ token, user }: any) {
@@ -68,6 +243,8 @@ export const authOptions = {
         token.role = user.role;
         token.branchId = user.branchId;
         token.branchName = user.branchName;
+        token.supportGroupId = user.supportGroupId;
+        token.supportGroupCode = user.supportGroupCode;
       }
       return token;
     },
@@ -77,6 +254,8 @@ export const authOptions = {
         session.user.role = token.role as string;
         session.user.branchId = token.branchId as string | null;
         session.user.branchName = token.branchName as string | null;
+        session.user.supportGroupId = token.supportGroupId as string | null;
+        session.user.supportGroupCode = token.supportGroupCode as string | null;
       }
       return session;
     }
@@ -85,6 +264,8 @@ export const authOptions = {
     signIn: '/auth/signin',
     error: '/auth/error',
   },
+  // Dynamic URL configuration to handle different hosts (IP addresses, domains)
+  trustHost: true,
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth(authOptions)

@@ -26,7 +26,31 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
-        setError('Invalid credentials');
+        // Check for specific error messages
+        if (result.error.includes('locked') || result.error.includes('administrator')) {
+          setError('Your account has been locked due to too many failed login attempts. Please contact your administrator to unlock your account.');
+        } else {
+          // Always check remaining attempts first for any authentication error
+          try {
+            const response = await fetch('/api/auth/login-attempts', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email })
+            });
+            const data = await response.json();
+            
+            // Check if the account is actually locked
+            if (data.isLocked) {
+              setError('Your account has been locked due to too many failed login attempts. Please contact your administrator to unlock your account.');
+            } else if (data.remainingAttempts !== undefined && data.remainingAttempts > 0) {
+              setError(`Invalid credentials. ${data.remainingAttempts} attempts remaining before account lockout.`);
+            } else {
+              setError('Invalid credentials');
+            }
+          } catch {
+            setError('Invalid credentials');
+          }
+        }
       } else {
         // Check session and redirect
         const session = await getSession();
@@ -41,11 +65,6 @@ export default function LoginPage() {
     }
   };
 
-  const fillDemoCredentials = (demoEmail: string, demoPassword: string) => {
-    setEmail(demoEmail);
-    setPassword(demoPassword);
-    setError('');
-  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -109,58 +128,10 @@ export default function LoginPage() {
             </Button>
           </form>
           
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-            <p className="text-sm font-medium text-gray-700 mb-3">Demo Accounts (Click to fill):</p>
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-auto p-2 text-left justify-start"
-                onClick={() => fillDemoCredentials('user@banksulutgo.co.id', 'password123')}
-              >
-                <div className="text-xs">
-                  <div className="font-medium text-blue-600">👤 User</div>
-                  <div className="text-gray-500">Branch Employee</div>
-                </div>
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-auto p-2 text-left justify-start"
-                onClick={() => fillDemoCredentials('manager@banksulutgo.co.id', 'password123')}
-              >
-                <div className="text-xs">
-                  <div className="font-medium text-green-600">👔 Manager</div>
-                  <div className="text-gray-500">Branch Manager</div>
-                </div>
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-auto p-2 text-left justify-start"
-                onClick={() => fillDemoCredentials('tech@banksulutgo.co.id', 'password123')}
-              >
-                <div className="text-xs">
-                  <div className="font-medium text-purple-600">🔧 Technician</div>
-                  <div className="text-gray-500">IT Support</div>
-                </div>
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-auto p-2 text-left justify-start"
-                onClick={() => fillDemoCredentials('admin@banksulutgo.co.id', 'password123')}
-              >
-                <div className="text-xs">
-                  <div className="font-medium text-red-600">⚙️ Admin</div>
-                  <div className="text-gray-500">System Admin</div>
-                </div>
-              </Button>
-            </div>
+          <div className="mt-6 text-center">
+            <p className="text-xs text-gray-500">
+              Need help? Contact your system administrator
+            </p>
           </div>
         </CardContent>
       </Card>

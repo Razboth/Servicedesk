@@ -26,7 +26,31 @@ export default function SignInPage() {
       });
 
       if (result?.error) {
-        setError('Invalid credentials');
+        // Check for specific error messages
+        if (result.error.includes('locked') || result.error.includes('administrator')) {
+          setError('Your account has been locked due to too many failed login attempts. Please contact your administrator to unlock your account.');
+        } else {
+          // Always check remaining attempts first for any authentication error
+          try {
+            const response = await fetch('/api/auth/login-attempts', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email })
+            });
+            const data = await response.json();
+            
+            // Check if the account is actually locked
+            if (data.isLocked) {
+              setError('Your account has been locked due to too many failed login attempts. Please contact your administrator to unlock your account.');
+            } else if (data.remainingAttempts !== undefined && data.remainingAttempts > 0) {
+              setError(`Invalid credentials. ${data.remainingAttempts} attempts remaining before account lockout.`);
+            } else {
+              setError('Invalid credentials');
+            }
+          } catch {
+            setError('Invalid credentials');
+          }
+        }
       } else {
         // Check session and redirect
         const session = await getSession();
@@ -117,12 +141,9 @@ export default function SignInPage() {
             </form>
 
             <div className="mt-6 text-center">
-              <div className="text-sm text-gray-600">
-                <p className="font-medium">Demo Credentials:</p>
-                <p>admin@banksulutgo.co.id / password123</p>
-                <p>manager@banksulutgo.co.id / password123</p>
-                <p>tech@banksulutgo.co.id / password123</p>
-              </div>
+              <p className="text-xs text-gray-500">
+                Need help accessing your account? Contact your system administrator.
+              </p>
             </div>
           </CardContent>
         </Card>

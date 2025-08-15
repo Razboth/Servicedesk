@@ -41,12 +41,34 @@ export async function GET(
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
+    // Get user's details for access control
+    const userWithDetails = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { 
+        branchId: true, 
+        role: true, 
+        supportGroupId: true
+      }
+    });
+
     // Check access permissions
-    const canAccess = 
-      session.user.role === 'ADMIN' ||
-      session.user.role === 'MANAGER' ||
-      ticket.createdById === session.user.id ||
-      ticket.assignedToId === session.user.id;
+    let canAccess = false;
+    
+    if (session.user.role === 'ADMIN') {
+      // Super admin can see all
+      canAccess = true;
+    } else if (session.user.role === 'MANAGER') {
+      // Managers can see comments from tickets in their branch
+      canAccess = userWithDetails?.branchId === ticket.branchId;
+    } else if (session.user.role === 'TECHNICIAN') {
+      // Technicians can see comments from tickets they created, are assigned to, or match their support group
+      const isCreatorOrAssignee = ticket.createdById === session.user.id || ticket.assignedToId === session.user.id;
+      const isSupportGroupMatch = userWithDetails?.supportGroupId && ticket.service?.supportGroupId === userWithDetails.supportGroupId;
+      canAccess = isCreatorOrAssignee || isSupportGroupMatch;
+    } else if (session.user.role === 'USER') {
+      // Users can only see comments from their own tickets
+      canAccess = ticket.createdById === session.user.id;
+    }
 
     if (!canAccess) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
@@ -118,13 +140,34 @@ export async function POST(
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
+    // Get user's details for access control
+    const userWithDetails = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { 
+        branchId: true, 
+        role: true, 
+        supportGroupId: true
+      }
+    });
+
     // Check access permissions
-    const canComment = 
-      session.user.role === 'ADMIN' ||
-      session.user.role === 'MANAGER' ||
-      session.user.role === 'TECHNICIAN' ||
-      ticket.createdById === session.user.id ||
-      ticket.assignedToId === session.user.id;
+    let canComment = false;
+    
+    if (session.user.role === 'ADMIN') {
+      // Super admin can comment on all
+      canComment = true;
+    } else if (session.user.role === 'MANAGER') {
+      // Managers can comment on tickets in their branch
+      canComment = userWithDetails?.branchId === ticket.branchId;
+    } else if (session.user.role === 'TECHNICIAN') {
+      // Technicians can comment on tickets they created, are assigned to, or match their support group
+      const isCreatorOrAssignee = ticket.createdById === session.user.id || ticket.assignedToId === session.user.id;
+      const isSupportGroupMatch = userWithDetails?.supportGroupId && ticket.service?.supportGroupId === userWithDetails.supportGroupId;
+      canComment = isCreatorOrAssignee || isSupportGroupMatch;
+    } else if (session.user.role === 'USER') {
+      // Users can only comment on their own tickets
+      canComment = ticket.createdById === session.user.id;
+    }
 
     if (!canComment) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });

@@ -44,7 +44,14 @@ export async function GET(request: NextRequest) {
           name: true,
           description: true,
           helpText: true,
-          supportGroup: true,
+          supportGroup: {
+            select: {
+              id: true,
+              code: true,
+              name: true,
+              description: true
+            }
+          },
           priority: true,
           estimatedHours: true,
           slaHours: true,
@@ -128,7 +135,14 @@ export async function GET(request: NextRequest) {
           name: true,
           description: true,
           helpText: true,
-          supportGroup: true,
+          supportGroup: {
+            select: {
+              id: true,
+              code: true,
+              name: true,
+              description: true
+            }
+          },
           priority: true,
           estimatedHours: true,
           slaHours: true,

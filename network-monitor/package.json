@@ -1,0 +1,38 @@
+{
+  "name": "banksulutgo-network-monitor",
+  "version": "1.0.0",
+  "description": "Network monitoring service for Bank SulutGo ServiceDesk",
+  "main": "monitor.js",
+  "scripts": {
+    "start": "node monitor.js start",
+    "status": "node monitor.js status",
+    "test": "node monitor.js test",
+    "dev": "NODE_ENV=development node monitor.js start",
+    "install-service": "node scripts/install-service.js",
+    "uninstall-service": "node scripts/uninstall-service.js"
+  },
+  "keywords": [
+    "network",
+    "monitoring",
+    "ping",
+    "servicedesk",
+    "bank-sulutgo"
+  ],
+  "author": "Bank SulutGo IT Team",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@prisma/client": "^5.7.0",
+    "bcryptjs": "^2.4.3",
+    "ping": "^0.4.4",
+    "winston": "^3.17.0",
+    "winston-daily-rotate-file": "^4.7.1"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "private"
+  },
+  "private": true
+}

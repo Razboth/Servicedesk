@@ -1,5 +1,21 @@
 {
   "pages": {
+    "/layout": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/layout.css",
+      "static/chunks/app/layout.js"
+    ],
+    "/tickets/modern/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/tickets/modern/page.js"
+    ],
+    "/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/page.js"
+    ],
     "/api/auth/[...nextauth]/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
@@ -10,111 +26,125 @@
       "static/chunks/main-app.js",
       "static/chunks/app/api/dashboard/route.js"
     ],
-    "/api/tier-categories/route": [
+    "/auth/signin/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/api/tier-categories/route.js"
-    ],
-    "/api/services/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/services/route.js"
-    ],
-    "/api/categories/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/categories/route.js"
-    ],
-    "/layout": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/css/app/layout.css",
-      "static/chunks/app/layout.js"
-    ],
-    "/admin/branches/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/admin/branches/page.js"
-    ],
-    "/api/admin/branches/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/admin/branches/route.js"
-    ],
-    "/admin/import/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/admin/import/page.js"
-    ],
-    "/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/page.js"
-    ],
-    "/tickets/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/tickets/page.js"
+      "static/chunks/app/auth/signin/page.js"
     ],
     "/api/tickets/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/api/tickets/route.js"
     ],
-    "/admin/task-templates/page": [
+    "/api/services/favorites/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/admin/task-templates/page.js"
+      "static/chunks/app/api/services/favorites/route.js"
     ],
-    "/api/task-templates/route": [
+    "/api/tier-categories/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/api/task-templates/route.js"
+      "static/chunks/app/api/tier-categories/route.js"
     ],
-    "/admin/services/page": [
+    "/api/services/popular/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/admin/services/page.js"
+      "static/chunks/app/api/services/popular/route.js"
     ],
-    "/admin/field-templates/page": [
+    "/api/categories/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/admin/field-templates/page.js"
+      "static/chunks/app/api/categories/route.js"
     ],
-    "/api/admin/field-templates/route": [
+    "/api/services/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/api/admin/field-templates/route.js"
+      "static/chunks/app/api/services/route.js"
     ],
-    "/admin/categories/page": [
+    "/api/subcategories/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/admin/categories/page.js"
+      "static/chunks/app/api/subcategories/route.js"
     ],
-    "/api/admin/categories/route": [
+    "/api/items/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/api/admin/categories/route.js"
+      "static/chunks/app/api/items/route.js"
     ],
-    "/admin/tier-categories/page": [
+    "/tickets/[id]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/admin/tier-categories/page.js"
+      "static/chunks/app/tickets/[id]/page.js"
     ],
-    "/admin/atms/page": [
+    "/api/tickets/[id]/tasks/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/admin/atms/page.js"
+      "static/chunks/app/api/tickets/[id]/tasks/route.js"
     ],
-    "/api/admin/atms/route": [
+    "/api/tickets/[id]/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/api/admin/atms/route.js"
+      "static/chunks/app/api/tickets/[id]/route.js"
     ],
-    "/api/test-db/route": [
+    "/api/tickets/[id]/comments/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/api/test-db/route.js"
+      "static/chunks/app/api/tickets/[id]/comments/route.js"
+    ],
+    "/tickets/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/tickets/page.js"
+    ],
+    "/manager/dashboard/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/manager/dashboard/page.js"
+    ],
+    "/manager/approvals/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/manager/approvals/page.js"
+    ],
+    "/api/approvals/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/approvals/route.js"
+    ],
+    "/api/categories/favorites/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/categories/favorites/route.js"
+    ],
+    "/api/tickets/[id]/attachments/[attachmentId]/preview/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/tickets/[id]/attachments/[attachmentId]/preview/route.js"
+    ],
+    "/technician/workbench/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/technician/workbench/page.js"
+    ],
+    "/technician/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/technician/page.js"
+    ],
+    "/api/tickets/[id]/assign/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/tickets/[id]/assign/route.js"
+    ],
+    "/api/auth/activity/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/auth/activity/route.js"
+    ],
+    "/api/admin/branches/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/admin/branches/route.js"
     ]
   }
 }

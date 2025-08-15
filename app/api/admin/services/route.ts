@@ -13,7 +13,7 @@ const createServiceSchema = z.object({
   tier1CategoryId: z.string().optional(),
   tier2SubcategoryId: z.string().optional(),
   tier3ItemId: z.string().optional(),
-  supportGroup: z.enum(['IT_HELPDESK', 'NETWORK_TEAM', 'SECURITY_TEAM', 'VENDOR_SUPPORT']),
+  supportGroupId: z.string().min(1, 'Support group is required'), // Changed to supportGroupId
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL', 'EMERGENCY']),
   estimatedHours: z.number().min(1).optional(),
   slaHours: z.number().min(1),
@@ -36,42 +36,95 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const services = await prisma.service.findMany({
-      include: {
-        category: true,
-        tier1Category: true,
-        tier2Subcategory: true,
-        tier3Item: true,
-        fields: {
-          orderBy: {
-            order: 'asc'
-          }
-        },
-        _count: {
-          select: {
-            tickets: true,
-            serviceFieldTemplates: true
-          }
-        },
-        serviceFieldTemplates: {
-          include: {
-            fieldTemplate: true
-          },
-          orderBy: {
-            order: 'asc'
-          }
+    try {
+      // First, check for services without support groups
+      const servicesWithoutGroup = await prisma.service.count({
+        where: {
+          supportGroupId: null
         }
-      },
-      orderBy: {
-        name: 'asc'
+      });
+
+      if (servicesWithoutGroup > 0) {
+        console.log(`Found ${servicesWithoutGroup} services without support group, assigning default...`);
+        
+        // Find default support group
+        const defaultGroup = await prisma.supportGroup.findFirst({
+          where: {
+            code: 'IT_HELPDESK'
+          }
+        });
+
+        if (defaultGroup) {
+          // Update services without support group
+          await prisma.service.updateMany({
+            where: {
+              supportGroupId: null
+            },
+            data: {
+              supportGroupId: defaultGroup.id
+            }
+          });
+          console.log('Updated services with default support group');
+        }
       }
-    });
+    } catch (updateError) {
+      console.error('Error updating services with support group:', updateError);
+      // Continue even if update fails
+    }
+
+    // Try simpler query first
+    let services;
+    try {
+      services = await prisma.service.findMany({
+        include: {
+          category: true,
+          supportGroup: true,
+          fields: {
+            orderBy: {
+              order: 'asc'
+            }
+          },
+          _count: {
+            select: {
+              tickets: true,
+              fieldTemplates: true
+            }
+          }
+        },
+        orderBy: {
+          name: 'asc'
+        }
+      });
+    } catch (queryError: any) {
+      console.error('Error with full query, trying simpler query:', queryError);
+      // Fallback to simpler query without serviceFieldTemplates count
+      services = await prisma.service.findMany({
+        include: {
+          category: true,
+          supportGroup: true,
+          _count: {
+            select: {
+              tickets: true,
+              fieldTemplates: true
+            }
+          }
+        },
+        orderBy: {
+          name: 'asc'
+        }
+      });
+    }
 
     return NextResponse.json(services);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching services:', error);
+    console.error('Error stack:', error.stack);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        error: 'Internal server error', 
+        details: error.message || 'Unknown error',
+        type: error.constructor.name
+      },
       { status: 500 }
     );
   }
@@ -128,9 +181,7 @@ export async function POST(request: NextRequest) {
       },
       include: {
         category: true,
-        tier1Category: true,
-        tier2Subcategory: true,
-        tier3Item: true,
+        supportGroup: true,
         fields: {
           orderBy: {
             order: 'asc'

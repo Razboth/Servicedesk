@@ -14,7 +14,7 @@ const updateCategorySchema = z.object({
 // GET /api/admin/categories/[id] - Get specific category
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -26,8 +26,9 @@ export async function GET(
       );
     }
 
+    const { id } = await params;
     const category = await prisma.serviceCategory.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         parent: {
           select: {
@@ -74,7 +75,7 @@ export async function GET(
 // PUT /api/admin/categories/[id] - Update category
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -86,12 +87,13 @@ export async function PUT(
       );
     }
 
+    const { id } = await params;
     const body = await request.json();
     const validatedData = updateCategorySchema.parse(body);
 
     // Check if category exists
     const existingCategory = await prisma.serviceCategory.findUnique({
-      where: { id: params.id }
+      where: { id }
     });
 
     if (!existingCategory) {
@@ -108,7 +110,7 @@ export async function PUT(
           name: validatedData.name,
           level: validatedData.level || existingCategory.level,
           parentId: validatedData.parentId !== undefined ? validatedData.parentId : existingCategory.parentId,
-          id: { not: params.id }
+          id: { not: id }
         }
       });
 
@@ -154,7 +156,7 @@ export async function PUT(
     }
 
     const updatedCategory = await prisma.serviceCategory.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         ...validatedData,
         updatedAt: new Date()
@@ -206,7 +208,7 @@ export async function PUT(
 // DELETE /api/admin/categories/[id] - Delete category
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -218,9 +220,10 @@ export async function DELETE(
       );
     }
 
-    // Check if category exists
-    const existingCategory = await prisma.serviceCategory.findUnique({
-      where: { id: params.id },
+    const { id } = await params;
+    // Check if category exists and has no children
+    const category = await prisma.serviceCategory.findUnique({
+      where: { id },
       include: {
         _count: {
           select: {
@@ -260,7 +263,7 @@ export async function DELETE(
 
     // Delete the category
     await prisma.serviceCategory.delete({
-      where: { id: params.id }
+      where: { id }
     });
 
     return NextResponse.json(

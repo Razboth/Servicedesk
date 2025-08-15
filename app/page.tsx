@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import { redirect } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { CalendarDays, Clock, Users, AlertTriangle, CheckCircle, XCircle, Pause, Play } from 'lucide-react'
-import { Navbar } from '@/components/navigation/navbar'
+import { CalendarDays, Clock, Users, AlertTriangle, CheckCircle, XCircle, Pause, Play, Shield } from 'lucide-react'
 // Simple SVG icons as components
 const TicketIcon = ({ className }: { className?: string }) => (
   <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -54,14 +54,7 @@ interface DashboardStats {
   activeUsers: number
 }
 
-interface RecentTicket {
-  id: string
-  title: string
-  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | 'EMERGENCY'
-  status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED'
-  assignee: string
-  createdAt: string
-}
+
 
 // Remove mock data - will be fetched from API
 
@@ -88,8 +81,9 @@ function getStatusColor(status: string) {
 
 export default function Dashboard() {
   const { data: session, status } = useSession()
+  const router = useRouter()
   const [stats, setStats] = useState<DashboardStats | null>(null)
-  const [recentTickets, setRecentTickets] = useState<RecentTicket[]>([])
+
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -103,7 +97,6 @@ export default function Dashboard() {
         if (response.ok) {
           const data = await response.json()
           setStats(data.stats)
-          setRecentTickets(data.recentTickets)
         } else {
           console.error('Failed to fetch dashboard data')
         }
@@ -129,7 +122,6 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navbar />
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -141,7 +133,6 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <Button variant="outline">Create Ticket</Button>
               <Button className="bank-gradient text-white">Dashboard</Button>
             </div>
           </div>
@@ -225,52 +216,20 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* Recent Tickets */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Tickets</CardTitle>
-            <CardDescription>Latest service requests and incidents</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {recentTickets.map((ticket) => (
-                <div key={ticket.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <span className="font-medium text-sm text-gray-900">{ticket.id}</span>
-                      <Badge className={`status-badge ${getPriorityColor(ticket.priority)}`}>
-                        {ticket.priority}
-                      </Badge>
-                      <Badge className={`status-badge ${getStatusColor(ticket.status)}`}>
-                        {ticket.status.replace('_', ' ')}
-                      </Badge>
-                    </div>
-                    <h3 className="font-medium text-gray-900 mb-1">{ticket.title}</h3>
-                    <p className="text-sm text-gray-500">
-                      Assigned to {ticket.assignee} • {new Date(ticket.createdAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    View Details
-                  </Button>
-                </div>
-              ))}
-            </div>
-            <div className="mt-6 text-center">
-              <Button variant="outline">View All Tickets</Button>
-            </div>
-          </CardContent>
-        </Card>
+
 
         {/* Quick Actions */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
           <Card className="bank-card hover:shadow-lg transition-shadow cursor-pointer">
             <CardHeader>
               <CardTitle className="text-lg">Create New Ticket</CardTitle>
               <CardDescription>Report an incident or request service</CardDescription>
             </CardHeader>
             <CardContent>
-              <Button className="w-full bank-gradient text-white">
+              <Button 
+                className="w-full bank-gradient text-white"
+                onClick={() => router.push('/tickets')}
+              >
                 Create Ticket
               </Button>
             </CardContent>
@@ -299,6 +258,27 @@ export default function Dashboard() {
               </Button>
             </CardContent>
           </Card>
+
+          {/* SOC Parser Card - Only visible for Security Analysts */}
+          {(session.user.role === 'SECURITY_ANALYST' || session.user.supportGroupCode === 'SECURITY_OPS') && (
+            <Card className="bank-card hover:shadow-lg transition-shadow cursor-pointer border-red-200 bg-red-50">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg text-red-700">SOC Parser</CardTitle>
+                  <Shield className="h-5 w-5 text-red-600" />
+                </div>
+                <CardDescription className="text-red-600">Parse security alerts and create SOC tickets</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button 
+                  className="w-full bg-red-600 hover:bg-red-700 text-white"
+                  onClick={() => router.push('/security/soc-parser')}
+                >
+                  Open SOC Parser
+                </Button>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </main>
     </div>

@@ -18,8 +18,9 @@ const updateATMSchema = z.object({
 // GET /api/admin/atms/[id] - Get single ATM details
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const session = await auth();
     
@@ -31,7 +32,7 @@ export async function GET(
     }
 
     const atm = await prisma.aTM.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         branch: {
           select: {
@@ -95,8 +96,9 @@ export async function GET(
 // PUT /api/admin/atms/[id] - Update ATM
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const session = await auth();
     
@@ -115,7 +117,7 @@ export async function PUT(
       const existingATM = await prisma.aTM.findFirst({
         where: {
           code: validatedData.code,
-          NOT: { id: params.id }
+          NOT: { id }
         }
       });
 
@@ -142,7 +144,7 @@ export async function PUT(
     }
 
     const atm = await prisma.aTM.update({
-      where: { id: params.id },
+      where: { id },
       data: validatedData,
       include: {
         branch: {
@@ -186,8 +188,9 @@ export async function PUT(
 // DELETE /api/admin/atms/[id] - Soft delete ATM
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const session = await auth();
     
@@ -200,7 +203,7 @@ export async function DELETE(
 
     // Check if ATM has active incidents
     const atm = await prisma.aTM.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         _count: {
           select: {
@@ -225,10 +228,10 @@ export async function DELETE(
     }
 
     // Soft delete the ATM
-    const updatedATM = await prisma.aTM.update({
-      where: { id: params.id },
-      data: { isActive: false }
-    });
+      const updatedATM = await prisma.aTM.update({
+        where: { id },
+        data: { isActive: false }
+      });
 
     // Create audit log
     await prisma.auditLog.create({

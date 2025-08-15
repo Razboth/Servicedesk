@@ -2,15 +2,17 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Search, ChevronRight, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -117,7 +119,11 @@ const ticketSchema = z.object({
   categoryId: z.string().optional(),
   subcategoryId: z.string().optional(),
   itemId: z.string().optional(),
-  fieldValues: z.record(z.string()).optional()
+  fieldValues: z.record(z.union([z.string(), z.number(), z.array(z.string())])).optional(),
+  // Security fields
+  isConfidential: z.boolean().default(false),
+  securityClassification: z.enum(['HIGH', 'MEDIUM', 'LOW']).optional(),
+  securityFindings: z.string().optional() // Text area for SOC findings
 });
 
 type TicketFormData = z.infer<typeof ticketSchema>;
@@ -152,6 +158,7 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
     setValue,
     watch,
     reset,
+    control,
     formState: { errors },
     clearErrors,
     trigger,
@@ -160,7 +167,8 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
     resolver: zodResolver(ticketSchema),
     defaultValues: {
       priority: 'MEDIUM',
-      category: 'INCIDENT'
+      category: 'INCIDENT',
+      fieldValues: {}
     }
   });
 
@@ -199,6 +207,13 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
       if (watchedServiceId) {
         console.log('🔍 Autofill Debug: Starting autofill for serviceId:', watchedServiceId);
         const service = services.find(s => s.id === watchedServiceId);
+        
+        // Skip if service is not found and services array is empty (still loading)
+        if (!service && services.length === 0) {
+          console.log('🔍 Autofill Debug: Services still loading, skipping autofill');
+          return;
+        }
+        
         console.log('🔍 Autofill Debug: Found service:', service);
         console.log('🔍 Autofill Debug: Service tier data:', {
           tier1CategoryId: service?.tier1CategoryId,
@@ -209,6 +224,21 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
         setSelectedService(service || null);
         if (service) {
           setIsAutofilling(true);
+          
+          // Initialize all field values for the new service to prevent controlled/uncontrolled issues
+          const allFields = [
+            ...(service.fields || []),
+            ...(service.fieldTemplates || []).map(template => template.fieldTemplate)
+          ].filter(field => field && (field.isUserVisible || 
+            (service.fieldTemplates && service.fieldTemplates.some(t => t.fieldTemplate.id === field.id && t.isUserVisible))));
+          
+          // Initialize all field paths with empty strings to prevent controlled/uncontrolled issues
+          allFields.forEach(field => {
+            const currentValue = watch(`fieldValues.${field.name}`);
+            if (currentValue === undefined) {
+              setValue(`fieldValues.${field.name}`, '');
+            }
+          });
           
           // Prepare form data with service defaults
           const formData: Partial<TicketFormData> = {
@@ -251,7 +281,7 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
             service.fieldTemplates
               .filter(template => template.isUserVisible)
               .forEach(template => {
-                const defaultValue = template.defaultValue || template.fieldTemplate.defaultValue;
+                const defaultValue = template.defaultValue || template.fieldTemplate.defaultValue || '';
                 if (defaultValue) {
                   fieldValues[template.fieldTemplate.name] = defaultValue;
                   console.log('🔍 Autofill Debug: Added field template default value:', template.fieldTemplate.name, '=', defaultValue);
@@ -297,26 +327,39 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
             }
           }
           
-          console.log('🔍 Autofill Debug: Final form data before reset:', formData);
-          // Use reset to set all form values at once after async operations complete
-          reset(formData);
-          console.log('🔍 Autofill Debug: Form reset completed');
+          console.log('🔍 Autofill Debug: Final form data before setting values:', formData);
           
-          // If we have an itemId, ensure the tierItems state is properly set
-          if (formData.itemId && loadedItems.length > 0) {
-            console.log('🔍 Autofill Debug: Ensuring tierItems state is updated with loaded items');
-            // Force a delay to ensure React state updates and Select component can find the value
-            setTimeout(() => {
-              console.log('🔍 Autofill Debug: Re-checking itemId after delay:', watch('itemId'));
-              console.log('🔍 Autofill Debug: tierItems state after delay:', tierItems.length);
-              // If the itemId is still not set properly, try setting it again
-              if (watch('itemId') !== formData.itemId) {
-                console.log('🔍 Autofill Debug: itemId mismatch, attempting to set again');
+          // Instead of using reset(), set values individually to preserve field registration
+          Object.entries(formData).forEach(([key, value]) => {
+            if (key !== 'fieldValues') {
+              setValue(key as any, value);
+              console.log(`🔍 Autofill Debug: Set ${key} = ${value}`);
+            }
+          });
+          
+          // Set field values individually to preserve input control
+          if (formData.fieldValues && Object.keys(formData.fieldValues).length > 0) {
+            console.log('🔍 Autofill Debug: Setting field values individually');
+            Object.entries(formData.fieldValues).forEach(([fieldName, value]) => {
+              setValue(`fieldValues.${fieldName}`, value);
+              console.log(`🔍 Autofill Debug: Set fieldValues.${fieldName} = ${value}`);
+            });
+          }
+          
+          // Set tier values directly using the loaded data
+          if (formData.categoryId) {
+            setValue('categoryId', formData.categoryId);
+            console.log('🔍 Autofill Debug: Set categoryId immediately');
+            
+            if (formData.subcategoryId && loadedSubcategories.length > 0) {
+              setValue('subcategoryId', formData.subcategoryId);
+              console.log('🔍 Autofill Debug: Set subcategoryId immediately');
+              
+              if (formData.itemId && loadedItems.length > 0) {
                 setValue('itemId', formData.itemId);
-                // Trigger form state update
-                trigger('itemId');
+                console.log('🔍 Autofill Debug: Set itemId immediately');
               }
-            }, 150); // Increased delay to ensure state updates
+            }
           }
           
           // Store loaded data references for debugging
@@ -339,19 +382,28 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
             setIsAutofilling(false);
           }, 100);
         }
-      } else {
+      } else if (selectedService) {
         console.log('🔍 Autofill Debug: No serviceId, clearing form');
         setSelectedService(null);
-        // Reset form to defaults when no service is selected
-        reset({
-          priority: 'MEDIUM',
-          category: 'INCIDENT'
+        // Clear form fields without disrupting field registration
+        setValue('title', '');
+        setValue('description', '');
+        setValue('priority', 'MEDIUM');
+        setValue('category', 'INCIDENT');
+        setValue('issueClassification', undefined);
+        setValue('categoryId', '');
+        setValue('subcategoryId', '');
+        setValue('itemId', '');
+        // Keep fieldValues registered but clear them properly
+        const currentFieldValues = watch('fieldValues') || {};
+        Object.keys(currentFieldValues).forEach(fieldName => {
+          setValue(`fieldValues.${fieldName}`, '');
         });
       }
     };
     
     autofillServiceData();
-  }, [watchedServiceId, services, reset]);
+  }, [watchedServiceId, services]);
 
   // Clear field validation errors when service changes
   useEffect(() => {
@@ -540,28 +592,12 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
       console.log('Form submission data:', data);
       console.log('Selected service:', selectedService);
       
-      // Validate required dynamic fields
+      // Validate required dynamic fields - Prioritize Field Templates over Regular Fields
       if (selectedService) {
         let hasValidationErrors = false;
         
-        // Validate regular fields
-        const requiredFields = selectedService.fields.filter(field => field.isUserVisible && field.isRequired);
-        console.log('Required fields:', requiredFields);
-        
-        for (const field of requiredFields) {
-          const value = data.fieldValues?.[field.name];
-          console.log(`Field ${field.name}: value = "${value}"`);
-          if (!value || value.trim() === '') {
-            setError(`fieldValues.${field.name}` as any, {
-              type: 'required',
-              message: `${field.label} is required`
-            });
-            hasValidationErrors = true;
-          }
-        }
-        
-        // Validate field templates
-        if (selectedService.fieldTemplates) {
+        if (selectedService.fieldTemplates && selectedService.fieldTemplates.length > 0) {
+          // Validate field templates if they exist
           const requiredTemplates = selectedService.fieldTemplates.filter(
             template => template.isUserVisible && template.isRequired
           );
@@ -570,10 +606,50 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
           for (const template of requiredTemplates) {
             const value = data.fieldValues?.[template.fieldTemplate.name];
             console.log(`Field template ${template.fieldTemplate.name}: value = "${value}"`);
-            if (!value || value.trim() === '') {
+            
+            // Handle validation for different field types
+            let isEmpty = false;
+            if (Array.isArray(value)) {
+              // For MULTISELECT fields, check if array is empty
+              isEmpty = value.length === 0;
+            } else {
+              const stringValue = typeof value === 'string' ? value : String(value || '');
+              isEmpty = !value || stringValue.trim() === '';
+            }
+            
+            if (isEmpty) {
               setError(`fieldValues.${template.fieldTemplate.name}` as any, {
                 type: 'required',
                 message: `${template.fieldTemplate.label} is required`
+              });
+              hasValidationErrors = true;
+            }
+          }
+        } else {
+          // Fallback to validate regular fields if no field templates
+          const requiredFields = selectedService.fields && Array.isArray(selectedService.fields) 
+            ? selectedService.fields.filter(field => field.isUserVisible && field.isRequired)
+            : [];
+          console.log('Required fields:', requiredFields);
+          
+          for (const field of requiredFields) {
+            const value = data.fieldValues?.[field.name];
+            console.log(`Field ${field.name}: value = "${value}"`);
+            
+            // Handle validation for different field types
+            let isEmpty = false;
+            if (Array.isArray(value)) {
+              // For MULTISELECT fields, check if array is empty
+              isEmpty = value.length === 0;
+            } else {
+              const stringValue = typeof value === 'string' ? value : String(value || '');
+              isEmpty = !value || stringValue.trim() === '';
+            }
+            
+            if (isEmpty) {
+              setError(`fieldValues.${field.name}` as any, {
+                type: 'required',
+                message: `${field.label} is required`
               });
               hasValidationErrors = true;
             }
@@ -587,30 +663,52 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
         }
       }
       
-      // Collect dynamic field values
+      // Collect dynamic field values - Prioritize Field Templates over Regular Fields
       const fieldValues: Array<{ fieldId: string; value: string }> = [];
       if (selectedService && data.fieldValues) {
-        // Collect values from regular service fields
-        selectedService.fields
-          .filter(field => field.isUserVisible)
-          .forEach(field => {
-            const value = data.fieldValues?.[field.name];
-            if (value) {
-              fieldValues.push({ fieldId: field.id, value });
-            }
-          });
-        
-        // Collect values from field templates
-        if (selectedService.fieldTemplates) {
+        if (selectedService.fieldTemplates && selectedService.fieldTemplates.length > 0) {
+          // Collect values from field templates if they exist
           selectedService.fieldTemplates
             .filter(template => template.isUserVisible)
             .forEach(template => {
               const value = data.fieldValues?.[template.fieldTemplate.name];
-              if (value) {
+              if (value !== undefined && value !== null && value !== '') {
+                // Handle different field types
+                let stringValue: string;
+                if (Array.isArray(value)) {
+                  // For MULTISELECT fields, join array values with commas
+                  stringValue = value.join(', ');
+                } else if (typeof value === 'number') {
+                  stringValue = value.toString();
+                } else {
+                  stringValue = value;
+                }
                 // For field templates, we need to store the field template ID, not the service field ID
-                fieldValues.push({ fieldId: template.fieldTemplate.id, value });
+                fieldValues.push({ fieldId: template.fieldTemplate.id, value: stringValue });
               }
             });
+        } else {
+          // Fallback to collect values from regular service fields if no field templates
+          if (selectedService.fields && Array.isArray(selectedService.fields)) {
+            selectedService.fields
+              .filter(field => field.isUserVisible)
+              .forEach(field => {
+                const value = data.fieldValues?.[field.name];
+                if (value !== undefined && value !== null && value !== '') {
+                  // Handle different field types
+                  let stringValue: string;
+                  if (Array.isArray(value)) {
+                    // For MULTISELECT fields, join array values with commas
+                    stringValue = value.join(', ');
+                  } else if (typeof value === 'number') {
+                    stringValue = value.toString();
+                  } else {
+                    stringValue = value;
+                  }
+                  fieldValues.push({ fieldId: field.id, value: stringValue });
+                }
+              });
+          }
         }
       }
 
@@ -621,7 +719,7 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
           const base64Content = await convertFileToBase64(file);
           processedAttachments.push({
             filename: file.name,
-            contentType: file.type,
+            mimeType: file.type,
             size: file.size,
             content: base64Content
           });
@@ -660,7 +758,14 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
         router.push('/tickets');
       } else {
         const error = await response.json();
-        toast.error(error.error || 'Failed to create ticket');
+        console.error('Failed to create ticket:', error);
+        if (error.details) {
+          // Show validation errors
+          const errorMessages = error.details.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(', ');
+          toast.error(`Validation error: ${errorMessages}`);
+        } else {
+          toast.error(error.error || 'Failed to create ticket');
+        }
       }
     } catch (error) {
       console.error('Error creating ticket:', error);
@@ -673,8 +778,8 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
   const renderFieldTemplate = (template: ServiceFieldTemplate) => {
     const field = template.fieldTemplate;
     const isRequired = template.isRequired ?? false;
-    const helpText = template.helpText || field.helpText;
-    const defaultValue = template.defaultValue || field.defaultValue;
+    const helpText = template.helpText || field.helpText || '';
+    const defaultValue = template.defaultValue || field.defaultValue || '';
     
     // Convert field template to service field format for rendering
     const serviceField: ServiceField = {
@@ -689,7 +794,6 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
       defaultValue,
       options: field.options,
       validation: field.validation,
-      order: template.order,
       isActive: true
     };
     
@@ -711,11 +815,20 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
               {field.label}
               {isRequired && <span className="text-red-500 ml-1">*</span>}
             </Label>
-            <Input
-              id={field.name}
-              type={field.type === 'PHONE' ? 'tel' : field.type.toLowerCase()}
-              placeholder={field.placeholder}
-              {...register(fieldName as any, { required: isRequired })}
+            <Controller
+              name={fieldName as any}
+              control={control}
+              rules={{ required: isRequired }}
+              defaultValue=""
+              render={({ field: controllerField }) => (
+                <Input
+                  id={field.name}
+                  type={field.type === 'PHONE' ? 'tel' : field.type.toLowerCase()}
+                  placeholder={field.placeholder}
+                  {...controllerField}
+                  value={controllerField.value || ''}
+                />
+              )}
             />
             {field.helpText && (
               <p className="text-sm text-gray-500">{field.helpText}</p>
@@ -733,10 +846,19 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
               {field.label}
               {isRequired && <span className="text-red-500 ml-1">*</span>}
             </Label>
-            <Textarea
-              id={field.name}
-              placeholder={field.placeholder}
-              {...register(fieldName as any, { required: isRequired })}
+            <Controller
+              name={fieldName as any}
+              control={control}
+              rules={{ required: isRequired }}
+              defaultValue=""
+              render={({ field: controllerField }) => (
+                <Textarea
+                  id={field.name}
+                  placeholder={field.placeholder}
+                  {...controllerField}
+                  value={controllerField.value || ''}
+                />
+              )}
             />
             {field.helpText && (
               <p className="text-sm text-gray-500">{field.helpText}</p>
@@ -772,8 +894,8 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
                 ) : field.options && typeof field.options === 'object' ? (
                   // Handle options as array of objects with value/label
                   Object.entries(field.options).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label as string}
+                    <SelectItem key={value} value={String(value)}>
+                      {String(label)}
                     </SelectItem>
                   ))
                 ) : null}
@@ -795,14 +917,24 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
               {field.label}
               {isRequired && <span className="text-red-500 ml-1">*</span>}
             </Label>
-            <Input
-              id={field.name}
-              type="number"
-              placeholder={field.placeholder}
-              {...register(fieldName as any, { 
-                required: isRequired,
-                valueAsNumber: true
-              })}
+            <Controller
+              name={fieldName as any}
+              control={control}
+              rules={{ required: isRequired }}
+              defaultValue=""
+              render={({ field: controllerField }) => (
+                <Input
+                  id={field.name}
+                  type="number"
+                  placeholder={field.placeholder}
+                  {...controllerField}
+                  value={controllerField.value || ''}
+                  onChange={(e) => {
+                    const value = e.target.value === '' ? '' : Number(e.target.value);
+                    controllerField.onChange(value);
+                  }}
+                />
+              )}
             />
             {field.helpText && (
               <p className="text-sm text-gray-500">{field.helpText}</p>
@@ -820,11 +952,20 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
               {field.label}
               {isRequired && <span className="text-red-500 ml-1">*</span>}
             </Label>
-            <Input
-              id={field.name}
-              type="date"
-              placeholder={field.placeholder}
-              {...register(fieldName as any, { required: isRequired })}
+            <Controller
+              name={fieldName as any}
+              control={control}
+              rules={{ required: isRequired }}
+              defaultValue=""
+              render={({ field: controllerField }) => (
+                <Input
+                  id={field.name}
+                  type="date"
+                  placeholder={field.placeholder}
+                  {...controllerField}
+                  value={controllerField.value || ''}
+                />
+              )}
             />
             {field.helpText && (
               <p className="text-sm text-gray-500">{field.helpText}</p>
@@ -842,11 +983,20 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
               {field.label}
               {isRequired && <span className="text-red-500 ml-1">*</span>}
             </Label>
-            <Input
-              id={field.name}
-              type="datetime-local"
-              placeholder={field.placeholder}
-              {...register(fieldName as any, { required: isRequired })}
+            <Controller
+              name={fieldName as any}
+              control={control}
+              rules={{ required: isRequired }}
+              defaultValue=""
+              render={({ field: controllerField }) => (
+                <Input
+                  id={field.name}
+                  type="datetime-local"
+                  placeholder={field.placeholder}
+                  {...controllerField}
+                  value={controllerField.value || ''}
+                />
+              )}
             />
             {field.helpText && (
               <p className="text-sm text-gray-500">{field.helpText}</p>
@@ -911,31 +1061,50 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
         );
 
       case 'MULTISELECT':
-        // For now, render as checkboxes
         return (
           <div key={field.id} className="space-y-2">
             <Label>
               {field.label}
               {isRequired && <span className="text-red-500 ml-1">*</span>}
             </Label>
-            <div className="space-y-2">
-              {(Array.isArray(field.options) ? field.options : []).map((option: string) => (
-                <div key={option} className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id={`${field.name}-${option}`}
-                    value={option}
-                    className="h-4 w-4 rounded border-gray-300"
-                    {...register(`${fieldName}.${option}` as any)}
-                  />
-                  <Label htmlFor={`${field.name}-${option}`} className="text-sm font-normal">
-                    {option}
-                  </Label>
-                </div>
-              ))}
-            </div>
+            <Controller
+              name={fieldName as any}
+              control={control}
+              rules={{ required: isRequired }}
+              defaultValue={[]}
+              render={({ field: controllerField }) => {
+                const selectedValues = Array.isArray(controllerField.value) ? controllerField.value : [];
+                
+                return (
+                  <div className="space-y-2">
+                    {(Array.isArray(field.options) ? field.options : []).map((option: string) => (
+                      <div key={option} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id={`${field.name}-${option}`}
+                          checked={selectedValues.includes(option)}
+                          onChange={(e) => {
+                            const newValues = e.target.checked
+                              ? [...selectedValues, option]
+                              : selectedValues.filter((v: string) => v !== option);
+                            controllerField.onChange(newValues);
+                          }}
+                          className="h-4 w-4 rounded border-gray-300"
+                        />
+                        <Label htmlFor={`${field.name}-${option}`} className="text-sm font-normal">
+                          {option}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                );
+              }}
+            />
             {field.helpText && (
               <p className="text-sm text-gray-500">{field.helpText}</p>
+            )}
+            {errors.fieldValues?.[field.name] && (
+              <p className="text-sm text-red-500">{errors.fieldValues[field.name]?.message}</p>
             )}
           </div>
         );
@@ -1129,14 +1298,10 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
                 )}
               </div>
 
-              {/* Dynamic Fields - Regular Fields */}
-              {selectedService.fields
-                .filter(field => field.isUserVisible)
-                .map(renderDynamicField)}
-              
-              {/* Dynamic Fields - Field Templates */}
-              {selectedService.fieldTemplates && selectedService.fieldTemplates.length > 0 && (
+              {/* Dynamic Fields - Prioritize Field Templates over Regular Fields */}
+              {selectedService.fieldTemplates && selectedService.fieldTemplates.length > 0 ? (
                 <>
+                  {/* Render Field Templates if they exist */}
                   {selectedService.fieldTemplates
                     .filter(template => template.isUserVisible)
                     .sort((a, b) => a.order - b.order)
@@ -1145,6 +1310,14 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
                         {renderFieldTemplate(template)}
                       </div>
                     ))}
+                </>
+              ) : (
+                <>
+                  {/* Fallback to Regular Fields if no Field Templates */}
+                  {selectedService.fields && Array.isArray(selectedService.fields) && 
+                    selectedService.fields
+                      .filter(field => field.isUserVisible)
+                      .map(renderDynamicField)}
                 </>
               )}
 
@@ -1321,7 +1494,7 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
                       onChange={handleFileUpload}
                       className="hidden"
                       id="file-upload"
-                      accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.zip,.rar"
+                      accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.gif,.zip,.rar,.csv,.xml,.json"
                     />
                     <label
                       htmlFor="file-upload"

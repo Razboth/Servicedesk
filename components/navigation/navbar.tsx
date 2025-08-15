@@ -18,8 +18,8 @@ export function Navbar() {
 
   return (
     <nav className="bg-white shadow-sm border-b">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
+      <div className="w-full px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
             <div className="flex-shrink-0 flex items-center">
               <Link href="/" className="flex items-center">
@@ -36,7 +36,8 @@ export function Navbar() {
             </div>
             
             {/* Navigation Links */}
-            <nav className="ml-10 flex space-x-8">
+            <nav className="ml-10 flex space-x-4 overflow-x-auto">
+              {/* Always show dashboard */}
               <Link
                 href="/"
                 className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
@@ -47,39 +48,100 @@ export function Navbar() {
               >
                 Dashboard
               </Link>
-              <Link
-                href="/tickets"
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  pathname === '/tickets' 
-                    ? 'bg-blue-100 text-blue-700' 
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                }`}
-              >
-                Tickets
-              </Link>
+              
+              {/* Show tickets and reports for all users except pure admin users */}
+              {session?.user?.role !== 'ADMIN' && (
+                <>
+                  <Link
+                    href="/tickets"
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      pathname === '/tickets' 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    }`}
+                  >
+                    Tickets
+                  </Link>
+                  <Link
+                    href="/tickets/modern"
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors relative ${
+                      pathname === '/tickets/modern' 
+                        ? 'bg-gradient-to-r from-blue-100 to-purple-100 text-blue-700' 
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50'
+                    }`}
+                  >
+                    Modern Tickets
+                    <span className="absolute -top-1 -right-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white text-xs px-1.5 py-0.5 rounded-full">✨</span>
+                  </Link>
+                  <Link
+                    href="/reports"
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      pathname.startsWith('/reports') 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    }`}
+                  >
+                    Reports
+                  </Link>
+                </>
+              )}
               {session.user?.role === 'TECHNICIAN' && (
-                <Link
-                  href="/technician"
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    pathname === '/technician' 
-                      ? 'bg-blue-100 text-blue-700' 
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                  }`}
-                >
-                  Workbench
-                </Link>
+                <>
+                  <Link
+                    href="/technician"
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      pathname === '/technician' 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    }`}
+                  >
+                    Dashboard
+                  </Link>
+                  <Link
+                    href="/technician/workbench"
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      pathname === '/technician/workbench' 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    }`}
+                  >
+                    Workbench
+                  </Link>
+                  <Link
+                    href="/monitoring/atms"
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      pathname === '/monitoring/atms' 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    }`}
+                  >
+                    ATM Monitor
+                  </Link>
+                </>
               )}
               {session.user?.role === 'MANAGER' && (
-                <Link
-                  href="/manager/approvals"
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    pathname === '/manager/approvals' 
-                      ? 'bg-blue-100 text-blue-700' 
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                  }`}
-                >
-                  Approvals
-                </Link>
+                <>
+                  <Link
+                    href="/manager/approvals"
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      pathname === '/manager/approvals' 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    }`}
+                  >
+                    Approvals
+                  </Link>
+                  <Link
+                    href="/monitoring/atms"
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      pathname === '/monitoring/atms' 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    }`}
+                  >
+                    ATM Monitor
+                  </Link>
+                </>
               )}
               {session.user?.role === 'ADMIN' && (
                 <>
@@ -162,6 +224,108 @@ export function Navbar() {
                     }`}
                   >
                     Import
+                  </Link>
+                  <Link
+                    href="/admin/api-keys"
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      pathname === '/admin/api-keys' 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    }`}
+                  >
+                    API Keys
+                  </Link>
+                  <Link
+                    href="/monitoring/atms"
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      pathname === '/monitoring/atms' 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    }`}
+                  >
+                    ATM Monitor
+                  </Link>
+                </>
+              )}
+
+              {/* Security Analyst Menu - Show for SECURITY_ANALYST role or SECURITY_OPS support group */}
+              {(session?.user?.role === 'SECURITY_ANALYST' || session?.user?.supportGroupCode === 'SECURITY_OPS') && (
+                <>
+                  <Link
+                    href="/tickets"
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      pathname === '/tickets' || pathname.startsWith('/tickets/') 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    }`}
+                  >
+                    Tickets
+                  </Link>
+                  <Link
+                    href="/security/soc-parser"
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors border-2 ${
+                      pathname === '/security/soc-parser' 
+                        ? 'bg-red-100 text-red-700 border-red-300' 
+                        : 'text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200'
+                    }`}
+                  >
+                    🔒 SOC Parser
+                  </Link>
+                  <Link
+                    href="/reports"
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      pathname.startsWith('/reports') 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    }`}
+                  >
+                    Reports
+                  </Link>
+                </>
+              )}
+
+              {/* Manager Menu */}
+              {session?.user?.role === 'MANAGER' && (
+                <>
+                  <Link
+                    href="/manager/dashboard"
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      pathname === '/manager/dashboard' 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    }`}
+                  >
+                    Manager Dashboard
+                  </Link>
+                  <Link
+                    href="/manager/tickets"
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      pathname === '/manager/tickets' 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    }`}
+                  >
+                    Branch Tickets
+                  </Link>
+                  <Link
+                    href="/manager/users"
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      pathname === '/manager/users' 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    }`}
+                  >
+                    Users
+                  </Link>
+                  <Link
+                    href="/manager/atms"
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      pathname === '/manager/atms' 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    }`}
+                  >
+                    ATMs
                   </Link>
                 </>
               )}

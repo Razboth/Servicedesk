@@ -6,7 +6,7 @@ import { z } from 'zod';
 // GET /api/admin/services/[id]/field-templates - Get field templates for a service
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -14,7 +14,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const serviceId = params.id;
+    const { id: serviceId } = await params;
 
     // Get service field templates
     const serviceFieldTemplates = await prisma.serviceFieldTemplate.findMany({
@@ -51,7 +51,7 @@ const linkSchema = z.object({
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -59,7 +59,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const serviceId = params.id;
+    const { id: serviceId } = await params;
     const body = await request.json();
     const validatedData = linkSchema.parse(body);
 
@@ -131,7 +131,7 @@ export async function POST(
 // DELETE /api/admin/services/[id]/field-templates - Unlink a field template from a service
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -139,7 +139,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const serviceId = params.id;
+    const { id: serviceId } = await params;
     const searchParams = request.nextUrl.searchParams;
     const fieldTemplateId = searchParams.get('fieldTemplateId');
 
@@ -184,7 +184,7 @@ export async function DELETE(
 // PUT /api/admin/services/[id]/field-templates - Update multiple field templates
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -192,7 +192,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const serviceId = params.id;
+    const { id: serviceId } = await params;
     const body = await request.json();
     const { updates } = body;
 

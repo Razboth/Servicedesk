@@ -16,8 +16,9 @@ const updateBranchSchema = z.object({
 // GET /api/admin/branches/[id] - Get single branch details
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const session = await auth();
     
@@ -29,7 +30,7 @@ export async function GET(
     }
 
     const branch = await prisma.branch.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         _count: {
           select: {
@@ -89,8 +90,9 @@ export async function GET(
 // PUT /api/admin/branches/[id] - Update branch
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const session = await auth();
     
@@ -109,7 +111,7 @@ export async function PUT(
       const existingBranch = await prisma.branch.findFirst({
         where: {
           code: validatedData.code,
-          NOT: { id: params.id }
+          NOT: { id }
         }
       });
 
@@ -122,7 +124,7 @@ export async function PUT(
     }
 
     const branch = await prisma.branch.update({
-      where: { id: params.id },
+      where: { id },
       data: validatedData,
       include: {
         _count: {
@@ -166,8 +168,9 @@ export async function PUT(
 // DELETE /api/admin/branches/[id] - Soft delete branch
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const session = await auth();
     
@@ -180,7 +183,7 @@ export async function DELETE(
 
     // Check if branch has active users or tickets
     const branch = await prisma.branch.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         _count: {
           select: {
@@ -214,7 +217,7 @@ export async function DELETE(
 
     // Soft delete the branch
     const updatedBranch = await prisma.branch.update({
-      where: { id: params.id },
+      where: { id },
       data: { isActive: false }
     });
 

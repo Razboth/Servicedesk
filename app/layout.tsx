@@ -2,8 +2,11 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { Providers } from '@/components/providers/session-provider'
-import { Navbar } from '@/components/navigation/navbar'
+import { SidebarProvider } from '@/components/providers/sidebar-provider'
+import { SidebarLayout } from '@/components/navigation/sidebar-layout'
+import { ThemeProvider } from '@/components/providers/theme-provider'
 import { Toaster } from 'sonner'
+import IdleTimer from '@/components/auth/idle-timer'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -23,15 +26,22 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <Providers>
-          <div className="min-h-screen bg-background">
-            <Navbar />
-            <main className="flex-1">
-              {children}
-            </main>
-          </div>
-          <Toaster />
-        </Providers>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <Providers>
+            <SidebarProvider>
+              <SidebarLayout>
+                {children}
+              </SidebarLayout>
+            </SidebarProvider>
+            <IdleTimer />
+            <Toaster />
+          </Providers>
+        </ThemeProvider>
       </body>
     </html>
   )

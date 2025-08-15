@@ -139,7 +139,6 @@ DialogDescription.displayName = DialogPrimitive.Description.displayName
 import { toast } from 'sonner';
 import { CheckCircle, XCircle, Search, Filter, Clock, User, AlertTriangle, FileText } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { Navbar } from '@/components/navigation/navbar';
 
 interface TicketFieldValue {
   id: string;
@@ -355,7 +354,6 @@ export default function ManagerApprovalsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navbar />
       <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">

@@ -6,6 +6,8 @@ declare module 'next-auth' {
     role: string
     branchId?: string | null
     branchName?: string | null
+    supportGroupId?: string | null
+    supportGroupCode?: string | null
   }
 
   interface Session {
@@ -14,6 +16,8 @@ declare module 'next-auth' {
       role: string
       branchId?: string | null
       branchName?: string | null
+      supportGroupId?: string | null
+      supportGroupCode?: string | null
     } & DefaultSession['user']
   }
 }
@@ -23,5 +27,7 @@ declare module 'next-auth/jwt' {
     role: string
     branchId?: string | null
     branchName?: string | null
+    supportGroupId?: string | null
+    supportGroupCode?: string | null
   }
 }

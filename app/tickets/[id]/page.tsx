@@ -10,7 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { ArrowLeft, Clock, User, MessageSquare, AlertCircle, CheckCircle, Plus, X } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ArrowLeft, Clock, User, MessageSquare, AlertCircle, CheckCircle, Plus, X, Paperclip, Download, FileText, Eye, Edit } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 interface TicketFieldValue {
@@ -38,20 +39,32 @@ interface TicketComment {
 
 interface TicketTask {
   id: string;
-  title: string;
-  description?: string;
-  estimatedMinutes?: number;
-  actualMinutes?: number;
-  isRequired: boolean;
   status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'SKIPPED';
-  order: number;
+  actualMinutes?: number;
   notes?: string;
   completedAt?: string;
+  taskTemplateItem: {
+    id: string;
+    title: string;
+    description?: string;
+    estimatedMinutes?: number;
+    isRequired: boolean;
+    order: number;
+  };
   completedBy?: {
     id: string;
     name: string;
     email: string;
   };
+}
+
+interface TicketAttachment {
+  id: string;
+  filename: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  createdAt: string;
 }
 
 interface Ticket {
@@ -82,6 +95,7 @@ interface Ticket {
   };
   fieldValues: TicketFieldValue[];
   comments: TicketComment[];
+  attachments: TicketAttachment[];
 }
 
 export default function TicketDetailPage() {
@@ -100,6 +114,19 @@ export default function TicketDetailPage() {
   const [showResolveModal, setShowResolveModal] = useState(false);
   const [resolutionComment, setResolutionComment] = useState('');
   const [isSubmittingResolution, setIsSubmittingResolution] = useState(false);
+  const [selectedResolutionStatus, setSelectedResolutionStatus] = useState<string>('RESOLVED');
+  const [previewAttachment, setPreviewAttachment] = useState<TicketAttachment | null>(null);
+
+  // Helper function to check if file is previewable
+  const isPreviewable = (mimeType: string) => {
+    const previewableMimeTypes = [
+      'application/pdf',
+      'image/jpeg',
+      'image/jpg', 
+      'image/png'
+    ];
+    return previewableMimeTypes.includes(mimeType);
+  };
 
   useEffect(() => {
     if (ticketId) {
@@ -202,7 +229,7 @@ export default function TicketDetailPage() {
     setShowResolveModal(true);
   };
 
-  const handleResolutionSubmit = async (finalStatus: 'RESOLVED' | 'CLOSED' | 'CANCELLED') => {
+  const handleResolutionSubmit = async () => {
     try {
       setIsSubmittingResolution(true);
       
@@ -231,12 +258,13 @@ export default function TicketDetailPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ status: finalStatus }),
+        body: JSON.stringify({ status: selectedResolutionStatus }),
       });
       
       if (statusResponse.ok) {
         setShowResolveModal(false);
         setResolutionComment('');
+        setSelectedResolutionStatus('RESOLVED');
         fetchTicket(); // Refresh ticket data
       } else {
         console.error('Failed to update ticket status');
@@ -251,6 +279,7 @@ export default function TicketDetailPage() {
   const handleModalClose = () => {
     setShowResolveModal(false);
     setResolutionComment('');
+    setSelectedResolutionStatus('RESOLVED');
   };
 
   const updateTaskStatus = async (taskId: string, status: string, actualMinutes?: number, notes?: string) => {
@@ -320,7 +349,11 @@ export default function TicketDetailPage() {
     return (
       session.user.role === 'ADMIN' ||
       session.user.role === 'MANAGER' ||
-      (session.user.role === 'TECHNICIAN' && ticket.assignedTo?.email === session.user.email)
+      (session.user.role === 'TECHNICIAN' && ticket.assignedTo?.email === session.user.email) ||
+      (session.user.role === 'TECHNICIAN' && ticket.status === 'CLOSED') ||
+      (session.user.role === 'SECURITY_ANALYST' && ticket.assignedTo?.email === session.user.email) ||
+      (session.user.role === 'SECURITY_ANALYST' && ticket.createdBy?.email === session.user.email) ||
+      (session.user.role === 'SECURITY_ANALYST' && ticket.status === 'CLOSED')
     );
   };
 
@@ -426,6 +459,67 @@ export default function TicketDetailPage() {
                 </Card>
               )}
 
+              {/* Attachments */}
+              {ticket.attachments && ticket.attachments.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Paperclip className="h-5 w-5" />
+                      Attachments ({ticket.attachments.length})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {ticket.attachments.map((attachment) => (
+                        <div key={attachment.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <FileText className="h-5 w-5 text-gray-500" />
+                            <div>
+                              <p className="font-medium text-gray-900">{attachment.originalName}</p>
+                              <div className="flex items-center gap-2 text-sm text-gray-500">
+                                <span>{(attachment.size / 1024 / 1024).toFixed(2)} MB</span>
+                                <span>•</span>
+                                <span>{formatDistanceToNow(new Date(attachment.createdAt), { addSuffix: true })}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {isPreviewable(attachment.mimeType) && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setPreviewAttachment(attachment)}
+                                className="flex items-center gap-2"
+                              >
+                                <Eye className="h-4 w-4" />
+                                Preview
+                              </Button>
+                            )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                // Create download link
+                                const link = document.createElement('a');
+                                link.href = `/api/tickets/${ticketId}/attachments/${attachment.id}/download`;
+                                link.download = attachment.originalName;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                              }}
+                              className="flex items-center gap-2"
+                            >
+                              <Download className="h-4 w-4" />
+                              Download
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Tasks */}
               {tasks.length > 0 && (
                 <Card>
@@ -442,20 +536,20 @@ export default function TicketDetailPage() {
                           <div className="flex items-start justify-between mb-3">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
-                                <h4 className="font-medium">{task.title}</h4>
-                                {task.isRequired && (
+                                <h4 className="font-medium">{task.taskTemplateItem.title}</h4>
+                                {task.taskTemplateItem.isRequired && (
                                   <Badge variant="destructive" className="text-xs">Required</Badge>
                                 )}
                                 <Badge variant={getTaskStatusBadgeVariant(task.status)} className="text-xs">
                                   {task.status.replace('_', ' ')}
                                 </Badge>
                               </div>
-                              {task.description && (
-                                <p className="text-sm text-gray-600 mb-2">{task.description}</p>
+                              {task.taskTemplateItem.description && (
+                                <p className="text-sm text-gray-600 mb-2">{task.taskTemplateItem.description}</p>
                               )}
                               <div className="flex items-center gap-4 text-xs text-gray-500">
-                                {task.estimatedMinutes && (
-                                  <span>Est: {task.estimatedMinutes}min</span>
+                                {task.taskTemplateItem.estimatedMinutes && (
+                                  <span>Est: {task.taskTemplateItem.estimatedMinutes}min</span>
                                 )}
                                 {task.actualMinutes && (
                                   <span>Actual: {task.actualMinutes}min</span>
@@ -487,7 +581,7 @@ export default function TicketDetailPage() {
                                     Complete
                                   </Button>
                                 )}
-                                {!task.isRequired && (
+                                {!task.taskTemplateItem.isRequired && (
                                   <Button
                                     size="sm"
                                     variant="outline"
@@ -593,8 +687,18 @@ export default function TicketDetailPage() {
                           disabled={isUpdatingStatus}
                           className="w-full flex items-center gap-2"
                         >
-                          <CheckCircle className="h-4 w-4" />
-                          Mark Resolved
+                          <Edit className="h-4 w-4" />
+                          Update Status
+                        </Button>
+                      )}
+                      {ticket.status === 'CLOSED' && ['TECHNICIAN', 'SECURITY_ANALYST'].includes(session?.user?.role) && (
+                        <Button
+                          onClick={() => updateTicketStatus('IN_PROGRESS')}
+                          disabled={isUpdatingStatus}
+                          className="w-full flex items-center gap-2 bg-orange-600 hover:bg-orange-700"
+                        >
+                          <AlertCircle className="h-4 w-4" />
+                          Reopen Ticket
                         </Button>
                       )}
                     </div>
@@ -662,63 +766,119 @@ export default function TicketDetailPage() {
 
       {/* Resolution Modal */}
       <Dialog open={showResolveModal} onOpenChange={setShowResolveModal}>
-        <DialogContent className="sm:max-w-[550px]">
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Resolve Ticket</DialogTitle>
+            <DialogTitle>Update Ticket Status</DialogTitle>
             <DialogDescription>
-              Add an optional resolution comment and choose the final status for this ticket.
+              Add an optional comment and select the new status for this ticket.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="resolution-comment">Resolution Comment (Optional)</Label>
+              <Label htmlFor="status-select">New Status</Label>
+              <Select value={selectedResolutionStatus} onValueChange={setSelectedResolutionStatus}>
+                <SelectTrigger id="status-select">
+                  <SelectValue placeholder="Select new status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="OPEN">Open</SelectItem>
+                  <SelectItem value="PENDING">Pending</SelectItem>
+                  <SelectItem value="PENDING_APPROVAL">Pending Approval</SelectItem>
+                  <SelectItem value="APPROVED">Approved</SelectItem>
+                  <SelectItem value="REJECTED">Rejected</SelectItem>
+                  <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+                  <SelectItem value="PENDING_VENDOR">Pending Vendor</SelectItem>
+                  <SelectItem value="RESOLVED">Resolved</SelectItem>
+                  <SelectItem value="CLOSED">Closed</SelectItem>
+                  <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="resolution-comment">Comment (Optional)</Label>
               <Textarea
                 id="resolution-comment"
                 value={resolutionComment}
                 onChange={(e) => setResolutionComment(e.target.value)}
-                placeholder="Describe how the issue was resolved..."
+                placeholder="Add a comment about this status change..."
                 className="min-h-[100px] resize-none"
               />
             </div>
           </div>
-          <DialogFooter className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-            <div className="flex flex-col gap-2 sm:flex-row sm:gap-2">
-              <Button
-                variant="outline"
-                onClick={handleModalClose}
-                disabled={isSubmittingResolution}
-                className="w-full sm:w-auto"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={() => handleResolutionSubmit('RESOLVED')}
-                disabled={isSubmittingResolution}
-                className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
-              >
-                <CheckCircle className="h-4 w-4" />
-                {isSubmittingResolution ? 'Processing...' : 'Mark Resolved'}
-              </Button>
-            </div>
-            <div className="flex flex-col gap-2 sm:flex-row sm:gap-2">
-              <Button
-                onClick={() => handleResolutionSubmit('CLOSED')}
-                disabled={isSubmittingResolution}
-                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
-              >
-                <CheckCircle className="h-4 w-4" />
-                {isSubmittingResolution ? 'Processing...' : 'Close Ticket'}
-              </Button>
-              <Button
-                onClick={() => handleResolutionSubmit('CANCELLED')}
-                disabled={isSubmittingResolution}
-                variant="destructive"
-                className="w-full sm:w-auto flex items-center gap-2"
-              >
-                <X className="h-4 w-4" />
-                {isSubmittingResolution ? 'Processing...' : 'Cancel Ticket'}
-              </Button>
-            </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={handleModalClose}
+              disabled={isSubmittingResolution}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleResolutionSubmit}
+              disabled={isSubmittingResolution}
+            >
+              {isSubmittingResolution ? 'Processing...' : 'Update Status'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Attachment Preview Modal */}
+      <Dialog open={!!previewAttachment} onOpenChange={() => setPreviewAttachment(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              {previewAttachment?.originalName}
+            </DialogTitle>
+            <DialogDescription>
+              {previewAttachment && (
+                <span className="text-sm text-gray-500">
+                  {(previewAttachment.size / 1024 / 1024).toFixed(2)} MB • {previewAttachment.mimeType}
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-hidden">
+            {previewAttachment && (
+              <div className="w-full h-[70vh] border rounded-lg overflow-hidden">
+                {previewAttachment.mimeType === 'application/pdf' ? (
+                  <iframe
+                    src={`/api/tickets/${ticketId}/attachments/${previewAttachment.id}/preview`}
+                    className="w-full h-full"
+                    title={previewAttachment.originalName}
+                  />
+                ) : (
+                  <img
+                    src={`/api/tickets/${ticketId}/attachments/${previewAttachment.id}/preview`}
+                    alt={previewAttachment.originalName}
+                    className="w-full h-full object-contain"
+                  />
+                )}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (previewAttachment) {
+                  const link = document.createElement('a');
+                  link.href = `/api/tickets/${ticketId}/attachments/${previewAttachment.id}/download`;
+                  link.download = previewAttachment.originalName;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                }
+              }}
+              className="flex items-center gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Download
+            </Button>
+            <Button onClick={() => setPreviewAttachment(null)}>
+              Close
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

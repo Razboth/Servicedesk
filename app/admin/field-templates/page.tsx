@@ -73,11 +73,36 @@ interface FieldTemplate {
   }
 }
 
+interface CustomServiceField {
+  id: string
+  serviceId: string
+  name: string
+  label: string
+  type: string
+  isRequired: boolean
+  isUserVisible: boolean
+  placeholder: string | null
+  helpText: string | null
+  defaultValue: string | null
+  options: any
+  validation: any
+  order: number
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+  service: {
+    id: string
+    name: string
+  }
+}
+
 export default function FieldTemplatesPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [templates, setTemplates] = useState<FieldTemplate[]>([])
+  const [customFields, setCustomFields] = useState<CustomServiceField[]>([])
   const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('templates')
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [selectedType, setSelectedType] = useState<string>('all')
@@ -112,10 +137,18 @@ export default function FieldTemplatesPage() {
 
   const fetchTemplates = async () => {
     try {
-      const response = await fetch('/api/admin/field-templates')
-      if (!response.ok) throw new Error('Failed to fetch templates')
-      const data = await response.json()
-      setTemplates(data)
+      // Fetch field templates
+      const templatesResponse = await fetch('/api/admin/field-templates')
+      if (!templatesResponse.ok) throw new Error('Failed to fetch templates')
+      const templatesData = await templatesResponse.json()
+      setTemplates(templatesData)
+
+      // Fetch custom service fields
+      const customFieldsResponse = await fetch('/api/admin/custom-fields')
+      if (customFieldsResponse.ok) {
+        const customFieldsData = await customFieldsResponse.json()
+        setCustomFields(customFieldsData)
+      }
     } catch (error) {
       toast.error('Failed to load field templates')
     } finally {
@@ -133,6 +166,17 @@ export default function FieldTemplatesPage() {
       return matchesSearch && matchesCategory && matchesType
     })
   }, [templates, searchTerm, selectedCategory, selectedType])
+
+  const filteredCustomFields = useMemo(() => {
+    return customFields.filter(field => {
+      const matchesSearch = field.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          field.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (field.helpText?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+                          field.service.name.toLowerCase().includes(searchTerm.toLowerCase())
+      const matchesType = selectedType === 'all' || field.type === selectedType
+      return matchesSearch && matchesType
+    })
+  }, [customFields, searchTerm, selectedType])
 
   const handleCreate = () => {
     setFormData({
@@ -269,6 +313,33 @@ export default function FieldTemplatesPage() {
       toast.error('Failed to duplicate template')
     }
   }
+
+  const handleEditCustomField = (field: CustomServiceField) => {
+    // Navigate to the service's field management page
+    router.push(`/admin/services`);
+  };
+
+  const handleDeleteCustomField = async (field: CustomServiceField) => {
+    if (!confirm(`Are you sure you want to delete the field "${field.label}"?`)) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/admin/services/${field.serviceId}/fields/${field.id}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete field')
+      }
+
+      toast.success('Field deleted successfully')
+      fetchTemplates() // Refresh the data
+    } catch (error) {
+      console.error('Error deleting field:', error)
+      toast.error('Failed to delete field')
+    }
+  };
 
   const renderFieldDialog = () => {
     const isEdit = !!selectedTemplate
@@ -474,111 +545,224 @@ export default function FieldTemplatesPage() {
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search templates..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8"
-                />
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="templates">Field Templates ({templates.length})</TabsTrigger>
+          <TabsTrigger value="custom">Custom Fields ({customFields.length})</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="templates">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-4">
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search templates..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-8"
+                    />
+                  </div>
+                </div>
+                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="All Categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {FIELD_CATEGORIES.map(cat => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={selectedType} onValueChange={setSelectedType}>
+                  <SelectTrigger className="w-[150px]">
+                    <SelectValue placeholder="All Types" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    {FIELD_TYPES.map(type => (
+                      <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            </div>
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="All Categories" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                {FIELD_CATEGORIES.map(cat => (
-                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={selectedType} onValueChange={setSelectedType}>
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="All Types" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                {FIELD_TYPES.map(type => (
-                  <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Label</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Required</TableHead>
-                <TableHead>Usage</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredTemplates.map((template) => (
-                <TableRow key={template.id}>
-                  <TableCell className="font-mono text-sm">{template.name}</TableCell>
-                  <TableCell>{template.label}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">
-                      {FIELD_TYPES.find(t => t.value === template.type)?.label || template.type}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{template.category || '-'}</TableCell>
-                  <TableCell>
-                    {template.isRequired ? (
-                      <Badge variant="default">Required</Badge>
-                    ) : (
-                      <Badge variant="secondary">Optional</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {template._count?.serviceFieldTemplates || 0} services
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => duplicateTemplate(template)}
-                        title="Duplicate"
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEdit(template)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(template)}
-                        disabled={template._count?.serviceFieldTemplates && template._count.serviceFieldTemplates > 0}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Label</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Required</TableHead>
+                    <TableHead>Usage</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredTemplates.map((template) => (
+                    <TableRow key={template.id}>
+                      <TableCell className="font-mono text-sm">{template.name}</TableCell>
+                      <TableCell>{template.label}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">
+                          {FIELD_TYPES.find(t => t.value === template.type)?.label || template.type}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{template.category || '-'}</TableCell>
+                      <TableCell>
+                        {template.isRequired ? (
+                          <Badge variant="default">Required</Badge>
+                        ) : (
+                          <Badge variant="secondary">Optional</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {template._count?.serviceFieldTemplates || 0} services
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => duplicateTemplate(template)}
+                            title="Duplicate"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(template)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(template)}
+                            disabled={template._count?.serviceFieldTemplates && template._count.serviceFieldTemplates > 0}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="custom">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-4">
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search custom fields..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-8"
+                    />
+                  </div>
+                </div>
+                <Select value={selectedType} onValueChange={setSelectedType}>
+                  <SelectTrigger className="w-[150px]">
+                    <SelectValue placeholder="All Types" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    {FIELD_TYPES.map(type => (
+                      <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                   <TableRow>
+                     <TableHead>Service</TableHead>
+                     <TableHead>Name</TableHead>
+                     <TableHead>Label</TableHead>
+                     <TableHead>Type</TableHead>
+                     <TableHead>Required</TableHead>
+                     <TableHead>User Visible</TableHead>
+                     <TableHead>Active</TableHead>
+                     <TableHead>Order</TableHead>
+                     <TableHead className="text-right">Actions</TableHead>
+                   </TableRow>
+                 </TableHeader>
+                <TableBody>
+                  {filteredCustomFields.map((field) => (
+                    <TableRow key={field.id}>
+                      <TableCell>
+                        <Badge variant="secondary">{field.service.name}</Badge>
+                      </TableCell>
+                      <TableCell className="font-mono text-sm">{field.name}</TableCell>
+                      <TableCell>{field.label}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">
+                          {FIELD_TYPES.find(t => t.value === field.type)?.label || field.type}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {field.isRequired ? (
+                          <Badge variant="default">Required</Badge>
+                        ) : (
+                          <Badge variant="secondary">Optional</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {field.isUserVisible ? (
+                          <Badge variant="default">Visible</Badge>
+                        ) : (
+                          <Badge variant="secondary">Hidden</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {field.isActive ? (
+                          <Badge variant="default">Active</Badge>
+                        ) : (
+                          <Badge variant="destructive">Inactive</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>{field.order}</TableCell>
+                       <TableCell className="text-right">
+                         <div className="flex justify-end gap-2">
+                           <Button
+                             variant="ghost"
+                             size="sm"
+                             onClick={() => handleEditCustomField(field)}
+                           >
+                             <Pencil className="h-4 w-4" />
+                           </Button>
+                           <Button
+                             variant="ghost"
+                             size="sm"
+                             onClick={() => handleDeleteCustomField(field)}
+                           >
+                             <Trash2 className="h-4 w-4" />
+                           </Button>
+                         </div>
+                       </TableCell>
+                     </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         {renderFieldDialog()}

@@ -2,6 +2,34 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { trackServiceUsage, updateFavoriteServiceUsage } from '@/lib/services/usage-tracker';
+import { sanitizeSearchInput } from '@/lib/security';
+
+// Helper function to determine sort order
+function getSortOrder(sortBy: string, sortOrder: string) {
+  const order = sortOrder === 'asc' ? 'asc' : 'desc';
+  
+  switch (sortBy) {
+    case 'ticketNumber':
+      return { ticketNumber: order };
+    case 'title':
+      return { title: order };
+    case 'priority':
+      // Custom priority order: CRITICAL > HIGH > MEDIUM > LOW
+      return [
+        { priority: 'desc' },
+        { createdAt: 'desc' }
+      ];
+    case 'status':
+      return { status: order };
+    case 'createdAt':
+      return { createdAt: order };
+    case 'updatedAt':
+      return { updatedAt: order };
+    default:
+      return { createdAt: 'desc' };
+  }
+}
 
 // Validation schema for creating tickets
 const createTicketSchema = z.object({
@@ -26,7 +54,11 @@ const createTicketSchema = z.object({
     mimeType: z.string(),
     size: z.number(),
     content: z.string() // base64 encoded content
-  })).optional()
+  })).optional(),
+  // Security-related fields
+  isConfidential: z.boolean().default(false),
+  securityClassification: z.enum(['HIGH', 'MEDIUM', 'LOW']).optional(),
+  securityFindings: z.record(z.any()).optional() // JSON object for SOC findings
 });
 
 // GET /api/tickets - List tickets with filtering
@@ -41,29 +73,170 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
     const priority = searchParams.get('priority');
     const assignedTo = searchParams.get('assignedTo');
+    const mineAndAvailable = searchParams.get('mineAndAvailable');
+    const branchId = searchParams.get('branchId');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
-    const search = searchParams.get('search');
+    const rawSearch = searchParams.get('search');
+    const search = rawSearch ? sanitizeSearchInput(rawSearch) : null;
+    const sortBy = searchParams.get('sortBy') || 'createdAt';
+    const sortOrder = searchParams.get('sortOrder') || 'desc';
+    const includeConfidential = searchParams.get('includeConfidential') === 'true';
+    const securityClassification = searchParams.get('securityClassification');
+    const requestStats = searchParams.get('stats') === 'true';
+
+    // Get user's branch and support group for filtering
+    const userWithDetails = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { 
+        branchId: true, 
+        role: true, 
+        supportGroupId: true,
+        supportGroup: {
+          select: { id: true, name: true }
+        }
+      }
+    });
 
     // Build where clause based on user role and filters
     const where: any = {};
-    
-    // Role-based filtering
-    if (session.user.role === 'USER') {
-      where.createdById = session.user.id;
-    } else if (session.user.role === 'TECHNICIAN') {
-      where.OR = [
-        { createdById: session.user.id },
-        { assignedToId: session.user.id },
-        { assignedToId: null } // Unassigned tickets
-      ];
+
+    // Apply confidential ticket filtering based on user role
+    if (session.user.role === 'SECURITY_ANALYST') {
+      // Security Analyst filtering will be handled in role-based filtering section below
+      // Skip confidential filtering for security analysts as they have special access
+    } else if (!includeConfidential) {
+      // Regular users cannot see confidential tickets
+      where.isConfidential = false;
+    } else {
+      // User explicitly requested confidential tickets - check permissions
+      if (!['ADMIN', 'MANAGER'].includes(session.user.role)) {
+        return NextResponse.json(
+          { error: 'Insufficient permissions to access confidential tickets' },
+          { status: 403 }
+        );
+      }
     }
-    // ADMIN and MANAGER can see all tickets
+
+    // Apply role-based filtering (Security Analyst filtering already applied above)
+    if (session.user.role === 'USER') {
+      // Users see only their own tickets, excluding security analyst tickets
+      where.AND = [
+        { createdById: session.user.id },
+        {
+          createdBy: {
+            role: { not: 'SECURITY_ANALYST' }
+          }
+        }
+      ];
+    } else if (session.user.role === 'SECURITY_ANALYST') {
+      // Security Analysts function like technicians but with additional security access
+      // They can see tickets from their support group like technicians do
+      const baseConditions = [
+        { createdById: session.user.id }, // Their own tickets
+        { assignedToId: session.user.id }  // Tickets assigned to them
+      ];
+      
+      // Add support group filtering like technicians
+      if (userWithDetails?.supportGroupId) {
+        baseConditions.push({
+          AND: [
+            { assignedToId: null }, // Unassigned tickets
+            { 
+              service: {
+                supportGroupId: userWithDetails.supportGroupId
+              }
+            },
+            {
+              createdBy: {
+                role: { not: 'SECURITY_ANALYST' }
+              }
+            }
+          ]
+        });
+      }
+      
+      // Combine with existing security analyst ticket access
+      where.OR = [
+        ...baseConditions,
+        // All tickets created by other Security Analysts
+        { 
+          createdBy: {
+            role: 'SECURITY_ANALYST'
+          }
+        }
+      ]
+    } else if (session.user.role === 'TECHNICIAN') {
+      // Technicians see tickets based on support group assignment, excluding security analyst tickets (except their own)
+      const baseConditions = [
+        { createdById: session.user.id }, // Their own tickets (including if they're security analyst)
+        { assignedToId: session.user.id }  // Tickets assigned to them
+      ];
+      
+      if (userWithDetails?.supportGroupId) {
+        baseConditions.push({
+          AND: [
+            { assignedToId: null }, // Unassigned tickets
+            { 
+              service: {
+                supportGroupId: userWithDetails.supportGroupId
+              }
+            },
+            {
+              createdBy: {
+                role: { not: 'SECURITY_ANALYST' }
+              }
+            }
+          ]
+        });
+      }
+      
+      where.OR = baseConditions;
+    } else if (session.user.role === 'MANAGER') {
+      // Managers can ONLY see tickets created by users from their own branch, excluding security analyst tickets
+      if (userWithDetails?.branchId) {
+        where.AND = [
+          // Ticket must be from the manager's branch
+          { branchId: userWithDetails.branchId },
+          // Ticket creator must be from the same branch as the manager
+          {
+            createdBy: {
+              branchId: userWithDetails.branchId,
+              role: { not: 'SECURITY_ANALYST' }
+            }
+          }
+        ];
+      }
+    }
+    // ADMIN sees all tickets (no additional filtering)
 
     // Apply filters
-    if (status) where.status = status;
+    if (status) {
+      where.status = status;
+    } else {
+      // Exclude rejected tickets by default when no specific status is requested
+      where.status = { not: 'REJECTED' };
+    }
     if (priority) where.priority = priority;
     if (assignedTo) where.assignedToId = assignedTo;
+    if (mineAndAvailable) {
+      // Override role-based filtering for mineAndAvailable
+      where.OR = [
+        { assignedToId: mineAndAvailable }, // My tickets
+        { assignedToId: null } // Available tickets
+      ];
+    }
+    if (branchId) where.branchId = branchId;
+    if (securityClassification) {
+      // Only allow security classification filtering for authorized roles
+      if (!['ADMIN', 'SECURITY_ANALYST', 'MANAGER'].includes(session.user.role)) {
+        return NextResponse.json(
+          { error: 'Insufficient permissions to filter by security classification' },
+          { status: 403 }
+        );
+      }
+      where.securityClassification = securityClassification;
+    }
     if (search) {
       where.OR = [
         { title: { contains: search, mode: 'insensitive' } },
@@ -72,16 +245,116 @@ export async function GET(request: NextRequest) {
       ];
     }
 
+    // If stats are requested, return stats instead of tickets
+    if (requestStats) {
+      // Create base where clause for stats (without status/priority filters)
+      const statsWhere = { ...where };
+      // Remove any status/priority specific filters for stats
+      delete statsWhere.status;
+      delete statsWhere.priority;
+      
+      const [openCount, pendingCount, approvedCount, inProgressCount, onHoldCount, resolvedCount, closedCount, rejectedCount, cancelledCount] = await Promise.all([
+        // Open tickets count
+        prisma.ticket.count({
+          where: {
+            ...statsWhere,
+            status: 'OPEN'
+          }
+        }),
+        // Pending tickets count
+        prisma.ticket.count({
+          where: {
+            ...statsWhere,
+            status: 'PENDING'
+          }
+        }),
+        // Approved tickets count
+        prisma.ticket.count({
+          where: {
+            ...statsWhere,
+            status: 'APPROVED'
+          }
+        }),
+        // In Progress tickets count
+        prisma.ticket.count({
+          where: {
+            ...statsWhere,
+            status: 'IN_PROGRESS'
+          }
+        }),
+        // On Hold tickets count (PENDING_APPROVAL + PENDING_VENDOR)
+        prisma.ticket.count({
+          where: {
+            ...statsWhere,
+            status: {
+              in: ['PENDING_APPROVAL', 'PENDING_VENDOR']
+            }
+          }
+        }),
+        // Resolved tickets count
+        prisma.ticket.count({
+          where: {
+            ...statsWhere,
+            status: 'RESOLVED'
+          }
+        }),
+        // Closed tickets count
+        prisma.ticket.count({
+          where: {
+            ...statsWhere,
+            status: 'CLOSED'
+          }
+        }),
+        // Rejected tickets count
+        prisma.ticket.count({
+          where: {
+            ...statsWhere,
+            status: 'REJECTED'
+          }
+        }),
+        // Cancelled tickets count
+        prisma.ticket.count({
+          where: {
+            ...statsWhere,
+            status: 'CANCELLED'
+          }
+        })
+      ]);
+
+      return NextResponse.json({
+        stats: {
+          open: openCount,
+          pending: pendingCount,
+          approved: approvedCount,
+          inProgress: inProgressCount,
+          onHold: onHoldCount,
+          resolved: resolvedCount,
+          closed: closedCount,
+          rejected: rejectedCount,
+          cancelled: cancelledCount
+        }
+      });
+    }
+
     const [tickets, total] = await Promise.all([
       prisma.ticket.findMany({
         where,
         include: {
-          service: { select: { name: true } },
-          createdBy: { select: { name: true, email: true } },
-          assignedTo: { select: { name: true, email: true } },
+          service: { 
+            select: { 
+              name: true,
+              slaHours: true,
+              category: {
+                select: { name: true }
+              }
+            } 
+          },
+          createdBy: { select: { id: true, name: true, email: true, branchId: true } },
+          assignedTo: { select: { id: true, name: true, email: true } },
+          branch: { select: { id: true, name: true, code: true } },
           _count: { select: { comments: true } }
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: getSortOrder(sortBy, sortOrder),
         skip: (page - 1) * limit,
         take: limit
       }),
@@ -131,11 +404,47 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+    
+    // Debug logging for attachments
+    console.log('Received ticket data:', {
+      ...body,
+      attachments: body.attachments?.map((a: any) => ({
+        filename: a.filename,
+        mimeType: a.mimeType,
+        size: a.size,
+        contentLength: a.content?.length || 0
+      }))
+    });
+    
     const validatedData = createTicketSchema.parse(body);
 
     // Generate ticket number
     const ticketCount = await prisma.ticket.count();
     const ticketNumber = `TKT-${new Date().getFullYear()}-${String(ticketCount + 1).padStart(4, '0')}`;
+
+    // Auto-mark tickets as confidential for Security Analysts
+    let isConfidential = validatedData.isConfidential;
+    let securityClassification = validatedData.securityClassification;
+    let securityFindings = validatedData.securityFindings;
+
+    if (session.user.role === 'SECURITY_ANALYST') {
+      // All tickets created by Security Analysts are automatically confidential
+      isConfidential = true;
+      // If no security classification is set, default to HIGH for security analyst tickets
+      if (!securityClassification) {
+        securityClassification = 'HIGH';
+      }
+    }
+
+    // Check permissions for confidential tickets and security fields
+    if (isConfidential || securityClassification || securityFindings) {
+      if (!['ADMIN', 'SECURITY_ANALYST', 'MANAGER'].includes(session.user.role)) {
+        return NextResponse.json(
+          { error: 'Insufficient permissions to create confidential or security-classified tickets' },
+          { status: 403 }
+        );
+      }
+    }
 
     // Determine initial status based on user role and approval workflow
     // Regular users' tickets go to PENDING_APPROVAL, managers and technicians bypass approval
@@ -144,33 +453,100 @@ export async function POST(request: NextRequest) {
     // Handle file attachments
     const attachmentData = [];
     if (validatedData.attachments && validatedData.attachments.length > 0) {
-      const fs = require('fs').promises;
-      const path = require('path');
-      
       for (const attachment of validatedData.attachments) {
-        // Create uploads directory if it doesn't exist
-        const uploadsDir = path.join(process.cwd(), 'uploads', 'tickets');
-        await fs.mkdir(uploadsDir, { recursive: true });
-        
-        // Generate unique filename
-        const timestamp = Date.now();
-        const filename = `${timestamp}-${attachment.filename}`;
-        const filePath = path.join(uploadsDir, filename);
-        
-        // Save file
-        const buffer = Buffer.from(attachment.content, 'base64');
-        await fs.writeFile(filePath, buffer);
-        
         attachmentData.push({
           filename: attachment.filename,
+          originalName: attachment.filename,
           mimeType: attachment.mimeType,
           size: attachment.size,
-          path: `uploads/tickets/${filename}`
+          path: attachment.content // Store base64 content directly as "path" for now
         });
       }
     }
 
-    // Create ticket with field values and attachments
+    // Get service details to check if it uses field templates
+    const service = await prisma.service.findUnique({
+      where: { id: validatedData.serviceId },
+      include: {
+        fields: true,
+        fieldTemplates: {
+          include: {
+            fieldTemplate: true
+          }
+        }
+      }
+    });
+
+    if (!service) {
+      return NextResponse.json({ error: 'Service not found' }, { status: 400 });
+    }
+
+    // Process field values - need to handle both regular fields and field templates
+    const processedFieldValues = [];
+    if (validatedData.fieldValues && validatedData.fieldValues.length > 0) {
+      for (const fieldValue of validatedData.fieldValues) {
+        // Check if this is a regular service field
+        const isServiceField = service.fields.some(f => f.id === fieldValue.fieldId);
+        
+        if (isServiceField) {
+          // Regular service field - save as is
+          processedFieldValues.push(fieldValue);
+        } else {
+          // Check if this is a field template
+          const fieldTemplate = service.fieldTemplates.find(
+            ft => ft.fieldTemplate.id === fieldValue.fieldId
+          );
+          
+          if (fieldTemplate) {
+            // For field templates, we need to create a service field first
+            // or find an existing one for this template
+            let serviceField = await prisma.serviceField.findFirst({
+              where: {
+                serviceId: service.id,
+                name: fieldTemplate.fieldTemplate.name
+              }
+            });
+
+            if (!serviceField) {
+              // Create a service field from the template
+              serviceField = await prisma.serviceField.create({
+                data: {
+                  serviceId: service.id,
+                  name: fieldTemplate.fieldTemplate.name,
+                  label: fieldTemplate.fieldTemplate.label,
+                  type: fieldTemplate.fieldTemplate.type,
+                  isRequired: fieldTemplate.isRequired ?? fieldTemplate.fieldTemplate.isRequired,
+                  isUserVisible: fieldTemplate.isUserVisible,
+                  placeholder: fieldTemplate.fieldTemplate.placeholder,
+                  helpText: fieldTemplate.helpText || fieldTemplate.fieldTemplate.helpText,
+                  defaultValue: fieldTemplate.defaultValue || fieldTemplate.fieldTemplate.defaultValue,
+                  options: fieldTemplate.fieldTemplate.options,
+                  validation: fieldTemplate.fieldTemplate.validation,
+                  order: fieldTemplate.order,
+                  isActive: true
+                }
+              });
+            }
+
+            // Use the service field ID instead of the template ID
+            processedFieldValues.push({
+              fieldId: serviceField.id,
+              value: fieldValue.value
+            });
+          } else {
+            console.warn('Field ID not found in service fields or templates:', fieldValue.fieldId);
+          }
+        }
+      }
+    }
+
+    // Get user's branch for the ticket
+    const userWithBranch = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { branchId: true }
+    });
+
+    // Create ticket with processed field values and attachments
     const ticket = await prisma.ticket.create({
       data: {
         ticketNumber,
@@ -185,8 +561,13 @@ export async function POST(request: NextRequest) {
         priority: validatedData.priority,
         status: initialStatus,
         createdById: session.user.id,
-        fieldValues: validatedData.fieldValues ? {
-          create: validatedData.fieldValues
+        branchId: userWithBranch?.branchId, // Set the branch from the user
+        // Security fields (using processed values for Security Analysts)
+        isConfidential: isConfidential,
+        securityClassification: securityClassification,
+        securityFindings: securityFindings,
+        fieldValues: processedFieldValues.length > 0 ? {
+          create: processedFieldValues
         } : undefined,
         attachments: attachmentData.length > 0 ? {
           create: attachmentData
@@ -237,9 +618,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Track service usage for analytics (run in background)
+    trackServiceUsage(
+      validatedData.serviceId,
+      session.user.id,
+      ticket.id,
+      userWithBranch?.branchId
+    );
+
+    // Update favorite service usage if it exists (run in background)
+    updateFavoriteServiceUsage(validatedData.serviceId, session.user.id);
+
     return NextResponse.json(ticket, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
+      console.error('Validation error details:', error.errors);
       return NextResponse.json(
         { error: 'Validation error', details: error.errors },
         { status: 400 }
@@ -247,8 +640,10 @@ export async function POST(request: NextRequest) {
     }
     
     console.error('Error creating ticket:', error);
+    // Provide more detailed error message
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: errorMessage },
       { status: 500 }
     );
   }

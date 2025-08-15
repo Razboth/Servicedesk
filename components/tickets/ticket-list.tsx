@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Search, Plus, Eye, Clock, User } from 'lucide-react';
+import { Loader2, Search, Plus, Eye, Clock, User, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatRelativeTime, getPriorityColor, getStatusColor } from '@/lib/utils';
 
@@ -49,11 +50,14 @@ interface TicketListProps {
 
 export function TicketList({ onCreateTicket, onViewTicket }: TicketListProps) {
   const router = useRouter();
+  const { data: session } = useSession();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [priorityFilter, setPriorityFilter] = useState('ALL');
+  const [branchFilter, setBranchFilter] = useState('ALL');
+  const [branches, setBranches] = useState<{id: string, name: string, code: string}[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
@@ -61,8 +65,12 @@ export function TicketList({ onCreateTicket, onViewTicket }: TicketListProps) {
   const pageSize = 10;
 
   useEffect(() => {
+    loadBranches();
+  }, []);
+
+  useEffect(() => {
     loadTickets();
-  }, [currentPage, searchTerm, statusFilter, priorityFilter]);
+  }, [currentPage, searchTerm, statusFilter, priorityFilter, branchFilter]);
 
   const loadTickets = async () => {
     try {
@@ -81,6 +89,9 @@ export function TicketList({ onCreateTicket, onViewTicket }: TicketListProps) {
       }
       if (priorityFilter !== 'ALL') {
         params.append('priority', priorityFilter);
+      }
+      if (branchFilter !== 'ALL') {
+        params.append('branchId', branchFilter);
       }
 
       const response = await fetch(`/api/tickets?${params}`);

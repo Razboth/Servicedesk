@@ -40,11 +40,19 @@ export async function GET(request: NextRequest) {
     const priority = searchParams.get('priority');
 
     // Build where clause for pending approvals in manager's branch
+    // Managers can ONLY approve tickets created by users from their own branch
     const where: any = {
       status: 'PENDING_APPROVAL',
-      createdBy: {
-        branchId: userWithBranch.branchId
-      }
+      AND: [
+        // Ticket must be assigned to manager's branch
+        { branchId: userWithBranch.branchId },
+        // Ticket creator must be from the same branch as the manager
+        {
+          createdBy: {
+            branchId: userWithBranch.branchId
+          }
+        }
+      ]
     };
 
     // Apply filters
@@ -65,7 +73,7 @@ export async function GET(request: NextRequest) {
         where,
         include: {
           service: { select: { name: true, description: true } },
-          createdBy: { select: { name: true, email: true } },
+          createdBy: { select: { name: true, email: true, branchId: true } },
           fieldValues: {
             include: {
               field: { select: { name: true, label: true, type: true } }
@@ -128,16 +136,24 @@ export async function POST(request: NextRequest) {
     const validatedData = bulkApprovalSchema.parse(body);
 
     // Verify all tickets belong to manager's branch and are pending approval
+    // Managers can ONLY approve tickets created by users from their own branch
     const tickets = await prisma.ticket.findMany({
       where: {
         id: { in: validatedData.ticketIds },
         status: 'PENDING_APPROVAL',
-        createdBy: {
-          branchId: userWithBranch.branchId
-        }
+        AND: [
+          // Ticket must be assigned to manager's branch
+          { branchId: userWithBranch.branchId },
+          // Ticket creator must be from the same branch as the manager
+          {
+            createdBy: {
+              branchId: userWithBranch.branchId
+            }
+          }
+        ]
       },
       include: {
-        createdBy: { select: { name: true, email: true } }
+        createdBy: { select: { name: true, email: true, branchId: true } }
       }
     });
 
@@ -148,7 +164,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const newStatus = validatedData.action === 'approve' ? 'APPROVED' : 'REJECTED';
+    // When approved, ticket moves to OPEN status so it can be worked on
+    const newStatus = validatedData.action === 'approve' ? 'OPEN' : 'REJECTED';
     const approvalStatus = validatedData.action === 'approve' ? 'APPROVED' : 'REJECTED';
 
     // Process bulk approval in transaction

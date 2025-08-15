@@ -44,12 +44,34 @@ export async function PUT(
       );
     }
 
-    // Check if user can modify tasks
-    const canModify = 
-      session.user.role === 'ADMIN' ||
-      ticket.assignedToId === session.user.id ||
-      (session.user.role === 'MANAGER' && 
-       ticket.createdBy.supportGroup === session.user.supportGroup);
+    // Get user's details for access control
+    const userWithDetails = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { 
+        branchId: true, 
+        role: true, 
+        supportGroupId: true
+      }
+    });
+
+    // Check access permissions
+    let canModify = false;
+    
+    if (session.user.role === 'ADMIN') {
+      // Super admin can see all
+      canModify = true;
+    } else if (session.user.role === 'MANAGER') {
+      // Managers can see tasks from tickets in their branch
+      canModify = userWithDetails?.branchId === ticket.branchId;
+    } else if (session.user.role === 'TECHNICIAN') {
+      // Technicians can see tasks from tickets they created, are assigned to, or match their support group
+      const isCreatorOrAssignee = ticket.createdById === session.user.id || ticket.assignedToId === session.user.id;
+      const isSupportGroupMatch = userWithDetails?.supportGroupId && ticket.service?.supportGroupId === userWithDetails.supportGroupId;
+      canModify = isCreatorOrAssignee || isSupportGroupMatch;
+    } else if (session.user.role === 'USER') {
+      // Users can only see tasks from their own tickets
+      canModify = ticket.createdById === session.user.id;
+    }
 
     if (!canModify) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -157,11 +179,26 @@ export async function DELETE(
       );
     }
 
-    // Check if user can modify tasks (only admins and managers can delete tasks)
-    const canDelete = 
-      session.user.role === 'ADMIN' ||
-      (session.user.role === 'MANAGER' && 
-       ticket.createdBy.supportGroup === session.user.supportGroup);
+    // Get user's details for access control
+    const userWithDetails = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { 
+        branchId: true, 
+        role: true, 
+        supportGroupId: true
+      }
+    });
+
+    // Check if user can delete tasks (only admins and managers can delete tasks)
+    let canDelete = false;
+    
+    if (session.user.role === 'ADMIN') {
+      // Super admin can delete all
+      canDelete = true;
+    } else if (session.user.role === 'MANAGER') {
+      // Managers can delete tasks from tickets in their branch
+      canDelete = userWithDetails?.branchId === ticket.branchId;
+    }
 
     if (!canDelete) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });

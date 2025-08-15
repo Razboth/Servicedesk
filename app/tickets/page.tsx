@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { Navbar } from '@/components/navigation/navbar';
-import { TicketList } from '@/components/tickets/ticket-list';
+import { useRouter } from 'next/navigation';
+import { TicketListEnhanced } from '@/components/tickets/ticket-list-enhanced';
 import { TicketForm } from '@/components/tickets/ticket-form';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
@@ -25,6 +25,7 @@ interface Ticket {
 
 export default function TicketsPage() {
   const { data: session, status } = useSession();
+  const router = useRouter();
   const [currentView, setCurrentView] = useState<'list' | 'create'>('list');
 
   if (status === 'loading') {
@@ -44,15 +45,12 @@ export default function TicketsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navbar />
-      
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         {currentView === 'list' ? (
-          <TicketList
+          <TicketListEnhanced
             onCreateTicket={() => setCurrentView('create')}
             onViewTicket={(ticketId) => {
-              // Handle ticket view - could navigate to detail page
-              console.log('View ticket:', ticketId);
+              router.push(`/tickets/${ticketId}`);
             }}
           />
         ) : (

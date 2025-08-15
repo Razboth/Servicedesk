@@ -1,0 +1,32 @@
+Dear Team IT,
+SOC Notification Alert!
+Date                                : 08/04/2025 12:50:33 pm
+Severity                          : High
+First Action Needed        : Validasi
+Case ID LR                       : -
+Ultima ID                       : ABC-DEF-082025-11704
+Incident Type                   : ENDS: LIN: PE-TA0004: Sudo Command Executed: Log: Success
+IP / Host Origin               : -
+User Origin                      : -
+IP / Host Impacted           : HOST-IMPACTED
+User Impacted                 : -
+Log Source                      : -
+Status Tiket                      : New
+Port                                  : -
+Classification                   : Activity
+URL                                  : -
+File_Proses                       : sudo
+File_Path                           : -
+Action                              : -
+Deskripsi:
+Team SOC menemukan alarm ENDS: LIN: PE-TA0004: Sudo Command Executed: Log: Success pada log source Linux.
+Event tersebut terjadi karena terdeteksinya adanya aktivitas sudo command executed pada [user1] dan [-] dengan [server1] menggunakan [sudo] pada [/usr/bin/su].
+pada perintah /usr/bin/su digunakan untuk beralih (switch) ke pengguna lain yang biasanya untuk memperoleh akses lebih tinggi  seperti root (administrator).
+Rekomendasi:
+1. Melakukan pengecekan dan validasi terkait aktivitas pada IP/user omsagent legitimate atau tidak.
+2. Membatasi atau limitasi user untuk melakukan perintah command sudo menggunakan user root.
+3. Gunakan password dengan karakter unik. Password yang terdiri dari karakter, termasuk huruf, angka, dan simbol.
+4. Aktifkan verifikasi dua faktor (2FA). 2FA menambahkan lapisan keamanan tambahan untuk memasukkan kode yang dikirim ke perangkat.
+Terima kasih.
+Salam,
+SOC Team

@@ -13,7 +13,7 @@ const updateServiceSchema = z.object({
   tier1CategoryId: z.string().optional(),
   tier2SubcategoryId: z.string().optional(),
   tier3ItemId: z.string().optional(),
-  supportGroup: z.enum(['IT_HELPDESK', 'NETWORK_TEAM', 'SECURITY_TEAM', 'VENDOR_SUPPORT']).optional(),
+  supportGroupId: z.string().optional(), // Changed from supportGroup enum to supportGroupId
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL', 'EMERGENCY']).optional(),
   estimatedHours: z.number().min(1).optional(),
   slaHours: z.number().min(1).optional(),
@@ -43,6 +43,7 @@ export async function GET(
         category: true,
         subcategory: true,
         item: true,
+        supportGroup: true, // Include support group
         fields: {
           orderBy: {
             order: 'asc'
@@ -134,6 +135,20 @@ export async function PUT(
       }
     }
 
+    // Validate support group if provided
+    if (validatedData.supportGroupId) {
+      const supportGroup = await prisma.supportGroup.findUnique({
+        where: { id: validatedData.supportGroupId }
+      });
+
+      if (!supportGroup) {
+        return NextResponse.json(
+          { error: 'Invalid support group' },
+          { status: 400 }
+        );
+      }
+    }
+
     // Update the service
     const updatedService = await prisma.service.update({
       where: { id: params.id },
@@ -145,6 +160,7 @@ export async function PUT(
         category: true,
         subcategory: true,
         item: true,
+        supportGroup: true, // Include support group
         fields: {
           orderBy: {
             order: 'asc'

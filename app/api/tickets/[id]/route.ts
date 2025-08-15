@@ -35,10 +35,11 @@ export async function GET(
         service: {
           select: {
             name: true,
+            supportGroupId: true,
             category: { select: { name: true } }
           }
         },
-        createdBy: { select: { name: true, email: true, role: true } },
+        createdBy: { select: { name: true, email: true, role: true, branchId: true } },
         assignedTo: { select: { name: true, email: true, role: true } },
         fieldValues: {
           include: {
@@ -51,7 +52,16 @@ export async function GET(
           },
           orderBy: { createdAt: 'asc' }
         },
-        attachments: true,
+        attachments: {
+          select: {
+            id: true,
+            filename: true,
+            originalName: true,
+            mimeType: true,
+            size: true,
+            createdAt: true
+          }
+        },
         slaTracking: {
           include: {
             slaTemplate: true
@@ -64,12 +74,42 @@ export async function GET(
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
+    // Get user's details for access control
+    const userWithDetails = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { 
+        branchId: true, 
+        role: true, 
+        supportGroupId: true
+      }
+    });
+
     // Check access permissions
-    const canAccess = 
-      session.user.role === 'ADMIN' ||
-      session.user.role === 'MANAGER' ||
-      ticket.createdById === session.user.id ||
-      ticket.assignedToId === session.user.id;
+    let canAccess = false;
+    
+    if (session.user.role === 'ADMIN') {
+      // Super admin can see all tickets
+      canAccess = true;
+    } else if (session.user.role === 'MANAGER') {
+      // Managers can ONLY see tickets created by users from their own branch
+      const isFromSameBranch = userWithDetails?.branchId === ticket.branchId;
+      const isCreatorFromSameBranch = ticket.createdBy?.branchId === userWithDetails?.branchId;
+      canAccess = isFromSameBranch && isCreatorFromSameBranch;
+    } else if (session.user.role === 'TECHNICIAN') {
+      // Technicians can see tickets they created, are assigned to, or match their support group
+      const isCreatorOrAssignee = ticket.createdById === session.user.id || ticket.assignedToId === session.user.id;
+      const isSupportGroupMatch = userWithDetails?.supportGroupId && ticket.service?.supportGroupId === userWithDetails.supportGroupId;
+      canAccess = isCreatorOrAssignee || isSupportGroupMatch;
+    } else if (session.user.role === 'SECURITY_ANALYST') {
+      // Security Analysts function like technicians but with additional security access
+      const isCreatorOrAssignee = ticket.createdById === session.user.id || ticket.assignedToId === session.user.id;
+      const isSupportGroupMatch = userWithDetails?.supportGroupId && ticket.service?.supportGroupId === userWithDetails.supportGroupId;
+      const isSecurityAnalystTicket = ticket.createdBy?.role === 'SECURITY_ANALYST';
+      canAccess = isCreatorOrAssignee || isSupportGroupMatch || isSecurityAnalystTicket;
+    } else if (session.user.role === 'USER') {
+      // Users can only see their own tickets
+      canAccess = ticket.createdById === session.user.id;
+    }
 
     if (!canAccess) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
@@ -120,6 +160,7 @@ export async function PATCH(
       session.user.role === 'ADMIN' ||
       session.user.role === 'MANAGER' ||
       session.user.role === 'TECHNICIAN' ||
+      session.user.role === 'SECURITY_ANALYST' ||
       (session.user.role === 'USER' && existingTicket.createdById === session.user.id);
 
     if (!canUpdate) {
@@ -133,6 +174,11 @@ export async function PATCH(
     if (validatedData.status === 'RESOLVED' && existingTicket.status !== 'RESOLVED') {
       updateData.resolvedAt = new Date();
     }
+    
+    // Clear closedAt timestamp when reopening a closed ticket
+    if (existingTicket.status === 'CLOSED' && validatedData.status && validatedData.status !== 'CLOSED') {
+      updateData.closedAt = null;
+    }
 
     // Update the ticket
     const updatedTicket = await prisma.ticket.update({
@@ -145,7 +191,7 @@ export async function PATCH(
             category: { select: { name: true } }
           }
         },
-        createdBy: { select: { name: true, email: true, role: true } },
+        createdBy: { select: { name: true, email: true, role: true, branchId: true } },
         assignedTo: { select: { name: true, email: true, role: true } },
         fieldValues: {
           include: {
@@ -215,6 +261,7 @@ export async function PUT(
       session.user.role === 'ADMIN' ||
       session.user.role === 'MANAGER' ||
       session.user.role === 'TECHNICIAN' ||
+      session.user.role === 'SECURITY_ANALYST' ||
       (session.user.role === 'USER' && existingTicket.createdById === session.user.id);
 
     if (!canUpdate) {

@@ -1,0 +1,188 @@
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { auth } from '@/lib/auth';
+
+// Rate limiting storage (in production, use Redis or database)
+const rateLimitMap = new Map();
+
+// Rate limiting configuration
+const RATE_LIMIT_WINDOW = 15 * 60 * 1000; // 15 minutes
+const RATE_LIMIT_MAX_REQUESTS = 100; // requests per window
+const LOGIN_RATE_LIMIT = 5; // login attempts per window
+
+// IP extraction helper
+function getIP(request: NextRequest): string {
+  return request.headers.get('x-forwarded-for') || 
+         request.headers.get('x-real-ip') || 
+         'unknown';
+}
+
+// Rate limiting function
+function isRateLimited(ip: string, endpoint: string, maxRequests: number): boolean {
+  const key = `${ip}:${endpoint}`;
+  const now = Date.now();
+  const windowStart = now - RATE_LIMIT_WINDOW;
+  
+  // Get current requests for this key
+  let requests = rateLimitMap.get(key) || [];
+  
+  // Remove old requests outside the window
+  requests = requests.filter((timestamp: number) => timestamp > windowStart);
+  
+  // Check if limit exceeded
+  if (requests.length >= maxRequests) {
+    return true;
+  }
+  
+  // Add current request
+  requests.push(now);
+  rateLimitMap.set(key, requests);
+  
+  return false;
+}
+
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  const ip = getIP(request);
+
+  // Create response with security headers
+  const response = NextResponse.next();
+
+  // Security Headers
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('X-XSS-Protection', '1; mode=block');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), location=()');
+  
+  // HSTS for production
+  if (process.env.NODE_ENV === 'production') {
+    response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+  }
+
+  // Content Security Policy - Allow NextAuth operations
+  const cspHeader = `
+    default-src 'self';
+    script-src 'self' 'unsafe-eval' 'unsafe-inline';
+    style-src 'self' 'unsafe-inline';
+    img-src 'self' data: blob: https:;
+    font-src 'self';
+    connect-src 'self' https:;
+    media-src 'self';
+    object-src 'none';
+    child-src 'self';
+    worker-src 'self';
+    frame-ancestors 'none';
+    form-action 'self';
+    base-uri 'self';
+    manifest-src 'self';
+  `.replace(/\s+/g, ' ').trim();
+  
+  response.headers.set('Content-Security-Policy', cspHeader);
+
+  // Rate limiting for API routes
+  if (pathname.startsWith('/api/')) {
+    // Special rate limiting for auth endpoints
+    if (pathname.includes('/auth/') || pathname.includes('/signin')) {
+      if (isRateLimited(ip, 'auth', LOGIN_RATE_LIMIT)) {
+        return new NextResponse(
+          JSON.stringify({ 
+            error: 'Too many authentication attempts. Please try again later.' 
+          }),
+          { 
+            status: 429, 
+            headers: { 
+              'Content-Type': 'application/json',
+              'Retry-After': '900' // 15 minutes
+            }
+          }
+        );
+      }
+    } else {
+      // General API rate limiting
+      if (isRateLimited(ip, 'api', RATE_LIMIT_MAX_REQUESTS)) {
+        return new NextResponse(
+          JSON.stringify({ 
+            error: 'Too many requests. Please try again later.' 
+          }),
+          { 
+            status: 429, 
+            headers: { 
+              'Content-Type': 'application/json',
+              'Retry-After': '900'
+            }
+          }
+        );
+      }
+    }
+  }
+
+  // Protected routes that require authentication
+  const protectedRoutes = [
+    '/admin',
+    '/manager', 
+    '/technician',
+    '/tickets',
+    '/reports'
+  ];
+
+  // Check if this is a protected route
+  const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
+
+  if (isProtectedRoute) {
+    try {
+      const session = await auth();
+      
+      if (!session?.user) {
+        // Redirect to signin if not authenticated
+        const signinUrl = new URL('/auth/signin', request.url);
+        signinUrl.searchParams.set('callbackUrl', pathname);
+        return NextResponse.redirect(signinUrl);
+      }
+
+      // Role-based access control
+      const userRole = session.user.role;
+      
+      // Admin routes - only ADMIN can access
+      if (pathname.startsWith('/admin') && userRole !== 'ADMIN') {
+        return new NextResponse('Forbidden', { status: 403 });
+      }
+      
+      // Manager routes - ADMIN and MANAGER can access
+      if (pathname.startsWith('/manager') && !['ADMIN', 'MANAGER'].includes(userRole)) {
+        return new NextResponse('Forbidden', { status: 403 });
+      }
+      
+      // Technician routes - ADMIN, MANAGER, TECHNICIAN, SECURITY_ANALYST can access
+      if (pathname.startsWith('/technician') && 
+          !['ADMIN', 'MANAGER', 'TECHNICIAN', 'SECURITY_ANALYST'].includes(userRole)) {
+        return new NextResponse('Forbidden', { status: 403 });
+      }
+      
+      // Reports routes - All authenticated users can access, but content filtered by role
+      // (Content filtering happens at component/API level)
+      
+    } catch (error) {
+      console.error('Middleware auth error:', error);
+      // Redirect to signin on auth error
+      const signinUrl = new URL('/auth/signin', request.url);
+      return NextResponse.redirect(signinUrl);
+    }
+  }
+
+  return response;
+}
+
+export const config = {
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api/auth (NextAuth.js routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
+     */
+    '/((?!api/auth|_next/static|_next/image|favicon.ico|public/).*)',
+  ],
+};

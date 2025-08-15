@@ -11,8 +11,27 @@
       "Bash(npx prisma generate:*)",
       "WebFetch(domain:localhost)",
       "Bash(awk:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(ls:*)",
+      "Bash(npx tsx:*)"
     ],
     "deny": []
+  },
+  "mcpServers": {
+    "streamable-mcp-server": {
+      "type": "streamable-http",
+      "url": "http://127.0.0.1:12306/mcp"
+    },
+    "shadcn-ui": {
+      "command": "npx",
+      "args": ["@jpisnice/shadcn-ui-mcp-server"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "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"
+      }
+    },
+    "mcp-chrome": {
+      "command": "npx",
+      "args": ["-y", "mcp-chrome-bridge"]
+    }
   }
 }

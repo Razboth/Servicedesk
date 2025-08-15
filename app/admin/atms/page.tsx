@@ -257,11 +257,13 @@ export default function ATMsPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {atm.location && (
+                      {atm.location ? (
                         <div className="flex items-center gap-1">
                           <MapPin className="h-4 w-4 text-gray-400" />
                           <span className="text-sm">{atm.location}</span>
                         </div>
+                      ) : (
+                        <span className="text-sm text-gray-400">-</span>
                       )}
                     </TableCell>
                     <TableCell className="text-sm text-gray-600">

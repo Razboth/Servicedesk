@@ -10,6 +10,34 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Get user's branch information
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      include: { branch: true }
+    });
+
+    // Determine filtering based on user role
+    const isGlobalRole = ['ADMIN', 'SUPER_ADMIN'].includes(session.user.role);
+    const isBranchRole = ['MANAGER', 'USER'].includes(session.user.role);
+    const branchId = user?.branchId;
+
+    // Build where clause for recent tickets
+    let recentTicketsWhere: any = {};
+    if (isBranchRole && branchId) {
+      // Managers and Users see tickets from their branch only
+      recentTicketsWhere = {
+        AND: [
+          { branchId: branchId },
+          {
+            createdBy: {
+              branchId: branchId
+            }
+          }
+        ]
+      };
+    }
+    // Technicians and Admins see all tickets (no additional filtering)
+
     // Get ticket statistics
     const [totalTickets, openTickets, resolvedTickets, recentTickets] = await Promise.all([
       // Total tickets count
@@ -33,8 +61,9 @@ export async function GET(request: NextRequest) {
         }
       }),
       
-      // Recent tickets (last 10)
+      // Recent tickets (last 10) - filtered by branch for certain roles
       prisma.ticket.findMany({
+        where: recentTicketsWhere,
         take: 10,
         orderBy: {
           createdAt: 'desc'

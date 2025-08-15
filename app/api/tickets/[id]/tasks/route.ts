@@ -11,8 +11,9 @@ const updateTaskSchema = z.object({
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const session = await auth();
     if (!session?.user) {
@@ -21,7 +22,7 @@ export async function GET(
 
     // Verify ticket exists and user has access
     const ticket = await prisma.ticket.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: {
         id: true,
         assignedToId: true,
@@ -41,21 +42,52 @@ export async function GET(
       );
     }
 
+    // Get user's details for access control
+    const userWithDetails = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { 
+        branchId: true, 
+        role: true, 
+        supportGroupId: true
+      }
+    });
+
     // Check access permissions
-    const hasAccess = 
-      session.user.role === 'ADMIN' ||
-      ticket.assignedToId === session.user.id ||
-      ticket.createdById === session.user.id ||
-      (session.user.role === 'MANAGER' && 
-       ticket.createdBy.supportGroup === session.user.supportGroup);
+    let hasAccess = false;
+    
+    if (session.user.role === 'ADMIN') {
+      // Super admin can see all
+      hasAccess = true;
+    } else if (session.user.role === 'MANAGER') {
+      // Managers can see tasks from tickets in their branch
+      hasAccess = userWithDetails?.branchId === ticket.branchId;
+    } else if (session.user.role === 'TECHNICIAN') {
+      // Technicians can see tasks from tickets they created, are assigned to, or match their support group
+      const isCreatorOrAssignee = ticket.createdById === session.user.id || ticket.assignedToId === session.user.id;
+      const isSupportGroupMatch = userWithDetails?.supportGroupId && ticket.service?.supportGroupId === userWithDetails.supportGroupId;
+      hasAccess = isCreatorOrAssignee || isSupportGroupMatch;
+    } else if (session.user.role === 'USER') {
+      // Users can only see tasks from their own tickets
+      hasAccess = ticket.createdById === session.user.id;
+    }
 
     if (!hasAccess) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const tasks = await prisma.ticketTask.findMany({
-      where: { ticketId: params.id },
+      where: { ticketId: id },
       include: {
+        taskTemplateItem: {
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            estimatedMinutes: true,
+            isRequired: true,
+            order: true
+          }
+        },
         completedBy: {
           select: {
             id: true,
@@ -65,7 +97,9 @@ export async function GET(
         }
       },
       orderBy: {
-        order: 'asc'
+        taskTemplateItem: {
+          order: 'asc'
+        }
       }
     });
 
@@ -81,8 +115,9 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const session = await auth();
     if (!session?.user) {
@@ -101,7 +136,7 @@ export async function POST(
 
     // Verify ticket exists and user has access
     const ticket = await prisma.ticket.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: {
         id: true,
         assignedToId: true,
@@ -165,7 +200,7 @@ export async function POST(
       taskTemplate.items.map(item => 
         prisma.ticketTask.create({
           data: {
-            ticketId: params.id,
+            ticketId: id,
             taskTemplateItemId: item.id,
             status: 'PENDING'
           }
