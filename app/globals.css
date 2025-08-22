@@ -9,6 +9,74 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
+  
+  /* Responsive Typography Utilities */
+  .text-responsive-xs {
+    @apply text-xs sm:text-sm;
+  }
+  
+  .text-responsive-sm {
+    @apply text-sm sm:text-base;
+  }
+  
+  .text-responsive-base {
+    @apply text-base sm:text-lg;
+  }
+  
+  .text-responsive-lg {
+    @apply text-lg sm:text-xl;
+  }
+  
+  .text-responsive-xl {
+    @apply text-xl sm:text-2xl;
+  }
+  
+  .text-responsive-2xl {
+    @apply text-2xl sm:text-3xl;
+  }
+  
+  .text-responsive-3xl {
+    @apply text-3xl sm:text-4xl;
+  }
+  
+  /* Responsive Spacing Utilities */
+  .space-responsive-x {
+    @apply space-x-2 sm:space-x-4;
+  }
+  
+  .space-responsive-y {
+    @apply space-y-4 sm:space-y-6;
+  }
+  
+  .gap-responsive {
+    @apply gap-4 sm:gap-6;
+  }
+  
+  .p-responsive {
+    @apply p-4 sm:p-6;
+  }
+  
+  .px-responsive {
+    @apply px-4 sm:px-6;
+  }
+  
+  .py-responsive {
+    @apply py-4 sm:py-6;
+  }
+  
+  /* Mobile-first touch targets */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px] sm:min-h-[40px] sm:min-w-[40px];
+  }
+  
+  /* Responsive margins */
+  .mb-responsive {
+    @apply mb-4 sm:mb-6 lg:mb-8;
+  }
+  
+  .mt-responsive {
+    @apply mt-4 sm:mt-6 lg:mt-8;
+  }
 }
 
 @layer base {

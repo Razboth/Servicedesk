@@ -77,7 +77,7 @@ export default function NewBranchPage() {
   };
 
   return (
-    <div className="container mx-auto py-8 max-w-3xl">
+    <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-8 max-w-3xl">
       <div className="mb-6">
         <Link href="/admin/branches">
           <Button variant="ghost" size="sm" className="mb-4">

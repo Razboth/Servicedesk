@@ -263,48 +263,36 @@ async function seedSupportGroups() {
       code: 'IT_HELPDESK',
       name: 'IT Helpdesk',
       description: 'General IT support and helpdesk services',
-      email: 'it.helpdesk@banksulutgo.co.id',
-      phone: '0431-123456',
       isActive: true
     },
     {
       code: 'NETWORK_ADMIN',
       name: 'Network Administration',
       description: 'Network infrastructure and connectivity support',
-      email: 'network.admin@banksulutgo.co.id',
-      phone: '0431-123457',
       isActive: true
     },
     {
       code: 'APP_SUPPORT',
       name: 'Application Support',
       description: 'Business application support and maintenance',
-      email: 'app.support@banksulutgo.co.id',
-      phone: '0431-123458',
       isActive: true
     },
     {
       code: 'SECURITY_OPS',
       name: 'Security Operations',
       description: 'Information security and compliance',
-      email: 'security.ops@banksulutgo.co.id',
-      phone: '0431-123459',
       isActive: true
     },
     {
       code: 'DATABASE_ADMIN',
       name: 'Database Administration',
       description: 'Database management and optimization',
-      email: 'db.admin@banksulutgo.co.id',
-      phone: '0431-123460',
       isActive: true
     },
     {
       code: 'HARDWARE_SUPPORT',
       name: 'Hardware Support',
       description: 'Hardware maintenance and troubleshooting',
-      email: 'hardware.support@banksulutgo.co.id',
-      phone: '0431-123461',
       isActive: true
     }
   ];
@@ -337,9 +325,14 @@ async function seedBranchesAndATMs() {
       phone: '0431-851001',
       email: 'manado.main@banksulutgo.co.id',
       isActive: true,
+      monitoringEnabled: true,
+      ipAddress: '10.1.1.1',
+      backupIpAddress: '10.1.1.2',
+      networkMedia: 'FO',
+      networkVendor: 'Telkom',
       atms: [
-        { code: 'ATM001', location: 'Main Lobby', status: 'OPERATIONAL' },
-        { code: 'ATM002', location: 'Drive Through', status: 'OPERATIONAL' }
+        { code: 'ATM001', location: 'Main Lobby', status: 'OPERATIONAL', ipAddress: '10.1.1.10' },
+        { code: 'ATM002', location: 'Drive Through', status: 'OPERATIONAL', ipAddress: '10.1.1.11' }
       ]
     },
     {
@@ -351,9 +344,14 @@ async function seedBranchesAndATMs() {
       phone: '0431-351001',
       email: 'tomohon@banksulutgo.co.id',
       isActive: true,
+      monitoringEnabled: true,
+      ipAddress: '10.1.2.1',
+      backupIpAddress: '10.1.2.2',
+      networkMedia: 'VSAT',
+      networkVendor: 'Indosat',
       atms: [
-        { code: 'ATM101', location: 'Branch Office', status: 'OPERATIONAL' },
-        { code: 'ATM102', location: 'Tomohon Mall', status: 'OPERATIONAL' }
+        { code: 'ATM101', location: 'Branch Office', status: 'OPERATIONAL', ipAddress: '10.1.2.10' },
+        { code: 'ATM102', location: 'Tomohon Mall', status: 'OPERATIONAL', ipAddress: '10.1.2.11' }
       ]
     },
     {
@@ -365,9 +363,14 @@ async function seedBranchesAndATMs() {
       phone: '0438-21001',
       email: 'bitung@banksulutgo.co.id',
       isActive: true,
+      monitoringEnabled: true,
+      ipAddress: '10.1.3.1',
+      backupIpAddress: '10.1.3.2',
+      networkMedia: 'M2M',
+      networkVendor: 'Telkomsel',
       atms: [
-        { code: 'ATM201', location: 'Branch Office', status: 'OPERATIONAL' },
-        { code: 'ATM202', location: 'Bitung Port', status: 'MAINTENANCE' }
+        { code: 'ATM201', location: 'Branch Office', status: 'OPERATIONAL', ipAddress: '10.1.3.10' },
+        { code: 'ATM202', location: 'Bitung Port', status: 'MAINTENANCE', ipAddress: '10.1.3.11' }
       ]
     },
     {
@@ -379,8 +382,13 @@ async function seedBranchesAndATMs() {
       phone: '0434-21001',
       email: 'kotamobagu@banksulutgo.co.id',
       isActive: true,
+      monitoringEnabled: true,
+      ipAddress: '10.1.4.1',
+      backupIpAddress: '10.1.4.2',
+      networkMedia: 'FO',
+      networkVendor: 'Telkom',
       atms: [
-        { code: 'ATM301', location: 'Branch Office', status: 'OPERATIONAL' }
+        { code: 'ATM301', location: 'Branch Office', status: 'OPERATIONAL', ipAddress: '10.1.4.10' }
       ]
     },
     {
@@ -392,8 +400,13 @@ async function seedBranchesAndATMs() {
       phone: '0431-891001',
       email: 'airmadidi@banksulutgo.co.id',
       isActive: true,
+      monitoringEnabled: true,
+      ipAddress: '10.1.5.1',
+      backupIpAddress: '10.1.5.2',
+      networkMedia: 'VSAT',
+      networkVendor: 'Indosat',
       atms: [
-        { code: 'ATM401', location: 'Branch Office', status: 'OPERATIONAL' }
+        { code: 'ATM401', location: 'Branch Office', status: 'OPERATIONAL', ipAddress: '10.1.5.10' }
       ]
     }
   ];
@@ -402,7 +415,7 @@ async function seedBranchesAndATMs() {
   const atms = [];
   
   for (const branchData of branchesData) {
-    const { atms: atmData, ...branchInfo } = branchData;
+    const { atms: atmData, phone, email, ...branchInfo } = branchData;
     
     // Check if branch exists
     let branch = await prisma.branch.findUnique({
@@ -427,7 +440,8 @@ async function seedBranchesAndATMs() {
             name: `${branchData.name} - ${atm.code}`,
             location: atm.location,
             branchId: branch.id,
-            isActive: atm.status === 'OPERATIONAL'
+            isActive: atm.status === 'OPERATIONAL',
+            ipAddress: atm.ipAddress || null
           }
         });
         atms.push(newATM);
@@ -446,6 +460,7 @@ async function seedUsers(branches: any[], supportGroups: any[]) {
   const usersData = [
     // Super Admin
     {
+      username: 'superadmin',
       email: 'superadmin@banksulutgo.co.id',
       name: 'Super Administrator',
       password: hashedPassword,
@@ -454,6 +469,7 @@ async function seedUsers(branches: any[], supportGroups: any[]) {
     },
     // Admin
     {
+      username: 'admin',
       email: 'admin@banksulutgo.co.id',
       name: 'System Administrator',
       password: hashedPassword,
@@ -462,6 +478,7 @@ async function seedUsers(branches: any[], supportGroups: any[]) {
     },
     // Branch Managers
     {
+      username: 'manager.manado',
       email: 'manager.manado@banksulutgo.co.id',
       name: 'Manado Branch Manager',
       password: hashedPassword,
@@ -470,6 +487,7 @@ async function seedUsers(branches: any[], supportGroups: any[]) {
       isActive: true
     },
     {
+      username: 'manager.tomohon',
       email: 'manager.tomohon@banksulutgo.co.id',
       name: 'Tomohon Branch Manager',
       password: hashedPassword,
@@ -479,6 +497,7 @@ async function seedUsers(branches: any[], supportGroups: any[]) {
     },
     // Technicians for different support groups
     {
+      username: 'tech.helpdesk',
       email: 'tech.helpdesk@banksulutgo.co.id',
       name: 'IT Helpdesk Technician',
       password: hashedPassword,
@@ -487,6 +506,7 @@ async function seedUsers(branches: any[], supportGroups: any[]) {
       isActive: true
     },
     {
+      username: 'tech.network',
       email: 'tech.network@banksulutgo.co.id',
       name: 'Network Technician',
       password: hashedPassword,
@@ -495,6 +515,7 @@ async function seedUsers(branches: any[], supportGroups: any[]) {
       isActive: true
     },
     {
+      username: 'tech.app',
       email: 'tech.app@banksulutgo.co.id',
       name: 'Application Support Technician',
       password: hashedPassword,
@@ -504,6 +525,7 @@ async function seedUsers(branches: any[], supportGroups: any[]) {
     },
     // Branch Users
     {
+      username: 'user.manado',
       email: 'user.manado@banksulutgo.co.id',
       name: 'Manado Branch User',
       password: hashedPassword,
@@ -512,6 +534,7 @@ async function seedUsers(branches: any[], supportGroups: any[]) {
       isActive: true
     },
     {
+      username: 'user.tomohon',
       email: 'user.tomohon@banksulutgo.co.id',
       name: 'Tomohon Branch User',
       password: hashedPassword,
@@ -520,6 +543,7 @@ async function seedUsers(branches: any[], supportGroups: any[]) {
       isActive: true
     },
     {
+      username: 'user.bitung',
       email: 'user.bitung@banksulutgo.co.id',
       name: 'Bitung Branch User',
       password: hashedPassword,

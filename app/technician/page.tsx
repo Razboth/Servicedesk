@@ -8,10 +8,20 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { 
+  ModernDialog, 
+  ModernDialogContent, 
+  ModernDialogHeader, 
+  ModernDialogTitle, 
+  ModernDialogDescription, 
+  ModernDialogBody, 
+  ModernDialogFooter 
+} from '@/components/ui/modern-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Clock, User, AlertCircle, CheckCircle, ArrowRight, Plus, Eye, X, Edit } from 'lucide-react';
+import { Clock, User, AlertCircle, CheckCircle, ArrowRight, Plus, Eye, X, Edit, Wrench, BarChart3 } from 'lucide-react';
+import { TechnicianTicketSummary } from '@/components/technician/ticket-summary';
 
 interface Ticket {
   id: string;
@@ -73,6 +83,13 @@ export default function TechnicianWorkbench() {
   const [isSubmittingResolution, setIsSubmittingResolution] = useState(false);
   const [resolveTicketId, setResolveTicketId] = useState<string | null>(null);
   const [selectedResolutionStatus, setSelectedResolutionStatus] = useState<string>('RESOLVED');
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalAssigned, setTotalAssigned] = useState(0);
+  const [totalUnassigned, setTotalUnassigned] = useState(0);
+  const pageSize = 10;
 
   useEffect(() => {
     if (session?.user?.role !== 'TECHNICIAN') {
@@ -84,17 +101,27 @@ export default function TechnicianWorkbench() {
     if (session?.user?.id) {
       fetchTickets();
     }
-  }, [session]);
+  }, [session, currentPage]); // Add currentPage dependency
 
   const fetchTickets = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/tickets');
+      
+      // Build pagination parameters
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: pageSize.toString()
+      });
+      
+      const response = await fetch(`/api/tickets?${params}`);
       if (response.ok) {
         const data = await response.json();
         setTickets(data.tickets || []);
         
-        // Calculate stats
+        // Update pagination info
+        setTotalPages(data.pagination?.pages || 1);
+        
+        // Calculate current page stats
         const assigned = data.tickets?.filter((t: Ticket) => t.assignedTo?.id === session?.user?.id) || [];
         const unassigned = data.tickets?.filter((t: Ticket) => !t.assignedTo && t.status !== 'PENDING_APPROVAL') || [];
         const resolvedToday = data.tickets?.filter((t: Ticket) => 
@@ -102,6 +129,9 @@ export default function TechnicianWorkbench() {
           t.status === 'RESOLVED' && 
           new Date(t.updatedAt).toDateString() === new Date().toDateString()
         ) || [];
+        
+        // Get total counts for badges - we need to make separate API calls for accurate counts
+        await fetchTotalCounts();
         
         setStats({
           assigned: assigned.length,
@@ -116,6 +146,30 @@ export default function TechnicianWorkbench() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchTotalCounts = async () => {
+    try {
+      // Fetch all tickets for accurate badge counts
+      const allResponse = await fetch('/api/tickets?limit=1000'); // Large limit for counting
+      if (allResponse.ok) {
+        const allData = await allResponse.json();
+        const allTickets = allData.tickets || [];
+        
+        const totalAssignedCount = allTickets.filter((t: Ticket) => t.assignedTo?.id === session?.user?.id).length;
+        const totalUnassignedCount = allTickets.filter((t: Ticket) => !t.assignedTo && t.status !== 'PENDING_APPROVAL').length;
+        
+        setTotalAssigned(totalAssignedCount);
+        setTotalUnassigned(totalUnassignedCount);
+      }
+    } catch (error) {
+      console.error('Error fetching total counts:', error);
+    }
+  };
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    setCurrentPage(1); // Reset to first page when switching tabs
   };
 
   const openClaimModal = (ticketId: string) => {
@@ -352,20 +406,22 @@ export default function TechnicianWorkbench() {
   const unassignedTickets = tickets.filter(ticket => !ticket.assignedToId);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+      <main className="w-full py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Technician Workbench</h1>
-            <p className="mt-2 text-gray-600">Manage and process your assigned tickets</p>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Technician Workbench</h1>
+            <p className="mt-2 text-gray-600 dark:text-gray-400">Manage and process your assigned tickets</p>
           </div>
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <Card>
+            <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Assigned Tickets</CardTitle>
-                <User className="h-4 w-4 text-muted-foreground" />
+                <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/50 rounded-lg flex items-center justify-center">
+                  <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.assigned}</div>
@@ -373,10 +429,12 @@ export default function TechnicianWorkbench() {
               </CardContent>
             </Card>
             
-            <Card>
+            <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Available Tickets</CardTitle>
-                <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                <div className="w-8 h-8 bg-orange-100 dark:bg-orange-900/50 rounded-lg flex items-center justify-center">
+                  <AlertCircle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.unassigned}</div>
@@ -384,10 +442,12 @@ export default function TechnicianWorkbench() {
               </CardContent>
             </Card>
             
-            <Card>
+            <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Resolved Today</CardTitle>
-                <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                <div className="w-8 h-8 bg-green-100 dark:bg-green-900/50 rounded-lg flex items-center justify-center">
+                  <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.resolvedToday}</div>
@@ -395,10 +455,12 @@ export default function TechnicianWorkbench() {
               </CardContent>
             </Card>
             
-            <Card>
+            <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Avg Resolution</CardTitle>
-                <Clock className="h-4 w-4 text-muted-foreground" />
+                <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900/50 rounded-lg flex items-center justify-center">
+                  <Clock className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.avgResolutionTime}</div>
@@ -412,24 +474,35 @@ export default function TechnicianWorkbench() {
             <div className="border-b border-gray-200 mb-6">
               <nav className="-mb-px flex space-x-8">
                 <button
-                  onClick={() => setActiveTab('assigned')}
+                  onClick={() => handleTabChange('assigned')}
                   className={`py-2 px-1 border-b-2 font-medium text-sm ${
                     activeTab === 'assigned'
                       ? 'border-blue-500 text-blue-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
                 >
-                  My Tickets ({assignedTickets.length})
+                  My Tickets ({totalAssigned})
                 </button>
                 <button
-                  onClick={() => setActiveTab('available')}
+                  onClick={() => handleTabChange('available')}
                   className={`py-2 px-1 border-b-2 font-medium text-sm ${
                     activeTab === 'available'
                       ? 'border-blue-500 text-blue-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
                 >
-                  Available ({unassignedTickets.length})
+                  Available ({totalUnassigned})
+                </button>
+                <button
+                  onClick={() => handleTabChange('summary')}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                    activeTab === 'summary'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  Ticket Summary
                 </button>
               </nav>
             </div>
@@ -438,7 +511,7 @@ export default function TechnicianWorkbench() {
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <h2 className="text-xl font-semibold">My Assigned Tickets</h2>
-                  <Badge variant="outline">{assignedTickets.length} tickets</Badge>
+                  <Badge variant="outline">{totalAssigned} total tickets</Badge>
                 </div>
                 
                 {assignedTickets.length === 0 ? (
@@ -456,6 +529,33 @@ export default function TechnicianWorkbench() {
                     {assignedTickets.map(ticket => renderTicketCard(ticket, false))}
                   </div>
                 )}
+
+                {/* Pagination for Assigned Tickets */}
+                {activeTab === 'assigned' && totalPages > 1 && (
+                  <div className="flex items-center justify-center space-x-2 mt-6">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                      className="bg-white/[0.5] dark:bg-gray-800/[0.5]"
+                    >
+                      Previous
+                    </Button>
+                    <span className="text-sm text-gray-600 dark:text-gray-400 px-4">
+                      Page {currentPage} of {totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages}
+                      className="bg-white/[0.5] dark:bg-gray-800/[0.5]"
+                    >
+                      Next
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
             
@@ -463,7 +563,7 @@ export default function TechnicianWorkbench() {
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <h2 className="text-xl font-semibold">Available Tickets</h2>
-                  <Badge variant="outline">{unassignedTickets.length} tickets</Badge>
+                  <Badge variant="outline">{totalUnassigned} total tickets</Badge>
                 </div>
                 
                 {unassignedTickets.length === 0 ? (
@@ -481,29 +581,67 @@ export default function TechnicianWorkbench() {
                     {unassignedTickets.map(ticket => renderTicketCard(ticket, true))}
                   </div>
                 )}
+
+                {/* Pagination for Available Tickets */}
+                {activeTab === 'available' && totalPages > 1 && (
+                  <div className="flex items-center justify-center space-x-2 mt-6">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                      className="bg-white/[0.5] dark:bg-gray-800/[0.5]"
+                    >
+                      Previous
+                    </Button>
+                    <span className="text-sm text-gray-600 dark:text-gray-400 px-4">
+                      Page {currentPage} of {totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages}
+                      className="bg-white/[0.5] dark:bg-gray-800/[0.5]"
+                    >
+                      Next
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'summary' && (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-xl font-semibold">Technician Ticket Summary</h2>
+                  <Badge variant="outline">All Technicians</Badge>
+                </div>
+                
+                <TechnicianTicketSummary />
               </div>
             )}
           </div>
         </div>
       </main>
 
-      {/* Claim Ticket Modal */}
-      <Dialog open={claimModalOpen} onOpenChange={setClaimModalOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Claim Ticket</DialogTitle>
-            <DialogDescription>
+      {/* Claim Ticket Modal - Modern Style */}
+      <ModernDialog open={claimModalOpen} onOpenChange={setClaimModalOpen}>
+        <ModernDialogContent className="sm:max-w-[500px]">
+          <ModernDialogHeader variant="gradient" icon={<Wrench className="w-5 h-5" />}>
+            <ModernDialogTitle>Claim Ticket</ModernDialogTitle>
+            <ModernDialogDescription>
               Select the initial status for this ticket when you claim it.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="status" className="text-right">
-                Status
-              </Label>
-              <div className="col-span-3">
+            </ModernDialogDescription>
+          </ModernDialogHeader>
+          <ModernDialogBody>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="status" className="text-sm font-medium">
+                  Initial Status
+                </Label>
                 <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -513,82 +651,95 @@ export default function TechnicianWorkbench() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="bg-blue-50/50 dark:bg-blue-900/20 rounded-lg p-4 text-sm">
+                <div className="space-y-2">
+                  <div><span className="font-semibold text-blue-700 dark:text-blue-300">Open:</span> <span className="text-gray-600 dark:text-gray-400">Ticket is claimed but work hasn't started yet</span></div>
+                  <div><span className="font-semibold text-blue-700 dark:text-blue-300">In Progress:</span> <span className="text-gray-600 dark:text-gray-400">Work has begun on this ticket</span></div>
+                  <div><span className="font-semibold text-blue-700 dark:text-blue-300">Closed:</span> <span className="text-gray-600 dark:text-gray-400">Issue has been fixed and ticket is complete</span></div>
+                </div>
+              </div>
             </div>
-            <div className="text-sm text-gray-500 mt-2">
-              <strong>Open:</strong> Ticket is claimed but work hasn't started yet<br/>
-              <strong>In Progress:</strong> Work has begun on this ticket<br/>
-              <strong>Closed:</strong> Issue has been fixed and ticket is complete
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setClaimModalOpen(false)}>
+          </ModernDialogBody>
+          <ModernDialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setClaimModalOpen(false)}
+              className="bg-white/50 hover:bg-white/70"
+            >
               Cancel
             </Button>
-            <Button onClick={claimTicket}>
+            <Button 
+              onClick={claimTicket}
+              className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg"
+            >
               Claim Ticket
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ModernDialogFooter>
+        </ModernDialogContent>
+      </ModernDialog>
 
-      {/* Resolution Modal */}
-      <Dialog open={showResolveModal} onOpenChange={setShowResolveModal}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Update Ticket Status</DialogTitle>
-            <DialogDescription>
+      {/* Resolution Modal - Modern Style */}
+      <ModernDialog open={showResolveModal} onOpenChange={setShowResolveModal}>
+        <ModernDialogContent className="sm:max-w-[500px]">
+          <ModernDialogHeader variant="gradient" icon={<Edit className="w-5 h-5" />}>
+            <ModernDialogTitle>Update Ticket Status</ModernDialogTitle>
+            <ModernDialogDescription>
               Add an optional comment and select the new status for this ticket.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="status-select">New Status</Label>
-              <Select value={selectedResolutionStatus} onValueChange={setSelectedResolutionStatus}>
-                <SelectTrigger id="status-select">
-                  <SelectValue placeholder="Select new status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="OPEN">Open</SelectItem>
-                  <SelectItem value="PENDING">Pending</SelectItem>
-                  <SelectItem value="PENDING_APPROVAL">Pending Approval</SelectItem>
-                  <SelectItem value="APPROVED">Approved</SelectItem>
-                  <SelectItem value="REJECTED">Rejected</SelectItem>
-                  <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-                  <SelectItem value="PENDING_VENDOR">Pending Vendor</SelectItem>
-                  <SelectItem value="RESOLVED">Resolved</SelectItem>
-                  <SelectItem value="CLOSED">Closed</SelectItem>
-                  <SelectItem value="CANCELLED">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
+            </ModernDialogDescription>
+          </ModernDialogHeader>
+          <ModernDialogBody>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="status-select" className="text-sm font-medium">New Status</Label>
+                <Select value={selectedResolutionStatus} onValueChange={setSelectedResolutionStatus}>
+                  <SelectTrigger id="status-select" className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
+                    <SelectValue placeholder="Select new status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="OPEN">Open</SelectItem>
+                    <SelectItem value="PENDING">Pending</SelectItem>
+                    <SelectItem value="PENDING_APPROVAL">Pending Approval</SelectItem>
+                    <SelectItem value="APPROVED">Approved</SelectItem>
+                    <SelectItem value="REJECTED">Rejected</SelectItem>
+                    <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+                    <SelectItem value="PENDING_VENDOR">Pending Vendor</SelectItem>
+                    <SelectItem value="RESOLVED">Resolved</SelectItem>
+                    <SelectItem value="CLOSED">Closed</SelectItem>
+                    <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="resolution-comment" className="text-sm font-medium">Comment (Optional)</Label>
+                <Textarea
+                  id="resolution-comment"
+                  placeholder="Add a comment about this status change..."
+                  value={resolutionComment}
+                  onChange={(e) => setResolutionComment(e.target.value)}
+                  className="min-h-[100px] resize-none bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm"
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="resolution-comment">Comment (Optional)</Label>
-              <Textarea
-                id="resolution-comment"
-                placeholder="Add a comment about this status change..."
-                value={resolutionComment}
-                onChange={(e) => setResolutionComment(e.target.value)}
-                className="min-h-[100px] resize-none"
-              />
-            </div>
-          </div>
-          <DialogFooter>
+          </ModernDialogBody>
+          <ModernDialogFooter>
             <Button
               variant="outline"
               onClick={handleModalClose}
               disabled={isSubmittingResolution}
+              className="bg-white/50 hover:bg-white/70"
             >
               Cancel
             </Button>
             <Button
               onClick={handleResolutionSubmit}
               disabled={isSubmittingResolution}
+              className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg"
             >
               {isSubmittingResolution ? 'Processing...' : 'Update Status'}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ModernDialogFooter>
+        </ModernDialogContent>
+      </ModernDialog>
     </div>
   );
 }

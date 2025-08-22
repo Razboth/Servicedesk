@@ -33,7 +33,13 @@ export async function GET(
       select: {
         id: true,
         createdById: true,
-        assignedToId: true
+        assignedToId: true,
+        branchId: true,
+        service: {
+          select: {
+            supportGroupId: true
+          }
+        }
       }
     });
 
@@ -132,7 +138,13 @@ export async function POST(
         id: true,
         createdById: true,
         assignedToId: true,
-        status: true
+        branchId: true,
+        status: true,
+        service: {
+          select: {
+            supportGroupId: true
+          }
+        }
       }
     });
 

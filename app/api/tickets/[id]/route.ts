@@ -36,7 +36,11 @@ export async function GET(
           select: {
             name: true,
             supportGroupId: true,
-            category: { select: { name: true } }
+            category: { select: { name: true } },
+            // Include 3-tier category IDs from service
+            categoryId: true,
+            subcategoryId: true,
+            itemId: true
           }
         },
         createdBy: { select: { name: true, email: true, role: true, branchId: true } },
@@ -61,6 +65,19 @@ export async function GET(
             size: true,
             createdAt: true
           }
+        },
+        approvals: {
+          include: {
+            approver: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true
+              }
+            }
+          },
+          orderBy: { createdAt: 'desc' }
         },
         slaTracking: {
           include: {
@@ -158,13 +175,41 @@ export async function PATCH(
     // Check permissions for updates
     const canUpdate = 
       session.user.role === 'ADMIN' ||
-      session.user.role === 'MANAGER' ||
       session.user.role === 'TECHNICIAN' ||
       session.user.role === 'SECURITY_ANALYST' ||
-      (session.user.role === 'USER' && existingTicket.createdById === session.user.id);
+      (session.user.role === 'USER' && existingTicket.createdById === session.user.id) ||
+      (session.user.role === 'MANAGER' && existingTicket.createdById === session.user.id);
 
     if (!canUpdate) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
+    // Managers can only update certain fields (cannot change status, assign tickets, etc.)
+    if (session.user.role === 'MANAGER') {
+      const allowedFields = ['title', 'description', 'priority'];
+      const updateFields = Object.keys(validatedData);
+      const hasDisallowedFields = updateFields.some(field => !allowedFields.includes(field));
+      
+      if (hasDisallowedFields) {
+        return NextResponse.json(
+          { error: 'Managers cannot update ticket status, assignments, or technical fields' },
+          { status: 403 }
+        );
+      }
+    }
+
+    // Users can only update certain fields
+    if (session.user.role === 'USER') {
+      const allowedFields = ['title', 'description'];
+      const updateFields = Object.keys(validatedData);
+      const hasDisallowedFields = updateFields.some(field => !allowedFields.includes(field));
+      
+      if (hasDisallowedFields) {
+        return NextResponse.json(
+          { error: 'Users can only update title and description' },
+          { status: 403 }
+        );
+      }
     }
 
     // Prepare update data
@@ -259,14 +304,24 @@ export async function PUT(
     // Check permissions for updates
     const canUpdate = 
       session.user.role === 'ADMIN' ||
-      session.user.role === 'MANAGER' ||
       session.user.role === 'TECHNICIAN' ||
       session.user.role === 'SECURITY_ANALYST' ||
-      (session.user.role === 'USER' && existingTicket.createdById === session.user.id);
+      (session.user.role === 'USER' && existingTicket.createdById === session.user.id) ||
+      (session.user.role === 'MANAGER' && existingTicket.createdById === session.user.id);
 
     if (!canUpdate) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
+
+    // Get user details for additional permission checks
+    const userWithDetails = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { 
+        branchId: true, 
+        role: true, 
+        supportGroupId: true
+      }
+    });
 
     // Users can only update certain fields
     if (session.user.role === 'USER') {
@@ -277,6 +332,20 @@ export async function PUT(
       if (hasDisallowedFields) {
         return NextResponse.json(
           { error: 'Users can only update title and description' },
+          { status: 403 }
+        );
+      }
+    }
+
+    // Managers can only update certain fields (cannot change status, assign tickets, etc.)
+    if (session.user.role === 'MANAGER') {
+      const allowedFields = ['title', 'description', 'priority'];
+      const updateFields = Object.keys(validatedData);
+      const hasDisallowedFields = updateFields.some(field => !allowedFields.includes(field));
+      
+      if (hasDisallowedFields) {
+        return NextResponse.json(
+          { error: 'Managers cannot update ticket status, assignments, or technical fields' },
           { status: 403 }
         );
       }

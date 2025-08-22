@@ -126,7 +126,7 @@ export default function ATMDetailsPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto py-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-8">
         <div className="text-center">Loading ATM details...</div>
       </div>
     );
@@ -134,14 +134,14 @@ export default function ATMDetailsPage() {
 
   if (!atm) {
     return (
-      <div className="container mx-auto py-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-8">
         <div className="text-center text-red-600">ATM not found</div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto py-8 max-w-6xl">
+    <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-8 max-w-6xl">
       <div className="mb-6">
         <Link href="/manager/atms">
           <Button variant="ghost" size="sm" className="mb-4">

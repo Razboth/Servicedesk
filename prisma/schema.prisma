@@ -14,6 +14,7 @@ datasource db {
 // User Management
 model User {
   id             String   @id @default(cuid())
+  username       String   @unique
   email          String   @unique
   name           String
   password       String?
@@ -48,6 +49,19 @@ model User {
   serviceUsage    ServiceUsage[]
   favoriteServices UserFavoriteService[]
   favoriteCategories UserFavoriteCategory[]
+
+  // Knowledge Base relations
+  knowledgeArticles KnowledgeArticle[]
+  knowledgeVersions KnowledgeVersion[]
+  knowledgeAttachments KnowledgeAttachment[]
+  knowledgeComments KnowledgeComment[]
+  ticketKnowledge TicketKnowledge[]
+  knowledgeFeedback KnowledgeFeedback[]
+
+  // Report Builder relations
+  createdReports     CustomReport[] @relation("ReportCreator")
+  executedReports    ReportExecution[] @relation("ReportExecutor")
+  favoriteReports    ReportFavorite[] @relation("ReportFavorites")
 
   @@map("users")
 }
@@ -193,6 +207,9 @@ model Service {
   usage            ServiceUsage[]
   favoritedBy      UserFavoriteService[]
 
+  // Report Builder relations
+  reportTemplates  ReportTemplate[]
+
   @@map("services")
 }
 
@@ -319,6 +336,9 @@ model Ticket {
   
   // Service usage tracking
   serviceUsage     ServiceUsage[]
+  
+  // Knowledge Base relations
+  knowledgeArticles TicketKnowledge[]
 
   @@map("tickets")
 }
@@ -398,6 +418,7 @@ model Category {
   // Relations
   subcategories Subcategory[]
   services      Service[]
+  knowledgeArticles KnowledgeArticle[]
 
   @@map("categories")
 }
@@ -416,6 +437,7 @@ model Subcategory {
   category Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   items    Item[]
   services Service[]
+  knowledgeArticles KnowledgeArticle[]
 
   @@map("subcategories")
 }
@@ -433,6 +455,7 @@ model Item {
   // Relations
   subcategory Subcategory @relation(fields: [subcategoryId], references: [id], onDelete: Cascade)
   services    Service[]
+  knowledgeArticles KnowledgeArticle[]
 
   @@map("items")
 }
@@ -645,18 +668,49 @@ model SupportGroup {
   @@map("support_groups")
 }
 
-// Knowledge Base
+// Knowledge Base System
 model KnowledgeArticle {
-  id          String   @id @default(cuid())
-  title       String
-  content     String
-  categoryId  String?
-  tags        String[]
-  isPublished Boolean  @default(false)
-  viewCount   Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                String   @id @default(cuid())
+  title             String
+  slug              String   @unique
+  content           String   @db.Text
+  summary           String?
+  status            KnowledgeStatus @default(DRAFT)
+  
+  // 3-Tier Category Relations
+  categoryId        String?
+  subcategoryId     String?
+  itemId            String?
+  
+  // Metadata
+  views             Int      @default(0)
+  helpful           Int      @default(0)
+  notHelpful        Int      @default(0)
+  tags              String[] // Array of tags for search
+  
+  // Author and timestamps
+  authorId          String
+  publishedAt       DateTime?
+  expiresAt         DateTime?
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  // Relations
+  author            User                    @relation(fields: [authorId], references: [id])
+  category          Category?               @relation(fields: [categoryId], references: [id])
+  subcategory       Subcategory?            @relation(fields: [subcategoryId], references: [id])
+  item              Item?                   @relation(fields: [itemId], references: [id])
+  versions          KnowledgeVersion[]
+  attachments       KnowledgeAttachment[]
+  comments          KnowledgeComment[]
+  relatedTickets    TicketKnowledge[]
+  feedback          KnowledgeFeedback[]
 
+  @@index([status, isActive])
+  @@index([categoryId, subcategoryId, itemId])
+  @@index([publishedAt])
+  @@index([views])
   @@map("knowledge_articles")
 }
 
@@ -1044,4 +1098,240 @@ model UserFavoriteCategory {
   @@unique([userId, categoryId])
   @@index([userId, order])
   @@map("user_favorite_categories")
+}
+
+
+model KnowledgeVersion {
+  id              String   @id @default(cuid())
+  articleId       String
+  version         Int
+  title           String
+  content         String   @db.Text
+  summary         String?
+  changeNotes     String?  // Version comment/notes
+  authorId        String
+  createdAt       DateTime @default(now())
+  
+  // Relations
+  article         KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  author          User             @relation(fields: [authorId], references: [id])
+
+  @@unique([articleId, version])
+  @@index([articleId, createdAt])
+  @@map("knowledge_versions")
+}
+
+model KnowledgeAttachment {
+  id              String   @id @default(cuid())
+  articleId       String
+  filename        String
+  originalName    String
+  mimeType        String
+  size            Int
+  path            String
+  version         Int      @default(1)
+  uploadedBy      String
+  createdAt       DateTime @default(now())
+  
+  // Relations
+  article         KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  uploader        User             @relation(fields: [uploadedBy], references: [id])
+
+  @@index([articleId])
+  @@map("knowledge_attachments")
+}
+
+model KnowledgeComment {
+  id              String   @id @default(cuid())
+  articleId       String
+  userId          String
+  content         String   @db.Text
+  parentId        String?  // For nested comments
+  isResolved      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  article         KnowledgeArticle  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  user            User              @relation(fields: [userId], references: [id])
+  parent          KnowledgeComment? @relation("CommentReplies", fields: [parentId], references: [id])
+  replies         KnowledgeComment[] @relation("CommentReplies")
+
+  @@index([articleId, parentId])
+  @@index([userId])
+  @@map("knowledge_comments")
+}
+
+model TicketKnowledge {
+  id              String   @id @default(cuid())
+  ticketId        String
+  articleId       String
+  linkedBy        String
+  linkedAt        DateTime @default(now())
+  
+  // Relations
+  ticket          Ticket           @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  article         KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  user            User             @relation(fields: [linkedBy], references: [id])
+  
+  @@unique([ticketId, articleId])
+  @@index([ticketId])
+  @@index([articleId])
+  @@map("ticket_knowledge")
+}
+
+model KnowledgeFeedback {
+  id              String   @id @default(cuid())
+  articleId       String
+  userId          String
+  isHelpful       Boolean
+  comment         String?
+  createdAt       DateTime @default(now())
+  
+  // Relations
+  article         KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  user            User             @relation(fields: [userId], references: [id])
+  
+  @@unique([articleId, userId])
+  @@index([articleId, isHelpful])
+  @@map("knowledge_feedback")
+}
+
+enum KnowledgeStatus {
+  DRAFT
+  UNDER_REVIEW
+  PUBLISHED
+  ARCHIVED
+  EXPIRED
+}
+
+// Report Builder Models
+model CustomReport {
+  id              String   @id @default(cuid())
+  title           String
+  description     String?
+  type            ReportType
+  module          String   // TICKETS, SERVICES, USERS, etc.
+  configuration   Json     // Stores report configuration
+  query           String?  @db.Text // SQL query for advanced reports
+  columns         Json     // Selected columns configuration
+  filters         Json     // Filter criteria
+  groupBy         String[]
+  orderBy         Json
+  chartConfig     Json?    // Chart configuration
+  createdBy       String
+  creator         User     @relation("ReportCreator", fields: [createdBy], references: [id])
+  isPublic        Boolean  @default(false)
+  category        String?  // Report category for organization
+  tags            String[]
+  lastRunAt       DateTime?
+  runCount        Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  schedules       ReportSchedule[]
+  executions      ReportExecution[]
+  favorites       ReportFavorite[]
+  
+  @@index([createdBy])
+  @@index([type])
+  @@index([module])
+  @@map("custom_reports")
+}
+
+model ReportSchedule {
+  id              String   @id @default(cuid())
+  reportId        String
+  report          CustomReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  frequency       ScheduleFrequency
+  scheduleTime    String   // Cron expression or time
+  nextRunAt       DateTime
+  lastRunAt       DateTime?
+  format          ExportFormat
+  recipients      String[] // Email addresses
+  emailSubject    String?
+  emailBody       String?  @db.Text
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([reportId])
+  @@index([nextRunAt])
+  @@map("report_schedules")
+}
+
+model ReportExecution {
+  id              String   @id @default(cuid())
+  reportId        String
+  report          CustomReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  executedBy      String?
+  executor        User?    @relation("ReportExecutor", fields: [executedBy], references: [id])
+  status          ExecutionStatus
+  resultCount     Int?
+  executionTime   Int?     // in milliseconds
+  error           String?  @db.Text
+  resultPath      String?  // Path to stored result file
+  createdAt       DateTime @default(now())
+  
+  @@index([reportId])
+  @@index([executedBy])
+  @@map("report_executions")
+}
+
+model ReportFavorite {
+  id              String   @id @default(cuid())
+  reportId        String
+  report          CustomReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User     @relation("ReportFavorites", fields: [userId], references: [id])
+  createdAt       DateTime @default(now())
+  
+  @@unique([reportId, userId])
+  @@map("report_favorites")
+}
+
+model ReportTemplate {
+  id              String   @id @default(cuid())
+  name            String
+  description     String?
+  serviceId       String?  // Link to service template
+  service         Service? @relation(fields: [serviceId], references: [id])
+  baseQuery       String   @db.Text
+  availableFields Json     // Fields available for this template
+  defaultFilters  Json?
+  category        String
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([serviceId])
+  @@map("report_templates")
+}
+
+enum ReportType {
+  TABULAR
+  MATRIX
+  METRICS
+  QUERY
+}
+
+enum ScheduleFrequency {
+  ONCE
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum ExportFormat {
+  PDF
+  EXCEL
+  CSV
+  HTML
+}
+
+enum ExecutionStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
 }

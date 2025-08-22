@@ -13,9 +13,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get user's branch if not admin
+    // Get user's branch if not admin or technician
     let branchId: string | undefined;
-    if (session.user.role !== 'ADMIN') {
+    if (session.user.role !== 'ADMIN' && session.user.role !== 'TECHNICIAN') {
       const user = await prisma.user.findUnique({
         where: { id: session.user.id },
         select: { branchId: true }

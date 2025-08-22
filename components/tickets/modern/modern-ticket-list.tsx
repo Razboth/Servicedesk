@@ -3,11 +3,13 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { 
   Search, 
   Filter, 
@@ -26,10 +28,20 @@ import {
   Grid3X3,
   List,
   RefreshCw,
-  Plus
+  Plus,
+  XCircle,
+  ChevronUp,
+  ChevronDown,
+  Inbox,
+  UserPlus,
+  Edit,
+  ExternalLink,
+  Copy
 } from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox'
 import { formatDistanceToNow } from 'date-fns'
 import { toast } from 'sonner'
+import { BulkActionsBar } from './bulk-actions-bar'
 
 interface Ticket {
   id: string
@@ -68,33 +80,59 @@ interface Ticket {
 }
 
 interface ModernTicketListProps {
-  viewMode: 'list' | 'grid'
+  viewMode: 'cards' | 'table' | 'inbox'
   searchTerm: string
   onCreateTicket: () => void
+  ticketFilter?: 'my-tickets' | 'available-tickets'
+  onClaimTicket?: (ticketId: string) => void
+  enableBulkActions?: boolean
+  onUpdateStatus?: (ticketId: string) => void
 }
 
-export function ModernTicketList({ viewMode, searchTerm, onCreateTicket }: ModernTicketListProps) {
+export function ModernTicketList({ viewMode, searchTerm, onCreateTicket, ticketFilter, onClaimTicket, enableBulkActions = false, onUpdateStatus }: ModernTicketListProps) {
   const { data: session } = useSession()
   const router = useRouter()
   
   const [tickets, setTickets] = useState<Ticket[]>([])
-  const [filteredTickets, setFilteredTickets] = useState<Ticket[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [priorityFilter, setPriorityFilter] = useState('ALL')
   const [sortBy, setSortBy] = useState('newest')
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
+  const [totalItems, setTotalItems] = useState(0)
+  const [selectedTickets, setSelectedTickets] = useState<string[]>([])
+  const [isSelecting, setIsSelecting] = useState(false)
+  const [pageSize, setPageSize] = useState(() => {
+    switch (viewMode) {
+      case 'cards': return 20
+      case 'table': return 50  
+      case 'inbox': return 100
+      default: return 20
+    }
+  })
 
-  const pageSize = viewMode === 'grid' ? 12 : 10
+  // Update page size when view mode changes
+  useEffect(() => {
+    const defaultSize = (() => {
+      switch (viewMode) {
+        case 'cards': return 20
+        case 'table': return 50
+        case 'inbox': return 100
+        default: return 20
+      }
+    })()
+    setPageSize(defaultSize)
+  }, [viewMode])
 
   useEffect(() => {
     loadTickets()
-  }, [currentPage, statusFilter, priorityFilter, sortBy])
-
+  }, [currentPage, statusFilter, priorityFilter, sortBy, searchTerm, ticketFilter])
+  
+  // Reset to page 1 when filters or page size change
   useEffect(() => {
-    filterAndSortTickets()
-  }, [tickets, searchTerm, statusFilter, priorityFilter, sortBy])
+    setCurrentPage(1)
+  }, [statusFilter, priorityFilter, searchTerm, pageSize, ticketFilter])
 
   const loadTickets = async () => {
     try {
@@ -102,7 +140,9 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket }: Moder
       
       const params = new URLSearchParams({
         page: currentPage.toString(),
-        limit: pageSize.toString()
+        limit: pageSize.toString(),
+        sortBy: sortBy,
+        sortOrder: sortBy === 'newest' ? 'desc' : sortBy === 'oldest' ? 'asc' : 'desc'
       })
 
       if (statusFilter !== 'ALL') {
@@ -111,12 +151,32 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket }: Moder
       if (priorityFilter !== 'ALL') {
         params.append('priority', priorityFilter)
       }
+      if (searchTerm && searchTerm.trim()) {
+        params.append('search', searchTerm.trim())
+      }
+      if (ticketFilter) {
+        params.append('filter', ticketFilter)
+      }
 
       const response = await fetch(`/api/tickets?${params}`)
       if (response.ok) {
         const data = await response.json()
         setTickets(data.tickets || [])
-        setTotalPages(data.pagination?.totalPages || 1)
+        // Calculate pages manually to ensure correct pagination
+        const total = data.pagination?.total || 0
+        const calculatedPages = Math.max(1, Math.ceil(total / pageSize))
+        setTotalPages(calculatedPages)
+        setTotalItems(total)
+        // Debug pagination if needed
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Pagination info:', {
+            total,
+            pageSize,
+            calculatedPages,
+            currentPage,
+            ticketsReceived: data.tickets?.length
+          })
+        }
       } else {
         toast.error('Failed to load tickets')
       }
@@ -128,39 +188,6 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket }: Moder
     }
   }
 
-  const filterAndSortTickets = () => {
-    let filtered = tickets.filter(ticket => {
-      const matchesSearch = 
-        ticket.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        ticket.ticketNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        ticket.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        ticket.service.name.toLowerCase().includes(searchTerm.toLowerCase())
-
-      const matchesStatus = statusFilter === 'ALL' || ticket.status === statusFilter
-      const matchesPriority = priorityFilter === 'ALL' || ticket.priority === priorityFilter
-
-      return matchesSearch && matchesStatus && matchesPriority
-    })
-
-    // Sort tickets
-    switch (sortBy) {
-      case 'newest':
-        filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-        break
-      case 'oldest':
-        filtered.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-        break
-      case 'priority':
-        const priorityOrder = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1 }
-        filtered.sort((a, b) => (priorityOrder[b.priority as keyof typeof priorityOrder] || 0) - (priorityOrder[a.priority as keyof typeof priorityOrder] || 0))
-        break
-      case 'status':
-        filtered.sort((a, b) => a.status.localeCompare(b.status))
-        break
-    }
-
-    setFilteredTickets(filtered)
-  }
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -172,6 +199,8 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket }: Moder
         return <CheckCircle className="h-4 w-4 text-green-500" />
       case 'CLOSED':
         return <CheckCircle className="h-4 w-4 text-gray-500" />
+      case 'CANCELLED':
+        return <XCircle className="h-4 w-4 text-red-500" />
       default:
         return <Circle className="h-4 w-4 text-gray-400" />
     }
@@ -202,6 +231,8 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket }: Moder
         return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
       case 'CLOSED':
         return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+      case 'CANCELLED':
+        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
     }
@@ -211,81 +242,314 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket }: Moder
     router.push(`/tickets/${ticketId}`)
   }
 
+  const handleOpenInNewTab = (ticketId: string) => {
+    window.open(`/tickets/${ticketId}`, '_blank')
+  }
+
+  const handleCopyLink = async (ticketId: string) => {
+    try {
+      const url = `${window.location.origin}/tickets/${ticketId}`
+      await navigator.clipboard.writeText(url)
+      toast.success('Ticket link copied to clipboard')
+    } catch (error) {
+      console.error('Failed to copy link:', error)
+      toast.error('Failed to copy link')
+    }
+  }
+
+  const handleClaimTicket = async (ticketId: string) => {
+    try {
+      const response = await fetch(`/api/tickets/${ticketId}/assign`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ assignedToId: session?.user?.id }),
+      })
+      
+      if (response.ok) {
+        // Update status to IN_PROGRESS when claiming
+        await fetch(`/api/tickets/${ticketId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ status: 'IN_PROGRESS' }),
+        })
+        
+        toast.success('Ticket claimed successfully')
+        loadTickets() // Refresh the list
+        if (onClaimTicket) {
+          onClaimTicket(ticketId)
+        }
+      } else {
+        toast.error('Failed to claim ticket')
+      }
+    } catch (error) {
+      console.error('Error claiming ticket:', error)
+      toast.error('Failed to claim ticket')
+    }
+  }
+
+  // Bulk selection handlers
+  const handleToggleTicket = (ticketId: string) => {
+    setSelectedTickets(prev => 
+      prev.includes(ticketId) 
+        ? prev.filter(id => id !== ticketId)
+        : [...prev, ticketId]
+    )
+  }
+
+  const handleSelectAll = () => {
+    const availableTickets = tickets.filter(ticket => 
+      !ticket.assignedTo && 
+      ['TECHNICIAN', 'SECURITY_ANALYST'].includes(session?.user?.role || '')
+    )
+    const allSelected = availableTickets.every(ticket => selectedTickets.includes(ticket.id))
+    
+    if (allSelected) {
+      // Deselect all visible tickets
+      setSelectedTickets(prev => prev.filter(id => !availableTickets.map(t => t.id).includes(id)))
+    } else {
+      // Select all available tickets on current page
+      setSelectedTickets(prev => [
+        ...prev.filter(id => !availableTickets.map(t => t.id).includes(id)),
+        ...availableTickets.map(t => t.id)
+      ])
+    }
+  }
+
+  const handleClearSelection = () => {
+    setSelectedTickets([])
+    setIsSelecting(false)
+  }
+
+  const handleBulkClaim = async (ticketIds: string[]) => {
+    try {
+      const response = await fetch('/api/tickets/bulk/assign', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ticketIds,
+          assignedToId: session?.user?.id
+        }),
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        
+        toast.success(
+          `Successfully claimed ${result.summary.successful} of ${result.summary.total} tickets`,
+          {
+            description: result.summary.failed > 0 
+              ? `${result.summary.failed} tickets could not be claimed`
+              : undefined
+          }
+        )
+        
+        // Clear selection and refresh
+        handleClearSelection()
+        loadTickets()
+        
+        if (onClaimTicket) {
+          onClaimTicket('')
+        }
+      } else {
+        const error = await response.json()
+        toast.error('Failed to claim tickets', {
+          description: error.error || 'Unknown error occurred'
+        })
+      }
+    } catch (error) {
+      console.error('Error in bulk claim:', error)
+      toast.error('Failed to claim tickets')
+    }
+  }
+
+  // Get available tickets that can be selected
+  const availableTicketsForSelection = tickets.filter(ticket => 
+    !ticket.assignedTo && 
+    ['TECHNICIAN', 'SECURITY_ANALYST'].includes(session?.user?.role || '')
+  )
+
+  const isAllSelected = availableTicketsForSelection.length > 0 && 
+    availableTicketsForSelection.every(ticket => selectedTickets.includes(ticket.id))
+
+  const isSomeSelected = availableTicketsForSelection.some(ticket => selectedTickets.includes(ticket.id))
+
+  // Helper function to check if a ticket can have its status updated
+  const canUpdateTicketStatus = (ticket: Ticket) => {
+    return ticketFilter === 'my-tickets' && 
+           ticket.assignedTo?.id === session?.user?.id &&
+           !['CLOSED', 'CANCELLED'].includes(ticket.status) &&
+           ['TECHNICIAN', 'SECURITY_ANALYST'].includes(session?.user?.role || '')
+  }
+
+  // Reusable dropdown menu for ticket actions
+  const TicketDropdownMenu = ({ ticket, showOnHover = true }: { ticket: Ticket, showOnHover?: boolean }) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className={`h-8 w-8 p-0 transition-opacity ${showOnHover ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'}`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <MoreHorizontal className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleTicketClick(ticket.id); }}>
+          <Eye className="h-4 w-4 mr-2" />
+          Open ticket
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleOpenInNewTab(ticket.id); }}>
+          <ExternalLink className="h-4 w-4 mr-2" />
+          Open in new tab
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleCopyLink(ticket.id); }}>
+          <Copy className="h-4 w-4 mr-2" />
+          Copy link
+        </DropdownMenuItem>
+        
+        {/* Show additional actions based on context */}
+        {(ticketFilter === 'available-tickets' && 
+          !ticket.assignedTo && 
+          ['TECHNICIAN', 'SECURITY_ANALYST'].includes(session?.user?.role || '')) && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleClaimTicket(ticket.id); }}>
+              <UserPlus className="h-4 w-4 mr-2" />
+              Claim ticket
+            </DropdownMenuItem>
+          </>
+        )}
+        
+        {canUpdateTicketStatus(ticket) && onUpdateStatus && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onUpdateStatus(ticket.id); }}>
+              <Edit className="h-4 w-4 mr-2" />
+              Update status
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+
   const TicketCard = ({ ticket }: { ticket: Ticket }) => (
     <Card 
-      className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group"
+      className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group h-full flex flex-col"
       onClick={() => handleTicketClick(ticket.id)}
     >
-      <CardContent className="p-6">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center space-x-3">
+      <CardContent className="p-4 flex-1 flex flex-col">
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center space-x-2 min-w-0 flex-1">
             {getStatusIcon(ticket.status)}
-            <span className="font-mono text-sm text-gray-500 dark:text-gray-400">
+            <span className="font-mono text-xs text-gray-500 dark:text-gray-400 truncate">
               #{ticket.ticketNumber}
             </span>
           </div>
-          <div className="flex items-center space-x-2">
-            <Badge className={getPriorityColor(ticket.priority)}>
+          <div className="flex items-center space-x-1 flex-shrink-0">
+            <Badge className={`${getPriorityColor(ticket.priority)} text-xs px-1 py-0`}>
               {ticket.priority}
             </Badge>
-            <Badge variant="outline" className={getStatusColor(ticket.status)}>
-              {ticket.status.replace('_', ' ')}
-            </Badge>
+            <TicketDropdownMenu ticket={ticket} />
           </div>
         </div>
 
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+        <Link 
+          href={`/tickets/${ticket.id}`}
+          className="text-sm font-semibold text-gray-900 dark:text-white hover:text-pink-600 dark:hover:text-pink-400 hover:italic mb-2 line-clamp-2 leading-tight block transition-colors"
+          onClick={(e) => e.stopPropagation()}
+        >
           {ticket.title}
-        </h3>
+        </Link>
 
-        <p className="text-gray-600 dark:text-gray-400 text-sm mb-4 line-clamp-2">
-          {ticket.description}
-        </p>
 
-        <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center">
-              <User className="h-4 w-4 mr-1" />
-              <span className="truncate max-w-24">{ticket.createdBy.name}</span>
-            </div>
-            
-            {ticket.assignedTo && (
-              <div className="flex items-center">
-                <span>→</span>
-                <span className="ml-1 truncate max-w-24">{ticket.assignedTo.name}</span>
-              </div>
-            )}
-          </div>
-
-          <div className="flex items-center space-x-3">
-            {ticket._count.comments > 0 && (
-              <div className="flex items-center">
-                <MessageCircle className="h-4 w-4 mr-1" />
-                <span>{ticket._count.comments}</span>
-              </div>
-            )}
-            
-            <div className="flex items-center">
-              <Clock className="h-4 w-4 mr-1" />
-              <span className="text-xs">
-                {formatDistanceToNow(new Date(ticket.createdAt), { addSuffix: true })}
-              </span>
-            </div>
-          </div>
+        <div className="mb-2">
+          <Badge variant="outline" className={`${getStatusColor(ticket.status)} text-xs`}>
+            {ticket.status.replace('_', ' ')}
+          </Badge>
         </div>
 
-        <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
-              <Tag className="h-3 w-3 mr-1" />
+        <div className="space-y-2">
+          <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
+            <User className="h-3 w-3 mr-1 flex-shrink-0" />
+            <span className="truncate">{ticket.createdBy.name}</span>
+            {ticket.assignedTo && (
+              <>
+                <span className="mx-1">→</span>
+                <span className="truncate">{ticket.assignedTo.name}</span>
+              </>
+            )}
+          </div>
+          
+          <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+            <div className="flex items-center min-w-0 flex-1">
+              <Tag className="h-3 w-3 mr-1 flex-shrink-0" />
               <span className="truncate">{ticket.service.name}</span>
             </div>
             
-            {ticket.branch && (
-              <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
-                <Building2 className="h-3 w-3 mr-1" />
-                <span>{ticket.branch.code}</span>
-              </div>
+            <div className="flex items-center space-x-2 flex-shrink-0">
+              {ticket._count.comments > 0 && (
+                <div className="flex items-center">
+                  <MessageCircle className="h-3 w-3 mr-1" />
+                  <span>{ticket._count.comments}</span>
+                </div>
+              )}
+              {ticket.branch && (
+                <div className="flex items-center">
+                  <Building2 className="h-3 w-3 mr-1" />
+                  <span>{ticket.branch.code}</span>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+            <div className="flex items-center">
+              <Clock className="h-3 w-3 mr-1 flex-shrink-0" />
+              <span className="truncate">
+                {formatDistanceToNow(new Date(ticket.createdAt), { addSuffix: true })}
+              </span>
+            </div>
+            
+            {/* Claim button for available tickets in card view */}
+            {ticketFilter === 'available-tickets' && 
+             !ticket.assignedTo && 
+             ['TECHNICIAN', 'SECURITY_ANALYST'].includes(session?.user?.role || '') && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={(e) => { 
+                  e.stopPropagation(); 
+                  handleClaimTicket(ticket.id); 
+                }}
+                className="text-blue-600 border-blue-200 hover:bg-blue-50 text-xs px-2 py-1 h-auto"
+              >
+                <UserPlus className="h-3 w-3 mr-1" />
+                Claim
+              </Button>
+            )}
+            
+            {/* Update status button for my tickets in card view */}
+            {canUpdateTicketStatus(ticket) && onUpdateStatus && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={(e) => { 
+                  e.stopPropagation(); 
+                  onUpdateStatus(ticket.id); 
+                }}
+                className="text-orange-600 border-orange-200 hover:bg-orange-50 text-xs px-2 py-1 h-auto"
+              >
+                <Edit className="h-3 w-3 mr-1" />
+                Update
+              </Button>
             )}
           </div>
         </div>
@@ -351,13 +615,301 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket }: Moder
     </Card>
   )
 
+  const TableView = () => (
+    <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
+      <CardContent className="p-0">
+        <div className="overflow-x-auto">
+          <table className="w-full table-auto">
+            <thead className="bg-gray-50 dark:bg-gray-900">
+              <tr>
+                {/* Checkbox column for bulk selection */}
+                {enableBulkActions && ticketFilter === 'available-tickets' && (
+                  <th className="px-2 py-2 text-left w-8">
+                    <Checkbox
+                      checked={isAllSelected}
+                      onCheckedChange={handleSelectAll}
+                      indeterminate={isSomeSelected && !isAllSelected}
+                      className="border-gray-300"
+                    />
+                  </th>
+                )}
+                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 min-w-[5rem]"
+                    onClick={() => handleSort('ticketNumber')}>
+                  <div className="flex items-center gap-1">
+                    #
+                    <ArrowUpDown className="h-3 w-3" />
+                  </div>
+                </th>
+                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 min-w-[20rem] w-auto"
+                    onClick={() => handleSort('title')}>
+                  <div className="flex items-center gap-1">
+                    Title
+                    <ArrowUpDown className="h-3 w-3" />
+                  </div>
+                </th>
+                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[5rem]">
+                  Status
+                </th>
+                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 min-w-[5rem]"
+                    onClick={() => handleSort('priority')}>
+                  <div className="flex items-center gap-1">
+                    Priority
+                    <ArrowUpDown className="h-3 w-3" />
+                  </div>
+                </th>
+                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[6rem]">
+                  Assigned
+                </th>
+                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[8rem]">
+                  Service
+                </th>
+                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 min-w-[5rem]"
+                    onClick={() => handleSort('createdAt')}>
+                  <div className="flex items-center gap-1">
+                    Created
+                    <ArrowUpDown className="h-3 w-3" />
+                  </div>
+                </th>
+                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[8rem]">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+              {tickets.map((ticket) => (
+                <tr key={ticket.id} className={`hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer ${
+                  selectedTickets.includes(ticket.id) ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+                }`}
+                    onClick={() => handleTicketClick(ticket.id)}>
+                  {/* Checkbox column for bulk selection */}
+                  {enableBulkActions && ticketFilter === 'available-tickets' && (
+                    <td className="px-2 py-2 whitespace-nowrap">
+                      {!ticket.assignedTo && ['TECHNICIAN', 'SECURITY_ANALYST'].includes(session?.user?.role || '') ? (
+                        <Checkbox
+                          checked={selectedTickets.includes(ticket.id)}
+                          onCheckedChange={() => handleToggleTicket(ticket.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="border-gray-300"
+                        />
+                      ) : (
+                        <div className="w-4 h-4"></div>
+                      )}
+                    </td>
+                  )}
+                  <td className="px-2 py-2 whitespace-nowrap">
+                    <div className="flex items-center gap-1">
+                      {getStatusIcon(ticket.status)}
+                      <span className="font-mono text-xs text-gray-900 dark:text-white">
+                        #{ticket.ticketNumber.slice(-4)}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-2 py-2">
+                    <div className="min-w-0">
+                      <Link 
+                        href={`/tickets/${ticket.id}`}
+                        className="font-medium text-sm text-gray-900 dark:text-white hover:text-pink-600 dark:hover:text-pink-400 hover:italic transition-colors"
+                        title={ticket.title}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {ticket.title}
+                      </Link>
+                    </div>
+                  </td>
+                  <td className="px-2 py-2 whitespace-nowrap">
+                    <Badge variant="outline" className={`${getStatusColor(ticket.status)} text-xs px-1 py-0`}>
+                      {ticket.status.replace('_', ' ')}
+                    </Badge>
+                  </td>
+                  <td className="px-2 py-2 whitespace-nowrap">
+                    <Badge className={`${getPriorityColor(ticket.priority)} text-xs px-1 py-0`}>
+                      {ticket.priority}
+                    </Badge>
+                  </td>
+                  <td className="px-2 py-2 text-xs text-gray-900 dark:text-white">
+                    <div className="min-w-0" title={ticket.assignedTo ? ticket.assignedTo.name : 'Unassigned'}>
+                      {ticket.assignedTo ? ticket.assignedTo.name : 'Unassigned'}
+                    </div>
+                  </td>
+                  <td className="px-2 py-2 text-xs text-gray-500 dark:text-gray-400">
+                    <div className="min-w-0" title={ticket.service.name}>
+                      {ticket.service.name}
+                    </div>
+                  </td>
+                  <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-500 dark:text-gray-400">
+                    <div className="flex flex-col">
+                      <span className="truncate">{formatDistanceToNow(new Date(ticket.createdAt), { addSuffix: true })}</span>
+                      <span className="text-xs truncate" title={ticket.createdBy.name}>{ticket.createdBy.name.split(' ')[0]}</span>
+                    </div>
+                  </td>
+                  <td className="px-2 py-2 whitespace-nowrap">
+                    <div className="flex items-center space-x-1">
+                      {/* Show claim button for available tickets when user is technician/security analyst */}
+                      {ticketFilter === 'available-tickets' && 
+                       !ticket.assignedTo && 
+                       ['TECHNICIAN', 'SECURITY_ANALYST'].includes(session?.user?.role || '') && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={(e) => { 
+                            e.stopPropagation(); 
+                            handleClaimTicket(ticket.id); 
+                          }}
+                          className="text-blue-600 border-blue-200 hover:bg-blue-50 text-xs px-2 py-1 h-7"
+                        >
+                          <UserPlus className="h-3 w-3 mr-1" />
+                          Claim
+                        </Button>
+                      )}
+                      
+                      {/* Show update status button for my tickets that can be updated */}
+                      {canUpdateTicketStatus(ticket) && onUpdateStatus && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={(e) => { 
+                            e.stopPropagation(); 
+                            onUpdateStatus(ticket.id); 
+                          }}
+                          className="text-orange-600 border-orange-200 hover:bg-orange-50 text-xs px-2 py-1 h-7"
+                        >
+                          <Edit className="h-3 w-3 mr-1" />
+                          Update
+                        </Button>
+                      )}
+                      
+                      <TicketDropdownMenu ticket={ticket} showOnHover={false} />
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
+  )
+
+  const InboxView = () => (
+    <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
+      <CardContent className="p-0">
+        <div className="divide-y divide-gray-200 dark:divide-gray-700">
+          {tickets.map((ticket) => (
+            <div key={ticket.id} 
+                 className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer flex items-center gap-4"
+                 onClick={() => handleTicketClick(ticket.id)}>
+              <div className="flex items-center gap-3 flex-shrink-0">
+                {getStatusIcon(ticket.status)}
+                <span className="font-mono text-sm text-gray-500 dark:text-gray-400 w-20">
+                  #{ticket.ticketNumber}
+                </span>
+              </div>
+              
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <Link 
+                    href={`/tickets/${ticket.id}`}
+                    className="font-medium text-gray-900 dark:text-white hover:text-pink-600 dark:hover:text-pink-400 hover:italic truncate flex-1 transition-colors"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {ticket.title}
+                  </Link>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <Badge className={getPriorityColor(ticket.priority)} variant="secondary">
+                      {ticket.priority}
+                    </Badge>
+                    <Badge variant="outline" className={getStatusColor(ticket.status)}>
+                      {ticket.status.replace('_', ' ')}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+                  <span className="flex items-center gap-1">
+                    <Tag className="h-3 w-3" />
+                    {ticket.service.name}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <User className="h-3 w-3" />
+                    {ticket.assignedTo ? ticket.assignedTo.name : 'Unassigned'}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    {formatDistanceToNow(new Date(ticket.createdAt), { addSuffix: true })}
+                  </span>
+                  {ticket._count.comments > 0 && (
+                    <span className="flex items-center gap-1">
+                      <MessageCircle className="h-3 w-3" />
+                      {ticket._count.comments}
+                    </span>
+                  )}
+                  {ticket.branch && (
+                    <span className="flex items-center gap-1">
+                      <Building2 className="h-3 w-3" />
+                      {ticket.branch.code}
+                    </span>
+                  )}
+                </div>
+              </div>
+              
+              <div className="flex items-center space-x-2 flex-shrink-0">
+                {/* Claim button for available tickets in inbox view */}
+                {ticketFilter === 'available-tickets' && 
+                 !ticket.assignedTo && 
+                 ['TECHNICIAN', 'SECURITY_ANALYST'].includes(session?.user?.role || '') && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      handleClaimTicket(ticket.id); 
+                    }}
+                    className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                  >
+                    <UserPlus className="h-4 w-4 mr-1" />
+                    Claim
+                  </Button>
+                )}
+                
+                {/* Update status button for my tickets in inbox view */}
+                {canUpdateTicketStatus(ticket) && onUpdateStatus && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      onUpdateStatus(ticket.id); 
+                    }}
+                    className="text-orange-600 border-orange-200 hover:bg-orange-50"
+                  >
+                    <Edit className="h-4 w-4 mr-1" />
+                    Update Status
+                  </Button>
+                )}
+                
+                <TicketDropdownMenu ticket={ticket} showOnHover={false} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  )
+
+  const handleSort = (field: string) => {
+    if (field === 'newest' || field === 'oldest') {
+      setSortBy(field)
+    } else {
+      setSortBy(field)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Filters and Controls */}
       <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
         <CardContent className="p-4">
           <div className="flex flex-col lg:flex-row gap-4">
-            <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4">
               {/* Status Filter */}
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="bg-white/[0.5] dark:bg-gray-800/[0.5]">
@@ -369,6 +921,7 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket }: Moder
                   <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
                   <SelectItem value="RESOLVED">Resolved</SelectItem>
                   <SelectItem value="CLOSED">Closed</SelectItem>
+                  <SelectItem value="CANCELLED">Cancelled</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -398,6 +951,19 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket }: Moder
                   <SelectItem value="status">Status</SelectItem>
                 </SelectContent>
               </Select>
+
+              {/* Page Size Selector */}
+              <Select value={pageSize.toString()} onValueChange={(value) => setPageSize(parseInt(value))}>
+                <SelectTrigger className="bg-white/[0.5] dark:bg-gray-800/[0.5]">
+                  <SelectValue placeholder="Items per page" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10 per page</SelectItem>
+                  <SelectItem value="20">20 per page</SelectItem>
+                  <SelectItem value="50">50 per page</SelectItem>
+                  <SelectItem value="100">100 per page</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="flex items-center gap-2">
@@ -422,7 +988,7 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket }: Moder
             <p className="text-gray-600 dark:text-gray-400">Loading tickets...</p>
           </div>
         </div>
-      ) : filteredTickets.length === 0 ? (
+      ) : tickets.length === 0 ? (
         <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
           <CardContent className="p-12 text-center">
             <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
@@ -431,7 +997,7 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket }: Moder
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No tickets found</h3>
             <p className="text-gray-600 dark:text-gray-400 mb-4">
               {searchTerm || statusFilter !== 'ALL' || priorityFilter !== 'ALL'
-                ? 'Try adjusting your search criteria.'
+                ? 'No tickets match your current filters.'
                 : 'Create your first ticket to get started.'}
             </p>
             <Button onClick={onCreateTicket} className="bg-gradient-to-r from-blue-500 to-indigo-600">
@@ -442,53 +1008,78 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket }: Moder
         </Card>
       ) : (
         <>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-4">
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              {filteredTickets.length} ticket{filteredTickets.length !== 1 ? 's' : ''} found
+              Showing {Math.min((currentPage - 1) * pageSize + 1, totalItems)}-{Math.min(currentPage * pageSize, totalItems)} of {totalItems} ticket{totalItems !== 1 ? 's' : ''}
             </p>
           </div>
 
-          {viewMode === 'grid' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredTickets.map((ticket) => (
+          {/* Render based on view mode */}
+          {viewMode === 'cards' ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+              {tickets.map((ticket) => (
                 <TicketCard key={ticket.id} ticket={ticket} />
               ))}
             </div>
+          ) : viewMode === 'table' ? (
+            <TableView />
+          ) : viewMode === 'inbox' ? (
+            <InboxView />
           ) : (
             <div className="space-y-3">
-              {filteredTickets.map((ticket) => (
+              {tickets.map((ticket) => (
                 <TicketListItem key={ticket.id} ticket={ticket} />
               ))}
             </div>
           )}
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                disabled={currentPage === 1}
-                className="bg-white/[0.5] dark:bg-gray-800/[0.5]"
-              >
-                Previous
-              </Button>
-              <span className="text-sm text-gray-600 dark:text-gray-400 px-4">
-                Page {currentPage} of {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                disabled={currentPage === totalPages}
-                className="bg-white/[0.5] dark:bg-gray-800/[0.5]"
-              >
-                Next
-              </Button>
-            </div>
+          {/* Pagination - Always show if there are tickets */}
+          {totalItems > 0 && (
+            <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg mt-6">
+              <CardContent className="p-4">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    Page {currentPage} of {totalPages} • {totalItems} total tickets
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                      className="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border-gray-300 dark:border-gray-600 z-10 relative"
+                    >
+                      Previous
+                    </Button>
+                    <span className="text-sm text-gray-600 dark:text-gray-400 px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded">
+                      {currentPage} of {totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages}
+                      className="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border-gray-300 dark:border-gray-600 z-10 relative"
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           )}
         </>
+      )}
+
+      {/* Bulk Actions Bar */}
+      {enableBulkActions && (
+        <BulkActionsBar
+          selectedCount={selectedTickets.length}
+          selectedTickets={selectedTickets}
+          onClearSelection={handleClearSelection}
+          onBulkClaim={handleBulkClaim}
+          isVisible={selectedTickets.length > 0}
+        />
       )}
     </div>
   )

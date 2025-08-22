@@ -177,7 +177,7 @@ export default function SupportGroupsPage() {
   };
 
   return (
-    <div className="container mx-auto py-8">
+    <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold flex items-center gap-2">
           <Users className="h-8 w-8" />

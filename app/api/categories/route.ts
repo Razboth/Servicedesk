@@ -30,41 +30,27 @@ export async function GET(request: NextRequest) {
       where.parentId = null;
     }
 
-    const categories = await prisma.serviceCategory.findMany({
-      where,
+    // For Knowledge Base, return the 3-tier Category structure
+    const categories = await prisma.category.findMany({
+      where: {
+        isActive: true
+      },
       include: {
-        parent: {
-          select: {
-            id: true,
-            name: true,
-            level: true
-          }
-        },
-        children: includeChildren ? {
+        subcategories: {
           where: { isActive: true },
-          select: {
-            id: true,
-            name: true,
-            level: true,
-            _count: {
-              select: {
-                services: { where: { isActive: true } }
-              }
+          include: {
+            items: {
+              where: { isActive: true },
+              orderBy: { name: 'asc' }
             }
           },
           orderBy: { name: 'asc' }
-        } : false,
-        _count: {
-          select: {
-            services: { where: { isActive: true } },
-            children: { where: { isActive: true } }
-          }
         }
       },
       orderBy: { name: 'asc' }
     });
 
-    return NextResponse.json(categories);
+    return NextResponse.json({ categories });
   } catch (error) {
     console.error('Error fetching categories:', error);
     return NextResponse.json(

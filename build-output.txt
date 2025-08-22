@@ -1,0 +1,22 @@
+ ⚠ Linting is disabled.
+   ▲ Next.js 15.4.4
+   - Environments: .env.local, .env
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 41s
+   Checking validity of types ...
+Failed to compile.
+
+.next/types/app/api/admin/api-keys/[id]/route.ts:205:7
+Type error: Type '{ __tag__: "PUT"; __param_position__: "second"; __param_type__: { params: { id: string; }; }; }' does not satisfy the constraint 'ParamCheck<RouteContext>'.
+  The types of '__param_type__.params' are incompatible between these types.
+    Type '{ id: string; }' is missing the following properties from type 'Promise<any>': then, catch, finally, [Symbol.toStringTag]
+
+[0m [90m 203 |[39m     [33mDiff[39m[33m<[39m
+ [90m 204 |[39m       [33mParamCheck[39m[33m<[39m[33mRouteContext[39m[33m>[39m[33m,[39m
+[31m[1m>[22m[39m[90m 205 |[39m       {
+ [90m     |[39m       [31m[1m^[22m[39m
+ [90m 206 |[39m         __tag__[33m:[39m [32m'PUT'[39m
+ [90m 207 |[39m         __param_position__[33m:[39m [32m'second'[39m
+ [90m 208 |[39m         __param_type__[33m:[39m [33mSecondArg[39m[33m<[39m[33mMaybeField[39m[33m<[39m[33mTEntry[39m[33m,[39m [32m'PUT'[39m[33m>>[39m[0m
+Next.js build worker exited with code: 1 and signal: null

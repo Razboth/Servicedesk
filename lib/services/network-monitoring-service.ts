@@ -156,12 +156,16 @@ export class NetworkMonitoringService {
     ipType: string
   ) {
     try {
-      // Skip if status is ONLINE
+      // Handle network recovery (auto-resolution)
       if (currentStatus === 'ONLINE') {
-        // Check if there's an open incident that should be resolved
-        await this.resolveExistingIncidents(entityType, entityId);
+        await this.handleNetworkRecovery(entityType, entityId, entityName);
         return;
       }
+
+      // Get configuration based on test mode
+      const config = require('../../network-monitor/config');
+      const isTestMode = config.testMode?.enabled || false;
+      const thresholds = isTestMode ? config.incidents.testModeThresholds : config.incidents.ticketThresholds;
 
       // Get recent ping results to check for consecutive failures
       const recentResults = await prisma.networkPingResult.findMany({
@@ -171,11 +175,11 @@ export class NetworkMonitoringService {
           ipType
         },
         orderBy: { checkedAt: 'desc' },
-        take: MONITORING_CONFIG.createIncidentThreshold[currentStatus] || 3
+        take: thresholds[currentStatus] || thresholds.ERROR || 3
       });
 
       // Check if all recent results have the same problematic status
-      const threshold = MONITORING_CONFIG.createIncidentThreshold[currentStatus] || 3;
+      const threshold = thresholds[currentStatus] || thresholds.ERROR || 3;
       if (recentResults.length < threshold) {
         return; // Not enough data yet
       }
@@ -185,47 +189,456 @@ export class NetworkMonitoringService {
         return; // Not consecutive failures
       }
 
-      // Check if there's already an open incident
-      const existingIncident = await prisma.networkIncident.findFirst({
+      // Check for existing ticket (with deduplication)
+      const existingTicket = await this.findExistingNetworkTicket(entityType, entityId, currentStatus);
+      
+      if (existingTicket) {
+        // Update existing ticket instead of creating new one
+        await this.updateExistingTicket(existingTicket, currentStatus, recentResults);
+        return;
+      }
+
+      // Create a new network ticket with auto-resolution enabled
+      await this.createNetworkTicket(entityType, entityId, entityName, currentStatus, threshold, recentResults, ipType);
+
+    } catch (error) {
+      console.error('Error checking/creating incident:', error);
+    }
+  }
+
+  /**
+   * Handle network recovery - auto-resolve ALL open network tickets
+   */
+  private async handleNetworkRecovery(
+    entityType: 'BRANCH' | 'ATM',
+    entityId: string,
+    entityName: string
+  ) {
+    try {
+      // Check if connection has been stable
+      const isStable = await this.isConnectionStable(entityType, entityId);
+      if (!isStable) {
+        return; // Wait for stable connection
+      }
+
+      // Find ALL open network tickets for this entity
+      const openTickets = await prisma.ticket.findMany({
         where: {
-          ...(entityType === 'BRANCH' ? { branchId: entityId } : { atmId: entityId }),
-          status: { in: ['OPEN', 'IN_PROGRESS'] }
+          OR: [
+            { category: 'NETWORK_OFFLINE' },
+            { category: 'NETWORK_CONGESTION' },
+            { category: 'NETWORK_SLOW' },
+            { category: 'NETWORK_ERROR' }
+          ],
+          status: { in: ['OPEN', 'IN_PROGRESS'] },
+          ...(entityType === 'BRANCH' ? 
+            { customFields: { path: ['monitoringEntityId'], equals: entityId } } : 
+            { customFields: { path: ['monitoringEntityId'], equals: entityId } }
+          )
         }
       });
 
-      if (existingIncident) {
-        return; // Incident already exists
+      console.log(`Found ${openTickets.length} open network tickets for ${entityType} ${entityName}`);
+
+      // Auto-resolve all open network tickets
+      for (const ticket of openTickets) {
+        await this.autoResolveTicket(ticket, entityType, entityName);
       }
 
-      // Create a new network incident
+      // Also resolve any open network incidents
+      await this.resolveExistingIncidents(entityType, entityId);
+
+    } catch (error) {
+      console.error('Error handling network recovery:', error);
+    }
+  }
+
+  /**
+   * Check if network connection has been stable for required time
+   */
+  private async isConnectionStable(entityType: 'BRANCH' | 'ATM', entityId: string): Promise<boolean> {
+    try {
+      const config = require('../../network-monitor/config');
+      const isTestMode = config.testMode?.enabled || false;
+      
+      const requiredStableTime = isTestMode ? 
+        config.incidents.testMode.stableTimeBeforeResolve : 
+        config.incidents.stableTimeBeforeResolve;
+
+      const stableThreshold = new Date(Date.now() - requiredStableTime);
+
+      // Check recent ping results
+      const recentResults = await prisma.networkPingResult.findMany({
+        where: {
+          entityType,
+          entityId,
+          checkedAt: { gte: stableThreshold }
+        },
+        orderBy: { checkedAt: 'desc' }
+      });
+
+      // Must have at least 2 checks and all must be ONLINE
+      if (recentResults.length < 2) {
+        return false;
+      }
+
+      return recentResults.every(result => result.status === 'ONLINE');
+    } catch (error) {
+      console.error('Error checking connection stability:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Auto-resolve a network ticket
+   */
+  private async autoResolveTicket(ticket: any, entityType: string, entityName: string) {
+    try {
+      const config = require('../../network-monitor/config');
+      const isTestMode = config.testMode?.enabled || false;
+      
+      const downtime = this.calculateDowntime(ticket.createdAt);
+      const currentTime = new Date();
+
+      // Resolve the ticket
+      await prisma.ticket.update({
+        where: { id: ticket.id },
+        data: {
+          status: 'RESOLVED',
+          resolvedAt: currentTime,
+          resolutionNotes: `[AUTO-RESOLVED] Network connectivity restored for ${entityName}.\n\nDowntime: ${this.formatDowntime(downtime)}\nAuto-resolved by network monitoring system.\nConnection is now stable.`,
+          customFields: {
+            ...ticket.customFields,
+            autoResolved: true,
+            recoveredAt: currentTime.toISOString(),
+            downtime: downtime,
+            finalStatus: 'ONLINE'
+          }
+        }
+      });
+
+      console.log(`✅ Auto-resolved ticket ${ticket.ticketNumber} for ${entityType} ${entityName}`);
+
+      // Schedule auto-closure
+      const categoryType = ticket.category?.replace('NETWORK_', '') || 'ERROR';
+      const closeDelay = isTestMode ? 
+        config.incidents.testMode.autoCloseDelay[categoryType] || 120000 :
+        config.incidents.autoCloseDelay[categoryType] || 600000;
+
+      setTimeout(async () => {
+        await this.autoCloseTicket(ticket.id, entityName);
+      }, closeDelay);
+
+    } catch (error) {
+      console.error('Error auto-resolving ticket:', error);
+    }
+  }
+
+  /**
+   * Auto-close a resolved ticket
+   */
+  private async autoCloseTicket(ticketId: string, entityName: string) {
+    try {
+      const ticket = await prisma.ticket.findUnique({
+        where: { id: ticketId }
+      });
+
+      if (!ticket || ticket.status !== 'RESOLVED') {
+        return; // Ticket not found or not in resolved status
+      }
+
+      await prisma.ticket.update({
+        where: { id: ticketId },
+        data: {
+          status: 'CLOSED',
+          closedAt: new Date(),
+          closureNotes: `[AUTO-CLOSED] Network issue resolved and connection stable.\n\nTicket automatically closed by monitoring system.`
+        }
+      });
+
+      console.log(`🔒 Auto-closed ticket ${ticket.ticketNumber} for ${entityName}`);
+    } catch (error) {
+      console.error('Error auto-closing ticket:', error);
+    }
+  }
+
+  /**
+   * Find existing network ticket with deduplication
+   */
+  private async findExistingNetworkTicket(
+    entityType: 'BRANCH' | 'ATM',
+    entityId: string,
+    currentStatus: NetworkStatus
+  ) {
+    try {
+      const config = require('../../network-monitor/config');
+      const deduplicationWindow = config.incidents.deduplication.window || 3600000; // 1 hour
+      const windowStart = new Date(Date.now() - deduplicationWindow);
+
+      // Map status to ticket category
+      const categoryMap = {
+        'OFFLINE': 'NETWORK_OFFLINE',
+        'SLOW': 'NETWORK_SLOW',
+        'ERROR': 'NETWORK_ERROR',
+        'TIMEOUT': 'NETWORK_ERROR'
+      };
+
+      const category = categoryMap[currentStatus] || 'NETWORK_ERROR';
+
+      // Look for existing open ticket or recently closed ticket
+      const existingTicket = await prisma.ticket.findFirst({
+        where: {
+          category,
+          customFields: {
+            path: ['monitoringEntityId'],
+            equals: entityId
+          },
+          OR: [
+            { status: { in: ['OPEN', 'IN_PROGRESS'] } },
+            { 
+              status: 'CLOSED',
+              closedAt: { gte: windowStart }
+            }
+          ]
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      return existingTicket;
+    } catch (error) {
+      console.error('Error finding existing ticket:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Update existing ticket instead of creating new one
+   */
+  private async updateExistingTicket(ticket: any, currentStatus: NetworkStatus, recentResults: any[]) {
+    try {
+      const updateData: any = {
+        updatedAt: new Date(),
+        customFields: {
+          ...ticket.customFields,
+          lastOccurrence: new Date().toISOString(),
+          occurrenceCount: (ticket.customFields?.occurrenceCount || 0) + 1,
+          currentStatus,
+          lastResponseTime: recentResults[0]?.responseTimeMs || null,
+          lastPacketLoss: recentResults[0]?.packetLoss || null
+        }
+      };
+
+      // If ticket was closed, reopen it
+      if (ticket.status === 'CLOSED') {
+        updateData.status = 'OPEN';
+        updateData.closedAt = null;
+        updateData.reopenedAt = new Date();
+        console.log(`🔄 Reopened ticket ${ticket.ticketNumber} due to recurring issue`);
+      }
+
+      await prisma.ticket.update({
+        where: { id: ticket.id },
+        data: updateData
+      });
+
+      console.log(`📝 Updated existing ticket ${ticket.ticketNumber} with new occurrence`);
+    } catch (error) {
+      console.error('Error updating existing ticket:', error);
+    }
+  }
+
+  /**
+   * Create a new network ticket with auto-resolution enabled
+   */
+  private async createNetworkTicket(
+    entityType: 'BRANCH' | 'ATM',
+    entityId: string,
+    entityName: string,
+    currentStatus: NetworkStatus,
+    threshold: number,
+    recentResults: any[],
+    ipType: string
+  ) {
+    try {
+      const config = require('../../network-monitor/config');
+      
+      // Map status to ticket details
+      const ticketTypeMap = {
+        'OFFLINE': {
+          category: 'NETWORK_OFFLINE',
+          title: 'Network Connection Lost',
+          priority: config.incidents.priorities.OFFLINE || 'HIGH'
+        },
+        'SLOW': {
+          category: 'NETWORK_SLOW',
+          title: 'Slow Network Response',
+          priority: config.incidents.priorities.SLOW_RESPONSE || 'LOW'
+        },
+        'ERROR': {
+          category: 'NETWORK_ERROR',
+          title: 'Network Error Detected',
+          priority: config.incidents.priorities.ERROR || 'MEDIUM'
+        }
+      };
+
+      const ticketType = ticketTypeMap[currentStatus] || ticketTypeMap['ERROR'];
+      const latestResult = recentResults[0];
+
+      // Get entity details for ticket
+      const entity = entityType === 'BRANCH' ? 
+        await prisma.branch.findUnique({ where: { id: entityId } }) :
+        await prisma.aTM.findUnique({ where: { id: entityId } });
+
+      if (!entity) {
+        console.error(`Entity not found: ${entityType} ${entityId}`);
+        return;
+      }
+
+      // Get monitoring system user
+      const systemUser = await prisma.user.findFirst({
+        where: { email: 'network-monitoring@banksulutgo.co.id' }
+      });
+
+      if (!systemUser) {
+        console.error('Network monitoring system user not found');
+        return;
+      }
+
+      // Create the ticket
+      const ticket = await prisma.ticket.create({
+        data: {
+          title: `[AUTO] ${entityName}: ${ticketType.title}`,
+          description: this.generateTicketDescription(entity, currentStatus, threshold, latestResult, ipType),
+          category: ticketType.category,
+          priority: ticketType.priority,
+          status: 'OPEN',
+          createdById: systemUser.id,
+          branchId: entityType === 'BRANCH' ? entityId : entity.branchId,
+          customFields: {
+            autoGenerated: true,
+            autoResolve: true,
+            monitoringEntityId: entityId,
+            monitoringEntityType: entityType,
+            networkIssueType: currentStatus,
+            consecutiveFailures: threshold,
+            detectedAt: new Date().toISOString(),
+            ipAddress: entity.ipAddress,
+            ipType,
+            networkMedia: entity.networkMedia,
+            networkVendor: entity.networkVendor,
+            occurrenceCount: 1
+          },
+          tags: ['auto-generated', 'network-monitoring', currentStatus.toLowerCase()]
+        }
+      });
+
+      console.log(`🎫 Created network ticket ${ticket.ticketNumber} for ${entityType} ${entityName} (${currentStatus})`);
+
+      // Also create a network incident for tracking
+      await this.createNetworkIncident(entityType, entityId, entityName, currentStatus, threshold, ticket.id);
+
+    } catch (error) {
+      console.error('Error creating network ticket:', error);
+    }
+  }
+
+  /**
+   * Generate detailed ticket description
+   */
+  private generateTicketDescription(
+    entity: any,
+    status: string,
+    threshold: number,
+    latestResult: any,
+    ipType: string
+  ): string {
+    return `
+Automated Network Monitoring Alert
+=====================================
+Location: ${entity.name} (${entity.code || 'N/A'})
+Issue Type: ${status}
+Detected: ${new Date().toISOString()}
+IP Type: ${ipType}
+
+Current Metrics:
+- Status: ${status}
+- Response Time: ${latestResult?.responseTimeMs || 'N/A'}ms
+- Packet Loss: ${latestResult?.packetLoss || 'N/A'}%
+- Consecutive Failures: ${threshold}
+
+Network Configuration:
+- IP Address: ${entity.ipAddress || 'N/A'}
+- Backup IP: ${entity.backupIpAddress || 'N/A'}
+- Network Type: ${entity.networkMedia || 'Unknown'}
+- Vendor: ${entity.networkVendor || 'Unknown'}
+
+This ticket will automatically resolve when connectivity is restored and the connection is stable for the required duration.
+
+For immediate assistance, contact the network operations team.
+    `.trim();
+  }
+
+  /**
+   * Create network incident for tracking
+   */
+  private async createNetworkIncident(
+    entityType: 'BRANCH' | 'ATM',
+    entityId: string,
+    entityName: string,
+    currentStatus: NetworkStatus,
+    threshold: number,
+    ticketId: string
+  ) {
+    try {
       const incident = await prisma.networkIncident.create({
         data: {
           ...(entityType === 'BRANCH' ? { branchId: entityId } : { atmId: entityId }),
           type: currentStatus === 'OFFLINE' ? 'COMMUNICATION_OFFLINE' : 
                 currentStatus === 'SLOW' ? 'SLOW_CONNECTION' : 'NETWORK_CONGESTION',
-          severity: currentStatus === 'OFFLINE' ? 'CRITICAL' : 
-                   currentStatus === 'ERROR' ? 'HIGH' : 'MEDIUM',
-          description: `${entityName} ${ipType.toLowerCase()} connection is ${currentStatus.toLowerCase()}. Detected after ${threshold} consecutive checks.`,
+          severity: currentStatus === 'OFFLINE' ? 'HIGH' : 
+                   currentStatus === 'ERROR' ? 'MEDIUM' : 'LOW',
+          description: `${entityName} network ${currentStatus.toLowerCase()} detected after ${threshold} consecutive checks.`,
           status: 'OPEN',
+          ticketId,
           metrics: {
             consecutiveFailures: threshold,
-            ipType,
-            lastStatus: currentStatus,
-            avgResponseTime: recentResults[0].responseTimeMs || null,
-            avgPacketLoss: recentResults[0].packetLoss || null
+            entityType,
+            entityId,
+            autoGenerated: true
           }
         }
       });
 
-      console.log(`Created network incident for ${entityType} ${entityName}: ${incident.id}`);
-
-      // Create a ticket if severity is CRITICAL
-      if (incident.severity === 'CRITICAL') {
-        await this.createIncidentTicket(incident, entityType, entityId, entityName);
-      }
+      console.log(`📊 Created network incident ${incident.id} for ticket ${ticketId}`);
     } catch (error) {
-      console.error('Error checking/creating incident:', error);
+      console.error('Error creating network incident:', error);
     }
+  }
+
+  /**
+   * Calculate downtime in minutes
+   */
+  private calculateDowntime(startTime: Date): number {
+    const now = new Date();
+    return Math.round((now.getTime() - startTime.getTime()) / (1000 * 60));
+  }
+
+  /**
+   * Format downtime for display
+   */
+  private formatDowntime(minutes: number): string {
+    if (minutes < 60) {
+      return `${minutes} minute${minutes !== 1 ? 's' : ''}`;
+    }
+    
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    
+    if (remainingMinutes === 0) {
+      return `${hours} hour${hours !== 1 ? 's' : ''}`;
+    }
+    
+    return `${hours} hour${hours !== 1 ? 's' : ''} ${remainingMinutes} minute${remainingMinutes !== 1 ? 's' : ''}`;
   }
 
   private async resolveExistingIncidents(entityType: 'BRANCH' | 'ATM', entityId: string) {

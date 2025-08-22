@@ -10,9 +10,20 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { 
+  ModernDialog, 
+  ModernDialogContent, 
+  ModernDialogHeader, 
+  ModernDialogTitle, 
+  ModernDialogDescription, 
+  ModernDialogBody, 
+  ModernDialogFooter 
+} from '@/components/ui/modern-dialog';
+import { ProgressTracker } from '@/components/ui/progress-tracker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Clock, User, MessageSquare, AlertCircle, CheckCircle, Plus, X, Paperclip, Download, FileText, Eye, Edit } from 'lucide-react';
+import { ArrowLeft, Clock, User, MessageSquare, AlertCircle, CheckCircle, CheckCheck, Plus, X, Paperclip, Download, FileText, Eye, Edit, Sparkles, Shield, UserCheck, UserX, Timer } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { RelatedArticles } from '@/components/knowledge/related-articles';
 
 interface TicketFieldValue {
   id: string;
@@ -67,6 +78,20 @@ interface TicketAttachment {
   createdAt: string;
 }
 
+interface TicketApproval {
+  id: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  reason?: string;
+  createdAt: string;
+  updatedAt: string;
+  approver: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+  };
+}
+
 interface Ticket {
   id: string;
   ticketNumber: string;
@@ -77,6 +102,7 @@ interface Ticket {
   createdAt: string;
   updatedAt: string;
   resolvedAt?: string;
+  closedAt?: string;
   service: {
     name: string;
     category: {
@@ -96,6 +122,7 @@ interface Ticket {
   fieldValues: TicketFieldValue[];
   comments: TicketComment[];
   attachments: TicketAttachment[];
+  approvals: TicketApproval[];
 }
 
 export default function TicketDetailPage() {
@@ -126,6 +153,38 @@ export default function TicketDetailPage() {
       'image/png'
     ];
     return previewableMimeTypes.includes(mimeType);
+  };
+
+  // Helper functions for approval status
+  const getApprovalStatusIcon = (status: string) => {
+    switch (status) {
+      case 'APPROVED':
+        return <UserCheck className="h-4 w-4" />;
+      case 'REJECTED':
+        return <UserX className="h-4 w-4" />;
+      case 'PENDING':
+        return <Timer className="h-4 w-4" />;
+      default:
+        return <Shield className="h-4 w-4" />;
+    }
+  };
+
+  const getApprovalStatusBadgeVariant = (status: string) => {
+    switch (status) {
+      case 'APPROVED':
+        return 'success';
+      case 'REJECTED':
+        return 'destructive';
+      case 'PENDING':
+        return 'warning';
+      default:
+        return 'secondary';
+    }
+  };
+
+  const getLatestApproval = () => {
+    if (!ticket?.approvals || ticket.approvals.length === 0) return null;
+    return ticket.approvals[0]; // Already ordered by createdAt desc from API
   };
 
   useEffect(() => {
@@ -193,7 +252,9 @@ export default function TicketDetailPage() {
         setNewComment('');
         fetchTicket(); // Refresh ticket data
       } else {
-        console.error('Failed to add comment');
+        const errorData = await response.json().catch(() => null);
+        console.error('Failed to add comment:', errorData);
+        alert(errorData?.error || 'Failed to add comment. Please try again.');
       }
     } catch (err) {
       console.error('Error adding comment:', err);
@@ -282,6 +343,45 @@ export default function TicketDetailPage() {
     setSelectedResolutionStatus('RESOLVED');
   };
 
+  const handleResolveAndClose = async () => {
+    try {
+      setIsUpdatingStatus(true);
+      
+      // First update to RESOLVED
+      const resolveResponse = await fetch(`/api/tickets/${ticketId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: 'RESOLVED' }),
+      });
+      
+      if (!resolveResponse.ok) {
+        console.error('Failed to resolve ticket');
+        return;
+      }
+      
+      // Then immediately update to CLOSED
+      const closeResponse = await fetch(`/api/tickets/${ticketId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: 'CLOSED' }),
+      });
+      
+      if (closeResponse.ok) {
+        fetchTicket(); // Refresh ticket data
+      } else {
+        console.error('Failed to close ticket');
+      }
+    } catch (err) {
+      console.error('Error in resolve and close:', err);
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
   const updateTaskStatus = async (taskId: string, status: string, actualMinutes?: number, notes?: string) => {
     try {
       const response = await fetch(`/api/tickets/${ticketId}/tasks/${taskId}`, {
@@ -348,7 +448,6 @@ export default function TicketDetailPage() {
     
     return (
       session.user.role === 'ADMIN' ||
-      session.user.role === 'MANAGER' ||
       (session.user.role === 'TECHNICIAN' && ticket.assignedTo?.email === session.user.email) ||
       (session.user.role === 'TECHNICIAN' && ticket.status === 'CLOSED') ||
       (session.user.role === 'SECURITY_ANALYST' && ticket.assignedTo?.email === session.user.email) ||
@@ -359,6 +458,19 @@ export default function TicketDetailPage() {
 
   const canModifyTicket = () => {
     return canUpdateStatus();
+  };
+
+  const canEditBasicInfo = () => {
+    if (!session?.user?.role || !ticket) return false;
+    
+    return (
+      session.user.role === 'ADMIN' ||
+      (session.user.role === 'MANAGER' && ticket.createdBy?.email === session.user.email) ||
+      (session.user.role === 'TECHNICIAN' && ticket.assignedTo?.email === session.user.email) ||
+      (session.user.role === 'SECURITY_ANALYST' && ticket.assignedTo?.email === session.user.email) ||
+      (session.user.role === 'SECURITY_ANALYST' && ticket.createdBy?.email === session.user.email) ||
+      (session.user.role === 'USER' && ticket.createdBy?.email === session.user.email)
+    );
   };
 
   if (status === 'loading' || loading) {
@@ -381,7 +493,7 @@ export default function TicketDetailPage() {
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <main className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-6">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Error</h1>
             <p className="text-gray-600 mb-4">{error}</p>
@@ -400,8 +512,8 @@ export default function TicketDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+      <main className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-6">
         <div className="space-y-6">
           {/* Header */}
           <div className="flex items-center gap-4">
@@ -427,11 +539,106 @@ export default function TicketDetailPage() {
             </div>
           </div>
 
+          {/* Progress Tracker */}
+          <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5" />
+                Ticket Progress
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ProgressTracker 
+                steps={[]} 
+                currentStatus={ticket.status}
+                showTimestamps={true}
+                showUsers={true}
+                variant="vertical"
+                ticketData={{
+                  createdAt: ticket.createdAt,
+                  updatedAt: ticket.updatedAt,
+                  resolvedAt: ticket.resolvedAt,
+                  closedAt: ticket.closedAt,
+                  approvals: ticket.approvals,
+                  createdBy: ticket.createdBy,
+                  assignedTo: ticket.assignedTo,
+                  comments: ticket.comments
+                }}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Approval Status */}
+          {((ticket.approvals && ticket.approvals.length > 0) || ticket.status === 'PENDING_APPROVAL') && (
+            <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="h-5 w-5" />
+                  Approval Status
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {ticket.status === 'PENDING_APPROVAL' && (!ticket.approvals || ticket.approvals.length === 0) ? (
+                  <div className="flex items-center gap-3 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <Timer className="h-5 w-5 text-yellow-600" />
+                    <div>
+                      <p className="font-medium text-yellow-800">Waiting for Manager Approval</p>
+                      <p className="text-sm text-yellow-600">Your ticket is pending approval from your branch manager.</p>
+                    </div>
+                  </div>
+                ) : getLatestApproval() ? (
+                  <div className="space-y-4">
+                    {ticket.approvals.map((approval, index) => (
+                      <div key={approval.id} className={`flex items-start gap-3 p-4 rounded-lg border ${
+                        approval.status === 'APPROVED' ? 'bg-green-50 border-green-200' :
+                        approval.status === 'REJECTED' ? 'bg-red-50 border-red-200' :
+                        'bg-yellow-50 border-yellow-200'
+                      }`}>
+                        <div className={`mt-1 ${
+                          approval.status === 'APPROVED' ? 'text-green-600' :
+                          approval.status === 'REJECTED' ? 'text-red-600' :
+                          'text-yellow-600'
+                        }`}>
+                          {getApprovalStatusIcon(approval.status)}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge variant={getApprovalStatusBadgeVariant(approval.status)} className="flex items-center gap-1">
+                              {approval.status}
+                            </Badge>
+                            <span className="text-sm text-gray-500">
+                              {formatDistanceToNow(new Date(approval.createdAt), { addSuffix: true })}
+                            </span>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium text-gray-900">
+                              {approval.status === 'APPROVED' ? 'Approved' : 
+                               approval.status === 'REJECTED' ? 'Rejected' : 'Reviewed'} by {approval.approver.name}
+                            </p>
+                            <p className="text-xs text-gray-500">{approval.approver.email} • {approval.approver.role}</p>
+                            {approval.reason && (
+                              <div className="mt-2 p-2 bg-gray-50 rounded border">
+                                <p className="text-xs font-medium text-gray-700 mb-1">
+                                  {approval.status === 'REJECTED' ? 'Reason for rejection:' : 'Comments:'}
+                                </p>
+                                <p className="text-sm text-gray-600">{approval.reason}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </CardContent>
+            </Card>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Main Content */}
             <div className="lg:col-span-2 space-y-6">
               {/* Ticket Details */}
-              <Card>
+              <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
                 <CardHeader>
                   <CardTitle>Description</CardTitle>
                 </CardHeader>
@@ -442,7 +649,7 @@ export default function TicketDetailPage() {
 
               {/* Custom Fields */}
               {ticket.fieldValues.length > 0 && (
-                <Card>
+                <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
                   <CardHeader>
                     <CardTitle>Additional Information</CardTitle>
                   </CardHeader>
@@ -461,7 +668,7 @@ export default function TicketDetailPage() {
 
               {/* Attachments */}
               {ticket.attachments && ticket.attachments.length > 0 && (
-                <Card>
+                <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Paperclip className="h-5 w-5" />
@@ -522,7 +729,7 @@ export default function TicketDetailPage() {
 
               {/* Tasks */}
               {tasks.length > 0 && (
-                <Card>
+                <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <CheckCircle className="h-5 w-5" />
@@ -601,7 +808,7 @@ export default function TicketDetailPage() {
               )}
 
               {/* Comments */}
-              <Card>
+              <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <MessageSquare className="h-5 w-5" />
@@ -665,7 +872,7 @@ export default function TicketDetailPage() {
             <div className="space-y-6">
               {/* Actions */}
               {canUpdateStatus() && (
-                <Card>
+                <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
                   <CardHeader>
                     <CardTitle>Actions</CardTitle>
                   </CardHeader>
@@ -691,6 +898,37 @@ export default function TicketDetailPage() {
                           Update Status
                         </Button>
                       )}
+                      {(ticket.status === 'IN_PROGRESS' || ticket.status === 'OPEN') && 
+                       ['TECHNICIAN', 'SECURITY_ANALYST'].includes(session?.user?.role || '') && (
+                        <Button
+                          onClick={handleResolveAndClose}
+                          disabled={isUpdatingStatus}
+                          className="w-full flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg"
+                        >
+                          <CheckCheck className="h-4 w-4" />
+                          Resolve + Close
+                        </Button>
+                      )}
+                      {ticket.status === 'PENDING_VENDOR' && ['TECHNICIAN', 'SECURITY_ANALYST'].includes(session?.user?.role) && (
+                        <>
+                          <Button
+                            onClick={() => updateTicketStatus('IN_PROGRESS')}
+                            disabled={isUpdatingStatus}
+                            className="w-full flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+                          >
+                            <AlertCircle className="h-4 w-4" />
+                            Resume Work
+                          </Button>
+                          <Button
+                            onClick={handleResolveClick}
+                            disabled={isUpdatingStatus}
+                            className="w-full flex items-center gap-2"
+                          >
+                            <Edit className="h-4 w-4" />
+                            Update Status
+                          </Button>
+                        </>
+                      )}
                       {ticket.status === 'CLOSED' && ['TECHNICIAN', 'SECURITY_ANALYST'].includes(session?.user?.role) && (
                         <Button
                           onClick={() => updateTicketStatus('IN_PROGRESS')}
@@ -707,7 +945,7 @@ export default function TicketDetailPage() {
               )}
 
               {/* Ticket Information */}
-              <Card>
+              <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
                 <CardHeader>
                   <CardTitle>Ticket Information</CardTitle>
                 </CardHeader>
@@ -759,89 +997,101 @@ export default function TicketDetailPage() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Related Knowledge Articles */}
+              <RelatedArticles 
+                ticketId={ticket.id} 
+                canManageArticles={
+                  session?.user?.role === 'ADMIN' || 
+                  session?.user?.role === 'MANAGER' ||
+                  session?.user?.role === 'TECHNICIAN' ||
+                  session?.user?.role === 'SECURITY_ANALYST'
+                }
+              />
             </div>
           </div>
         </div>
       </main>
 
-      {/* Resolution Modal */}
-      <Dialog open={showResolveModal} onOpenChange={setShowResolveModal}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Update Ticket Status</DialogTitle>
-            <DialogDescription>
+      {/* Resolution Modal - Modern Style */}
+      <ModernDialog open={showResolveModal} onOpenChange={setShowResolveModal}>
+        <ModernDialogContent className="sm:max-w-[500px]">
+          <ModernDialogHeader variant="gradient" icon={<Edit className="w-5 h-5" />}>
+            <ModernDialogTitle>Update Ticket Status</ModernDialogTitle>
+            <ModernDialogDescription>
               Add an optional comment and select the new status for this ticket.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="status-select">New Status</Label>
-              <Select value={selectedResolutionStatus} onValueChange={setSelectedResolutionStatus}>
-                <SelectTrigger id="status-select">
-                  <SelectValue placeholder="Select new status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="OPEN">Open</SelectItem>
-                  <SelectItem value="PENDING">Pending</SelectItem>
-                  <SelectItem value="PENDING_APPROVAL">Pending Approval</SelectItem>
-                  <SelectItem value="APPROVED">Approved</SelectItem>
-                  <SelectItem value="REJECTED">Rejected</SelectItem>
-                  <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-                  <SelectItem value="PENDING_VENDOR">Pending Vendor</SelectItem>
-                  <SelectItem value="RESOLVED">Resolved</SelectItem>
-                  <SelectItem value="CLOSED">Closed</SelectItem>
-                  <SelectItem value="CANCELLED">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
+            </ModernDialogDescription>
+          </ModernDialogHeader>
+          <ModernDialogBody>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="status-select" className="text-sm font-medium">New Status</Label>
+                <Select value={selectedResolutionStatus} onValueChange={setSelectedResolutionStatus}>
+                  <SelectTrigger id="status-select" className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
+                    <SelectValue placeholder="Select new status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="OPEN">Open</SelectItem>
+                    <SelectItem value="PENDING">Pending</SelectItem>
+                    <SelectItem value="PENDING_APPROVAL">Pending Approval</SelectItem>
+                    <SelectItem value="APPROVED">Approved</SelectItem>
+                    <SelectItem value="REJECTED">Rejected</SelectItem>
+                    <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+                    <SelectItem value="PENDING_VENDOR">Pending Vendor</SelectItem>
+                    <SelectItem value="RESOLVED">Resolved</SelectItem>
+                    <SelectItem value="CLOSED">Closed</SelectItem>
+                    <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="resolution-comment" className="text-sm font-medium">Comment (Optional)</Label>
+                <Textarea
+                  id="resolution-comment"
+                  value={resolutionComment}
+                  onChange={(e) => setResolutionComment(e.target.value)}
+                  placeholder="Add a comment about this status change..."
+                  className="min-h-[100px] resize-none bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm"
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="resolution-comment">Comment (Optional)</Label>
-              <Textarea
-                id="resolution-comment"
-                value={resolutionComment}
-                onChange={(e) => setResolutionComment(e.target.value)}
-                placeholder="Add a comment about this status change..."
-                className="min-h-[100px] resize-none"
-              />
-            </div>
-          </div>
-          <DialogFooter>
+          </ModernDialogBody>
+          <ModernDialogFooter>
             <Button
               variant="outline"
               onClick={handleModalClose}
               disabled={isSubmittingResolution}
+              className="bg-white/50 hover:bg-white/70"
             >
               Cancel
             </Button>
             <Button
               onClick={handleResolutionSubmit}
               disabled={isSubmittingResolution}
+              className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg"
             >
               {isSubmittingResolution ? 'Processing...' : 'Update Status'}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ModernDialogFooter>
+        </ModernDialogContent>
+      </ModernDialog>
 
-      {/* Attachment Preview Modal */}
-      <Dialog open={!!previewAttachment} onOpenChange={() => setPreviewAttachment(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              {previewAttachment?.originalName}
-            </DialogTitle>
-            <DialogDescription>
+      {/* Attachment Preview Modal - Modern Style */}
+      <ModernDialog open={!!previewAttachment} onOpenChange={() => setPreviewAttachment(null)}>
+        <ModernDialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+          <ModernDialogHeader variant="gradient" icon={<FileText className="w-5 h-5" />}>
+            <ModernDialogTitle>{previewAttachment?.originalName}</ModernDialogTitle>
+            <ModernDialogDescription>
               {previewAttachment && (
-                <span className="text-sm text-gray-500">
+                <span className="text-sm opacity-90">
                   {(previewAttachment.size / 1024 / 1024).toFixed(2)} MB • {previewAttachment.mimeType}
                 </span>
               )}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex-1 overflow-hidden">
+            </ModernDialogDescription>
+          </ModernDialogHeader>
+          <ModernDialogBody className="p-0 flex-1 overflow-hidden">
             {previewAttachment && (
-              <div className="w-full h-[70vh] border rounded-lg overflow-hidden">
+              <div className="w-full h-[70vh] border rounded-lg overflow-hidden m-6">
                 {previewAttachment.mimeType === 'application/pdf' ? (
                   <iframe
                     src={`/api/tickets/${ticketId}/attachments/${previewAttachment.id}/preview`}
@@ -857,8 +1107,8 @@ export default function TicketDetailPage() {
                 )}
               </div>
             )}
-          </div>
-          <DialogFooter>
+          </ModernDialogBody>
+          <ModernDialogFooter>
             <Button
               variant="outline"
               onClick={() => {
@@ -871,17 +1121,20 @@ export default function TicketDetailPage() {
                   document.body.removeChild(link);
                 }
               }}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 bg-white/50 hover:bg-white/70"
             >
               <Download className="h-4 w-4" />
               Download
             </Button>
-            <Button onClick={() => setPreviewAttachment(null)}>
+            <Button 
+              onClick={() => setPreviewAttachment(null)}
+              className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg"
+            >
               Close
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ModernDialogFooter>
+        </ModernDialogContent>
+      </ModernDialog>
     </div>
   );
 }

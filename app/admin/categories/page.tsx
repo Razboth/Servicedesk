@@ -257,7 +257,7 @@ export default function AdminCategoriesPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto py-6">
+      <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-6">
         <div className="flex items-center justify-center h-64">
           <div className="text-lg">Loading categories...</div>
         </div>
@@ -266,7 +266,7 @@ export default function AdminCategoriesPage() {
   }
 
   return (
-    <div className="container mx-auto py-6">
+    <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-6">
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">

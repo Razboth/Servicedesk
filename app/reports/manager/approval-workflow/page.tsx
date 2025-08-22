@@ -242,7 +242,7 @@ export default function ApprovalWorkflowPage() {
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <main className="w-full py-6 sm:px-6 lg:px-8">
           <div className="text-center py-12">
             <AlertTriangle className="mx-auto h-12 w-12 text-red-500 mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Report</h3>
@@ -258,7 +258,7 @@ export default function ApprovalWorkflowPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+      <main className="w-full py-6 sm:px-6 lg:px-8">
         <div className="space-y-6">
           {/* Header */}
           <div className="bg-white shadow rounded-lg">

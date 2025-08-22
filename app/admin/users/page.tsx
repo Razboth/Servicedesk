@@ -21,6 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { ResponsiveTable, MobileCard } from '@/components/ui/responsive-table';
 import {
   Dialog,
   DialogContent,
@@ -30,6 +31,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { 
+  ModernDialog, 
+  ModernDialogContent, 
+  ModernDialogHeader, 
+  ModernDialogTitle, 
+  ModernDialogDescription, 
+  ModernDialogBody, 
+  ModernDialogFooter 
+} from '@/components/ui/modern-dialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -252,7 +262,7 @@ export default function AdminUsersPage() {
   // Auth guard - show loading or access denied if not admin
   if (!session) {
     return (
-      <div className="container mx-auto py-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-8">
         <div className="text-center">
           <p>Loading session...</p>
         </div>
@@ -262,7 +272,7 @@ export default function AdminUsersPage() {
 
   if (session.user?.role !== 'ADMIN') {
     return (
-      <div className="container mx-auto py-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-8">
         <Alert>
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
@@ -479,33 +489,37 @@ export default function AdminUsersPage() {
   };
 
   return (
-    <div className="container mx-auto py-8">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Users className="h-8 w-8" />
-            User Management
-          </h1>
-          <p className="text-muted-foreground">
-            Create, edit, and manage user accounts
-          </p>
-        </div>
-        <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+      <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-8">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-3xl font-bold flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              <Users className="h-8 w-8 text-blue-600" />
+              User Management
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              Create, edit, and manage user accounts
+            </p>
+          </div>
+        <ModernDialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
           <DialogTrigger asChild>
-            <Button onClick={resetForm}>
+            <Button 
+              onClick={resetForm}
+              className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg"
+            >
               <UserPlus className="h-4 w-4 mr-2" />
               Create User
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Create New User</DialogTitle>
-              <DialogDescription>
+          <ModernDialogContent className="max-w-2xl">
+            <ModernDialogHeader variant="gradient" icon={<UserPlus className="w-5 h-5" />}>
+              <ModernDialogTitle>Create New User</ModernDialogTitle>
+              <ModernDialogDescription>
                 Add a new user to the system
-              </DialogDescription>
-            </DialogHeader>
-            
-            <div className="grid grid-cols-2 gap-4 py-4">
+              </ModernDialogDescription>
+            </ModernDialogHeader>
+            <ModernDialogBody>
+              <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="create-email">Email</Label>
                 <Input
@@ -514,6 +528,7 @@ export default function AdminUsersPage() {
                   value={formData.email}
                   onChange={(e) => setFormData({...formData, email: e.target.value})}
                   placeholder="user@banksulutgo.co.id"
+                  className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm"
                 />
               </div>
               
@@ -524,6 +539,7 @@ export default function AdminUsersPage() {
                   value={formData.name}
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
                   placeholder="Full Name"
+                  className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm"
                 />
               </div>
               
@@ -534,13 +550,14 @@ export default function AdminUsersPage() {
                   value={formData.phone}
                   onChange={(e) => setFormData({...formData, phone: e.target.value})}
                   placeholder="Phone number"
+                  className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm"
                 />
               </div>
               
               <div className="space-y-2">
                 <Label htmlFor="create-role">Role</Label>
                 <Select value={formData.role} onValueChange={(value) => setFormData({...formData, role: value})}>
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -559,7 +576,7 @@ export default function AdminUsersPage() {
               <div className="space-y-2">
                 <Label htmlFor="create-branch">Branch</Label>
                 <Select value={formData.branchId || "none"} onValueChange={(value) => setFormData({...formData, branchId: value === "none" ? "" : value})}>
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
                     <SelectValue placeholder="Select branch" />
                   </SelectTrigger>
                   <SelectContent>
@@ -576,7 +593,7 @@ export default function AdminUsersPage() {
               <div className="space-y-2">
                 <Label htmlFor="create-support-group">Support Group</Label>
                 <Select value={formData.supportGroupId || "none"} onValueChange={(value) => setFormData({...formData, supportGroupId: value === "none" ? "" : value})}>
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
                     <SelectValue placeholder="Select support group" />
                   </SelectTrigger>
                   <SelectContent>
@@ -598,6 +615,7 @@ export default function AdminUsersPage() {
                   value={formData.password || ''}
                   onChange={(e) => setFormData({...formData, password: e.target.value})}
                   placeholder="Leave empty for default: password123"
+                  className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm"
                 />
               </div>
               
@@ -609,27 +627,35 @@ export default function AdminUsersPage() {
                 />
                 <Label htmlFor="create-active">Active</Label>
               </div>
-            </div>
-            
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+              </div>
+            </ModernDialogBody>
+            <ModernDialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => setShowCreateDialog(false)}
+                className="bg-white/50 hover:bg-white/70"
+              >
                 Cancel
               </Button>
-              <Button onClick={handleCreateUser} disabled={actionLoading}>
+              <Button 
+                onClick={handleCreateUser} 
+                disabled={actionLoading}
+                className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg"
+              >
                 {actionLoading ? 'Creating...' : 'Create User'}
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </ModernDialogFooter>
+          </ModernDialogContent>
+        </ModernDialog>
       </div>
 
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
-            Filters
-          </CardTitle>
-        </CardHeader>
+        <Card className="mb-6 bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Filter className="h-5 w-5" />
+              Filters
+            </CardTitle>
+          </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-5">
             <div className="md:col-span-2">
@@ -697,8 +723,89 @@ export default function AdminUsersPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardContent className="p-0">
+        <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
+          <CardContent className="p-0">
+          <ResponsiveTable 
+            mobileCardView={
+              <div className="space-y-3 p-4">
+                {loading ? (
+                  <div className="text-center py-8">Loading users...</div>
+                ) : users.length === 0 ? (
+                  <div className="text-center py-8">No users found</div>
+                ) : (
+                  users.map((user) => (
+                    <MobileCard key={user.id} className="space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-medium text-base">{user.name}</p>
+                            <Badge variant={getRoleBadgeVariant(user.role)} className="text-xs">
+                              <span className="flex items-center gap-1">
+                                {getRoleIcon(user.role)}
+                                {user.role}
+                              </span>
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-gray-500 mb-2">{user.email}</p>
+                          
+                          {user.phone && (
+                            <div className="flex items-center gap-1 text-sm text-gray-600 mb-2">
+                              <Phone className="h-3 w-3 text-gray-400" />
+                              {user.phone}
+                            </div>
+                          )}
+                          
+                          {user.branch && (
+                            <div className="text-sm mb-2">
+                              <span className="font-medium text-gray-700">Branch: </span>
+                              <span className="text-gray-600">{user.branch.name} ({user.branch.code})</span>
+                            </div>
+                          )}
+                          
+                          {user.supportGroup && (
+                            <div className="text-sm mb-2">
+                              <span className="font-medium text-gray-700">Support Group: </span>
+                              <span className="text-gray-600">{user.supportGroup.name}</span>
+                            </div>
+                          )}
+                          
+                          <div className="text-xs text-gray-500">
+                            Created: {user._count?.createdTickets || 0} tickets | 
+                            Assigned: {user._count?.assignedTickets || 0} tickets
+                          </div>
+                        </div>
+                        
+                        <div className="flex flex-col items-end gap-2">
+                          <Badge variant={user.isActive ? 'default' : 'secondary'} className="text-xs">
+                            {user.isActive ? 'Active' : 'Inactive'}
+                          </Badge>
+                          
+                          <div className="flex gap-1">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleEditUser(user)}
+                              className="text-xs px-2 py-1 h-auto"
+                            >
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleDeleteUser(user.id)}
+                              className="text-xs px-2 py-1 h-auto text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </MobileCard>
+                  ))
+                )}
+              </div>
+            }
+          >
           <Table>
             <TableHeader>
               <TableRow>
@@ -861,20 +968,22 @@ export default function AdminUsersPage() {
               )}
             </TableBody>
           </Table>
+          </ResponsiveTable>
         </CardContent>
-      </Card>
+        </Card>
 
-      {/* Edit User Dialog */}
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Edit User</DialogTitle>
-            <DialogDescription>
-              Update user information and permissions
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="grid grid-cols-2 gap-4 py-4">
+        {/* Edit User Dialog */}
+        <ModernDialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+          <ModernDialogContent className="max-w-2xl">
+            <ModernDialogHeader variant="gradient" icon={<Edit className="w-5 h-5" />}>
+              <ModernDialogTitle>Edit User</ModernDialogTitle>
+              <ModernDialogDescription>
+                Update user information and permissions
+              </ModernDialogDescription>
+            </ModernDialogHeader>
+            
+            <ModernDialogBody>
+            <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="edit-email">Email</Label>
               <Input
@@ -882,6 +991,7 @@ export default function AdminUsersPage() {
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({...formData, email: e.target.value})}
+                className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm"
               />
             </div>
             
@@ -891,6 +1001,7 @@ export default function AdminUsersPage() {
                 id="edit-name"
                 value={formData.name}
                 onChange={(e) => setFormData({...formData, name: e.target.value})}
+                className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm"
               />
             </div>
             
@@ -900,13 +1011,14 @@ export default function AdminUsersPage() {
                 id="edit-phone"
                 value={formData.phone}
                 onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm"
               />
             </div>
             
             <div className="space-y-2">
               <Label htmlFor="edit-role">Role</Label>
               <Select value={formData.role} onValueChange={(value) => setFormData({...formData, role: value})}>
-                <SelectTrigger>
+                <SelectTrigger className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -925,7 +1037,7 @@ export default function AdminUsersPage() {
             <div className="space-y-2">
               <Label htmlFor="edit-branch">Branch</Label>
               <Select value={formData.branchId || "none"} onValueChange={(value) => setFormData({...formData, branchId: value === "none" ? "" : value})}>
-                <SelectTrigger>
+                <SelectTrigger className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
                   <SelectValue placeholder="Select branch" />
                 </SelectTrigger>
                 <SelectContent>
@@ -942,7 +1054,7 @@ export default function AdminUsersPage() {
             <div className="space-y-2">
               <Label htmlFor="edit-support-group">Support Group</Label>
               <Select value={formData.supportGroupId || "none"} onValueChange={(value) => setFormData({...formData, supportGroupId: value === "none" ? "" : value})}>
-                <SelectTrigger>
+                <SelectTrigger className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
                   <SelectValue placeholder="Select support group" />
                 </SelectTrigger>
                 <SelectContent>
@@ -964,6 +1076,7 @@ export default function AdminUsersPage() {
                 value={formData.password || ''}
                 onChange={(e) => setFormData({...formData, password: e.target.value})}
                 placeholder="Leave empty to keep current"
+                className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm"
               />
             </div>
             
@@ -975,18 +1088,27 @@ export default function AdminUsersPage() {
               />
               <Label htmlFor="edit-active">Active</Label>
             </div>
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+            </div>
+          </ModernDialogBody>
+          <ModernDialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowEditDialog(false)}
+              className="bg-white/50 hover:bg-white/70"
+            >
               Cancel
             </Button>
-            <Button onClick={handleUpdateUser} disabled={actionLoading}>
+            <Button 
+              onClick={handleUpdateUser} 
+              disabled={actionLoading}
+              className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg"
+            >
               {actionLoading ? 'Updating...' : 'Update User'}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ModernDialogFooter>
+        </ModernDialogContent>
+      </ModernDialog>
+      </div>
     </div>
   );
 }

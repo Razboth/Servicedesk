@@ -37,29 +37,39 @@ import Link from 'next/link';
 
 interface TicketData {
   id: string;
+  ticketNumber: string;
   title: string;
   description: string;
   status: string;
   priority: string;
   category?: string;
-  subcategory?: string;
   createdAt: string;
   updatedAt: string;
-  resolutionTime?: number;
-  user: {
+  service?: {
+    name: string;
+    category?: { name: string };
+  };
+  createdBy: {
     name: string;
     email: string;
+    branchId: string;
   };
   assignedTo?: {
     name: string;
+    email: string;
+  };
+  _count: {
+    comments: number;
   };
 }
 
 interface TicketStats {
   total: number;
+  pending_approval: number;
   open: number;
-  inProgress: number;
+  in_progress: number;
   resolved: number;
+  closed: number;
   avgResolutionTime: number;
 }
 
@@ -137,7 +147,7 @@ export default function ManagerTicketsPage() {
   };
 
   return (
-    <div className="container mx-auto py-8">
+    <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-8">
       <div className="mb-6">
         <h1 className="text-3xl font-bold flex items-center gap-2">
           <Ticket className="h-8 w-8" />
@@ -177,7 +187,7 @@ export default function ManagerTicketsPage() {
               <CardTitle className="text-sm font-medium text-orange-600">In Progress</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-orange-600">{stats.inProgress}</div>
+              <div className="text-2xl font-bold text-orange-600">{stats.in_progress}</div>
             </CardContent>
           </Card>
 
@@ -283,17 +293,17 @@ export default function ManagerTicketsPage() {
                     <TableCell>
                       <div className="max-w-[300px]">
                         <p className="font-medium truncate">{ticket.title}</p>
-                        {ticket.category && (
+                        {ticket.service && (
                           <p className="text-xs text-gray-500">
-                            {ticket.category} {ticket.subcategory && `> ${ticket.subcategory}`}
+                            {ticket.service.category?.name} - {ticket.service.name}
                           </p>
                         )}
                       </div>
                     </TableCell>
                     <TableCell>
                       <div>
-                        <p className="text-sm">{ticket.user.name}</p>
-                        <p className="text-xs text-gray-500">{ticket.user.email}</p>
+                        <p className="text-sm">{ticket.createdBy.name}</p>
+                        <p className="text-xs text-gray-500">{ticket.createdBy.email}</p>
                       </div>
                     </TableCell>
                     <TableCell>

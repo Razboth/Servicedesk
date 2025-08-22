@@ -6,11 +6,22 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useSidebar } from '@/components/providers/sidebar-provider';
+import { X, User, Settings, LogOut, Sun, Moon } from 'lucide-react';
+import { useTheme } from 'next-themes';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 export function Sidebar() {
   const { data: session } = useSession();
   const pathname = usePathname();
-  const { isCollapsed, setIsCollapsed } = useSidebar();
+  const { isCollapsed, setIsCollapsed, isMobileMenuOpen, setIsMobileMenuOpen, isMobile } = useSidebar();
+  const { theme, setTheme } = useTheme();
 
   const handleLogout = async () => {
     await signOut({ callbackUrl: '/auth/signin' });
@@ -37,44 +48,80 @@ export function Sidebar() {
   };
 
   const linkClass = (path: string) => `
-    flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors
+    flex items-center ${isCollapsed ? 'px-2 py-3 justify-center' : 'px-3 py-2'} rounded-lg text-sm font-medium transition-all duration-200
     ${isActive(path)
-      ? 'bg-blue-100 text-blue-700 border-r-2 border-blue-700'
-      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+      ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-400 border-r-2 border-blue-700 dark:border-blue-400'
+      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800'
     }
-    ${isCollapsed ? 'justify-center' : ''}
+    ${isCollapsed ? 'hover:scale-110' : ''}
   `;
 
-  const iconClass = `w-5 h-5 ${isCollapsed ? '' : 'mr-3'}`;
+  const iconClass = `${isCollapsed ? 'w-6 h-6' : 'w-5 h-5 mr-3'}`;
+
+  // Handle mobile menu closure when clicking links
+  const handleLinkClick = () => {
+    if (isMobile) {
+      setIsMobileMenuOpen(false);
+    }
+  };
 
   return (
-    <div className={`bg-white shadow-lg border-r transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'} h-screen fixed left-0 top-0 z-50 flex flex-col`}>
+    <>
+      {/* Mobile overlay */}
+      {isMobile && isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+      
+      {/* Sidebar */}
+      <div className={`
+        bg-white dark:bg-gray-900 shadow-lg border-r border-gray-200 dark:border-gray-700 transition-all duration-300 h-screen fixed left-0 top-0 z-50 flex flex-col
+        ${isMobile 
+          ? `w-64 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}` 
+          : `${isCollapsed ? 'w-16' : 'w-64'}`
+        }
+      `}>
       {/* Header */}
-      <div className="p-4 border-b">
+      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between">
-          {!isCollapsed && (
-            <Link href="/" className="flex items-center">
+          {(!isCollapsed || isMobile) && (
+            <Link href="/" className="flex items-center" onClick={handleLinkClick}>
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
                 <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                 </svg>
               </div>
               <div>
-                <h1 className="text-lg font-bold text-gray-900">Bank SulutGo</h1>
-                <p className="text-xs text-gray-500">ServiceDesk Portal</p>
+                <h1 className="text-lg font-bold text-gray-900 dark:text-white">Bank SulutGo</h1>
+                <p className="text-xs text-gray-500 dark:text-gray-400">ServiceDesk Portal</p>
               </div>
             </Link>
           )}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className="p-1"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isCollapsed ? "M9 5l7 7-7 7" : "M15 19l-7-7 7-7"} />
-            </svg>
-          </Button>
+          
+          {/* Desktop collapse button or Mobile close button */}
+          {isMobile ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="p-1"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className="p-1"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isCollapsed ? "M9 5l7 7-7 7" : "M15 19l-7-7 7-7"} />
+              </svg>
+            </Button>
+          )}
         </div>
       </div>
 
@@ -82,208 +129,392 @@ export function Sidebar() {
       <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
         {/* Common Links */}
         <div className="space-y-1">
-          <Link href="/" className={linkClass('/')}>
+          <Link href="/" className={linkClass('/')} onClick={handleLinkClick}>
             <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
             </svg>
-            {!isCollapsed && 'Dashboard'}
+            {(!isCollapsed || isMobile) && 'Dashboard'}
           </Link>
           
-          <Link href="/tickets" className={linkClass('/tickets')}>
+          <Link href="/tickets" className={linkClass('/tickets')} onClick={handleLinkClick}>
             <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
             </svg>
-            {!isCollapsed && 'Tickets'}
+            {(!isCollapsed || isMobile) && 'Tickets'}
           </Link>
           
-          <Link href="/reports" className={linkClass('/reports')}>
+          <Link href="/reports" className={linkClass('/reports')} onClick={handleLinkClick}>
             <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
-            {!isCollapsed && 'Reports'}
+            {(!isCollapsed || isMobile) && 'Reports'}
+          </Link>
+
+          <Link href="/knowledge" className={linkClass('/knowledge')} onClick={handleLinkClick}>
+            <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+            </svg>
+            {(!isCollapsed || isMobile) && 'Knowledge Base'}
           </Link>
         </div>
 
         {/* Role-specific sections */}
         {session.user?.role === 'TECHNICIAN' && (
           <div className="space-y-1">
-            {!isCollapsed && <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-3 py-2">Technician</div>}
-            <Link href="/technician" className={linkClass('/technician')}>
+            {(!isCollapsed || isMobile) && <div className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider px-3 py-2">Technician</div>}
+            <Link href="/technician" className={linkClass('/technician')} onClick={handleLinkClick}>
               <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              {!isCollapsed && 'Card View'}
+              {(!isCollapsed || isMobile) && 'Card View'}
             </Link>
-            <Link href="/technician/workbench" className={linkClass('/technician/workbench')}>
+            <Link href="/technician/workbench" className={linkClass('/technician/workbench')} onClick={handleLinkClick}>
               <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2 2v-2m0 0V5a2 2 0 012-2h6l2 2h6a2 2 0 012 2v2M7 13h10M7 17h4" />
               </svg>
-              {!isCollapsed && 'Table Mode'}
+              {(!isCollapsed || isMobile) && 'Workbench'}
             </Link>
-            <Link href="/technician/inbox" className={linkClass('/technician/inbox')}>
+            <Link href="/technician/inbox" className={linkClass('/technician/inbox')} onClick={handleLinkClick}>
               <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
               </svg>
-              {!isCollapsed && 'Inbox Style'}
-            </Link>
-            <Link href="/monitoring/atms" className={linkClass('/monitoring/atms')}>
-              <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
-              {!isCollapsed && 'ATM Monitor'}
+              {(!isCollapsed || isMobile) && 'Inbox Style'}
             </Link>
           </div>
         )}
 
         {session.user?.role === 'MANAGER' && (
           <div className="space-y-1">
-            {!isCollapsed && <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-3 py-2">Manager</div>}
-            <Link href="/manager/dashboard" className={linkClass('/manager/dashboard')}>
+            {(!isCollapsed || isMobile) && <div className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider px-3 py-2">Manager</div>}
+            <Link href="/manager/dashboard" className={linkClass('/manager/dashboard')} onClick={handleLinkClick}>
               <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
-              {!isCollapsed && 'Manager Dashboard'}
+              {(!isCollapsed || isMobile) && 'Manager Dashboard'}
             </Link>
-            <Link href="/manager/approvals" className={linkClass('/manager/approvals')}>
+            <Link href="/manager/approvals" className={linkClass('/manager/approvals')} onClick={handleLinkClick}>
               <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              {!isCollapsed && 'Approvals'}
+              {(!isCollapsed || isMobile) && 'Approvals'}
             </Link>
-            <Link href="/manager/tickets" className={linkClass('/manager/tickets')}>
+            <Link href="/manager/tickets" className={linkClass('/manager/tickets')} onClick={handleLinkClick}>
               <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
               </svg>
-              {!isCollapsed && 'Branch Tickets'}
+              {(!isCollapsed || isMobile) && 'Branch Tickets'}
             </Link>
-            <Link href="/manager/users" className={linkClass('/manager/users')}>
+            <Link href="/manager/users" className={linkClass('/manager/users')} onClick={handleLinkClick}>
               <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
               </svg>
-              {!isCollapsed && 'Users'}
+              {(!isCollapsed || isMobile) && 'Users'}
             </Link>
-            <Link href="/manager/atms" className={linkClass('/manager/atms')}>
+            <Link href="/manager/atms" className={linkClass('/manager/atms')} onClick={handleLinkClick}>
               <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
-              {!isCollapsed && 'ATMs'}
+              {(!isCollapsed || isMobile) && 'ATMs'}
             </Link>
           </div>
         )}
 
         {session.user?.role === 'ADMIN' && (
           <div className="space-y-1">
-            {!isCollapsed && <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-3 py-2">Administration</div>}
-            <Link href="/admin/task-templates" className={linkClass('/admin/task-templates')}>
+            {(!isCollapsed || isMobile) && <div className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider px-3 py-2">Administration</div>}
+            <Link href="/admin/task-templates" className={linkClass('/admin/task-templates')} onClick={handleLinkClick}>
               <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
-              {!isCollapsed && 'Task Templates'}
+              {(!isCollapsed || isMobile) && 'Task Templates'}
             </Link>
-            <Link href="/admin/services" className={linkClass('/admin/services')}>
+            <Link href="/admin/services" className={linkClass('/admin/services')} onClick={handleLinkClick}>
               <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
               </svg>
-              {!isCollapsed && 'Service Templates'}
+              {(!isCollapsed || isMobile) && 'Service Templates'}
             </Link>
-            <Link href="/admin/field-templates" className={linkClass('/admin/field-templates')}>
+            <Link href="/admin/field-templates" className={linkClass('/admin/field-templates')} onClick={handleLinkClick}>
               <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              {!isCollapsed && 'Field Templates'}
+              {(!isCollapsed || isMobile) && 'Field Templates'}
             </Link>
-            <Link href="/admin/categories" className={linkClass('/admin/categories')}>
+            <Link href="/admin/categories" className={linkClass('/admin/categories')} onClick={handleLinkClick}>
               <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
               </svg>
-              {!isCollapsed && 'Categories'}
+              {(!isCollapsed || isMobile) && 'Categories'}
             </Link>
-            <Link href="/admin/tier-categories" className={linkClass('/admin/tier-categories')}>
+            <Link href="/admin/tier-categories" className={linkClass('/admin/tier-categories')} onClick={handleLinkClick}>
               <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
               </svg>
-              {!isCollapsed && 'Tier Categories'}
+              {(!isCollapsed || isMobile) && 'Tier Categories'}
             </Link>
-            <Link href="/admin/branches" className={linkClass('/admin/branches')}>
+            <Link href="/admin/branches" className={linkClass('/admin/branches')} onClick={handleLinkClick}>
               <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
               </svg>
-              {!isCollapsed && 'Branches'}
+              {(!isCollapsed || isMobile) && 'Branches'}
             </Link>
-            <Link href="/admin/atms" className={linkClass('/admin/atms')}>
+            <Link href="/admin/atms" className={linkClass('/admin/atms')} onClick={handleLinkClick}>
               <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
-              {!isCollapsed && 'ATMs'}
+              {(!isCollapsed || isMobile) && 'ATMs'}
             </Link>
-            <Link href="/admin/users" className={linkClass('/admin/users')}>
+            <Link href="/admin/users" className={linkClass('/admin/users')} onClick={handleLinkClick}>
               <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
               </svg>
-              {!isCollapsed && 'User Management'}
+              {(!isCollapsed || isMobile) && 'User Management'}
             </Link>
-            <Link href="/admin/support-groups" className={linkClass('/admin/support-groups')}>
+            <Link href="/admin/support-groups" className={linkClass('/admin/support-groups')} onClick={handleLinkClick}>
               <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
-              {!isCollapsed && 'Support Groups'}
+              {(!isCollapsed || isMobile) && 'Support Groups'}
             </Link>
-            <Link href="/admin/technicians" className={linkClass('/admin/technicians')}>
+            <Link href="/admin/technicians" className={linkClass('/admin/technicians')} onClick={handleLinkClick}>
               <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              {!isCollapsed && 'Technicians'}
+              {(!isCollapsed || isMobile) && 'Technicians'}
             </Link>
-            <Link href="/admin/security" className={linkClass('/admin/security')}>
+            <Link href="/admin/security" className={linkClass('/admin/security')} onClick={handleLinkClick}>
               <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.031 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
               </svg>
-              {!isCollapsed && 'Security'}
+              {(!isCollapsed || isMobile) && 'Security'}
             </Link>
-            <Link href="/admin/import" className={linkClass('/admin/import')}>
+            <Link href="/admin/import" className={linkClass('/admin/import')} onClick={handleLinkClick}>
               <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
               </svg>
-              {!isCollapsed && 'Import'}
+              {(!isCollapsed || isMobile) && 'Import'}
             </Link>
-            <Link href="/monitoring/atms" className={linkClass('/monitoring/atms')}>
+          </div>
+        )}
+        
+        {/* Network Monitoring - For ADMIN, TECHNICIAN, and Network Operations Center users */}
+        {(session.user?.role === 'ADMIN' || 
+          session.user?.role === 'TECHNICIAN' || 
+          session.user?.supportGroupCode === 'NETWORK_OPERATIONS_CENTER') && (
+          <div className="space-y-1">
+            {(!isCollapsed || isMobile) && <div className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider px-3 py-2">Network Monitoring</div>}
+            <Link href="/monitoring/network" className={linkClass('/monitoring/network')} onClick={handleLinkClick}>
+              <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" />
+              </svg>
+              {(!isCollapsed || isMobile) && 'Network Overview'}
+            </Link>
+            <Link href="/monitoring/branches" className={linkClass('/monitoring/branches')} onClick={handleLinkClick}>
+              <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+              {(!isCollapsed || isMobile) && 'Branch Network'}
+            </Link>
+            <Link href="/monitoring/atms" className={linkClass('/monitoring/atms')} onClick={handleLinkClick}>
               <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
-              {!isCollapsed && 'ATM Monitor'}
+              {(!isCollapsed || isMobile) && 'ATM Monitor'}
+            </Link>
+            <Link href="/monitoring/incidents" className={linkClass('/monitoring/incidents')} onClick={handleLinkClick}>
+              <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              {(!isCollapsed || isMobile) && 'Network Incidents'}
+            </Link>
+            <Link href="/monitoring/tickets" className={linkClass('/monitoring/tickets')} onClick={handleLinkClick}>
+              <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+              </svg>
+              {(!isCollapsed || isMobile) && 'Auto Tickets'}
             </Link>
           </div>
         )}
       </nav>
 
-      {/* User Section at Bottom */}
-      <div className="border-t p-4">
-        <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3'}`}>
-          {!isCollapsed && (
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-gray-900 truncate">{session.user?.name}</div>
-              <div className="text-xs text-gray-500 truncate">{session.user?.email}</div>
-              <Badge variant="outline" className="text-xs mt-1">
-                {session.user?.role}
-              </Badge>
-            </div>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleLogout}
-            className={`text-gray-600 hover:text-gray-900 ${isCollapsed ? 'p-2' : ''}`}
-            title="Logout"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-            {!isCollapsed && <span className="ml-2">Logout</span>}
-          </Button>
-        </div>
+      {/* Enhanced User Profile Dropdown at Bottom */}
+      <div className="border-t border-gray-200/60 dark:border-gray-700/60 p-4">
+        <DropdownMenu>
+          <div className="group relative">
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className={`w-full ${
+                  (isCollapsed && !isMobile) 
+                    ? 'p-2 justify-center' 
+                    : 'justify-start gap-3 p-3'
+                } rounded-xl bg-white/50 dark:bg-gray-800/50 border border-gray-200/60 dark:border-gray-700/60 hover:border-gray-300/80 dark:hover:border-gray-600/80 hover:bg-gray-50/80 dark:hover:bg-gray-700/40 hover:shadow-sm transition-all duration-200 focus:outline-none`}
+              >
+                {(isCollapsed && !isMobile) ? (
+                  // Collapsed state - just avatar
+                  <div className="relative">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 p-0.5">
+                      <div className="w-full h-full rounded-full overflow-hidden bg-white dark:bg-gray-800 flex items-center justify-center">
+                        <span className="text-xs font-medium text-gray-700 dark:text-gray-200">
+                          {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  // Expanded state - full profile info
+                  <>
+                    <div className="text-left flex-1 min-w-0">
+                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100 tracking-tight leading-tight truncate">
+                        {session.user?.name}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 tracking-tight leading-tight truncate">
+                        {session.user?.email}
+                      </div>
+                    </div>
+                    <div className="relative flex-shrink-0">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 p-0.5">
+                        <div className="w-full h-full rounded-full overflow-hidden bg-white dark:bg-gray-800 flex items-center justify-center">
+                          <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                            {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+
+            {/* Bending line indicator */}
+            {(!isCollapsed || isMobile) && (
+              <div className="absolute -right-3 top-1/2 -translate-y-1/2 transition-all duration-200 opacity-60 group-hover:opacity-100">
+                <svg
+                  width="12"
+                  height="24"
+                  viewBox="0 0 12 24"
+                  fill="none"
+                  className="text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-all duration-200"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M2 4C6 8 6 16 2 20"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    fill="none"
+                  />
+                </svg>
+              </div>
+            )}
+
+            <DropdownMenuContent 
+              align={(isCollapsed && !isMobile) ? "end" : "start"} 
+              side="top" 
+              sideOffset={8}
+              className="w-64 p-2 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border border-gray-200/60 dark:border-gray-700/60 rounded-xl shadow-xl shadow-gray-900/5 dark:shadow-gray-950/20"
+            >
+              {/* Profile header */}
+              <div className="p-3 mb-2 bg-gray-50/50 dark:bg-gray-800/50 rounded-lg border border-gray-200/30 dark:border-gray-700/30">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 p-0.5 flex-shrink-0">
+                    <div className="w-full h-full rounded-full overflow-hidden bg-white dark:bg-gray-800 flex items-center justify-center">
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                        {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 tracking-tight leading-tight truncate">
+                      {session.user?.name}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 tracking-tight leading-tight truncate">
+                      {session.user?.email}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <Badge variant="outline" className="text-xs font-medium rounded-md py-1 px-2 tracking-tight text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-500/10 border-blue-500/20">
+                    {session.user?.role}
+                  </Badge>
+                  {session.user?.branchName && (
+                    <Badge variant="outline" className="text-xs font-medium rounded-md py-1 px-2 tracking-tight text-purple-600 bg-purple-50 dark:text-purple-400 dark:bg-purple-500/10 border-purple-500/20">
+                      {session.user.branchName}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <DropdownMenuItem asChild>
+                  <Link 
+                    href="/profile" 
+                    className="flex items-center p-3 hover:bg-gray-100/80 dark:hover:bg-gray-800/60 rounded-lg transition-all duration-200 cursor-pointer group hover:shadow-sm border border-transparent hover:border-gray-200/50 dark:hover:border-gray-700/50"
+                  >
+                    <div className="flex items-center gap-3 flex-1">
+                      <User className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100 tracking-tight leading-tight whitespace-nowrap group-hover:text-gray-950 dark:group-hover:text-gray-50 transition-colors">
+                        Profile
+                      </span>
+                    </div>
+                  </Link>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem asChild>
+                  <Link 
+                    href="/settings" 
+                    className="flex items-center p-3 hover:bg-gray-100/80 dark:hover:bg-gray-800/60 rounded-lg transition-all duration-200 cursor-pointer group hover:shadow-sm border border-transparent hover:border-gray-200/50 dark:hover:border-gray-700/50"
+                  >
+                    <div className="flex items-center gap-3 flex-1">
+                      <Settings className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100 tracking-tight leading-tight whitespace-nowrap group-hover:text-gray-950 dark:group-hover:text-gray-50 transition-colors">
+                        Settings
+                      </span>
+                    </div>
+                  </Link>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem 
+                  className="flex items-center justify-between p-3 hover:bg-gray-100/80 dark:hover:bg-gray-800/60 rounded-lg transition-all duration-200 cursor-pointer group hover:shadow-sm border border-transparent hover:border-gray-200/50 dark:hover:border-gray-700/50"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setTheme(theme === 'dark' ? 'light' : 'dark');
+                  }}
+                >
+                  <div className="flex items-center gap-3">
+                    {theme === 'dark' ? (
+                      <Sun className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                    ) : (
+                      <Moon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                    )}
+                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100 tracking-tight leading-tight whitespace-nowrap group-hover:text-gray-950 dark:group-hover:text-gray-50 transition-colors">
+                      {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+              </div>
+
+              <div className="my-3 h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent dark:via-gray-700" />
+
+              <DropdownMenuItem asChild>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-3 p-3 duration-200 bg-red-500/10 rounded-lg hover:bg-red-500/20 cursor-pointer border border-transparent hover:border-red-500/30 hover:shadow-sm transition-all group"
+                >
+                  <LogOut className="w-4 h-4 text-red-500 group-hover:text-red-600" />
+                  <span className="text-sm font-medium text-red-500 group-hover:text-red-600">
+                    Sign Out
+                  </span>
+                </button>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </div>
+        </DropdownMenu>
       </div>
     </div>
+    </>
   );
 }

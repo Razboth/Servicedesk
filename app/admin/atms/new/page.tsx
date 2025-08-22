@@ -100,7 +100,7 @@ export default function NewATMPage() {
   };
 
   return (
-    <div className="container mx-auto py-8 max-w-2xl">
+    <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-8 max-w-2xl">
       <div className="mb-6">
         <Link href="/admin/atms">
           <Button variant="ghost" size="sm" className="mb-4">

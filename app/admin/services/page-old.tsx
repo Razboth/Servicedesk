@@ -560,7 +560,7 @@ export default function AdminServicesPage() {
   }
 
   return (
-    <div className="container mx-auto p-6">
+    <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 p-6">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold">Service Templates</h1>

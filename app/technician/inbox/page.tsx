@@ -135,7 +135,7 @@ export default function TechnicianInboxPage() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-6 w-full">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Technician Inbox</h1>
         <p className="text-gray-600">Manage your tickets in an inbox-style interface</p>

@@ -49,7 +49,7 @@ export default function SOCParserPage() {
 
   if (!session || (!['SECURITY_ANALYST', 'ADMIN'].includes(session.user.role) && session.user.supportGroupCode !== 'SECURITY_OPS')) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 px-4 py-8">
         <Alert className="bg-red-50 border-red-200">
           <AlertTriangle className="h-4 w-4 text-red-600" />
           <AlertDescription className="text-red-800">
@@ -228,7 +228,7 @@ Salam,
 SOC Team`;
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 px-4 py-8 max-w-4xl">
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-2">
           <Shield className="h-6 w-6 text-red-600" />

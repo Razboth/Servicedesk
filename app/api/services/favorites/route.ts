@@ -81,12 +81,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if already favorited
-    const existingFavorite = await prisma.userFavoriteService.findUnique({
+    const existingFavorite = await prisma.userFavoriteService.findFirst({
       where: {
-        userId_serviceId: {
-          userId: session.user.id,
-          serviceId: serviceId
-        }
+        userId: session.user.id,
+        serviceId: serviceId
       }
     });
 
@@ -148,7 +146,7 @@ export async function PUT(request: NextRequest) {
     // Find favorite by ID or by serviceId
     const where = favoriteId 
       ? { id: favoriteId, userId: session.user.id }
-      : { userId_serviceId: { userId: session.user.id, serviceId: serviceId } };
+      : { userId: session.user.id, serviceId: serviceId };
 
     const existingFavorite = await prisma.userFavoriteService.findFirst({ where });
 
@@ -210,7 +208,7 @@ export async function DELETE(request: NextRequest) {
     // Find and delete favorite
     const where = favoriteId 
       ? { id: favoriteId, userId: session.user.id }
-      : { userId_serviceId: { userId: session.user.id, serviceId: serviceId! } };
+      : { userId: session.user.id, serviceId: serviceId! };
 
     const existingFavorite = await prisma.userFavoriteService.findFirst({ where });
 

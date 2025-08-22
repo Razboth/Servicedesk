@@ -9,6 +9,11 @@
             "date": 1754562348601,
             "name": "C:\\Project\\servicedesk6\\network-monitor\\logs\\monitoring-2025-08-07.log",
             "hash": "7756536dd44aa9af60c1e89aa87fa40fcd186db1c8cec38b95c89cc11851a803"
+        },
+        {
+            "date": 1755564251708,
+            "name": "C:\\Project\\servicedesk6\\network-monitor\\logs\\monitoring-2025-08-19.log",
+            "hash": "2b7937b68a3d0aaa8ae707eb6c02ba92b63b93d2bc0aab649818fb3b42818fc4"
         }
     ],
     "hashType": "sha256"

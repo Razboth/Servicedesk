@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -74,6 +75,7 @@ interface FavoriteService {
   name: string
   categoryName: string
   lastUsed: string
+  favoriteRecordId?: string // For debugging - the actual favorite record ID
 }
 
 
@@ -108,6 +110,7 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
     branch: Service[]
     trending: Service[]
   }>({ user: [], branch: [], trending: [] })
+  const [recentServices, setRecentServices] = useState<Service[]>([])
   
   // Form state
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
@@ -169,6 +172,7 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
     loadFavoriteServices()
     loadTierCategories()
     loadPopularServices()
+    loadRecentServices()
   }, [])
 
   useEffect(() => {
@@ -397,18 +401,26 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
 
   const loadFavoriteServices = async () => {
     try {
+      console.log('⭐ Loading favorites from API...')
       const response = await fetch('/api/services/favorites')
+      console.log('⭐ Favorites API response status:', response.status)
+      
       if (response.ok) {
         const data = await response.json()
+        console.log('⭐ Raw favorites API data:', data)
+        
         // Transform API response to match the component's expected format
         const transformedFavorites = data.map((fav: any) => ({
           id: fav.service.id,
           name: fav.service.name,
-          categoryName: fav.service.category.name,
-          lastUsed: fav.lastUsedAt || fav.createdAt
+          categoryName: fav.service.category?.name || 'Unknown',
+          lastUsed: fav.lastUsedAt || fav.createdAt,
+          favoriteRecordId: fav.id // Keep the actual favorite record ID for debugging
         }))
+        console.log('⭐ Transformed favorites:', transformedFavorites)
         setFavoriteServices(transformedFavorites)
       } else if (response.status !== 401) {
+        console.log('⭐ API failed, using localStorage fallback')
         // Fallback to localStorage for compatibility
         const saved = localStorage.getItem('favoriteServices')
         if (saved) {
@@ -416,7 +428,7 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
         }
       }
     } catch (error) {
-      console.error('Error loading favorites:', error)
+      console.error('⭐ Error loading favorites:', error)
       // Fallback to localStorage
       try {
         const saved = localStorage.getItem('favoriteServices')
@@ -424,7 +436,7 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
           setFavoriteServices(JSON.parse(saved))
         }
       } catch (localError) {
-        console.error('Error loading from localStorage:', localError)
+        console.error('⭐ Error loading from localStorage:', localError)
       }
     }
   }
@@ -438,10 +450,35 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
       })
       
       if (response.ok) {
+        // Immediately update local state for better UX
+        const newFavorite: FavoriteService = {
+          id: service.id,
+          name: service.name,
+          categoryName: service.category?.name || 'Unknown',
+          lastUsed: new Date().toISOString()
+        }
+        const favorites = [...favoriteServices]
+        const existingIndex = favorites.findIndex(f => f.id === service.id)
+        
+        if (existingIndex >= 0) {
+          favorites[existingIndex] = newFavorite
+        } else {
+          favorites.unshift(newFavorite)
+        }
+        
+        setFavoriteServices(favorites.slice(0, 10))
+        
+        // Also reload from API to ensure consistency
         await loadFavoriteServices()
         toast.success('Service added to favorites')
+      } else if (response.status === 409) {
+        // Service is already favorited - this is not an error
+        console.log('Service is already in favorites:', service.name)
+        toast.success('Service is already in your favorites')
+        // Still reload to ensure consistency
+        await loadFavoriteServices()
       } else {
-        throw new Error('API call failed')
+        throw new Error(`API call failed with status: ${response.status}`)
       }
     } catch (error) {
       console.error('Error saving favorite via API, falling back to localStorage:', error)
@@ -454,7 +491,7 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
         const newFavorite: FavoriteService = {
           id: service.id,
           name: service.name,
-          categoryName: service.category.name,
+          categoryName: service.category?.name || 'Unknown',
           lastUsed: new Date().toISOString()
         }
 
@@ -477,18 +514,46 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
 
   const removeFavoriteService = async (serviceId: string) => {
     try {
-      const response = await fetch(`/api/services/favorites?serviceId=${serviceId}`, {
+      console.log('🗑️ Starting remove favorite for serviceId:', serviceId)
+      console.log('🗑️ Current favoriteServices state:', favoriteServices)
+      
+      const url = `/api/services/favorites?serviceId=${serviceId}`
+      console.log('🗑️ DELETE request URL:', url)
+      
+      const response = await fetch(url, {
         method: 'DELETE'
       })
       
+      console.log('🗑️ API response status:', response.status)
+      console.log('🗑️ API response ok:', response.ok)
+      
       if (response.ok) {
+        console.log('🗑️ API delete successful, updating local state')
+        // Immediately update local state for better UX
+        const filtered = favoriteServices.filter(f => f.id !== serviceId)
+        console.log('🗑️ Filtered favorites:', filtered)
+        setFavoriteServices(filtered)
+        
+        // Also reload from API to ensure consistency
+        console.log('🗑️ Reloading favorites from API...')
+        await loadFavoriteServices()
+        toast.success('Service removed from favorites')
+      } else if (response.status === 404) {
+        console.log('🗑️ Service was not in favorites (404):', serviceId)
+        // Service is not favorited - this is not an error
+        // Still update local state to ensure consistency
+        const filtered = favoriteServices.filter(f => f.id !== serviceId)
+        setFavoriteServices(filtered)
+        // Reload from API to sync state
         await loadFavoriteServices()
         toast.success('Service removed from favorites')
       } else {
-        throw new Error('API call failed')
+        const errorText = await response.text()
+        console.error('🗑️ API error response:', errorText)
+        throw new Error(`API call failed with status: ${response.status}, response: ${errorText}`)
       }
     } catch (error) {
-      console.error('Error removing favorite via API, falling back to localStorage:', error)
+      console.error('🗑️ Error removing favorite via API, falling back to localStorage:', error)
       
       // Fallback to localStorage
       try {
@@ -497,7 +562,7 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
         localStorage.setItem('favoriteServices', JSON.stringify(filtered))
         toast.success('Service removed from favorites')
       } catch (localError) {
-        console.error('Error removing from localStorage:', localError)
+        console.error('🗑️ Error removing from localStorage:', localError)
         toast.error('Failed to remove from favorites')
       }
     }
@@ -517,10 +582,30 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
           branch: data.branch || [],
           trending: data.trending || []
         })
-        console.log('📊 Loaded popular services:', data)
       }
     } catch (error) {
       console.error('Error loading popular services:', error)
+    }
+  }
+
+  const loadRecentServices = async () => {
+    try {
+      console.log('🕒 Fetching recent services from API...')
+      const response = await fetch('/api/services/recent?limit=15')
+      console.log('🕒 Recent services API response status:', response.status)
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log('🕒 Recent services API data:', data)
+        console.log('🕒 Number of recent services:', data?.length || 0)
+        setRecentServices(data || [])
+      } else {
+        console.error('🕒 Recent services API failed with status:', response.status)
+        const errorText = await response.text()
+        console.error('🕒 Error response:', errorText)
+      }
+    } catch (error) {
+      console.error('🕒 Error loading recent services:', error)
     }
   }
 
@@ -810,16 +895,17 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
       if (response.ok) {
         const result = await response.json()
         toast.success('Ticket created successfully!')
-        onSuccess()
-        router.push(`/tickets/${result.id}`)
         
-        // Save favorite service after successful ticket creation
+        // Refresh recent services to update "Recently Used" (service usage is tracked automatically via API)
         try {
-          await saveFavoriteService(selectedService)
-        } catch (favoriteError) {
-          console.log('Note: Could not save favorite service preference:', favoriteError)
+          await loadRecentServices()
+        } catch (error) {
+          console.log('Note: Could not refresh recent services:', error)
           // Don't show error to user as this is not critical
         }
+        
+        onSuccess()
+        router.push(`/tickets/${result.id}`)
       } else {
         const error = await response.json()
         toast.error(error.message || 'Failed to create ticket')
@@ -1011,6 +1097,7 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                       <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center">
                         <Star className="h-4 w-4 mr-1 text-yellow-500" />
                         Your Favorites
+                        <span className="text-xs text-gray-500 ml-2">(Services you starred)</span>
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                         {favoriteServices.slice(0, 6).map((favorite) => (
@@ -1045,15 +1132,18 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                                   )}
                                 </div>
                                 <div className="flex items-center gap-1">
-                                  <Star className="h-3 w-3 text-yellow-500" />
+                                  <Star className="h-3 w-3 text-yellow-500 fill-current" />
                                   <Button
                                     variant="ghost"
                                     size="sm"
                                     onClick={(e) => {
                                       e.stopPropagation()
+                                      console.log('🚫 Remove button clicked for favorite:', favorite)
+                                      console.log('🚫 Calling removeFavoriteService with ID:', favorite.id)
                                       removeFavoriteService(favorite.id)
                                     }}
                                     className="h-5 w-5 p-0 hover:bg-red-100"
+                                    title="Remove from favorites"
                                   >
                                     <X className="h-3 w-3" />
                                   </Button>
@@ -1066,28 +1156,40 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                     </div>
                   )}
 
-                  {/* Recently Used Services */}
-                  {popularServices.user.length > 0 && (
+                  {/* Recently Used Services - Dropdown */}
+                  {recentServices.length > 0 && (
                     <div>
                       <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center">
                         <Clock className="h-4 w-4 mr-1 text-blue-500" />
                         Recently Used
+                        <span className="text-xs text-gray-500 ml-2">(Complete history - select to use)</span>
                       </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {popularServices.user.slice(0, 6).map((service: any) => (
-                          <Card 
-                            key={service.id} 
-                            className="hover:shadow-md transition-all cursor-pointer border-blue-200 hover:border-blue-400"
-                            onClick={() => selectServiceDirectly(service)}
-                          >
-                            <CardContent className="p-3">
-                              <div className="flex items-start justify-between">
+                      <Select onValueChange={(serviceId) => {
+                        const service = recentServices.find((s: any) => s.id === serviceId);
+                        if (service) selectServiceDirectly(service);
+                      }}>
+                        <SelectTrigger className="w-full bg-white dark:bg-gray-800 border-blue-200 hover:border-blue-400">
+                          <SelectValue placeholder="Select from recently used services..." />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-60">
+                          {recentServices.slice(0, 15).map((service: any) => (
+                            <SelectItem 
+                              key={service.id} 
+                              value={service.id}
+                              className="cursor-pointer"
+                            >
+                              <div className="flex items-center justify-between w-full">
                                 <div className="flex-1 min-w-0">
-                                  <p className="font-medium text-gray-900 dark:text-white text-sm truncate">{service.name}</p>
-                                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{service.category.name}</p>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium text-sm truncate">{service.name}</span>
+                                    {isServiceFavorited(service.id) && (
+                                      <Star className="h-3 w-3 text-yellow-500 fill-current flex-shrink-0" title="Also in favorites" />
+                                    )}
+                                  </div>
                                   <div className="flex items-center gap-2 mt-1">
-                                    <Badge variant="outline" className="text-xs h-5">
-                                      Used {service.usageCount || 0}x
+                                    <span className="text-xs text-gray-500 truncate">{service.category?.name || 'Unknown'}</span>
+                                    <Badge variant="outline" className="text-xs h-4 px-1">
+                                      {service.usageCount || 0}x
                                     </Badge>
                                     {service.lastUsed && (
                                       <span className="text-xs text-gray-400">
@@ -1096,12 +1198,11 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                                     )}
                                   </div>
                                 </div>
-                                <Clock className="h-4 w-4 text-blue-500 flex-shrink-0" />
                               </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   )}
 
@@ -1205,7 +1306,7 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
 
 
                   {/* Show message if no smart suggestions available */}
-                  {favoriteServices.length === 0 && popularServices.user.length === 0 && popularServices.branch.length === 0 && 
+                  {favoriteServices.length === 0 && recentServices.length === 0 && popularServices.branch.length === 0 && 
                    popularServices.trending.length === 0 && (
                     <div className="text-center py-6 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                       <Zap className="h-8 w-8 text-blue-500 mx-auto mb-2" />
@@ -1665,149 +1766,162 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                     </Card>
                   )}
 
-                  {/* Classification */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">Classification</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <LockedInput
-                        type="select"
-                        label="Priority Level"
-                        value={formData.priority}
-                        onChange={(value) => setFormData({ ...formData, priority: value })}
-                        options={[
-                          { value: 'LOW', label: 'Low - General inquiry' },
-                          { value: 'MEDIUM', label: 'Medium - Standard request' },
-                          { value: 'HIGH', label: 'High - Business impact' },
-                          { value: 'CRITICAL', label: 'Critical - System down' }
-                        ]}
-                        isLocked={lockedFields.priority?.isLocked}
-                        source={lockedFields.priority?.source}
-                        canOverride={lockedFields.priority?.canOverride}
-                        onUnlock={() => setLockedFields({ 
-                          ...lockedFields, 
-                          priority: { ...lockedFields.priority!, isLocked: false } 
-                        })}
-                      />
+                  {/* Classification and 3-Tier Categorization - Collapsible */}
+                  <Accordion type="multiple" className="space-y-4">
+                    {/* Classification */}
+                    <AccordionItem value="classification" className="border rounded-lg bg-white dark:bg-gray-800/50">
+                      <AccordionTrigger className="px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-t-lg">
+                        <div className="flex items-center gap-2">
+                          <Tag className="w-4 h-4 text-blue-600" />
+                          <span className="text-base font-medium">Classification</span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="px-6 pb-6">
+                        <div className="space-y-4">
+                          <LockedInput
+                            type="select"
+                            label="Priority Level"
+                            value={formData.priority}
+                            onChange={(value) => setFormData({ ...formData, priority: value })}
+                            options={[
+                              { value: 'LOW', label: 'Low - General inquiry' },
+                              { value: 'MEDIUM', label: 'Medium - Standard request' },
+                              { value: 'HIGH', label: 'High - Business impact' },
+                              { value: 'CRITICAL', label: 'Critical - System down' }
+                            ]}
+                            isLocked={lockedFields.priority?.isLocked}
+                            source={lockedFields.priority?.source}
+                            canOverride={lockedFields.priority?.canOverride}
+                            onUnlock={() => setLockedFields({ 
+                              ...lockedFields, 
+                              priority: { ...lockedFields.priority!, isLocked: false } 
+                            })}
+                          />
 
-                      <LockedInput
-                        type="select"
-                        label="ITIL Category"
-                        value={formData.category}
-                        onChange={(value) => setFormData({ ...formData, category: value })}
-                        options={[
-                          { value: 'INCIDENT', label: 'Incident' },
-                          { value: 'SERVICE_REQUEST', label: 'Service Request' },
-                          { value: 'CHANGE_REQUEST', label: 'Change Request' },
-                          { value: 'EVENT_REQUEST', label: 'Event Request' }
-                        ]}
-                        isLocked={lockedFields.category?.isLocked}
-                        source={lockedFields.category?.source}
-                        canOverride={lockedFields.category?.canOverride}
-                        onUnlock={() => setLockedFields({ 
-                          ...lockedFields, 
-                          category: { ...lockedFields.category!, isLocked: false } 
-                        })}
-                      />
+                          <LockedInput
+                            type="select"
+                            label="ITIL Category"
+                            value={formData.category}
+                            onChange={(value) => setFormData({ ...formData, category: value })}
+                            options={[
+                              { value: 'INCIDENT', label: 'Incident' },
+                              { value: 'SERVICE_REQUEST', label: 'Service Request' },
+                              { value: 'CHANGE_REQUEST', label: 'Change Request' },
+                              { value: 'EVENT_REQUEST', label: 'Event Request' }
+                            ]}
+                            isLocked={lockedFields.category?.isLocked}
+                            source={lockedFields.category?.source}
+                            canOverride={lockedFields.category?.canOverride}
+                            onUnlock={() => setLockedFields({ 
+                              ...lockedFields, 
+                              category: { ...lockedFields.category!, isLocked: false } 
+                            })}
+                          />
 
-                      <LockedInput
-                        type="select"
-                        label="Issue Classification"
-                        value={formData.issueClassification}
-                        onChange={(value) => setFormData({ ...formData, issueClassification: value })}
-                        placeholder="Select classification (optional)"
-                        options={[
-                          { value: 'HUMAN_ERROR', label: 'Human Error' },
-                          { value: 'SYSTEM_ERROR', label: 'System Error' },
-                          { value: 'HARDWARE_FAILURE', label: 'Hardware Failure' },
-                          { value: 'NETWORK_ISSUE', label: 'Network Issue' },
-                          { value: 'SECURITY_INCIDENT', label: 'Security Incident' },
-                          { value: 'DATA_ISSUE', label: 'Data Issue' },
-                          { value: 'PROCESS_GAP', label: 'Process Gap' },
-                          { value: 'EXTERNAL_FACTOR', label: 'External Factor' }
-                        ]}
-                        isLocked={lockedFields.issueClassification?.isLocked}
-                        source={lockedFields.issueClassification?.source}
-                        canOverride={lockedFields.issueClassification?.canOverride}
-                        onUnlock={() => setLockedFields({ 
-                          ...lockedFields, 
-                          issueClassification: { ...lockedFields.issueClassification!, isLocked: false } 
-                        })}
-                      />
-                    </CardContent>
-                  </Card>
+                          <LockedInput
+                            type="select"
+                            label="Issue Classification"
+                            value={formData.issueClassification}
+                            onChange={(value) => setFormData({ ...formData, issueClassification: value })}
+                            placeholder="Select classification (optional)"
+                            options={[
+                              { value: 'HUMAN_ERROR', label: 'Human Error' },
+                              { value: 'SYSTEM_ERROR', label: 'System Error' },
+                              { value: 'HARDWARE_FAILURE', label: 'Hardware Failure' },
+                              { value: 'NETWORK_ISSUE', label: 'Network Issue' },
+                              { value: 'SECURITY_INCIDENT', label: 'Security Incident' },
+                              { value: 'DATA_ISSUE', label: 'Data Issue' },
+                              { value: 'PROCESS_GAP', label: 'Process Gap' },
+                              { value: 'EXTERNAL_FACTOR', label: 'External Factor' }
+                            ]}
+                            isLocked={lockedFields.issueClassification?.isLocked}
+                            source={lockedFields.issueClassification?.source}
+                            canOverride={lockedFields.issueClassification?.canOverride}
+                            onUnlock={() => setLockedFields({ 
+                              ...lockedFields, 
+                              issueClassification: { ...lockedFields.issueClassification!, isLocked: false } 
+                            })}
+                          />
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
 
-                  {/* 3-Tier Categorization */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">3-Tier Categorization</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <LockedInput
-                        type="select"
-                        label="Category"
-                        value={formData.categoryId}
-                        onChange={(value) => {
-                          setFormData({ 
-                            ...formData, 
-                            categoryId: value,
-                            subcategoryId: '',
-                            itemId: ''
-                          })
-                          if (value) loadTierSubcategories(value)
-                        }}
-                        placeholder="Select category (optional)"
-                        options={tierCategories.map(cat => ({ value: cat.id, label: cat.name }))}
-                        isLocked={lockedFields.categoryId?.isLocked}
-                        source={lockedFields.categoryId?.source}
-                        canOverride={lockedFields.categoryId?.canOverride}
-                        onUnlock={() => setLockedFields({ 
-                          ...lockedFields, 
-                          categoryId: { ...lockedFields.categoryId!, isLocked: false } 
-                        })}
-                      />
+                    {/* 3-Tier Categorization */}
+                    <AccordionItem value="categorization" className="border rounded-lg bg-white dark:bg-gray-800/50">
+                      <AccordionTrigger className="px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-t-lg">
+                        <div className="flex items-center gap-2">
+                          <Building2 className="w-4 h-4 text-indigo-600" />
+                          <span className="text-base font-medium">3-Tier Categorization</span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="px-6 pb-6">
+                        <div className="space-y-4">
+                          <LockedInput
+                            type="select"
+                            label="Category"
+                            value={formData.categoryId}
+                            onChange={(value) => {
+                              setFormData({ 
+                                ...formData, 
+                                categoryId: value,
+                                subcategoryId: '',
+                                itemId: ''
+                              })
+                              if (value) loadTierSubcategories(value)
+                            }}
+                            placeholder="Select category (optional)"
+                            options={tierCategories.map(cat => ({ value: cat.id, label: cat.name }))}
+                            isLocked={lockedFields.categoryId?.isLocked}
+                            source={lockedFields.categoryId?.source}
+                            canOverride={lockedFields.categoryId?.canOverride}
+                            onUnlock={() => setLockedFields({ 
+                              ...lockedFields, 
+                              categoryId: { ...lockedFields.categoryId!, isLocked: false } 
+                            })}
+                          />
 
-                      <LockedInput
-                        type="select"
-                        label="Subcategory"
-                        value={formData.subcategoryId}
-                        onChange={(value) => {
-                          setFormData({
-                            ...formData,
-                            subcategoryId: value,
-                            itemId: ''
-                          })
-                          if (value) loadTierItems(value)
-                        }}
-                        placeholder="Select subcategory (optional)"
-                        options={tierSubcategories.map(sub => ({ value: sub.id, label: sub.name }))}
-                        isLocked={lockedFields.subcategoryId?.isLocked}
-                        source={lockedFields.subcategoryId?.source}
-                        canOverride={lockedFields.subcategoryId?.canOverride}
-                        onUnlock={() => setLockedFields({ 
-                          ...lockedFields, 
-                          subcategoryId: { ...lockedFields.subcategoryId!, isLocked: false } 
-                        })}
-                      />
+                          <LockedInput
+                            type="select"
+                            label="Subcategory"
+                            value={formData.subcategoryId}
+                            onChange={(value) => {
+                              setFormData({
+                                ...formData,
+                                subcategoryId: value,
+                                itemId: ''
+                              })
+                              if (value) loadTierItems(value)
+                            }}
+                            placeholder="Select subcategory (optional)"
+                            options={tierSubcategories.map(sub => ({ value: sub.id, label: sub.name }))}
+                            isLocked={lockedFields.subcategoryId?.isLocked}
+                            source={lockedFields.subcategoryId?.source}
+                            canOverride={lockedFields.subcategoryId?.canOverride}
+                            onUnlock={() => setLockedFields({ 
+                              ...lockedFields, 
+                              subcategoryId: { ...lockedFields.subcategoryId!, isLocked: false } 
+                            })}
+                          />
 
-                      <LockedInput
-                        type="select"
-                        label="Item"
-                        value={formData.itemId}
-                        onChange={(value) => setFormData({ ...formData, itemId: value })}
-                        placeholder="Select item (optional)"
-                        options={tierItems.map(item => ({ value: item.id, label: item.name }))}
-                        isLocked={lockedFields.itemId?.isLocked}
-                        source={lockedFields.itemId?.source}
-                        canOverride={lockedFields.itemId?.canOverride}
-                        onUnlock={() => setLockedFields({ 
-                          ...lockedFields, 
-                          itemId: { ...lockedFields.itemId!, isLocked: false } 
-                        })}
-                      />
-                    </CardContent>
-                  </Card>
+                          <LockedInput
+                            type="select"
+                            label="Item"
+                            value={formData.itemId}
+                            onChange={(value) => setFormData({ ...formData, itemId: value })}
+                            placeholder="Select item (optional)"
+                            options={tierItems.map(item => ({ value: item.id, label: item.name }))}
+                            isLocked={lockedFields.itemId?.isLocked}
+                            source={lockedFields.itemId?.source}
+                            canOverride={lockedFields.itemId?.canOverride}
+                            onUnlock={() => setLockedFields({ 
+                              ...lockedFields, 
+                              itemId: { ...lockedFields.itemId!, isLocked: false } 
+                            })}
+                          />
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
 
                   {/* Attachments */}
                   <Card>

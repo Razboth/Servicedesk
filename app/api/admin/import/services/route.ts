@@ -1,0 +1,239 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
+
+const ALLOWED_ROLES = ['ADMIN', 'MANAGER'];
+
+// Validation for service data
+function validateServiceData(data: any): string[] {
+  const errors: string[] = [];
+  
+  if (!data.name || data.name.trim() === '') {
+    errors.push('Name is required');
+  }
+  
+  if (!data.description || data.description.trim() === '') {
+    errors.push('Description is required');
+  }
+  
+  if (data.priority && !['LOW', 'MEDIUM', 'HIGH', 'CRITICAL', 'EMERGENCY'].includes(data.priority)) {
+    errors.push('Priority must be one of: LOW, MEDIUM, HIGH, CRITICAL, EMERGENCY');
+  }
+  
+  if (data.defaultItilCategory && !['INCIDENT', 'SERVICE_REQUEST', 'CHANGE_REQUEST', 'EVENT_REQUEST'].includes(data.defaultItilCategory)) {
+    errors.push('defaultItilCategory must be one of: INCIDENT, SERVICE_REQUEST, CHANGE_REQUEST, EVENT_REQUEST');
+  }
+  
+  if (data.defaultIssueClassification && !['HUMAN_ERROR', 'SYSTEM_ERROR', 'HARDWARE_FAILURE', 'NETWORK_ISSUE', 'SECURITY_INCIDENT', 'DATA_ISSUE', 'PROCESS_GAP', 'EXTERNAL_FACTOR'].includes(data.defaultIssueClassification)) {
+    errors.push('defaultIssueClassification must be valid classification');
+  }
+  
+  return errors;
+}
+
+// POST /api/admin/import/services - Import services
+export async function POST(request: NextRequest) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id || !ALLOWED_ROLES.includes(session.user.role)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const formData = await request.formData();
+    const file = formData.get('file') as File;
+    
+    if (!file) {
+      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+    }
+
+    const buffer = await file.arrayBuffer();
+    let data: any[] = [];
+    
+    // Parse based on file type
+    if (file.name.endsWith('.csv')) {
+      const text = new TextDecoder().decode(buffer);
+      const parsed = Papa.parse(text, { header: true, delimiter: ';' });
+      data = parsed.data as any[];
+    } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+      const workbook = XLSX.read(buffer);
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      data = XLSX.utils.sheet_to_json(worksheet);
+    } else {
+      return NextResponse.json({ error: 'Unsupported file format' }, { status: 400 });
+    }
+
+    const results = {
+      processed: 0,
+      created: 0,
+      updated: 0,
+      errors: [] as string[]
+    };
+
+    // Process each row
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
+      results.processed++;
+      
+      try {
+        // Validate row data
+        const validationErrors = validateServiceData(row);
+        if (validationErrors.length > 0) {
+          results.errors.push(`Row ${i + 1}: ${validationErrors.join(', ')}`);
+          continue;
+        }
+
+        // Convert string booleans to actual booleans
+        const serviceData = {
+          name: row.name?.trim(),
+          description: row.description?.trim(),
+          priority: row.priority || 'MEDIUM',
+          slaHours: row.slaHours ? parseInt(row.slaHours) : 24,
+          responseHours: row.responseHours ? parseInt(row.responseHours) : 4,
+          resolutionHours: row.resolutionHours ? parseInt(row.resolutionHours) : 24,
+          requiresApproval: row.requiresApproval === 'true',
+          defaultTitle: row.defaultTitle?.trim() || null,
+          defaultItilCategory: row.defaultItilCategory || 'INCIDENT',
+          defaultIssueClassification: row.defaultIssueClassification || null,
+          // Legacy category ID - will be updated to use proper foreign keys
+          categoryId: row.categoryId?.trim(),
+          tier1CategoryId: row.tier1CategoryId?.trim() || null,
+          tier2SubcategoryId: row.tier2SubcategoryId?.trim() || null,
+          tier3ItemId: row.tier3ItemId?.trim() || null
+        };
+
+        // Check if service exists
+        const existingService = await prisma.service.findFirst({
+          where: { name: serviceData.name }
+        });
+
+        if (existingService) {
+          // Update existing service
+          await prisma.service.update({
+            where: { id: existingService.id },
+            data: serviceData
+          });
+          results.updated++;
+        } else {
+          // Create new service
+          await prisma.service.create({
+            data: serviceData
+          });
+          results.created++;
+        }
+      } catch (error) {
+        results.errors.push(`Row ${i + 1}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: `Import completed. ${results.created} created, ${results.updated} updated.`,
+      results
+    });
+
+  } catch (error) {
+    console.error('Services import error:', error);
+    return NextResponse.json(
+      { error: 'Import failed', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
+  }
+}
+
+// GET /api/admin/import/services - Export services
+export async function GET(request: NextRequest) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id || !ALLOWED_ROLES.includes(session.user.role)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const isExport = searchParams.get('export') === 'true';
+    
+    if (!isExport) {
+      return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+    }
+    
+    const format = searchParams.get('format') || 'csv';
+
+    const services = await prisma.service.findMany({
+      select: {
+        name: true,
+        description: true,
+        categoryId: true,
+        tier1CategoryId: true,
+        tier2SubcategoryId: true,
+        tier3ItemId: true,
+        priority: true,
+        slaHours: true,
+        responseHours: true,
+        resolutionHours: true,
+        requiresApproval: true,
+        defaultTitle: true,
+        defaultItilCategory: true,
+        defaultIssueClassification: true
+      },
+      orderBy: { name: 'asc' }
+    });
+
+    if (format === 'excel') {
+      const worksheet = XLSX.utils.json_to_sheet(services);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Services');
+      
+      const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+      
+      return new NextResponse(buffer, {
+        headers: {
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'Content-Disposition': 'attachment; filename=services_export.xlsx'
+        }
+      });
+    } else {
+      const csv = Papa.unparse(services, { delimiter: ';' });
+      
+      return new NextResponse(csv, {
+        headers: {
+          'Content-Type': 'text/csv',
+          'Content-Disposition': 'attachment; filename=services_export.csv'
+        }
+      });
+    }
+
+  } catch (error) {
+    console.error('Services export error:', error);
+    return NextResponse.json(
+      { error: 'Export failed', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE /api/admin/import/services - Clear all services
+export async function DELETE() {
+  try {
+    const session = await auth();
+    if (!session?.user?.id || !ALLOWED_ROLES.includes(session.user.role)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const count = await prisma.service.count();
+    await prisma.service.deleteMany({});
+
+    return NextResponse.json({
+      success: true,
+      message: `${count} services deleted successfully`
+    });
+
+  } catch (error) {
+    console.error('Services delete error:', error);
+    return NextResponse.json(
+      { error: 'Delete failed', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
+  }
+}

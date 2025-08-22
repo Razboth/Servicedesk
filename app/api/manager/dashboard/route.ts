@@ -86,7 +86,7 @@ export async function GET() {
           }
         },
         _avg: {
-          resolutionTime: true
+          actualHours: true
         }
       })
     ]);
@@ -141,8 +141,8 @@ export async function GET() {
       take: 5
     });
 
-    const avgResolutionTime = avgResolutionData._avg.resolutionTime 
-      ? Math.round(avgResolutionData._avg.resolutionTime / 60) // Convert minutes to hours
+    const avgResolutionTime = avgResolutionData._avg.actualHours 
+      ? Math.round(avgResolutionData._avg.actualHours)
       : 0;
 
     return NextResponse.json({

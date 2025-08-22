@@ -241,7 +241,7 @@ export default function ATMMonitoringDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
@@ -249,9 +249,17 @@ export default function ATMMonitoringDashboard() {
               <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
                 <Server className="h-8 w-8" />
                 ATM Monitoring Dashboard
+                {session?.user?.role !== 'ADMIN' && session?.user?.branchName && (
+                  <Badge variant="outline" className="text-sm font-normal">
+                    {session.user.branchName}
+                  </Badge>
+                )}
               </h1>
               <p className="mt-2 text-gray-600">
-                Real-time monitoring of ATM network status and performance
+                {session?.user?.role === 'ADMIN' 
+                  ? 'Real-time monitoring of ATM network status and performance across all branches'
+                  : `Real-time monitoring of ATM network status and performance for ${session?.user?.branchName || 'your branch'}`
+                }
               </p>
             </div>
             <div className="flex items-center gap-2">

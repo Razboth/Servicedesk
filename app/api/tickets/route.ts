@@ -84,6 +84,7 @@ export async function GET(request: NextRequest) {
     const includeConfidential = searchParams.get('includeConfidential') === 'true';
     const securityClassification = searchParams.get('securityClassification');
     const requestStats = searchParams.get('stats') === 'true';
+    const filter = searchParams.get('filter'); // 'my-tickets' or 'available-tickets'
 
     // Get user's branch and support group for filtering
     const userWithDetails = await prisma.user.findUnique({
@@ -167,31 +168,7 @@ export async function GET(request: NextRequest) {
         }
       ]
     } else if (session.user.role === 'TECHNICIAN') {
-      // Technicians see tickets based on support group assignment, excluding security analyst tickets (except their own)
-      const baseConditions = [
-        { createdById: session.user.id }, // Their own tickets (including if they're security analyst)
-        { assignedToId: session.user.id }  // Tickets assigned to them
-      ];
-      
-      if (userWithDetails?.supportGroupId) {
-        baseConditions.push({
-          AND: [
-            { assignedToId: null }, // Unassigned tickets
-            { 
-              service: {
-                supportGroupId: userWithDetails.supportGroupId
-              }
-            },
-            {
-              createdBy: {
-                role: { not: 'SECURITY_ANALYST' }
-              }
-            }
-          ]
-        });
-      }
-      
-      where.OR = baseConditions;
+      // Technicians can see ALL tickets without any restrictions
     } else if (session.user.role === 'MANAGER') {
       // Managers can ONLY see tickets created by users from their own branch, excluding security analyst tickets
       if (userWithDetails?.branchId) {
@@ -237,6 +214,25 @@ export async function GET(request: NextRequest) {
       }
       where.securityClassification = securityClassification;
     }
+
+    // Handle technician workbench filters
+    if (filter && ['TECHNICIAN', 'SECURITY_ANALYST'].includes(session.user.role)) {
+      if (filter === 'my-tickets') {
+        // Show tickets assigned to or claimed by current user
+        where.assignedToId = session.user.id;
+      } else if (filter === 'available-tickets') {
+        // Show unassigned tickets that match technician's support group
+        where.AND = (where.AND || []).concat([
+          { assignedToId: null },
+          userWithDetails?.supportGroupId ? {
+            service: {
+              supportGroupId: userWithDetails.supportGroupId
+            }
+          } : {}
+        ]);
+      }
+    }
+
     if (search) {
       where.OR = [
         { title: { contains: search, mode: 'insensitive' } },
@@ -261,11 +257,13 @@ export async function GET(request: NextRequest) {
             status: 'OPEN'
           }
         }),
-        // Pending tickets count
+        // Pending tickets count (PENDING + PENDING_APPROVAL)
         prisma.ticket.count({
           where: {
             ...statsWhere,
-            status: 'PENDING'
+            status: {
+              in: ['PENDING', 'PENDING_APPROVAL']
+            }
           }
         }),
         // Approved tickets count
@@ -282,13 +280,11 @@ export async function GET(request: NextRequest) {
             status: 'IN_PROGRESS'
           }
         }),
-        // On Hold tickets count (PENDING_APPROVAL + PENDING_VENDOR)
+        // On Hold tickets count (PENDING_VENDOR only)
         prisma.ticket.count({
           where: {
             ...statsWhere,
-            status: {
-              in: ['PENDING_APPROVAL', 'PENDING_VENDOR']
-            }
+            status: 'PENDING_VENDOR'
           }
         }),
         // Resolved tickets count
@@ -418,10 +414,6 @@ export async function POST(request: NextRequest) {
     
     const validatedData = createTicketSchema.parse(body);
 
-    // Generate ticket number
-    const ticketCount = await prisma.ticket.count();
-    const ticketNumber = `TKT-${new Date().getFullYear()}-${String(ticketCount + 1).padStart(4, '0')}`;
-
     // Auto-mark tickets as confidential for Security Analysts
     let isConfidential = validatedData.isConfidential;
     let securityClassification = validatedData.securityClassification;
@@ -546,8 +538,25 @@ export async function POST(request: NextRequest) {
       select: { branchId: true }
     });
 
-    // Create ticket with processed field values and attachments
-    const ticket = await prisma.ticket.create({
+    // Create ticket with processed field values and attachments within a transaction
+    const ticket = await prisma.$transaction(async (tx) => {
+      // Generate ticket number - count tickets for current year only (within transaction)
+      const currentYear = new Date().getFullYear();
+      const yearStart = new Date(currentYear, 0, 1); // January 1st of current year
+      const yearEnd = new Date(currentYear + 1, 0, 1); // January 1st of next year
+      
+      const yearTicketCount = await tx.ticket.count({
+        where: {
+          createdAt: {
+            gte: yearStart,
+            lt: yearEnd
+          }
+        }
+      });
+      
+      const ticketNumber = `TKT-${currentYear}-${String(yearTicketCount + 1).padStart(6, '0')}`;
+
+      return await tx.ticket.create({
       data: {
         ticketNumber,
         title: validatedData.title,
@@ -583,6 +592,7 @@ export async function POST(request: NextRequest) {
         },
         attachments: true
       }
+      });
     });
 
     // Check if service has task templates and create tasks automatically
@@ -619,6 +629,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Track service usage for analytics (run in background)
+    // This will make the service appear in "Recently Used" section
     trackServiceUsage(
       validatedData.serviceId,
       session.user.id,
@@ -627,6 +638,7 @@ export async function POST(request: NextRequest) {
     );
 
     // Update favorite service usage if it exists (run in background)
+    // This only updates lastUsedAt for already-favorited services
     updateFavoriteServiceUsage(validatedData.serviceId, session.user.id);
 
     return NextResponse.json(ticket, { status: 201 });

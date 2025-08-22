@@ -169,7 +169,7 @@ export default function CreateUserPage() {
 
   if (generatedPassword) {
     return (
-      <div className="container mx-auto py-8 max-w-2xl">
+      <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-8 max-w-2xl">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -251,7 +251,7 @@ export default function CreateUserPage() {
   }
 
   return (
-    <div className="container mx-auto py-8 max-w-2xl">
+    <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-8 max-w-2xl">
       <div className="mb-6">
         <Link href="/admin/users">
           <Button variant="ghost" size="sm">

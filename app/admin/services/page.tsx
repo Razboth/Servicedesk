@@ -11,6 +11,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { 
+  ModernDialog, 
+  ModernDialogContent, 
+  ModernDialogHeader, 
+  ModernDialogTitle, 
+  ModernDialogDescription, 
+  ModernDialogBody, 
+  ModernDialogFooter 
+} from '@/components/ui/modern-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
@@ -257,7 +266,7 @@ export default function ServicesPage() {
       const response = await fetch('/api/categories');
       if (!response.ok) throw new Error('Failed to fetch categories');
       const data = await response.json();
-      setCategories(data);
+      setCategories(data.categories || []);
     } catch (error) {
       console.error('Error fetching categories:', error);
       toast.error('Failed to load categories');
@@ -397,27 +406,31 @@ export default function ServicesPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto py-10">
+      <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-10">
         <p>Loading services...</p>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto py-10">
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold">Service Management</h1>
-          <p className="text-gray-600">Manage service catalog and configurations</p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+      <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-10">
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Service Management</h1>
+            <p className="text-gray-600 dark:text-gray-400">Manage service catalog and configurations</p>
+          </div>
+          <Button 
+            onClick={() => setIsNewServiceOpen(true)}
+            className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            New Service
+          </Button>
         </div>
-        <Button onClick={() => setIsNewServiceOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          New Service
-        </Button>
-      </div>
 
-      {/* Filters */}
-      <Card className="mb-6">
+        {/* Filters */}
+        <Card className="mb-6 bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
         <CardContent className="p-4">
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div className="md:col-span-1">
@@ -435,7 +448,7 @@ export default function ServicesPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Categories</SelectItem>
-                  {categories.map(category => (
+                  {Array.isArray(categories) && categories.map(category => (
                     <SelectItem key={category.id} value={category.id}>
                       {category.name}
                     </SelectItem>
@@ -935,6 +948,7 @@ export default function ServicesPage() {
           onUpdate={() => fetchServices()}
         />
       )}
+      </div>
     </div>
   );
 }

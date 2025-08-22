@@ -133,10 +133,10 @@ export async function GET(request: NextRequest) {
           }
         ],
         status: 'RESOLVED',
-        resolutionTime: { not: null }
+        actualHours: { not: null }
       },
       _avg: {
-        resolutionTime: true
+        actualHours: true
       }
     });
 
@@ -148,8 +148,8 @@ export async function GET(request: NextRequest) {
       in_progress: stats.find(s => s.status === 'IN_PROGRESS')?._count || 0,
       resolved: stats.find(s => s.status === 'RESOLVED')?._count || 0,
       closed: stats.find(s => s.status === 'CLOSED')?._count || 0,
-      avgResolutionTime: avgResolutionTime._avg.resolutionTime 
-        ? Math.round(avgResolutionTime._avg.resolutionTime / 60) // Convert to hours
+      avgResolutionTime: avgResolutionTime._avg.actualHours 
+        ? Math.round(avgResolutionTime._avg.actualHours)
         : 0
     };
 

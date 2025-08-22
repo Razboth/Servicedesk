@@ -129,7 +129,7 @@ export default function SimpleTicketsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Tickets</h1>
@@ -155,7 +155,7 @@ export default function SimpleTicketsPage() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
         {/* Filters */}
         <div className="bg-white rounded-lg shadow-sm border p-4 mb-6">
           <div className="flex flex-col sm:flex-row gap-4">

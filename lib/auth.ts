@@ -11,9 +11,9 @@ const MAX_LOGIN_ATTEMPTS = 5
 const LOCKOUT_DURATION = 30 * 60 * 1000 // 30 minutes in milliseconds
 
 // Helper function to extract IP address from request headers
-function getClientIP(): string | undefined {
+async function getClientIP(): Promise<string | undefined> {
   try {
-    const headersList = headers()
+    const headersList = await headers()
     
     // Helper function to normalize IPv4-mapped IPv6 addresses
     const normalizeIP = (ip: string): string => {
@@ -63,9 +63,9 @@ function getClientIP(): string | undefined {
 }
 
 // Helper function to check if account is locked
-async function isAccountLocked(email: string): Promise<boolean> {
+async function isAccountLocked(username: string): Promise<boolean> {
   const user = await prisma.user.findUnique({
-    where: { email },
+    where: { username },
     select: { loginAttempts: true, lockedAt: true }
   })
 
@@ -77,7 +77,7 @@ async function isAccountLocked(email: string): Promise<boolean> {
   if (lockoutExpired) {
     // Reset lockout if expired
     await prisma.user.update({
-      where: { email },
+      where: { username },
       data: {
         loginAttempts: 0,
         lockedAt: null,
@@ -91,17 +91,17 @@ async function isAccountLocked(email: string): Promise<boolean> {
 }
 
 // Helper function to record login attempt
-async function recordLoginAttempt(email: string, success: boolean, ipAddress?: string, userAgent?: string): Promise<void> {
+async function recordLoginAttempt(username: string, success: boolean, ipAddress?: string, userAgent?: string): Promise<void> {
   const user = await prisma.user.findUnique({
-    where: { email },
-    select: { id: true, loginAttempts: true }
+    where: { username },
+    select: { id: true, loginAttempts: true, email: true }
   })
 
   if (!user) {
     // Record attempt even for non-existent users
     await prisma.loginAttempt.create({
       data: {
-        email,
+        email: username, // Store username in email field for backward compatibility
         success: false,
         ipAddress,
         userAgent
@@ -115,7 +115,7 @@ async function recordLoginAttempt(email: string, success: boolean, ipAddress?: s
   
   // Update user login tracking
   await prisma.user.update({
-    where: { email },
+    where: { username },
     data: {
       loginAttempts: newAttempts,
       lastLoginAttempt: new Date(),
@@ -127,7 +127,7 @@ async function recordLoginAttempt(email: string, success: boolean, ipAddress?: s
   // Record in audit log
   await prisma.loginAttempt.create({
     data: {
-      email,
+      email: user.email, // Store actual email for audit purposes
       success,
       ipAddress,
       userAgent,
@@ -153,36 +153,36 @@ const authOptions = {
     Credentials({
       name: 'credentials',
       credentials: {
-        email: { label: 'Email', type: 'email' },
+        username: { label: 'Username', type: 'text' },
         password: { label: 'Password', type: 'password' }
       },
       async authorize(credentials, req) {
-        if (!credentials?.email || !credentials?.password) {
+        if (!credentials?.username || !credentials?.password) {
           return null
         }
 
-        const email = credentials.email as string
+        const username = credentials.username as string
         const password = credentials.password as string
 
         // Extract IP and User Agent from request headers
-        const ipAddress = getClientIP()
-        const headersList = headers()
+        const ipAddress = await getClientIP()
+        const headersList = await headers()
         const userAgent = headersList.get('user-agent')
         
         // Log for debugging
-        console.log('Login attempt:', { email, ipAddress, userAgent: userAgent?.slice(0, 50) })
+        console.log('Login attempt:', { username, ipAddress, userAgent: userAgent?.slice(0, 50) })
 
         try {
           // Check if account is locked
-          if (await isAccountLocked(email)) {
-            await recordLoginAttempt(email, false, ipAddress, userAgent)
+          if (await isAccountLocked(username)) {
+            await recordLoginAttempt(username, false, ipAddress, userAgent)
             throw new Error('ACCOUNT_LOCKED')
           }
 
           // Find user in database
           const user = await prisma.user.findUnique({
             where: {
-              email: email,
+              username: username,
               isActive: true
             },
             include: {
@@ -191,7 +191,7 @@ const authOptions = {
           })
 
           if (!user || !user.password) {
-            await recordLoginAttempt(email, false, ipAddress, userAgent)
+            await recordLoginAttempt(username, false, ipAddress, userAgent)
             return null
           }
 
@@ -199,12 +199,12 @@ const authOptions = {
           const isPasswordValid = await bcrypt.compare(password, user.password)
 
           if (!isPasswordValid) {
-            await recordLoginAttempt(email, false, ipAddress, userAgent)
+            await recordLoginAttempt(username, false, ipAddress, userAgent)
             return null
           }
 
           // Successful login - record attempt and update activity
-          await recordLoginAttempt(email, true, ipAddress, userAgent)
+          await recordLoginAttempt(username, true, ipAddress, userAgent)
 
           // Get user with support group
           const userWithSupportGroup = await prisma.user.findUnique({
@@ -216,6 +216,7 @@ const authOptions = {
 
           return {
             id: user.id,
+            username: user.username,
             email: user.email,
             name: user.name,
             role: user.role,

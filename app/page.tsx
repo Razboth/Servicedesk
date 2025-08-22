@@ -121,38 +121,49 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
+      <header className="bg-white/[0.8] dark:bg-gray-900/[0.8] backdrop-blur-sm border-b border-gray-200/50 dark:border-gray-700/50">
+        <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
+          <div className="flex justify-between items-center py-4 sm:py-6">
             <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <h1 className="text-2xl font-bold text-gray-900">Bank SulutGo</h1>
-                <p className="text-sm text-gray-500">ServiceDesk Portal</p>
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <TicketIcon className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-lg sm:text-xl lg:text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Bank SulutGo</h1>
+                  <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">ServiceDesk Portal</p>
+                </div>
               </div>
             </div>
-            <div className="flex items-center space-x-4">
-              <Button className="bank-gradient text-white">Dashboard</Button>
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <Button className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg text-sm sm:text-base px-3 sm:px-4">
+                Dashboard
+              </Button>
             </div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-4 sm:py-8">
         {/* Welcome Section */}
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome to ServiceDesk</h2>
-          <p className="text-gray-600">Monitor and manage IT services across all Bank SulutGo branches</p>
+        <div className="mb-6 sm:mb-8 text-center px-4">
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">
+            Welcome to ServiceDesk
+          </h2>
+          <p className="text-sm sm:text-base lg:text-lg text-gray-600 dark:text-gray-400">Monitor and manage IT services across all Bank SulutGo branches</p>
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
-          <Card>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Tickets</CardTitle>
-              <TicketIcon className="h-4 w-4 text-muted-foreground" />
+              <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/50 rounded-lg flex items-center justify-center">
+                <TicketIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.totalTickets.toLocaleString()}</div>
@@ -160,10 +171,12 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Open Tickets</CardTitle>
-              <ExclamationTriangleIcon className="h-4 w-4 text-orange-500" />
+              <div className="w-8 h-8 bg-orange-100 dark:bg-orange-900/50 rounded-lg flex items-center justify-center">
+                <ExclamationTriangleIcon className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-orange-600">{stats.openTickets}</div>
@@ -171,10 +184,12 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Resolved</CardTitle>
-              <CheckCircleIcon className="h-4 w-4 text-green-500" />
+              <div className="w-8 h-8 bg-green-100 dark:bg-green-900/50 rounded-lg flex items-center justify-center">
+                <CheckCircleIcon className="h-4 w-4 text-green-600 dark:text-green-400" />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">{stats.resolvedTickets.toLocaleString()}</div>
@@ -182,10 +197,12 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Avg Resolution</CardTitle>
-              <ClockIcon className="h-4 w-4 text-muted-foreground" />
+              <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900/50 rounded-lg flex items-center justify-center">
+                <ClockIcon className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.avgResolutionTime}</div>
@@ -193,10 +210,12 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">SLA Compliance</CardTitle>
-              <ChartBarIcon className="h-4 w-4 text-muted-foreground" />
+              <div className="w-8 h-8 bg-indigo-100 dark:bg-indigo-900/50 rounded-lg flex items-center justify-center">
+                <ChartBarIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-blue-600">{stats.slaCompliance}%</div>
@@ -204,10 +223,12 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Active Users</CardTitle>
-              <UserGroupIcon className="h-4 w-4 text-muted-foreground" />
+              <div className="w-8 h-8 bg-teal-100 dark:bg-teal-900/50 rounded-lg flex items-center justify-center">
+                <UserGroupIcon className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.activeUsers}</div>
@@ -219,15 +240,15 @@ export default function Dashboard() {
 
 
         {/* Quick Actions */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          <Card className="bank-card hover:shadow-lg transition-shadow cursor-pointer">
+        <div className="mt-6 sm:mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+          <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer">
             <CardHeader>
               <CardTitle className="text-lg">Create New Ticket</CardTitle>
               <CardDescription>Report an incident or request service</CardDescription>
             </CardHeader>
             <CardContent>
               <Button 
-                className="w-full bank-gradient text-white"
+                className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg"
                 onClick={() => router.push('/tickets')}
               >
                 Create Ticket
@@ -235,25 +256,25 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card className="bank-card hover:shadow-lg transition-shadow cursor-pointer">
+          <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer">
             <CardHeader>
               <CardTitle className="text-lg">Knowledge Base</CardTitle>
               <CardDescription>Search for solutions and documentation</CardDescription>
             </CardHeader>
             <CardContent>
-              <Button variant="outline" className="w-full">
+              <Button variant="outline" className="w-full bg-white/50 hover:bg-white/70 border-gray-300/50">
                 Browse Articles
               </Button>
             </CardContent>
           </Card>
 
-          <Card className="bank-card hover:shadow-lg transition-shadow cursor-pointer">
+          <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer">
             <CardHeader>
               <CardTitle className="text-lg">ATM Monitoring</CardTitle>
               <CardDescription>Real-time ATM status across branches</CardDescription>
             </CardHeader>
             <CardContent>
-              <Button variant="outline" className="w-full">
+              <Button variant="outline" className="w-full bg-white/50 hover:bg-white/70 border-gray-300/50">
                 View ATM Status
               </Button>
             </CardContent>
@@ -261,17 +282,17 @@ export default function Dashboard() {
 
           {/* SOC Parser Card - Only visible for Security Analysts */}
           {(session.user.role === 'SECURITY_ANALYST' || session.user.supportGroupCode === 'SECURITY_OPS') && (
-            <Card className="bank-card hover:shadow-lg transition-shadow cursor-pointer border-red-200 bg-red-50">
+            <Card className="bg-red-50/[0.8] dark:bg-red-900/[0.3] backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer border-red-200/50">
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg text-red-700">SOC Parser</CardTitle>
-                  <Shield className="h-5 w-5 text-red-600" />
+                  <CardTitle className="text-lg text-red-700 dark:text-red-400">SOC Parser</CardTitle>
+                  <Shield className="h-5 w-5 text-red-600 dark:text-red-400" />
                 </div>
-                <CardDescription className="text-red-600">Parse security alerts and create SOC tickets</CardDescription>
+                <CardDescription className="text-red-600 dark:text-red-400">Parse security alerts and create SOC tickets</CardDescription>
               </CardHeader>
               <CardContent>
                 <Button 
-                  className="w-full bg-red-600 hover:bg-red-700 text-white"
+                  className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg"
                   onClick={() => router.push('/security/soc-parser')}
                 >
                   Open SOC Parser

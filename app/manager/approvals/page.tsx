@@ -205,6 +205,12 @@ export default function ManagerApprovalsPage() {
   const [bulkReason, setBulkReason] = useState('');
   const [processing, setProcessing] = useState(false);
   const [selectedTicketDetails, setSelectedTicketDetails] = useState<PendingTicket | null>(null);
+  
+  // Individual approval dialog states
+  const [showApprovalDialog, setShowApprovalDialog] = useState(false);
+  const [approvalAction, setApprovalAction] = useState<'approve' | 'reject'>('approve');
+  const [approvalTicket, setApprovalTicket] = useState<PendingTicket | null>(null);
+  const [approvalReason, setApprovalReason] = useState('');
 
   // Redirect if not manager
   useEffect(() => {
@@ -315,7 +321,7 @@ export default function ManagerApprovalsPage() {
     }
   };
 
-  // Quick approve/reject single ticket
+  // Quick approve/reject single ticket (legacy - keeping for any existing usage)
   const quickAction = async (ticketId: string, action: 'approve' | 'reject') => {
     try {
       const response = await fetch('/api/approvals', {
@@ -340,6 +346,61 @@ export default function ManagerApprovalsPage() {
     }
   };
 
+  // Individual approval with notes
+  const processIndividualApproval = async () => {
+    if (!approvalTicket) {
+      toast.error('No ticket selected');
+      return;
+    }
+
+    // Require reason for rejections
+    if (approvalAction === 'reject' && !approvalReason.trim()) {
+      toast.error('Please provide a reason for rejection');
+      return;
+    }
+
+    try {
+      setProcessing(true);
+      const response = await fetch('/api/approvals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ticketIds: [approvalTicket.id],
+          action: approvalAction,
+          reason: approvalReason.trim() || undefined
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to process approval');
+      }
+
+      const result = await response.json();
+      toast.success(result.message);
+      
+      // Reset dialog state
+      setShowApprovalDialog(false);
+      setApprovalTicket(null);
+      setApprovalReason('');
+      
+      // Refresh the approvals list
+      fetchApprovals();
+    } catch (error) {
+      console.error('Error processing approval:', error);
+      toast.error('Failed to process approval');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  // Open individual approval dialog
+  const openApprovalDialog = (ticket: PendingTicket, action: 'approve' | 'reject') => {
+    setApprovalTicket(ticket);
+    setApprovalAction(action);
+    setApprovalReason('');
+    setShowApprovalDialog(true);
+  };
+
   if (status === 'loading' || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -353,13 +414,13 @@ export default function ManagerApprovalsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto p-6 space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+      <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 p-6 space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Approval Dashboard</h1>
-          <p className="text-gray-600 mt-1">Review and approve pending ticket requests</p>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Approval Dashboard</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Review and approve pending ticket requests</p>
         </div>
         <div className="flex items-center space-x-2">
           <Badge variant="outline" className="text-sm">
@@ -370,7 +431,7 @@ export default function ManagerApprovalsPage() {
       </div>
 
       {/* Filters and Actions */}
-      <Card>
+      <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
         <CardContent className="p-4">
           <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
             <div className="flex flex-1 gap-4 items-center">
@@ -467,7 +528,7 @@ export default function ManagerApprovalsPage() {
                     <div className="flex space-x-2">
                       <Button
                         size="sm"
-                        onClick={() => quickAction(ticket.id, 'approve')}
+                        onClick={() => openApprovalDialog(ticket, 'approve')}
                         className="bg-green-600 hover:bg-green-700"
                       >
                         <CheckCircle className="w-4 h-4 mr-1" />
@@ -476,7 +537,7 @@ export default function ManagerApprovalsPage() {
                       <Button
                         size="sm"
                         variant="destructive"
-                        onClick={() => quickAction(ticket.id, 'reject')}
+                        onClick={() => openApprovalDialog(ticket, 'reject')}
                       >
                         <XCircle className="w-4 h-4 mr-1" />
                         Reject
@@ -659,7 +720,7 @@ export default function ManagerApprovalsPage() {
                 </Button>
                 <Button
                   onClick={() => {
-                    quickAction(selectedTicketDetails.id, 'approve');
+                    openApprovalDialog(selectedTicketDetails, 'approve');
                     setSelectedTicketDetails(null);
                   }}
                   className="bg-green-600 hover:bg-green-700"
@@ -670,7 +731,7 @@ export default function ManagerApprovalsPage() {
                 <Button
                   variant="destructive"
                   onClick={() => {
-                    quickAction(selectedTicketDetails.id, 'reject');
+                    openApprovalDialog(selectedTicketDetails, 'reject');
                     setSelectedTicketDetails(null);
                   }}
                 >
@@ -680,6 +741,76 @@ export default function ManagerApprovalsPage() {
               </DialogFooter>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Individual Approval Dialog */}
+      <Dialog open={showApprovalDialog} onOpenChange={setShowApprovalDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {approvalAction === 'approve' ? (
+                <CheckCircle className="w-5 h-5 text-green-600" />
+              ) : (
+                <XCircle className="w-5 h-5 text-red-600" />
+              )}
+              {approvalAction === 'approve' ? 'Approve' : 'Reject'} Ticket
+            </DialogTitle>
+            <DialogDescription>
+              {approvalTicket && (
+                <div className="space-y-2 text-left">
+                  <div><strong>Ticket:</strong> {approvalTicket.ticketNumber}</div>
+                  <div><strong>Title:</strong> {approvalTicket.title}</div>
+                  <div><strong>Requester:</strong> {approvalTicket.createdBy.name}</div>
+                  <div><strong>Priority:</strong> 
+                    <Badge variant="outline" className="ml-2">
+                      {approvalTicket.priority}
+                    </Badge>
+                  </div>
+                </div>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="approval-reason" className="block text-sm font-medium mb-2">
+                {approvalAction === 'approve' ? 'Notes (Optional)' : 'Reason for Rejection (Required)'}
+              </label>
+              <Textarea
+                id="approval-reason"
+                placeholder={
+                  approvalAction === 'approve' 
+                    ? 'Add any notes about this approval...' 
+                    : 'Please provide a reason for rejecting this ticket...'
+                }
+                value={approvalReason}
+                onChange={(e) => setApprovalReason(e.target.value)}
+                className="min-h-[100px]"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowApprovalDialog(false);
+                setApprovalReason('');
+              }}
+              disabled={processing}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={processIndividualApproval}
+              disabled={processing || (approvalAction === 'reject' && !approvalReason.trim())}
+              className={approvalAction === 'approve' ? 'bg-green-600 hover:bg-green-700' : ''}
+              variant={approvalAction === 'reject' ? 'destructive' : 'default'}
+            >
+              {processing ? 'Processing...' : (approvalAction === 'approve' ? 'Approve' : 'Reject')}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
       </div>

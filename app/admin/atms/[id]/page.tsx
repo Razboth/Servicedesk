@@ -42,7 +42,8 @@ interface ATM {
   isActive: boolean;
 }
 
-export default function EditATMPage({ params }: { params: { id: string } }) {
+export default async function EditATMPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -60,11 +61,11 @@ export default function EditATMPage({ params }: { params: { id: string } }) {
 
   useEffect(() => {
     Promise.all([fetchATM(), fetchBranches()]);
-  }, [params.id]);
+  }, [id]);
 
   const fetchATM = async () => {
     try {
-      const response = await fetch(`/api/admin/atms/${params.id}`);
+      const response = await fetch(`/api/admin/atms/${id}`);
       if (!response.ok) throw new Error('Failed to fetch ATM');
       
       const atm: ATM = await response.json();
@@ -113,7 +114,7 @@ export default function EditATMPage({ params }: { params: { id: string } }) {
         longitude: formData.longitude ? parseFloat(formData.longitude) : undefined,
       };
 
-      const response = await fetch(`/api/admin/atms/${params.id}`, {
+      const response = await fetch(`/api/admin/atms/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -138,7 +139,7 @@ export default function EditATMPage({ params }: { params: { id: string } }) {
 
   if (loading) {
     return (
-      <div className="container mx-auto py-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-8">
         <div className="flex items-center justify-center h-64">
           <Loader2 className="h-8 w-8 animate-spin" />
         </div>
@@ -147,7 +148,7 @@ export default function EditATMPage({ params }: { params: { id: string } }) {
   }
 
   return (
-    <div className="container mx-auto py-8 max-w-2xl">
+    <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-8 max-w-2xl">
       <div className="mb-6">
         <Link href="/admin/atms">
           <Button variant="ghost" size="sm" className="mb-4">
