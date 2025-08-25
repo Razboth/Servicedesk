@@ -130,23 +130,33 @@ export default function ATMsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to deactivate this ATM?')) {
+    if (!confirm('WARNING: This will permanently delete the ATM from the database. This action cannot be undone. Are you sure?')) {
       return;
     }
 
     try {
+      console.log('Deleting ATM with ID:', id);
+      
       const response = await fetch(`/api/admin/atms/${id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
 
+      console.log('Delete response status:', response.status);
+      
+      const data = await response.json();
+      console.log('Delete response data:', data);
+
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to delete ATM');
+        throw new Error(data.error || 'Failed to delete ATM');
       }
 
-      toast.success('ATM deactivated successfully');
+      toast.success(data.message || 'ATM permanently deleted');
       fetchATMs();
     } catch (error: any) {
+      console.error('Delete error:', error);
       toast.error(error.message || 'Failed to delete ATM');
     }
   };

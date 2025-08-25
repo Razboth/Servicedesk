@@ -185,23 +185,40 @@ export async function PUT(
   }
 }
 
-// DELETE /api/admin/atms/[id] - Soft delete ATM
+// DELETE /api/admin/atms/[id] - Hard delete ATM (permanent removal)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  
+  console.log('DELETE ATM Request - ID:', id);
+  
   try {
     const session = await auth();
     
+    console.log('Session:', session ? { userId: session.user.id, role: session.user.role } : 'No session');
+    
     if (!session || session.user.role !== 'ADMIN') {
+      console.log('Unauthorized - Role:', session?.user?.role);
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
-    // Check if ATM has active incidents
+    // Validate that id is provided
+    if (!id) {
+      console.log('No ID provided');
+      return NextResponse.json(
+        { error: 'ATM ID is required' },
+        { status: 400 }
+      );
+    }
+
+    console.log('Checking ATM with ID:', id);
+
+    // Check if ATM exists and has active incidents
     const atm = await prisma.aTM.findUnique({
       where: { id },
       include: {
@@ -214,37 +231,52 @@ export async function DELETE(
     });
 
     if (!atm) {
+      console.log('ATM not found with ID:', id);
       return NextResponse.json(
         { error: 'ATM not found' },
         { status: 404 }
       );
     }
 
+    console.log('Found ATM:', { id: atm.id, name: atm.name, code: atm.code });
+
     if (atm._count.incidents > 0) {
+      console.log('ATM has open incidents:', atm._count.incidents);
       return NextResponse.json(
         { error: 'Cannot delete ATM with open incidents' },
         { status: 400 }
       );
     }
 
-    // Soft delete the ATM
-      const updatedATM = await prisma.aTM.update({
-        where: { id },
-        data: { isActive: false }
-      });
+    console.log('Proceeding to permanently delete ATM');
 
-    // Create audit log
+    // Store ATM details for audit log before deletion
+    const atmDetails = `${atm.name} (${atm.code})`;
+
+    // Create audit log BEFORE deletion (since we need the ATM details)
     await prisma.auditLog.create({
       data: {
         userId: session.user.id,
         action: 'DELETE',
         entityType: 'ATM',
         entityId: atm.id,
-        details: `Deactivated ATM: ${atm.name} (${atm.code})`
+        details: `Permanently deleted ATM: ${atmDetails}`
       }
     });
 
-    return NextResponse.json({ message: 'ATM deactivated successfully' });
+    // Hard delete the ATM (this will cascade delete related records due to onDelete: Cascade in schema)
+    await prisma.aTM.delete({
+      where: { id }
+    });
+
+    console.log('ATM permanently deleted:', id);
+
+    return NextResponse.json({ 
+      success: true,
+      message: 'ATM permanently deleted from database',
+      deletedId: id,
+      deletedName: atmDetails
+    });
   } catch (error) {
     console.error('Error deleting ATM:', error);
     return NextResponse.json(

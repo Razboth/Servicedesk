@@ -19,7 +19,9 @@ import {
   CheckCircle2,
   Timer,
   Activity,
-  MapPin
+  MapPin,
+  Play,
+  Pause
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -51,6 +53,7 @@ export default function NetworkOverviewPage() {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [typeFilter, setTypeFilter] = useState('ALL');
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [monitoringStatus, setMonitoringStatus] = useState<'running' | 'stopped' | 'unknown'>('unknown');
 
   // Fetch real network data from API
   const fetchNetworkData = async (): Promise<NetworkEndpoint[]> => {
@@ -123,10 +126,46 @@ export default function NetworkOverviewPage() {
 
   useEffect(() => {
     loadData();
+    checkMonitoringStatus();
     // Auto refresh every 30 seconds
     const interval = setInterval(loadData, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  const checkMonitoringStatus = async () => {
+    try {
+      const response = await fetch('/api/monitoring/control');
+      if (response.ok) {
+        const data = await response.json();
+        setMonitoringStatus(data.status === 'running' ? 'running' : 'stopped');
+      }
+    } catch (error) {
+      console.error('Failed to check monitoring status:', error);
+    }
+  };
+
+  const toggleMonitoring = async () => {
+    try {
+      const action = monitoringStatus === 'running' ? 'stop' : 'start';
+      const response = await fetch('/api/monitoring/control', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setMonitoringStatus(data.status === 'running' ? 'running' : 'stopped');
+        toast.success(data.message);
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Failed to toggle monitoring');
+      }
+    } catch (error) {
+      console.error('Failed to toggle monitoring:', error);
+      toast.error('Failed to toggle monitoring');
+    }
+  };
 
   useEffect(() => {
     let filtered = endpoints;
@@ -291,6 +330,26 @@ export default function NetworkOverviewPage() {
           <div className="flex items-center justify-between">
             <CardTitle>Network Status</CardTitle>
             <div className="flex items-center gap-2">
+              {session?.user?.role === 'ADMIN' && (
+                <Button
+                  variant={monitoringStatus === 'running' ? 'destructive' : 'default'}
+                  size="sm"
+                  onClick={toggleMonitoring}
+                  disabled={monitoringStatus === 'unknown'}
+                >
+                  {monitoringStatus === 'running' ? (
+                    <>
+                      <Pause className="h-4 w-4 mr-2" />
+                      Stop Monitoring
+                    </>
+                  ) : (
+                    <>
+                      <Play className="h-4 w-4 mr-2" />
+                      Start Monitoring
+                    </>
+                  )}
+                </Button>
+              )}
               {lastUpdate && (
                 <span className="text-sm text-muted-foreground">
                   Last updated: {lastUpdate.toLocaleTimeString()}

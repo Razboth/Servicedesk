@@ -6,18 +6,26 @@ const MAX_LOGIN_ATTEMPTS = 5
 
 export async function POST(request: NextRequest) {
   try {
-    const { email } = await request.json()
+    const { email, username } = await request.json()
+    
+    // Support both email and username for backwards compatibility
+    const identifier = username || email
 
-    if (!email) {
+    if (!identifier) {
       return NextResponse.json(
-        { error: 'Email is required' },
+        { error: 'Username or email is required' },
         { status: 400 }
       )
     }
 
-    // Get user's current login attempts
-    const user = await prisma.user.findUnique({
-      where: { email },
+    // Get user's current login attempts - try username first, then email
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { username: identifier },
+          { email: identifier }
+        ]
+      },
       select: { 
         loginAttempts: true, 
         lockedAt: true,

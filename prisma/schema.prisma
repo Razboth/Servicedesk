@@ -576,7 +576,7 @@ model ATMIncident {
   metrics             Json? // Additional metrics/data from monitoring system
 
   // Relations
-  atm    ATM     @relation(fields: [atmId], references: [id])
+  atm    ATM     @relation(fields: [atmId], references: [id], onDelete: Cascade)
   ticket Ticket? @relation(fields: [ticketId], references: [id])
 
   @@map("atm_incidents")
@@ -836,7 +836,7 @@ model NetworkIncident {
   
   // Relations
   branch  Branch? @relation(fields: [branchId], references: [id])
-  atm     ATM?    @relation(fields: [atmId], references: [id])
+  atm     ATM?    @relation(fields: [atmId], references: [id], onDelete: Cascade)
   ticket  Ticket? @relation(fields: [ticketId], references: [id])
   
   @@map("network_incidents")
@@ -1029,7 +1029,7 @@ model NetworkPingResult {
   
   // Relations
   branch  Branch? @relation("BranchPingResults", fields: [branchId], references: [id])
-  atm     ATM?    @relation("ATMPingResults", fields: [atmId], references: [id])
+  atm     ATM?    @relation("ATMPingResults", fields: [atmId], references: [id], onDelete: Cascade)
   
   @@index([entityType, entityId])
   @@index([checkedAt])

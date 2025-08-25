@@ -153,6 +153,7 @@ export default function BranchNetworkPage() {
     slow: branches.filter(b => b.status === 'SLOW').length,
     error: branches.filter(b => b.status === 'ERROR').length,
     stale: branches.filter(b => b.status === 'STALE').length,
+    unstable: branches.filter(b => b.status === 'ERROR' || b.status === 'STALE').length,
     monitoringEnabled: branches.filter(b => b.monitoringEnabled).length,
     activeIncidents: branches.filter(b => b.hasActiveIncident).length,
     avgResponseTime: Math.round(
@@ -160,7 +161,10 @@ export default function BranchNetworkPage() {
         .filter(b => b.responseTime)
         .reduce((acc, b) => acc + (b.responseTime || 0), 0) / 
       branches.filter(b => b.responseTime).length || 0
-    )
+    ),
+    avgUptime: 95.5, // Default value, will be calculated from real data later
+    totalStaff: 0, // Will be fetched separately if needed
+    totalAtms: 0 // Will be fetched separately if needed
   };
 
   const getStatusIcon = (status: string) => {
