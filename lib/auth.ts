@@ -3,12 +3,13 @@ import Credentials from 'next-auth/providers/credentials'
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import { headers } from 'next/headers'
+import { getConfig } from '@/lib/env-config'
 
 const prisma = new PrismaClient()
 
-// Account lockout configuration
-const MAX_LOGIN_ATTEMPTS = 5
-const LOCKOUT_DURATION = 30 * 60 * 1000 // 30 minutes in milliseconds
+// Account lockout configuration from environment or defaults
+const MAX_LOGIN_ATTEMPTS = getConfig('MAX_LOGIN_ATTEMPTS') || 5
+const LOCKOUT_DURATION = (getConfig('LOCKOUT_DURATION') || 30) * 60 * 1000 // Convert minutes to milliseconds
 
 // Helper function to extract IP address from request headers
 async function getClientIP(): Promise<string | undefined> {

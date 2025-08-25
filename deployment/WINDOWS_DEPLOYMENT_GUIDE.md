@@ -99,34 +99,43 @@
    npm install -g pm2-windows-startup
    ```
 
-## Step 5: Configure Environment
+## Step 5: Configure Environment Variables
 
-1. Create production environment file:
+The application uses Windows system environment variables instead of .env files for better security and easier management in production environments.
+
+1. Run the environment setup script as Administrator:
    ```powershell
-   Copy-Item .env.example -Destination .env.production
+   cd C:\ServiceDesk\deployment
+   .\setup-environment-variables.ps1 -Action setup
    ```
 
-2. Edit `.env.production` with your settings:
-   ```env
-   # Database
-   DATABASE_URL="postgresql://servicedesk_user:YourSecurePassword123!@localhost:5432/servicedesk_database"
-   
-   # NextAuth
-   NEXTAUTH_URL="http://your-server-ip:3000"
-   NEXTAUTH_SECRET="generate-a-secure-random-string-here"
-   
-   # Environment
-   NODE_ENV="production"
-   
-   # Optional: Email Configuration
-   EMAIL_SERVER=""
-   EMAIL_FROM=""
-   ```
+2. The script will prompt you for required variables:
+   - **SERVICEDESK_DATABASE_URL**: PostgreSQL connection string
+     Example: `postgresql://servicedesk_user:YourSecurePassword123!@localhost:5432/servicedesk_database`
+   - **SERVICEDESK_NEXTAUTH_URL**: Application URL for authentication
+     Example: `http://your-server-ip:3000`
+   - **SERVICEDESK_NEXTAUTH_SECRET**: Secret key for JWT signing (enter "generate" to auto-generate)
+   - **SERVICEDESK_NODE_ENV**: Set to "production"
+   - **SERVICEDESK_PORT**: Application port (default: 3000)
 
-3. Generate NEXTAUTH_SECRET:
+3. Optional variables (the script will ask if you want to configure them):
+   - Email configuration for notifications
+   - File upload settings
+   - Monitoring intervals
+   - Security settings (login attempts, lockout duration)
+   - Logging configuration
+
+4. Verify environment variables are set:
    ```powershell
-   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+   .\verify-environment.ps1
    ```
+
+5. To view current environment variables:
+   ```powershell
+   .\setup-environment-variables.ps1 -Action show
+   ```
+
+**Note**: After setting environment variables, you must restart PowerShell/Command Prompt and any running services for changes to take effect.
 
 ## Step 6: Setup Database Schema
 
@@ -180,10 +189,8 @@
        autorestart: true,
        watch: false,
        max_memory_restart: '1G',
-       env: {
-         NODE_ENV: 'production',
-         PORT: 3000
-       }
+       // Environment variables are loaded from Windows system
+       // No need to specify them here as they're already set
      }]
    };
    ```
@@ -309,6 +316,23 @@ pm2 restart servicedesk
 ```
 
 ## Troubleshooting
+
+### Environment Variables Not Loading
+1. Verify variables are set:
+   ```powershell
+   .\deployment\verify-environment.ps1
+   ```
+
+2. Check if running in correct context:
+   ```powershell
+   # Should show your system variables
+   [System.Environment]::GetEnvironmentVariable("SERVICEDESK_DATABASE_URL", "Machine")
+   ```
+
+3. Restart services after setting variables:
+   ```powershell
+   pm2 restart servicedesk
+   ```
 
 ### Port Already in Use
 ```powershell
