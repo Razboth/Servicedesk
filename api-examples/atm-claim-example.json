@@ -1,0 +1,21 @@
+{
+  "atm_code": "0126",
+  "transaction_date": "2024-03-15T10:30:00Z",
+  "transaction_amount": 2500000,
+  "transaction_ref": "REF20240315103000",
+  "card_last_4": "5678",
+  "customer_name": "Budi Santoso",
+  "customer_account": "1234567890",
+  "customer_phone": "081234567890",
+  "customer_email": "budi.santoso@example.com",
+  "claim_type": "CASH_NOT_DISPENSED",
+  "claim_description": "Saya melakukan penarikan tunai sebesar Rp 2.500.000 pada tanggal 15 Maret 2024 pukul 10:30 WIB di ATM lokasi Mobil Kas Keliling. Transaksi berhasil dan saldo terpotong namun uang tidak keluar dari mesin ATM. Saya sudah menunggu beberapa saat tetapi uang tidak keluar. Struk transaksi terlampir sebagai bukti.",
+  "reporting_channel": "BRANCH",
+  "evidence_file": {
+    "filename": "struk_atm_20240315.jpg",
+    "originalName": "Struk ATM - 15 Maret 2024.jpg",
+    "mimeType": "image/jpeg",
+    "size": 524288,
+    "content": "base64_encoded_image_content_here"
+  }
+}

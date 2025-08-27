@@ -97,6 +97,127 @@ interface TicketPreview {
   requiresApproval: boolean
 }
 
+// ATM Code Select Component
+interface ATMCodeSelectProps {
+  value: string
+  onChange: (value: string, atmData?: { location?: string; branchName?: string }) => void
+  placeholder?: string
+}
+
+function ATMCodeSelect({ value, onChange, placeholder }: ATMCodeSelectProps) {
+  const [atmOptions, setAtmOptions] = useState<any[]>([])
+  const [isLoadingAtms, setIsLoadingAtms] = useState(true)
+  const [searchTerm, setSearchTerm] = useState('')
+  
+  useEffect(() => {
+    // Load ATM options
+    fetch('/api/atms/lookup')
+      .then(res => res.json())
+      .then(data => {
+        if (data.options && Array.isArray(data.options)) {
+          setAtmOptions(data.options)
+        }
+        setIsLoadingAtms(false)
+      })
+      .catch(err => {
+        console.error('Error loading ATMs:', err)
+        setIsLoadingAtms(false)
+      })
+  }, [])
+  
+  // Filter options based on search term
+  const filteredOptions = searchTerm 
+    ? atmOptions.filter(atm => 
+        atm.value.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        atm.label.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : atmOptions
+  
+  // Group by branch
+  const ownBranchAtms = filteredOptions.filter(atm => atm.isOwnBranch)
+  const otherBranchAtms = filteredOptions.filter(atm => !atm.isOwnBranch)
+  
+  if (isLoadingAtms) {
+    return (
+      <Select disabled>
+        <SelectTrigger className="mt-2">
+          <SelectValue placeholder="Loading ATMs..." />
+        </SelectTrigger>
+      </Select>
+    )
+  }
+  
+  return (
+    <Select
+      value={value || ''}
+      onValueChange={(selectedValue) => {
+        const selectedAtm = atmOptions.find(atm => atm.value === selectedValue)
+        if (onChange) {
+          onChange(selectedValue, selectedAtm ? {
+            location: selectedAtm.location,
+            branchName: selectedAtm.branchName
+          } : undefined)
+        }
+      }}
+    >
+      <SelectTrigger className="mt-2">
+        <SelectValue placeholder={placeholder || 'Select ATM...'} />
+      </SelectTrigger>
+      <SelectContent>
+        {/* Search input */}
+        <div className="px-2 pb-2">
+          <Input
+            placeholder="Search ATM..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="h-8"
+          />
+        </div>
+        
+        {/* Own Branch ATMs */}
+        {ownBranchAtms.length > 0 && (
+          <>
+            <div className="px-2 py-1 text-xs font-semibold text-muted-foreground">
+              Your Branch ATMs
+            </div>
+            {ownBranchAtms.slice(0, 50).map((atm) => (
+              <SelectItem key={atm.value} value={atm.value}>
+                {atm.label}
+              </SelectItem>
+            ))}
+          </>
+        )}
+        
+        {/* Other Branch ATMs */}
+        {otherBranchAtms.length > 0 && (
+          <>
+            <div className="px-2 py-1 text-xs font-semibold text-muted-foreground">
+              Other Branch ATMs
+            </div>
+            {otherBranchAtms.slice(0, 100).map((atm) => (
+              <SelectItem key={atm.value} value={atm.value}>
+                {atm.label} ({atm.branchName})
+              </SelectItem>
+            ))}
+          </>
+        )}
+        
+        {filteredOptions.length === 0 && (
+          <div className="px-2 py-4 text-sm text-muted-foreground text-center">
+            No ATMs found
+          </div>
+        )}
+        
+        {filteredOptions.length > 150 && (
+          <div className="px-2 py-2 text-xs text-muted-foreground text-center">
+            Showing first 150 results. Use search to find specific ATMs.
+          </div>
+        )}
+      </SelectContent>
+    </Select>
+  )
+}
+
 interface TicketWizardProps {
   onClose: () => void
   onSuccess: () => void
@@ -269,6 +390,28 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
               if (defaultValue) {
                 fieldValues[template.fieldTemplate.name] = defaultValue
                 console.log('🔧 Modern Autofill: Set field template default:', template.fieldTemplate.name, '=', defaultValue)
+              }
+              
+              // Auto-fill reporting_branch for ATM claims with current user's branch
+              if (template.fieldTemplate.name === 'reporting_branch' && session?.user) {
+                // Get user's branch information
+                fetch('/api/user/profile')
+                  .then(res => {
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    return res.json();
+                  })
+                  .then(data => {
+                    if (data.branch) {
+                      setFormData(prev => ({
+                        ...prev,
+                        fieldValues: {
+                          ...prev.fieldValues,
+                          reporting_branch: data.branch.name
+                        }
+                      }))
+                    }
+                  })
+                  .catch(err => console.error('Failed to load user branch:', err))
               }
             })
         }
@@ -1359,7 +1502,11 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                           ? 'border-blue-500 shadow-lg'
                           : 'border-gray-200 dark:border-gray-700'
                       }`}
-                      onClick={() => setSelectedCategory(category)}
+                      onClick={() => {
+                        setSelectedCategory(category)
+                        setCurrentStep(2)
+                        loadServices(category.id)
+                      }}
                     >
                       <CardContent className="p-6 text-center">
                         <div className={`w-16 h-16 mx-auto mb-4 bg-gradient-to-r ${category.color} rounded-full flex items-center justify-center text-2xl`}>
@@ -1762,37 +1909,68 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                                   className="mt-2"
                                 />
                               )}
-                              {(template.fieldTemplate.type === 'SELECT' || template.fieldTemplate.type === 'RADIO') && (
-                                <Select
+                              {/* Special handling for ATM Code field - render native select */}
+                              {template.fieldTemplate.name === 'atm_code' && template.fieldTemplate.type === 'SELECT' && (
+                                <ATMCodeSelect
                                   value={formData.fieldValues[template.fieldTemplate.name] || ''}
-                                  onValueChange={(value) => setFormData({
-                                    ...formData,
-                                    fieldValues: {
-                                      ...formData.fieldValues,
-                                      [template.fieldTemplate.name]: value
-                                    }
-                                  })}
-                                >
-                                  <SelectTrigger className="mt-2">
-                                    <SelectValue placeholder={template.fieldTemplate.placeholder || 'Select option'} />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {template.fieldTemplate.options && Array.isArray(template.fieldTemplate.options) 
-                                      ? template.fieldTemplate.options.map((option: string) => (
-                                          <SelectItem key={option} value={option}>
-                                            {option}
-                                          </SelectItem>
-                                        ))
-                                      : typeof template.fieldTemplate.options === 'string' 
-                                        ? template.fieldTemplate.options.split(',').map((option: string) => (
-                                            <SelectItem key={option.trim()} value={option.trim()}>
-                                              {option.trim()}
-                                            </SelectItem>
-                                          ))
-                                        : null
-                                    }
-                                  </SelectContent>
-                                </Select>
+                                  onChange={(value, atmData) => {
+                                    setFormData({
+                                      ...formData,
+                                      fieldValues: {
+                                        ...formData.fieldValues,
+                                        [template.fieldTemplate.name]: value,
+                                        // Auto-fill related ATM fields if available
+                                        ...(atmData?.location && { atm_location: atmData.location }),
+                                        ...(atmData?.branchName && { owner_branch: atmData.branchName })
+                                      }
+                                    })
+                                  }}
+                                  placeholder={template.fieldTemplate.placeholder || 'Select ATM'}
+                                />
+                              )}
+                              {/* Regular SELECT/RADIO fields */}
+                              {template.fieldTemplate.name !== 'atm_code' && (template.fieldTemplate.type === 'SELECT' || template.fieldTemplate.type === 'RADIO') && (
+                                <div>
+                                  {(
+                                    <Select
+                                      value={formData.fieldValues[template.fieldTemplate.name] || ''}
+                                      onValueChange={(value) => setFormData({
+                                        ...formData,
+                                        fieldValues: {
+                                          ...formData.fieldValues,
+                                          [template.fieldTemplate.name]: value
+                                        }
+                                      })}
+                                    >
+                                      <SelectTrigger className="mt-2">
+                                        <SelectValue placeholder={template.fieldTemplate.placeholder || 'Select option'} />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {template.fieldTemplate.options && Array.isArray(template.fieldTemplate.options) 
+                                          ? template.fieldTemplate.options.map((option: any, index: number) => {
+                                              // Handle both object format {value, label} and string format
+                                              const optionValue = typeof option === 'object' ? (option.value || '') : option;
+                                              const optionLabel = typeof option === 'object' ? (option.label || option.value || '') : option;
+                                              const optionKey = typeof option === 'object' ? (option.value || `option-${index}`) : option;
+                                              
+                                              return (
+                                                <SelectItem key={optionKey} value={optionValue}>
+                                                  {optionLabel}
+                                                </SelectItem>
+                                              );
+                                            })
+                                          : typeof template.fieldTemplate.options === 'string' 
+                                            ? template.fieldTemplate.options.split(',').map((option: string) => (
+                                                <SelectItem key={option.trim()} value={option.trim()}>
+                                                  {option.trim()}
+                                                </SelectItem>
+                                              ))
+                                            : null
+                                        }
+                                      </SelectContent>
+                                    </Select>
+                                  )}
+                                </div>
                               )}
                               {template.fieldTemplate.type === 'DATE' && (
                                 <Input
@@ -1835,6 +2013,75 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                                     })}
                                   />
                                   <Label>{template.fieldTemplate.label}</Label>
+                                </div>
+                              )}
+                              {/* MULTISELECT field type */}
+                              {template.fieldTemplate.type === 'MULTISELECT' && (
+                                <div className="mt-2 space-y-2">
+                                  {template.fieldTemplate.options && Array.isArray(template.fieldTemplate.options) && 
+                                    template.fieldTemplate.options.map((option: any, index: number) => {
+                                      const optionValue = typeof option === 'object' ? (option.value || '') : option;
+                                      const optionLabel = typeof option === 'object' ? (option.label || option.value || '') : option;
+                                      const currentValues = formData.fieldValues[template.fieldTemplate.name] 
+                                        ? formData.fieldValues[template.fieldTemplate.name].split(',') 
+                                        : [];
+                                      const isChecked = currentValues.includes(optionValue);
+                                      
+                                      return (
+                                        <div key={`${template.fieldTemplate.name}-${optionValue}-${index}`} className="flex items-center space-x-2">
+                                          <Checkbox
+                                            checked={isChecked}
+                                            onCheckedChange={(checked) => {
+                                              let newValues = [...currentValues];
+                                              if (checked) {
+                                                if (!newValues.includes(optionValue)) {
+                                                  newValues.push(optionValue);
+                                                }
+                                              } else {
+                                                newValues = newValues.filter(v => v !== optionValue);
+                                              }
+                                              setFormData({
+                                                ...formData,
+                                                fieldValues: {
+                                                  ...formData.fieldValues,
+                                                  [template.fieldTemplate.name]: newValues.filter(v => v).join(',')
+                                                }
+                                              });
+                                            }}
+                                          />
+                                          <Label>{optionLabel}</Label>
+                                        </div>
+                                      );
+                                    })
+                                  }
+                                </div>
+                              )}
+                              {/* FILE field type */}
+                              {template.fieldTemplate.type === 'FILE' && (
+                                <div className="mt-2">
+                                  <Input
+                                    type="file"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        // Store file name for now, actual upload would happen on submit
+                                        setFormData({
+                                          ...formData,
+                                          fieldValues: {
+                                            ...formData.fieldValues,
+                                            [template.fieldTemplate.name]: file.name
+                                          }
+                                        });
+                                      }
+                                    }}
+                                    className="mt-2"
+                                    accept={template.fieldTemplate.validation || '*'}
+                                  />
+                                  {formData.fieldValues[template.fieldTemplate.name] && (
+                                    <p className="text-sm text-gray-500 mt-1">
+                                      Selected: {formData.fieldValues[template.fieldTemplate.name]}
+                                    </p>
+                                  )}
                                 </div>
                               )}
                               {template.helpText && (
@@ -2246,6 +2493,7 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
               Step {currentStep} of {steps.length}
             </div>
 
+            {/* Debug: currentStep={currentStep}, steps.length={steps.length}, show next={currentStep < steps.length} */}
             {currentStep < steps.length ? (
               <Button
                 onClick={handleNextStep}

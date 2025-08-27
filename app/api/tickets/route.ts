@@ -475,6 +475,7 @@ export async function POST(request: NextRequest) {
 
     // Process field values - need to handle both regular fields and field templates
     const processedFieldValues: any[] = [];
+    const processedFieldIds = new Set<string>(); // Track processed fields to avoid duplicates
     console.log('Processing field values:', validatedData.fieldValues);
     console.log('Service has fields:', service.fields?.length || 0);
     console.log('Service has field templates:', service.fieldTemplates?.length || 0);
@@ -483,6 +484,12 @@ export async function POST(request: NextRequest) {
       for (const fieldValue of validatedData.fieldValues) {
         console.log('Processing field value:', fieldValue);
         
+        // Skip if we've already processed this field
+        if (processedFieldIds.has(fieldValue.fieldId)) {
+          console.log(`Skipping duplicate field: ${fieldValue.fieldId}`);
+          continue;
+        }
+        
         // Check if this is a regular service field
         const isServiceField = service.fields.some(f => f.id === fieldValue.fieldId);
         console.log(`Field ${fieldValue.fieldId} is service field:`, isServiceField);
@@ -490,6 +497,7 @@ export async function POST(request: NextRequest) {
         if (isServiceField) {
           // Regular service field - save as is
           processedFieldValues.push(fieldValue);
+          processedFieldIds.add(fieldValue.fieldId);
         } else {
           // Check if this is a field template
           const fieldTemplate = service.fieldTemplates.find(
@@ -532,12 +540,18 @@ export async function POST(request: NextRequest) {
               console.log('Found existing service field:', serviceField.id);
             }
 
-            // Use the service field ID instead of the template ID
-            processedFieldValues.push({
-              fieldId: serviceField.id,
-              value: fieldValue.value
-            });
-            console.log('Added processed field value with serviceFieldId:', serviceField.id);
+            // Check for duplicate before adding
+            if (!processedFieldIds.has(serviceField.id)) {
+              // Use the service field ID instead of the template ID
+              processedFieldValues.push({
+                fieldId: serviceField.id,
+                value: fieldValue.value
+              });
+              processedFieldIds.add(serviceField.id);
+              console.log('Added processed field value with serviceFieldId:', serviceField.id);
+            } else {
+              console.log('Skipping duplicate serviceFieldId:', serviceField.id);
+            }
           } else {
             console.warn('Field ID not found in service fields or templates:', fieldValue.fieldId);
           }
@@ -552,6 +566,60 @@ export async function POST(request: NextRequest) {
       where: { id: session.user.id },
       select: { branchId: true }
     });
+
+    // Check for ATM claim auto-routing
+    let targetBranchId = userWithBranch?.branchId;
+    let assignedToId: string | null = null;
+    let autoRoutingComment: string | null = null;
+
+    // Check if this is an ATM claim service (Penarikan Tunai Internal)
+    if (service.name.includes('Penarikan Tunai Internal') || service.name.includes('ATM Claim')) {
+      console.log('ATM Claim detected - checking for auto-routing...');
+      
+      // Find ATM code field value
+      const atmCodeFieldValue = processedFieldValues.find(fv => {
+        const field = service.fields.find(f => f.id === fv.fieldId);
+        return field && (field.name === 'atm_code' || field.label.toLowerCase().includes('kode atm'));
+      });
+
+      if (atmCodeFieldValue) {
+        console.log('ATM code found:', atmCodeFieldValue.value);
+        
+        // Lookup ATM to get owner branch
+        const atm = await prisma.aTM.findUnique({
+          where: { code: atmCodeFieldValue.value },
+          include: { branch: true }
+        });
+
+        if (atm) {
+          console.log('ATM found, owner branch:', atm.branch.name);
+          
+          // Override branch assignment to ATM owner branch
+          targetBranchId = atm.branchId;
+          
+          // Check if it's the same branch or different
+          if (atm.branchId === userWithBranch?.branchId) {
+            autoRoutingComment = `ATM ${atm.code} milik cabang sendiri (${atm.branch.name}) - dapat langsung diproses`;
+          } else {
+            autoRoutingComment = `Auto-routed ke ${atm.branch.name} sebagai pemilik ATM ${atm.code}`;
+            
+            // Find manager of owner branch for assignment
+            const branchManager = await prisma.user.findFirst({
+              where: {
+                branchId: atm.branchId,
+                role: 'MANAGER',
+                isActive: true
+              }
+            });
+            
+            if (branchManager) {
+              assignedToId = branchManager.id;
+              console.log('Assigned to manager:', branchManager.name);
+            }
+          }
+        }
+      }
+    }
 
     // Create ticket with processed field values and attachments within a transaction
     const ticket = await prisma.$transaction(async (tx) => {
@@ -571,7 +639,7 @@ export async function POST(request: NextRequest) {
       
       const ticketNumber = `TKT-${currentYear}-${String(yearTicketCount + 1).padStart(6, '0')}`;
 
-      return await tx.ticket.create({
+      const createdTicket = await tx.ticket.create({
       data: {
         ticketNumber,
         title: validatedData.title,
@@ -585,7 +653,8 @@ export async function POST(request: NextRequest) {
         priority: validatedData.priority,
         status: initialStatus,
         createdById: session.user.id,
-        branchId: userWithBranch?.branchId, // Set the branch from the user
+        branchId: targetBranchId, // Use target branch (either user's or ATM owner's)
+        assignedToId: assignedToId, // Auto-assign to branch manager if different branch
         // Security fields (using processed values for Security Analysts)
         isConfidential: isConfidential,
         securityClassification: securityClassification,
@@ -608,6 +677,20 @@ export async function POST(request: NextRequest) {
         attachments: true
       }
       });
+
+      // Add auto-routing comment if applicable
+      if (autoRoutingComment) {
+        await tx.ticketComment.create({
+          data: {
+            ticketId: createdTicket.id,
+            userId: session.user.id,
+            content: autoRoutingComment,
+            isInternal: true
+          }
+        });
+      }
+
+      return createdTicket;
     });
 
     // Check if service has task templates and create tasks automatically

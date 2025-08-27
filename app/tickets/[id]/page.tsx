@@ -647,20 +647,182 @@ export default function TicketDetailPage() {
                 </CardContent>
               </Card>
 
-              {/* Custom Fields */}
+              {/* Custom Fields - Enhanced Display */}
               {ticket.fieldValues.length > 0 && (
                 <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
                   <CardHeader>
-                    <CardTitle>Additional Information</CardTitle>
+                    <CardTitle className="flex items-center gap-2">
+                      <Sparkles className="h-5 w-5 text-blue-500" />
+                      Additional Information
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-3">
-                      {ticket.fieldValues.map((fieldValue) => (
-                        <div key={fieldValue.id} className="flex justify-between">
-                          <span className="font-medium text-gray-700">{fieldValue.field.label}:</span>
-                          <span className="text-gray-600">{fieldValue.value}</span>
-                        </div>
-                      ))}
+                    <div className="space-y-4">
+                      {ticket.fieldValues.map((fieldValue) => {
+                        const renderFieldValue = () => {
+                          const fieldType = fieldValue.field.type;
+                          const value = fieldValue.value;
+                          
+                          // Handle different field types
+                          switch (fieldType) {
+                            case 'MULTISELECT':
+                              const selectedValues = value ? value.split(',') : [];
+                              return (
+                                <div className="flex flex-wrap gap-2">
+                                  {selectedValues.map((val, idx) => (
+                                    <Badge key={idx} variant="secondary" className="text-xs">
+                                      {val.trim()}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              );
+                              
+                            case 'FILE':
+                              if (!value) return <span className="text-gray-400 italic">No file attached</span>;
+                              return (
+                                <div className="inline-flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                                  <FileText className="h-4 w-4 text-blue-500" />
+                                  <span className="text-sm font-medium">{value}</span>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 px-2"
+                                    onClick={() => {
+                                      // Handle file download
+                                      console.log('Download file:', value);
+                                    }}
+                                  >
+                                    <Download className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              );
+                              
+                            case 'CHECKBOX':
+                              return (
+                                <div className="flex items-center gap-2">
+                                  {value === 'true' ? (
+                                    <CheckCircle className="h-4 w-4 text-green-500" />
+                                  ) : (
+                                    <X className="h-4 w-4 text-gray-400" />
+                                  )}
+                                  <span>{value === 'true' ? 'Yes' : 'No'}</span>
+                                </div>
+                              );
+                              
+                            case 'DATE':
+                              return (
+                                <div className="flex items-center gap-2">
+                                  <Clock className="h-4 w-4 text-gray-400" />
+                                  <span>{value ? new Date(value).toLocaleDateString() : '-'}</span>
+                                </div>
+                              );
+                              
+                            case 'DATETIME':
+                              return (
+                                <div className="flex items-center gap-2">
+                                  <Clock className="h-4 w-4 text-gray-400" />
+                                  <span>{value ? new Date(value).toLocaleString() : '-'}</span>
+                                </div>
+                              );
+                              
+                            case 'URL':
+                              return value ? (
+                                <a 
+                                  href={value} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-blue-500 hover:text-blue-700 underline inline-flex items-center gap-1"
+                                >
+                                  <span>{value}</span>
+                                  <Eye className="h-3 w-3" />
+                                </a>
+                              ) : (
+                                <span className="text-gray-400 italic">-</span>
+                              );
+                              
+                            case 'EMAIL':
+                              return value ? (
+                                <a 
+                                  href={`mailto:${value}`}
+                                  className="text-blue-500 hover:text-blue-700 underline"
+                                >
+                                  {value}
+                                </a>
+                              ) : (
+                                <span className="text-gray-400 italic">-</span>
+                              );
+                              
+                            case 'PHONE':
+                              return value ? (
+                                <a 
+                                  href={`tel:${value}`}
+                                  className="text-blue-500 hover:text-blue-700 underline"
+                                >
+                                  {value}
+                                </a>
+                              ) : (
+                                <span className="text-gray-400 italic">-</span>
+                              );
+                              
+                            case 'NUMBER':
+                              return (
+                                <span className="font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
+                                  {value || '0'}
+                                </span>
+                              );
+                              
+                            case 'TEXTAREA':
+                              return (
+                                <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                                  <p className="text-sm whitespace-pre-wrap">{value || '-'}</p>
+                                </div>
+                              );
+                              
+                            case 'SELECT':
+                            case 'RADIO':
+                              return (
+                                <Badge variant="outline" className="font-normal">
+                                  {value || '-'}
+                                </Badge>
+                              );
+                              
+                            case 'TEXT':
+                            case 'STRING':
+                            default:
+                              // Handle empty or undefined values better
+                              if (!value || value.trim() === '') {
+                                return <span className="text-gray-400 italic">Not provided</span>;
+                              }
+                              return <span className="text-gray-700 dark:text-gray-300">{value}</span>;
+                          }
+                        };
+                        
+                        // For TEXTAREA fields, use full width layout
+                        if (fieldValue.field.type === 'TEXTAREA') {
+                          return (
+                            <div key={fieldValue.id} className="border-b border-gray-200 dark:border-gray-700 pb-4 last:border-0">
+                              <Label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 block">
+                                {fieldValue.field.label}
+                              </Label>
+                              {renderFieldValue()}
+                            </div>
+                          );
+                        }
+                        
+                        // For other fields, use two-column layout
+                        return (
+                          <div key={fieldValue.id} className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-start border-b border-gray-100 dark:border-gray-800 pb-3 last:border-0">
+                            <div className="sm:col-span-1">
+                              <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                                {fieldValue.field.label}
+                              </Label>
+                            </div>
+                            <div className="sm:col-span-2">
+                              {renderFieldValue()}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </CardContent>
                 </Card>

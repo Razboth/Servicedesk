@@ -252,6 +252,8 @@ const authOptions = {
   callbacks: {
     async jwt({ token, user }: any) {
       if (user) {
+        token.id = user.id;
+        token.sub = user.id; // Ensure sub is set for session
         token.role = user.role;
         token.branchId = user.branchId;
         token.branchName = user.branchName;
@@ -264,7 +266,7 @@ const authOptions = {
     },
     async session({ session, token }: any) {
       if (token) {
-        session.user.id = token.sub!;
+        session.user.id = token.sub || token.id; // Use sub or id, whichever is available
         session.user.role = token.role as string;
         session.user.branchId = token.branchId as string | null;
         session.user.branchName = token.branchName as string | null;
