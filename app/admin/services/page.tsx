@@ -168,6 +168,7 @@ export default function ServicesPage() {
   const [services, setServices] = useState<Service[]>([]);
   const [filteredServices, setFilteredServices] = useState<Service[]>([]);
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
+  const [tierCategories, setTierCategories] = useState<any[]>([]);
   const [supportGroups, setSupportGroups] = useState<SupportGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [isNewServiceOpen, setIsNewServiceOpen] = useState(false);
@@ -207,6 +208,7 @@ export default function ServicesPage() {
   useEffect(() => {
     fetchServices();
     fetchCategories();
+    fetchTierCategories();
     fetchSupportGroups();
   }, []);
 
@@ -273,6 +275,18 @@ export default function ServicesPage() {
     }
   };
 
+  const fetchTierCategories = async () => {
+    try {
+      const response = await fetch('/api/tier-categories');
+      if (!response.ok) throw new Error('Failed to fetch tier categories');
+      const data = await response.json();
+      setTierCategories(data || []);
+    } catch (error) {
+      console.error('Error fetching tier categories:', error);
+      toast.error('Failed to load tier categories');
+    }
+  };
+
   const fetchSupportGroups = async () => {
     try {
       const response = await fetch('/api/admin/support-groups?status=active');
@@ -334,15 +348,35 @@ export default function ServicesPage() {
     if (!selectedService) return;
 
     try {
+      // Clean up the data before sending
+      const dataToSend = { ...editService };
+      
+      // Convert 'none' values and null to undefined, then remove undefined fields
+      Object.keys(dataToSend).forEach(key => {
+        const value = dataToSend[key as keyof typeof dataToSend];
+        
+        // Convert 'none' or null to undefined
+        if (value === 'none' || value === null) {
+          delete dataToSend[key as keyof typeof dataToSend];
+        }
+        // Also remove undefined values
+        else if (value === undefined) {
+          delete dataToSend[key as keyof typeof dataToSend];
+        }
+      });
+
+      console.log('Sending data:', dataToSend);
+
       const response = await fetch(`/api/admin/services/${selectedService.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editService)
+        body: JSON.stringify(dataToSend)
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to update service');
+        console.error('Update error details:', error);
+        throw new Error(error.details?.[0]?.message || error.error || 'Failed to update service');
       }
 
       toast.success('Service updated successfully');
@@ -351,6 +385,7 @@ export default function ServicesPage() {
       setSelectedService(null);
       fetchServices();
     } catch (error: any) {
+      console.error('Error updating service:', error);
       toast.error(error.message || 'Failed to update service');
     }
   };
@@ -378,17 +413,22 @@ export default function ServicesPage() {
   const openEditDialog = (service: Service) => {
     setSelectedService(service);
     setEditService({
-      name: service.name,
-      description: service.description,
-      helpText: service.helpText,
-      categoryId: service.categoryId,
-      supportGroupId: service.supportGroupId,
-      priority: service.priority,
-      estimatedHours: service.estimatedHours,
-      slaHours: service.slaHours,
-      requiresApproval: service.requiresApproval,
-      isConfidential: service.isConfidential,
-      isActive: service.isActive
+      name: service.name || '',
+      description: service.description || '',
+      helpText: service.helpText || '',
+      categoryId: service.categoryId || undefined,
+      subcategoryId: service.subcategoryId || undefined,
+      itemId: service.itemId || undefined,
+      tier1CategoryId: service.tier1CategoryId || undefined,
+      tier2SubcategoryId: service.tier2SubcategoryId || undefined,
+      tier3ItemId: service.tier3ItemId || undefined,
+      supportGroupId: service.supportGroupId || undefined,
+      priority: service.priority || 'MEDIUM',
+      estimatedHours: service.estimatedHours || 4,
+      slaHours: service.slaHours || 24,
+      requiresApproval: service.requiresApproval ?? true,
+      isConfidential: service.isConfidential ?? false,
+      isActive: service.isActive ?? true
     });
     setIsEditServiceOpen(true);
   };
@@ -801,13 +841,14 @@ export default function ServicesPage() {
               <div className="space-y-2">
                 <Label htmlFor="edit-categoryId">Category</Label>
                 <Select
-                  value={editService.categoryId}
-                  onValueChange={(value) => setEditService(prev => ({ ...prev, categoryId: value }))}
+                  value={editService.categoryId || 'none'}
+                  onValueChange={(value) => setEditService(prev => ({ ...prev, categoryId: value === 'none' ? undefined : value }))}
                 >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
                     {categories.map(category => (
                       <SelectItem key={category.id} value={category.id}>
                         {category.name}
@@ -836,6 +877,90 @@ export default function ServicesPage() {
                 onChange={(e) => setEditService(prev => ({ ...prev, helpText: e.target.value }))}
                 rows={2}
               />
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-tier1CategoryId">Tier 1 Category</Label>
+                <Select
+                  value={editService.tier1CategoryId || 'none'}
+                  onValueChange={(value) => {
+                    setEditService(prev => ({ 
+                      ...prev, 
+                      tier1CategoryId: value === 'none' ? undefined : value,
+                      tier2SubcategoryId: undefined,
+                      tier3ItemId: undefined
+                    }));
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Tier 1" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {tierCategories.map(category => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-tier2SubcategoryId">Tier 2 Subcategory</Label>
+                <Select
+                  value={editService.tier2SubcategoryId || 'none'}
+                  onValueChange={(value) => {
+                    setEditService(prev => ({ 
+                      ...prev, 
+                      tier2SubcategoryId: value === 'none' ? undefined : value,
+                      tier3ItemId: undefined
+                    }));
+                  }}
+                  disabled={!editService.tier1CategoryId || editService.tier1CategoryId === 'none'}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Tier 2" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {editService.tier1CategoryId && editService.tier1CategoryId !== 'none' &&
+                      tierCategories
+                        .find(c => c.id === editService.tier1CategoryId)
+                        ?.subcategories?.map((sub: any) => (
+                          <SelectItem key={sub.id} value={sub.id}>
+                            {sub.name}
+                          </SelectItem>
+                        ))
+                    }
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-tier3ItemId">Tier 3 Item</Label>
+                <Select
+                  value={editService.tier3ItemId || 'none'}
+                  onValueChange={(value) => setEditService(prev => ({ ...prev, tier3ItemId: value === 'none' ? undefined : value }))}
+                  disabled={!editService.tier2SubcategoryId || editService.tier2SubcategoryId === 'none'}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Tier 3" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {editService.tier2SubcategoryId && editService.tier2SubcategoryId !== 'none' &&
+                      tierCategories
+                        .find(c => c.id === editService.tier1CategoryId)
+                        ?.subcategories?.find((s: any) => s.id === editService.tier2SubcategoryId)
+                        ?.items?.map((item: any) => (
+                          <SelectItem key={item.id} value={item.id}>
+                            {item.name}
+                          </SelectItem>
+                        ))
+                    }
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

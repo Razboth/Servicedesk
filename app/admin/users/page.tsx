@@ -75,6 +75,7 @@ import {
 
 interface User {
   id: string;
+  username: string;
   name: string;
   email: string;
   phone?: string;
@@ -104,6 +105,7 @@ interface User {
 }
 
 interface UserFormData {
+  username?: string;
   email: string;
   name: string;
   phone: string;
@@ -438,6 +440,7 @@ export default function AdminUsersPage() {
   const openEditDialog = (user: User) => {
     setEditingUser(user);
     setFormData({
+      username: user.username,
       email: user.email,
       name: user.name,
       phone: user.phone || '',
@@ -451,6 +454,7 @@ export default function AdminUsersPage() {
 
   const resetForm = () => {
     setFormData({
+      username: '',
       email: '',
       name: '',
       phone: '',
@@ -1000,13 +1004,13 @@ export default function AdminUsersPage() {
             <ModernDialogBody>
             <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="edit-email">Email</Label>
+              <Label htmlFor="edit-username">Username</Label>
               <Input
-                id="edit-email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({...formData, email: e.target.value})}
+                id="edit-username"
+                value={formData.username || ''}
+                onChange={(e) => setFormData({...formData, username: e.target.value})}
                 className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm"
+                placeholder="Enter username"
               />
             </div>
             
@@ -1016,6 +1020,17 @@ export default function AdminUsersPage() {
                 id="edit-name"
                 value={formData.name}
                 onChange={(e) => setFormData({...formData, name: e.target.value})}
+                className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="edit-email">Email</Label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({...formData, email: e.target.value})}
                 className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm"
               />
             </div>

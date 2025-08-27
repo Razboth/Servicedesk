@@ -63,7 +63,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { email, name, phone, role, branchId, supportGroupId, isActive, password } = await request.json()
+    const { username, email, name, phone, role, branchId, supportGroupId, isActive, password } = await request.json()
 
     // Check if user exists
     const existingUser = await prisma.user.findUnique({
@@ -72,6 +72,23 @@ export async function PUT(
 
     if (!existingUser) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    // Check if username is taken by another user
+    if (username && username !== existingUser.username) {
+      const usernameTaken = await prisma.user.findFirst({
+        where: {
+          username,
+          NOT: { id }
+        }
+      })
+
+      if (usernameTaken) {
+        return NextResponse.json(
+          { error: 'Username is already taken by another user' },
+          { status: 409 }
+        )
+      }
     }
 
     // Check if email is taken by another user
@@ -93,6 +110,7 @@ export async function PUT(
 
     // Prepare update data
     const updateData: any = {
+      username: username || existingUser.username,
       email,
       name,
       phone: phone || null,

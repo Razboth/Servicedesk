@@ -59,6 +59,7 @@ export async function GET(request: NextRequest) {
       where,
       select: {
         id: true,
+        username: true,
         name: true,
         email: true,
         phone: true,

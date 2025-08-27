@@ -45,6 +45,13 @@ export async function GET(request: NextRequest) {
             }
           },
           orderBy: { name: 'asc' }
+        },
+        _count: {
+          select: {
+            services: {
+              where: { isActive: true }
+            }
+          }
         }
       },
       orderBy: { name: 'asc' }
