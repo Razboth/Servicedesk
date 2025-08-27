@@ -133,7 +133,7 @@ export async function GET(
       console.error('Failed to log file access:', error);
     }
 
-    return new NextResponse(fileResult.data, { headers });
+    return new NextResponse(fileResult.data as any, { headers });
 
   } catch (error) {
     console.error('File download error:', error);

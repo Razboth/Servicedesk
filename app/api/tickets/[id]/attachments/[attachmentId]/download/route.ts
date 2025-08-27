@@ -140,7 +140,7 @@ export async function GET(
     }
 
     // Return the file with appropriate headers
-    const response = new NextResponse(fileBuffer);
+    const response = new NextResponse(fileBuffer as any);
     
     response.headers.set('Content-Type', attachment.mimeType || 'application/octet-stream');
     response.headers.set('Content-Disposition', `attachment; filename="${attachment.originalName}"`);

@@ -138,7 +138,7 @@ export async function GET(
     }
 
     // Return the file with appropriate headers for inline display
-    const response = new NextResponse(fileBuffer);
+    const response = new NextResponse(fileBuffer as any);
     
     response.headers.set('Content-Type', attachment.mimeType);
     response.headers.set('Content-Disposition', `inline; filename="${attachment.originalName}"`);

@@ -128,16 +128,17 @@ export async function GET(request: NextRequest) {
     const createdAt = new Date(ticket.createdAt)
     const hoursElapsed = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60)
     
+    const serviceData = ticket.service as any
     const slaStatus = {
       hoursElapsed: Math.round(hoursElapsed * 100) / 100,
-      responseDeadline: ticket.service?.responseHours ? 
-        new Date(createdAt.getTime() + (ticket.service.responseHours * 60 * 60 * 1000)) : null,
-      resolutionDeadline: ticket.service?.resolutionHours ? 
-        new Date(createdAt.getTime() + (ticket.service.resolutionHours * 60 * 60 * 1000)) : null,
-      isResponseBreached: ticket.service?.responseHours ? 
-        hoursElapsed > ticket.service.responseHours : false,
-      isResolutionBreached: ticket.service?.resolutionHours ? 
-        hoursElapsed > ticket.service.resolutionHours && !ticket.resolvedAt : false
+      responseDeadline: serviceData?.responseHours ? 
+        new Date(createdAt.getTime() + (serviceData.responseHours * 60 * 60 * 1000)) : null,
+      resolutionDeadline: serviceData?.resolutionHours ? 
+        new Date(createdAt.getTime() + (serviceData.resolutionHours * 60 * 60 * 1000)) : null,
+      isResponseBreached: serviceData?.responseHours ? 
+        hoursElapsed > serviceData.responseHours : false,
+      isResolutionBreached: serviceData?.resolutionHours ? 
+        hoursElapsed > serviceData.resolutionHours && !ticket.resolvedAt : false
     }
 
     // Build response based on detail level
@@ -153,12 +154,12 @@ export async function GET(request: NextRequest) {
         resolvedAt: ticket.resolvedAt,
         closedAt: ticket.closedAt,
         assignedTo: ticket.assignedTo ? {
-          name: ticket.assignedTo.name,
-          email: ticket.assignedTo.email
+          name: (ticket.assignedTo as any).name,
+          email: (ticket.assignedTo as any).email
         } : null,
         branch: {
-          name: ticket.branch.name,
-          code: ticket.branch.code
+          name: (ticket.branch as any).name,
+          code: (ticket.branch as any).code
         },
         slaStatus
       })
@@ -286,14 +287,15 @@ export async function POST(request: NextRequest) {
       const createdAt = new Date(ticket.createdAt)
       const hoursElapsed = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60)
       
+      const serviceInfo = ticket.service as any
       return {
         ...ticket,
         slaStatus: {
           hoursElapsed: Math.round(hoursElapsed * 100) / 100,
-          isResponseBreached: ticket.service?.responseHours ? 
-            hoursElapsed > ticket.service.responseHours : false,
-          isResolutionBreached: ticket.service?.resolutionHours ? 
-            hoursElapsed > ticket.service.resolutionHours && !ticket.resolvedAt : false
+          isResponseBreached: serviceInfo?.responseHours ? 
+            hoursElapsed > serviceInfo.responseHours : false,
+          isResolutionBreached: serviceInfo?.resolutionHours ? 
+            hoursElapsed > serviceInfo.resolutionHours && !ticket.resolvedAt : false
         }
       }
     })
