@@ -8,6 +8,8 @@ declare module 'next-auth' {
     branchName?: string | null
     supportGroupId?: string | null
     supportGroupCode?: string | null
+    mustChangePassword?: boolean
+    isFirstLogin?: boolean
   }
 
   interface Session {
@@ -18,6 +20,8 @@ declare module 'next-auth' {
       branchName?: string | null
       supportGroupId?: string | null
       supportGroupCode?: string | null
+      mustChangePassword?: boolean
+      isFirstLogin?: boolean
     } & DefaultSession['user']
   }
 }
@@ -29,5 +33,7 @@ declare module 'next-auth/jwt' {
     branchName?: string | null
     supportGroupId?: string | null
     supportGroupCode?: string | null
+    mustChangePassword?: boolean
+    isFirstLogin?: boolean
   }
 }

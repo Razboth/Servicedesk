@@ -122,7 +122,9 @@ export async function GET(
           action: 'DOWNLOAD_FILE',
           entity: 'TicketAttachment',
           entityId: attachment.id,
-          details: `Downloaded file: ${attachment.filename} from ticket ${ticket.ticketNumber}`,
+          newValues: {
+            description: `Downloaded file: ${attachment.filename} from ticket ${ticket.ticketNumber}`
+          },
           ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
           userAgent: request.headers.get('user-agent') || 'unknown'
         }

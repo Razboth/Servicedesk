@@ -336,7 +336,7 @@ export function ServiceFieldTemplatesDialog({
     ? availableTemplates
     : availableTemplates.filter(t => t.category === selectedCategory);
 
-  const categories = ['all', ...new Set(fieldTemplates.map(t => t.category).filter(Boolean))];
+  const categories = ['all', ...new Set(fieldTemplates.map(t => t.category).filter(Boolean))] as string[];
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

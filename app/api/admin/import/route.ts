@@ -191,9 +191,9 @@ export async function POST(request: NextRequest) {
         }
 
         // Parse SLA times
-        const responseHours = parseSLATime(responseTimeStr);
-        const resolutionHours = parseSLATime(resolutionTimeStr);
-        const slaHours = parseSLATime(slaStr);
+        const responseHours = parseSLATime(responseTimeStr || '');
+        const resolutionHours = parseSLATime(resolutionTimeStr || '');
+        const slaHours = parseSLATime(slaStr || '');
         
         // Map enum values
         const mappedPriority = mapPriority(priority);
@@ -285,6 +285,8 @@ export async function POST(request: NextRequest) {
           }
         });
 
+        let serviceRecord = existingService;
+
         if (existingService) {
           // Update existing service
           await prisma.service.update({
@@ -328,7 +330,6 @@ export async function POST(request: NextRequest) {
               name: serviceName,
               description: `Imported service: ${serviceName}`,
               categoryId: category.id,
-              supportGroup: 'IT_HELPDESK',
               priority: mappedPriority,
               estimatedHours: Math.ceil(resolutionHours / 8) || 1, // Convert to work days
               slaHours,
@@ -343,6 +344,8 @@ export async function POST(request: NextRequest) {
               tier3ItemId: tier3ItemRecord?.id || undefined
             }
           });
+
+          serviceRecord = newService;
 
           // Create SLA template
           await prisma.sLATemplate.create({
@@ -359,7 +362,6 @@ export async function POST(request: NextRequest) {
         }
         
         // Process Field 1-7 columns
-        const serviceRecord = existingService || newService;
         if (serviceRecord) {
           const fieldLabels: string[] = [];
           for (let i = 1; i <= 7; i++) {

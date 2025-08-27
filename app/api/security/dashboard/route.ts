@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
       // Total login attempts in period
       prisma.loginAttempt.count({
         where: {
-          createdAt: { gte: startDate }
+          attemptedAt: { gte: startDate }
         }
       }),
       
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
       prisma.loginAttempt.count({
         where: {
           success: false,
-          createdAt: { gte: startDate }
+          attemptedAt: { gte: startDate }
         }
       }),
       
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
       prisma.loginAttempt.count({
         where: {
           lockTriggered: true,
-          createdAt: { gte: startDate }
+          attemptedAt: { gte: startDate }
         }
       }),
       
@@ -92,17 +92,17 @@ export async function GET(request: NextRequest) {
       prisma.loginAttempt.findMany({
         where: {
           success: false,
-          createdAt: { gte: startDate }
+          attemptedAt: { gte: startDate }
         },
         orderBy: {
-          createdAt: 'desc'
+          attemptedAt: 'desc'
         },
         take: 10,
         select: {
           email: true,
           ipAddress: true,
           userAgent: true,
-          createdAt: true,
+          attemptedAt: true,
           lockTriggered: true
         }
       }),
@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
         },
         where: {
           success: false,
-          createdAt: { gte: startDate }
+          attemptedAt: { gte: startDate }
         },
         orderBy: {
           _count: {
@@ -144,11 +144,10 @@ export async function GET(request: NextRequest) {
     // Get locked accounts
     const lockedAccounts = await prisma.user.count({
       where: {
-        lockedAt: { not: null },
-        // Only count if still within lockout period (30 minutes)
-        lockedAt: {
-          gte: new Date(Date.now() - 30 * 60 * 1000)
-        }
+        AND: [
+          { lockedAt: { not: null } },
+          { lockedAt: { gte: new Date(Date.now() - 30 * 60 * 1000) } }
+        ]
       }
     });
 
@@ -258,7 +257,10 @@ export async function POST(request: NextRequest) {
             action: 'BULK_UNLOCK_ACCOUNTS',
             entity: 'User',
             entityId: 'bulk',
-            details: `Unlocked ${unlockResult.count} user accounts`,
+            newValues: {
+              description: `Unlocked ${unlockResult.count} user accounts`,
+              count: unlockResult.count
+            },
             ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
             userAgent: request.headers.get('user-agent') || 'unknown'
           }
@@ -276,7 +278,7 @@ export async function POST(request: NextRequest) {
 
         const deleteResult = await prisma.loginAttempt.deleteMany({
           where: {
-            createdAt: { lt: clearDate }
+            attemptedAt: { lt: clearDate }
           }
         });
 

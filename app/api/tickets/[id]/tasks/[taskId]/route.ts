@@ -11,9 +11,10 @@ const updateTaskSchema = z.object({
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string; taskId: string } }
+  { params }: { params: Promise<{ id: string; taskId: string }> }
 ) {
   try {
+    const { id, taskId } = await params;
     const session = await auth();
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -24,11 +25,17 @@ export async function PUT(
 
     // Verify ticket exists and user has access
     const ticket = await prisma.ticket.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: {
         id: true,
         assignedToId: true,
         createdById: true,
+        branchId: true,
+        service: {
+          select: {
+            supportGroupId: true
+          }
+        },
         createdBy: {
           select: {
             supportGroup: true
@@ -66,7 +73,7 @@ export async function PUT(
     } else if (session.user.role === 'TECHNICIAN') {
       // Technicians can see tasks from tickets they created, are assigned to, or match their support group
       const isCreatorOrAssignee = ticket.createdById === session.user.id || ticket.assignedToId === session.user.id;
-      const isSupportGroupMatch = userWithDetails?.supportGroupId && ticket.service?.supportGroupId === userWithDetails.supportGroupId;
+      const isSupportGroupMatch = !!(userWithDetails?.supportGroupId && ticket.service?.supportGroupId === userWithDetails.supportGroupId);
       canModify = isCreatorOrAssignee || isSupportGroupMatch;
     } else if (session.user.role === 'USER') {
       // Users can only see tasks from their own tickets
@@ -80,8 +87,8 @@ export async function PUT(
     // Verify task exists and belongs to the ticket
     const existingTask = await prisma.ticketTask.findFirst({
       where: {
-        id: params.taskId,
-        ticketId: params.id
+        id: taskId,
+        ticketId: id
       }
     });
 
@@ -98,7 +105,7 @@ export async function PUT(
       updateData.status = validatedData.status;
       
       // Set completion details if task is being completed
-      if (validatedData.status === 'COMPLETED') {
+      if (validatedData.status === 'COMPLETED' && existingTask.status !== 'COMPLETED') {
         updateData.completedAt = new Date();
         updateData.completedById = session.user.id;
       } else if (existingTask.status === 'COMPLETED' && validatedData.status !== 'COMPLETED') {
@@ -117,7 +124,7 @@ export async function PUT(
     }
 
     const updatedTask = await prisma.ticketTask.update({
-      where: { id: params.taskId },
+      where: { id: taskId },
       data: updateData,
       include: {
         completedBy: {
@@ -149,9 +156,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string; taskId: string } }
+  { params }: { params: Promise<{ id: string; taskId: string }> }
 ) {
   try {
+    const { id, taskId } = await params;
     const session = await auth();
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -159,11 +167,17 @@ export async function DELETE(
 
     // Verify ticket exists and user has access
     const ticket = await prisma.ticket.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: {
         id: true,
         assignedToId: true,
         createdById: true,
+        branchId: true,
+        service: {
+          select: {
+            supportGroupId: true
+          }
+        },
         createdBy: {
           select: {
             supportGroup: true
@@ -207,8 +221,8 @@ export async function DELETE(
     // Verify task exists and belongs to the ticket
     const existingTask = await prisma.ticketTask.findFirst({
       where: {
-        id: params.taskId,
-        ticketId: params.id
+        id: taskId,
+        ticketId: id
       }
     });
 
@@ -220,7 +234,7 @@ export async function DELETE(
     }
 
     await prisma.ticketTask.delete({
-      where: { id: params.taskId }
+      where: { id: taskId }
     });
 
     return NextResponse.json({ message: 'Task deleted successfully' });

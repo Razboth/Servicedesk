@@ -71,7 +71,7 @@ export async function POST(
       data: {
         articleId: id,
         userId: session.user.id,
-        type: type === 'helpful' ? 'HELPFUL' : 'NOT_HELPFUL'
+        isHelpful: type === 'helpful'
       }
     })
 

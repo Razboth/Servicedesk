@@ -226,7 +226,7 @@ export default function BranchOperationsPage() {
     );
   }
 
-  const filterGroups = []; // No additional filters for this report
+  const filterGroups: any[] = []; // No additional filters for this report
 
   const maxWorkloadScore = data ? Math.max(...data.workload.map(w => w.workloadScore)) : 0;
 

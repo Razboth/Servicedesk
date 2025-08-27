@@ -5,9 +5,10 @@ import { prisma } from '@/lib/prisma';
 // DELETE /api/admin/services/[id]/fields/[fieldId] - Delete a single field
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string; fieldId: string } }
+  { params }: { params: Promise<{ id: string; fieldId: string }> }
 ) {
   try {
+    const { id: serviceId, fieldId } = await params;
     const session = await auth();
     
     if (!session || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
@@ -16,8 +17,6 @@ export async function DELETE(
         { status: 401 }
       );
     }
-
-    const { id: serviceId, fieldId } = params;
 
     // Check if field exists and belongs to the service
     const existingField = await prisma.serviceField.findFirst({
@@ -58,9 +57,10 @@ export async function DELETE(
 // PATCH /api/admin/services/[id]/fields/[fieldId] - Update a single field
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string; fieldId: string } }
+  { params }: { params: Promise<{ id: string; fieldId: string }> }
 ) {
   try {
+    const { id: serviceId, fieldId } = await params;
     const session = await auth();
     
     if (!session || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
@@ -69,8 +69,6 @@ export async function PATCH(
         { status: 401 }
       );
     }
-
-    const { id: serviceId, fieldId } = params;
     const body = await request.json();
 
     // Check if field exists and belongs to the service

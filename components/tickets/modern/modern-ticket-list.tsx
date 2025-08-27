@@ -628,7 +628,6 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket, ticketF
                     <Checkbox
                       checked={isAllSelected}
                       onCheckedChange={handleSelectAll}
-                      indeterminate={isSomeSelected && !isAllSelected}
                       className="border-gray-300"
                     />
                   </th>

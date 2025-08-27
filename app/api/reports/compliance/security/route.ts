@@ -29,16 +29,18 @@ export async function GET(request: NextRequest) {
           lte: new Date(endDate)
         },
         OR: [
-          {
+          ...securityKeywords.map(keyword => ({
             title: {
-              in: securityKeywords.map(keyword => ({ contains: keyword, mode: 'insensitive' as const }))
+              contains: keyword,
+              mode: 'insensitive' as const
             }
-          },
-          {
+          })),
+          ...securityKeywords.map(keyword => ({
             description: {
-              in: securityKeywords.map(keyword => ({ contains: keyword, mode: 'insensitive' as const }))
+              contains: keyword,
+              mode: 'insensitive' as const
             }
-          },
+          })),
           {
             service: {
               tier1Category: {
@@ -62,7 +64,7 @@ export async function GET(request: NextRequest) {
         branch: {
           select: {
             name: true,
-            region: true
+            city: true
           }
         },
         assignedTo: {
@@ -91,7 +93,7 @@ export async function GET(request: NextRequest) {
         email: true,
         role: true,
         createdAt: true,
-        lastLoginAt: true,
+        lastActivity: true,
         _count: {
           select: {
             createdTickets: true,
@@ -117,7 +119,7 @@ export async function GET(request: NextRequest) {
 
     // Security incident severity analysis
     const severityAnalysis = {
-      URGENT: securityTickets.filter(t => t.priority === 'URGENT').length,
+      URGENT: securityTickets.filter(t => t.priority === 'CRITICAL').length,
       HIGH: securityTickets.filter(t => t.priority === 'HIGH').length,
       MEDIUM: securityTickets.filter(t => t.priority === 'MEDIUM').length,
       LOW: securityTickets.filter(t => t.priority === 'LOW').length
@@ -145,11 +147,11 @@ export async function GET(request: NextRequest) {
     // User access compliance
     const accessCompliance = {
       totalUsers: users.length,
-      activeUsers: users.filter(u => u.lastLoginAt && 
-        new Date(u.lastLoginAt) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+      activeUsers: users.filter(u => u.lastActivity && 
+        new Date(u.lastActivity) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
       ).length,
-      inactiveUsers: users.filter(u => !u.lastLoginAt || 
-        new Date(u.lastLoginAt) < new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+      inactiveUsers: users.filter(u => !u.lastActivity || 
+        new Date(u.lastActivity) < new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
       ).length,
       newUsers: users.filter(u => 
         new Date(u.createdAt) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
@@ -200,14 +202,14 @@ export async function GET(request: NextRequest) {
       totalSecurityIncidents: securityTickets.length,
       resolvedSecurityIncidents: securityTickets.filter(t => ['RESOLVED', 'CLOSED'].includes(t.status)).length,
       openSecurityIncidents: securityTickets.filter(t => !['RESOLVED', 'CLOSED'].includes(t.status)).length,
-      criticalSecurityIncidents: securityTickets.filter(t => ['HIGH', 'URGENT'].includes(t.priority)).length,
+      criticalSecurityIncidents: securityTickets.filter(t => ['HIGH', 'CRITICAL'].includes(t.priority)).length,
       changeRequests: changeTickets.length,
       approvedChanges: changeTickets.filter(t => ['RESOLVED', 'CLOSED'].includes(t.status)).length
     };
 
     // Regional security analysis
     const regionalSecurity = securityTickets.reduce((acc, ticket) => {
-      const region = ticket.branch?.region || 'Unknown';
+      const region = ticket.branch?.city || 'Unknown';
       if (!acc[region]) {
         acc[region] = {
           incidents: 0,
@@ -217,7 +219,7 @@ export async function GET(request: NextRequest) {
       }
       
       acc[region].incidents++;
-      if (['HIGH', 'URGENT'].includes(ticket.priority)) {
+      if (['HIGH', 'CRITICAL'].includes(ticket.priority)) {
         acc[region].critical++;
       }
       if (['RESOLVED', 'CLOSED'].includes(ticket.status)) {
@@ -311,7 +313,7 @@ export async function GET(request: NextRequest) {
         priority: ticket.priority,
         status: ticket.status,
         branch: ticket.branch?.name,
-        region: ticket.branch?.region,
+        region: ticket.branch?.city,
         assignedTo: ticket.assignedTo?.name,
         createdAt: ticket.createdAt,
         category: ticket.service?.tier1Category?.name

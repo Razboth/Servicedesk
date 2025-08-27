@@ -33,7 +33,9 @@ import {
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
-  MapPin
+  MapPin,
+  ToggleLeft,
+  ToggleRight
 } from 'lucide-react';
 
 interface ATM {
@@ -129,8 +131,37 @@ export default function ATMsPage() {
     }
   };
 
+  const handleToggleStatus = async (atm: any) => {
+    try {
+      const response = await fetch(`/api/admin/atms/${atm.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          isActive: !atm.isActive
+        })
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to update ATM status');
+      }
+
+      toast.success(`ATM ${atm.isActive ? 'deactivated' : 'activated'} successfully`);
+      fetchATMs();
+    } catch (error: any) {
+      console.error('Toggle status error:', error);
+      toast.error(error.message || 'Failed to update ATM status');
+    }
+  };
+
   const handleDelete = async (id: string) => {
     if (!confirm('WARNING: This will permanently delete the ATM from the database. This action cannot be undone. Are you sure?')) {
+      return;
+    }
+
+    if (!confirm('This is your final warning! The ATM and all related data will be PERMANENTLY DELETED. Continue?')) {
       return;
     }
 
@@ -150,14 +181,19 @@ export default function ATMsPage() {
       console.log('Delete response data:', data);
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to delete ATM');
+        // Show detailed error if available
+        const errorMessage = data.error || 'Failed to delete ATM';
+        const errorDetails = data.details ? `\n${data.details}` : '';
+        throw new Error(errorMessage + errorDetails);
       }
 
       toast.success(data.message || 'ATM permanently deleted');
       fetchATMs();
     } catch (error: any) {
       console.error('Delete error:', error);
-      toast.error(error.message || 'Failed to delete ATM');
+      // Show the actual error message
+      const errorMessage = error.message || 'Failed to delete ATM';
+      toast.error(errorMessage);
     }
   };
 
@@ -295,15 +331,29 @@ export default function ATMsPage() {
                     <TableCell>
                       <div className="flex gap-2">
                         <Link href={`/admin/atms/${atm.id}`}>
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="sm" title="Edit ATM">
                             <Edit className="h-4 w-4" />
                           </Button>
                         </Link>
                         <Button
                           variant="ghost"
                           size="sm"
+                          onClick={() => handleToggleStatus(atm)}
+                          title={atm.isActive ? "Deactivate ATM" : "Activate ATM"}
+                        >
+                          {atm.isActive ? (
+                            <ToggleRight className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <ToggleLeft className="h-4 w-4 text-gray-400" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() => handleDelete(atm.id)}
-                          disabled={!atm.isActive}
+                          disabled={false}
+                          title="Permanently delete ATM"
+                          className="text-red-600 hover:text-red-700"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

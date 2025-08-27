@@ -12,9 +12,10 @@ const addUserSchema = z.object({
 // GET /api/branches/[id]/users - List users in branch
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await auth();
     
     if (!session) {
@@ -26,7 +27,7 @@ export async function GET(
 
     // Check if user has access to this branch
     const hasAccess = ['ADMIN', 'SUPER_ADMIN'].includes(session.user.role) || 
-                     (session.user.role === 'MANAGER' && session.user.branchId === params.id);
+                     (session.user.role === 'MANAGER' && session.user.branchId === id);
 
     if (!hasAccess) {
       return NextResponse.json(
@@ -46,7 +47,7 @@ export async function GET(
 
     // Build where clause
     const where: any = {
-      branchId: params.id
+      branchId: id
     };
 
     if (search) {
@@ -84,7 +85,7 @@ export async function GET(
         createdAt: true,
         _count: {
           select: {
-            tickets: true,
+            createdTickets: true,
             assignedTickets: true
           }
         }
@@ -112,9 +113,10 @@ export async function GET(
 // POST /api/branches/[id]/users - Add user to branch
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await auth();
     
     if (!session || !['ADMIN', 'SUPER_ADMIN', 'MANAGER'].includes(session.user.role)) {
@@ -125,7 +127,7 @@ export async function POST(
     }
 
     // If manager, check if they belong to this branch
-    if (session.user.role === 'MANAGER' && session.user.branchId !== params.id) {
+    if (session.user.role === 'MANAGER' && session.user.branchId !== id) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -149,7 +151,7 @@ export async function POST(
 
     // Check if branch exists
     const branch = await prisma.branch.findUnique({
-      where: { id: params.id }
+      where: { id }
     });
 
     if (!branch) {
@@ -163,7 +165,7 @@ export async function POST(
     const updatedUser = await prisma.user.update({
       where: { id: validatedData.userId },
       data: {
-        branchId: params.id,
+        branchId: id,
         ...(validatedData.role && { role: validatedData.role })
       },
       select: {
@@ -186,9 +188,11 @@ export async function POST(
       data: {
         userId: session.user.id,
         action: 'UPDATE',
-        entityType: 'USER',
+        entity: 'USER',
         entityId: updatedUser.id,
-        details: `Assigned user ${updatedUser.name} to branch ${branch.name}`
+        newValues: {
+          description: `Assigned user ${updatedUser.name} to branch ${branch.name}`
+        }
       }
     });
 
@@ -212,9 +216,10 @@ export async function POST(
 // DELETE /api/branches/[id]/users/[userId] - Remove user from branch
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await auth();
     
     if (!session || !['ADMIN', 'SUPER_ADMIN', 'MANAGER'].includes(session.user.role)) {
@@ -225,7 +230,7 @@ export async function DELETE(
     }
 
     // If manager, check if they belong to this branch
-    if (session.user.role === 'MANAGER' && session.user.branchId !== params.id) {
+    if (session.user.role === 'MANAGER' && session.user.branchId !== id) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -245,7 +250,7 @@ export async function DELETE(
     const user = await prisma.user.findFirst({
       where: {
         id: userId,
-        branchId: params.id
+        branchId: id
       }
     });
 
@@ -267,9 +272,11 @@ export async function DELETE(
       data: {
         userId: session.user.id,
         action: 'UPDATE',
-        entityType: 'USER',
+        entity: 'USER',
         entityId: updatedUser.id,
-        details: `Removed user ${updatedUser.name} from branch`
+        newValues: {
+          description: `Removed user ${updatedUser.name} from branch`
+        }
       }
     });
 

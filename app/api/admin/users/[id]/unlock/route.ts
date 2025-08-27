@@ -56,7 +56,9 @@ export async function POST(
         entity: 'User',
         entityId: userId,
         action: 'UNLOCK_USER',
-        details: `Unlocked user account: ${existingUser.name} (${existingUser.email})`,
+        newValues: {
+          description: `Unlocked user account: ${existingUser.name} (${existingUser.email})`
+        },
         ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
         userAgent: request.headers.get('user-agent') || 'unknown',
       }

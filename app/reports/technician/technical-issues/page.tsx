@@ -203,7 +203,7 @@ export default function TechnicalIssuesPage() {
     );
   }
 
-  const filterGroups = []; // No additional filters for this report
+  const filterGroups: any[] = []; // No additional filters for this report
 
   return (
     <div className="min-h-screen bg-gray-50">

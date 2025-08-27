@@ -115,12 +115,12 @@ export async function GET(
     } else if (session.user.role === 'TECHNICIAN') {
       // Technicians can see tickets they created, are assigned to, or match their support group
       const isCreatorOrAssignee = ticket.createdById === session.user.id || ticket.assignedToId === session.user.id;
-      const isSupportGroupMatch = userWithDetails?.supportGroupId && ticket.service?.supportGroupId === userWithDetails.supportGroupId;
+      const isSupportGroupMatch = !!(userWithDetails?.supportGroupId && ticket.service?.supportGroupId === userWithDetails.supportGroupId);
       canAccess = isCreatorOrAssignee || isSupportGroupMatch;
     } else if (session.user.role === 'SECURITY_ANALYST') {
       // Security Analysts function like technicians but with additional security access
       const isCreatorOrAssignee = ticket.createdById === session.user.id || ticket.assignedToId === session.user.id;
-      const isSupportGroupMatch = userWithDetails?.supportGroupId && ticket.service?.supportGroupId === userWithDetails.supportGroupId;
+      const isSupportGroupMatch = !!(userWithDetails?.supportGroupId && ticket.service?.supportGroupId === userWithDetails.supportGroupId);
       const isSecurityAnalystTicket = ticket.createdBy?.role === 'SECURITY_ANALYST';
       canAccess = isCreatorOrAssignee || isSupportGroupMatch || isSecurityAnalystTicket;
     } else if (session.user.role === 'USER') {

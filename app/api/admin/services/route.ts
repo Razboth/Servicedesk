@@ -21,7 +21,16 @@ const createServiceSchema = z.object({
   isConfidential: z.boolean().default(false),
   defaultTitle: z.string().optional(),
   defaultItilCategory: z.enum(['INCIDENT', 'SERVICE_REQUEST', 'CHANGE_REQUEST', 'EVENT_REQUEST']).optional(),
-  defaultIssueClassification: z.string().optional()
+  defaultIssueClassification: z.enum([
+    'HUMAN_ERROR',
+    'SYSTEM_ERROR',
+    'HARDWARE_FAILURE',
+    'NETWORK_ISSUE',
+    'SECURITY_INCIDENT',
+    'DATA_ISSUE',
+    'PROCESS_GAP',
+    'EXTERNAL_FACTOR'
+  ]).optional()
 });
 
 // GET /api/admin/services - Get all services with admin details

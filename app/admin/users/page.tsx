@@ -84,6 +84,9 @@ interface User {
   lockedAt: string | null;
   lastActivity: string | null;
   createdAt: string;
+  mustChangePassword?: boolean;
+  isFirstLogin?: boolean;
+  passwordChangedAt?: string | null;
   branch?: {
     id: string;
     name: string;
@@ -779,12 +782,18 @@ export default function AdminUsersPage() {
                           <Badge variant={user.isActive ? 'default' : 'secondary'} className="text-xs">
                             {user.isActive ? 'Active' : 'Inactive'}
                           </Badge>
+                          {user.mustChangePassword && (
+                            <Badge variant="warning" className="bg-yellow-100 text-yellow-800 text-xs">
+                              <AlertTriangle className="h-3 w-3 mr-1" />
+                              Must Change Password
+                            </Badge>
+                          )}
                           
                           <div className="flex gap-1">
                             <Button 
                               variant="outline" 
                               size="sm"
-                              onClick={() => handleEditUser(user)}
+                              onClick={() => setEditingUser(user)}
                               className="text-xs px-2 py-1 h-auto"
                             >
                               <Edit className="h-3 w-3" />
@@ -887,6 +896,12 @@ export default function AdminUsersPage() {
                         <Badge variant={user.isActive ? 'default' : 'destructive'}>
                           {user.isActive ? 'Active' : 'Inactive'}
                         </Badge>
+                        {user.mustChangePassword && (
+                          <Badge variant="warning" className="bg-yellow-100 text-yellow-800">
+                            <AlertTriangle className="h-3 w-3 mr-1" />
+                            Must Change Password
+                          </Badge>
+                        )}
                         {user.lockedAt && user.loginAttempts >= 5 && (
                           <Badge variant="destructive">
                             <Lock className="h-3 w-3 mr-1" />

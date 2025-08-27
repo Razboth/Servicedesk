@@ -789,11 +789,11 @@ export default function NetworkMonitoringPage() {
                           </div>
                         )}
                         
-                        {result.packetLoss !== undefined && result.packetLoss > 0 && (
+                        {(result as any).packetLoss !== undefined && (result as any).packetLoss > 0 && (
                           <div className="flex items-center justify-between">
                             <span className="text-gray-500">Packet Loss:</span>
                             <span className="font-medium text-red-600">
-                              {result.packetLoss.toFixed(1)}%
+                              {(result as any).packetLoss.toFixed(1)}%
                             </span>
                           </div>
                         )}
@@ -801,65 +801,65 @@ export default function NetworkMonitoringPage() {
                         <div className="flex items-center justify-between">
                           <span className="text-gray-500">Last Check:</span>
                           <span className="text-xs">
-                            {new Date(result.checkedAt).toLocaleTimeString()}
+                            {new Date((result as any).checkedAt).toLocaleTimeString()}
                           </span>
                         </div>
                         
                         {/* Uptime Information */}
-                        {result.uptimePercentage !== undefined && (
+                        {(result as any).uptimePercentage !== undefined && (
                           <div className="flex items-center justify-between">
                             <span className="text-gray-500">Uptime:</span>
-                            <span className={`font-medium flex items-center gap-1 ${getUptimeColor(result.uptimePercentage)}`}>
+                            <span className={`font-medium flex items-center gap-1 ${getUptimeColor((result as any).uptimePercentage)}`}>
                               <TrendingUp className="h-3 w-3" />
-                              {result.uptimePercentage}%
+                              {(result as any).uptimePercentage}%
                             </span>
                           </div>
                         )}
                         
                         {/* Downtime Information for offline endpoints */}
-                        {result.downSince && ['OFFLINE', 'TIMEOUT', 'ERROR'].includes(result.status) && (
+                        {(result as any).downSince && ['OFFLINE', 'TIMEOUT', 'ERROR'].includes(result.status) && (
                           <div className="flex items-center justify-between">
                             <span className="text-gray-500">Down since:</span>
                             <span className="text-red-600 font-medium text-xs">
-                              {formatTimeAgo(new Date(result.downSince))}
+                              {formatTimeAgo(new Date((result as any).downSince))}
                             </span>
                           </div>
                         )}
                         
                         {/* Current downtime duration */}
-                        {result.currentDowntimeSeconds && result.currentDowntimeSeconds > 0 && (
+                        {(result as any).currentDowntimeSeconds && (result as any).currentDowntimeSeconds > 0 && (
                           <div className="flex items-center justify-between">
                             <span className="text-gray-500">Downtime:</span>
                             <span className="text-red-600 font-medium flex items-center gap-1">
                               <TrendingDown className="h-3 w-3" />
-                              {formatDuration(result.currentDowntimeSeconds)}
+                              {formatDuration((result as any).currentDowntimeSeconds)}
                             </span>
                           </div>
                         )}
                         
                         {/* Status change information */}
-                        {result.statusChangedAt && result.previousStatus && (
+                        {(result as any).statusChangedAt && (result as any).previousStatus && (
                           <div className="flex items-center justify-between">
                             <span className="text-gray-500">Status changed:</span>
                             <span className="text-xs">
-                              {formatTimeAgo(new Date(result.statusChangedAt))}
+                              {formatTimeAgo(new Date((result as any).statusChangedAt))}
                             </span>
                           </div>
                         )}
                         
                         {/* Previous status information */}
-                        {result.previousStatus && result.previousStatus !== result.status && (
+                        {(result as any).previousStatus && (result as any).previousStatus !== result.status && (
                           <div className="flex items-center justify-between">
                             <span className="text-gray-500">Was:</span>
-                            <Badge variant="outline" className={`text-xs ${getStatusColor(result.previousStatus)}`}>
-                              {result.previousStatus}
+                            <Badge variant="outline" className={`text-xs ${getStatusColor((result as any).previousStatus)}`}>
+                              {(result as any).previousStatus}
                             </Badge>
                           </div>
                         )}
                         
-                        {result.errorMessage && (
+                        {(result as any).errorMessage && (
                           <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
-                            {result.errorMessage}
+                            {(result as any).errorMessage}
                           </div>
                         )}
 

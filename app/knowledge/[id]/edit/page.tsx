@@ -87,9 +87,15 @@ export default async function EditKnowledgeArticlePage({
             subcategoryId: article.subcategoryId || undefined,
             itemId: article.itemId || undefined,
             tags: article.tags,
-            status: article.status,
+            status: article.status as 'DRAFT' | 'UNDER_REVIEW' | 'PUBLISHED' | 'ARCHIVED',
             expiresAt: article.expiresAt?.toISOString().split('T')[0],
-            versions: article.versions
+            versions: article.versions.map(v => ({
+              id: v.id,
+              version: v.version,
+              changeNotes: v.changeNotes || '',
+              createdAt: v.createdAt.toISOString(),
+              author: v.author
+            }))
           }}
         />
       </Suspense>

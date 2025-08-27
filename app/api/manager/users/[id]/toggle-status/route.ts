@@ -90,8 +90,10 @@ export async function PUT(
         action: isActive ? 'ACTIVATE_USER' : 'DEACTIVATE_USER',
         entity: 'User',
         entityId: userId,
-        details: `${isActive ? 'Activated' : 'Deactivated'} user: ${existingUser.name} (${existingUser.email})`,
-        newValues: { isActive },
+        newValues: { 
+          isActive,
+          description: `${isActive ? 'Activated' : 'Deactivated'} user: ${existingUser.name} (${existingUser.email})`
+        },
         ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
         userAgent: request.headers.get('user-agent') || 'unknown'
       }

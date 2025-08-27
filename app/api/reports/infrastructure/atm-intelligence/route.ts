@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
     const totalAtms = atms.length;
     const totalIncidents = atmTickets.length;
     const openIncidents = atmTickets.filter(t => !['RESOLVED', 'CLOSED'].includes(t.status)).length;
-    const criticalIncidents = atmTickets.filter(t => ['HIGH', 'URGENT'].includes(t.priority)).length;
+    const criticalIncidents = atmTickets.filter(t => ['HIGH', 'CRITICAL'].includes(t.priority)).length;
 
     // Group incidents by ATM/Branch
     const incidentsByBranch = atmTickets.reduce((acc, ticket) => {
@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
       } else {
         acc[branchName].resolved++;
       }
-      if (['HIGH', 'URGENT'].includes(ticket.priority)) {
+      if (['HIGH', 'CRITICAL'].includes(ticket.priority)) {
         acc[branchName].critical++;
       }
       return acc;
@@ -150,7 +150,7 @@ export async function GET(request: NextRequest) {
       LOW: atmTickets.filter(t => t.priority === 'LOW').length,
       MEDIUM: atmTickets.filter(t => t.priority === 'MEDIUM').length,
       HIGH: atmTickets.filter(t => t.priority === 'HIGH').length,
-      URGENT: atmTickets.filter(t => t.priority === 'URGENT').length
+      CRITICAL: atmTickets.filter(t => t.priority === 'CRITICAL').length
     };
 
     // Regional analysis
@@ -164,7 +164,7 @@ export async function GET(request: NextRequest) {
         };
       }
       acc[region].incidents++;
-      if (['HIGH', 'URGENT'].includes(ticket.priority)) {
+      if (['HIGH', 'CRITICAL'].includes(ticket.priority)) {
         acc[region].critical++;
       }
       return acc;

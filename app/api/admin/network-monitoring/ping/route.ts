@@ -132,7 +132,14 @@ export async function POST(request: NextRequest) {
     let status: 'ONLINE' | 'OFFLINE' | 'SLOW' | 'TIMEOUT' | 'ERROR';
     
     if (!pingResult.success) {
-      status = 'OFFLINE';
+      // Check if it's a timeout or general offline
+      if (pingResult.errorMessage?.toLowerCase().includes('timeout')) {
+        status = 'TIMEOUT';
+      } else if (pingResult.errorMessage) {
+        status = 'ERROR';
+      } else {
+        status = 'OFFLINE';
+      }
     } else if (pingResult.responseTime && pingResult.responseTime > 1000) {
       status = 'SLOW';
     } else if (pingResult.packetLoss && pingResult.packetLoss > 10) {

@@ -373,11 +373,11 @@ export default function NetworkIncidentsPage() {
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex items-start gap-3">
                             <div className="mt-1">
-                              {getCategoryIcon(incident.category)}
+                              {getCategoryIcon(incident.type)}
                             </div>
                             <div className="space-y-1">
                               <div className="flex items-center gap-2">
-                                <h3 className="font-semibold text-lg">{incident.title}</h3>
+                                <h3 className="font-semibold text-lg">{incident.type}</h3>
                                 <Badge variant="outline" className="text-xs">
                                   {incident.id}
                                 </Badge>
@@ -406,12 +406,12 @@ export default function NetworkIncidentsPage() {
                             <div className="flex items-center gap-2 text-sm">
                               <MapPin className="h-3 w-3 text-muted-foreground" />
                               <span className="text-muted-foreground">Location:</span>
-                              <span>{incident.location}</span>
+                              <span>Network Incident</span>
                             </div>
                             <div className="flex items-center gap-2 text-sm">
                               <Users className="h-3 w-3 text-muted-foreground" />
                               <span className="text-muted-foreground">Impacted Users:</span>
-                              <span className="font-medium">{incident.impactedUsers}</span>
+                              <span className="font-medium">N/A</span>
                             </div>
                           </div>
 
@@ -423,53 +423,28 @@ export default function NetworkIncidentsPage() {
                             </div>
                             <div className="flex items-center gap-2 text-sm">
                               <Timer className="h-3 w-3 text-muted-foreground" />
-                              <span className="text-muted-foreground">Downtime:</span>
-                              <span className="font-medium">{incident.downtime}m</span>
+                              <span className="text-muted-foreground">Duration:</span>
+                              <span className="font-medium">
+                                {incident.resolvedAt 
+                                  ? `${Math.round((new Date(incident.resolvedAt).getTime() - new Date(incident.detectedAt).getTime()) / 60000)}m`
+                                  : 'Ongoing'}
+                              </span>
                             </div>
                           </div>
 
                           <div className="space-y-2">
                             <div className="flex items-center gap-2 text-sm">
-                              <span className="text-muted-foreground">Reported by:</span>
-                              <span>{incident.reportedBy}</span>
+                              <span className="text-muted-foreground">Source:</span>
+                              <span>{incident.entityType === 'BRANCH' ? 'Branch Network' : 'ATM Network'}</span>
                             </div>
-                            {incident.assignedTo && (
+                            {incident.ticket && (
                               <div className="flex items-center gap-2 text-sm">
-                                <span className="text-muted-foreground">Assigned to:</span>
-                                <span>{incident.assignedTo}</span>
+                                <span className="text-muted-foreground">Ticket:</span>
+                                <span>#{incident.ticket.ticketNumber}</span>
                               </div>
                             )}
                           </div>
                         </div>
-
-                        {incident.affectedSystems.length > 0 && (
-                          <div className="mb-4">
-                            <span className="text-sm text-muted-foreground">Affected Systems: </span>
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {incident.affectedSystems.map((system, idx) => (
-                                <Badge key={idx} variant="secondary" className="text-xs">
-                                  {system}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {incident.estimatedResolution && incident.status !== 'RESOLVED' && incident.status !== 'CLOSED' && (
-                          <div className="text-sm text-muted-foreground">
-                            <span>Estimated Resolution: </span>
-                            <span className="font-medium">
-                              {new Date(incident.estimatedResolution).toLocaleString()}
-                            </span>
-                          </div>
-                        )}
-
-                        {incident.rootCause && (
-                          <div className="mt-3 p-3 bg-muted rounded-lg">
-                            <span className="text-sm font-medium">Root Cause: </span>
-                            <span className="text-sm text-muted-foreground">{incident.rootCause}</span>
-                          </div>
-                        )}
                       </CardContent>
                     </Card>
                   ))}

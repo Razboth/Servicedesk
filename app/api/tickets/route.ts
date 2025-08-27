@@ -7,7 +7,7 @@ import { sanitizeSearchInput } from '@/lib/security';
 
 // Helper function to determine sort order
 function getSortOrder(sortBy: string, sortOrder: string) {
-  const order = sortOrder === 'asc' ? 'asc' : 'desc';
+  const order: 'asc' | 'desc' = sortOrder === 'asc' ? 'asc' : 'desc';
   
   switch (sortBy) {
     case 'ticketNumber':
@@ -17,8 +17,8 @@ function getSortOrder(sortBy: string, sortOrder: string) {
     case 'priority':
       // Custom priority order: CRITICAL > HIGH > MEDIUM > LOW
       return [
-        { priority: 'desc' },
-        { createdAt: 'desc' }
+        { priority: 'desc' as const },
+        { createdAt: 'desc' as const }
       ];
     case 'status':
       return { status: order };
@@ -27,7 +27,7 @@ function getSortOrder(sortBy: string, sortOrder: string) {
     case 'updatedAt':
       return { updatedAt: order };
     default:
-      return { createdAt: 'desc' };
+      return { createdAt: 'desc' as const };
   }
 }
 
@@ -133,7 +133,7 @@ export async function GET(request: NextRequest) {
     } else if (session.user.role === 'SECURITY_ANALYST') {
       // Security Analysts function like technicians but with additional security access
       // They can see tickets from their support group like technicians do
-      const baseConditions = [
+      const baseConditions: any[] = [
         { createdById: session.user.id }, // Their own tickets
         { assignedToId: session.user.id }  // Tickets assigned to them
       ];
@@ -443,7 +443,7 @@ export async function POST(request: NextRequest) {
     const initialStatus = (session.user.role === 'USER') ? 'PENDING_APPROVAL' : 'OPEN';
 
     // Handle file attachments
-    const attachmentData = [];
+    const attachmentData: any[] = [];
     if (validatedData.attachments && validatedData.attachments.length > 0) {
       for (const attachment of validatedData.attachments) {
         attachmentData.push({
@@ -474,11 +474,18 @@ export async function POST(request: NextRequest) {
     }
 
     // Process field values - need to handle both regular fields and field templates
-    const processedFieldValues = [];
+    const processedFieldValues: any[] = [];
+    console.log('Processing field values:', validatedData.fieldValues);
+    console.log('Service has fields:', service.fields?.length || 0);
+    console.log('Service has field templates:', service.fieldTemplates?.length || 0);
+    
     if (validatedData.fieldValues && validatedData.fieldValues.length > 0) {
       for (const fieldValue of validatedData.fieldValues) {
+        console.log('Processing field value:', fieldValue);
+        
         // Check if this is a regular service field
         const isServiceField = service.fields.some(f => f.id === fieldValue.fieldId);
+        console.log(`Field ${fieldValue.fieldId} is service field:`, isServiceField);
         
         if (isServiceField) {
           // Regular service field - save as is
@@ -488,6 +495,7 @@ export async function POST(request: NextRequest) {
           const fieldTemplate = service.fieldTemplates.find(
             ft => ft.fieldTemplate.id === fieldValue.fieldId
           );
+          console.log(`Field ${fieldValue.fieldId} is field template:`, !!fieldTemplate);
           
           if (fieldTemplate) {
             // For field templates, we need to create a service field first
@@ -501,6 +509,7 @@ export async function POST(request: NextRequest) {
 
             if (!serviceField) {
               // Create a service field from the template
+              console.log('Creating service field from template:', fieldTemplate.fieldTemplate.name);
               serviceField = await prisma.serviceField.create({
                 data: {
                   serviceId: service.id,
@@ -512,12 +521,15 @@ export async function POST(request: NextRequest) {
                   placeholder: fieldTemplate.fieldTemplate.placeholder,
                   helpText: fieldTemplate.helpText || fieldTemplate.fieldTemplate.helpText,
                   defaultValue: fieldTemplate.defaultValue || fieldTemplate.fieldTemplate.defaultValue,
-                  options: fieldTemplate.fieldTemplate.options,
-                  validation: fieldTemplate.fieldTemplate.validation,
+                  options: fieldTemplate.fieldTemplate.options || undefined,
+                  validation: fieldTemplate.fieldTemplate.validation || undefined,
                   order: fieldTemplate.order,
                   isActive: true
                 }
               });
+              console.log('Created service field:', serviceField.id);
+            } else {
+              console.log('Found existing service field:', serviceField.id);
             }
 
             // Use the service field ID instead of the template ID
@@ -525,12 +537,15 @@ export async function POST(request: NextRequest) {
               fieldId: serviceField.id,
               value: fieldValue.value
             });
+            console.log('Added processed field value with serviceFieldId:', serviceField.id);
           } else {
             console.warn('Field ID not found in service fields or templates:', fieldValue.fieldId);
           }
         }
       }
     }
+    
+    console.log('Final processed field values:', processedFieldValues);
 
     // Get user's branch for the ticket
     const userWithBranch = await prisma.user.findUnique({
@@ -609,7 +624,7 @@ export async function POST(request: NextRequest) {
 
     // Create tasks from all task templates for this service
     if (taskTemplates.length > 0) {
-      const tasksToCreate = [];
+      const tasksToCreate: { ticketId: string; taskTemplateItemId: string; status: 'PENDING' }[] = [];
       
       for (const template of taskTemplates) {
         for (const item of template.items) {
@@ -634,7 +649,7 @@ export async function POST(request: NextRequest) {
       validatedData.serviceId,
       session.user.id,
       ticket.id,
-      userWithBranch?.branchId
+      userWithBranch?.branchId || undefined
     );
 
     // Update favorite service usage if it exists (run in background)

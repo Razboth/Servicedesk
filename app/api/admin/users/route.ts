@@ -68,6 +68,9 @@ export async function GET(request: NextRequest) {
         lockedAt: true,
         lastActivity: true,
         createdAt: true,
+        mustChangePassword: true,
+        isFirstLogin: true,
+        passwordChangedAt: true,
         branch: {
           select: {
             id: true,
@@ -192,9 +195,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create user
+    // Create user with mustChangePassword flag set to true for new users
     const user = await prisma.user.create({
       data: {
+        username: email.split('@')[0], // Generate username from email
         email,
         name,
         password: hashedPassword,
@@ -202,7 +206,10 @@ export async function POST(request: NextRequest) {
         role,
         branchId: branchId || undefined,
         supportGroupId: supportGroupId || undefined,
-        isActive: true
+        isActive: true,
+        mustChangePassword: true,  // Force password change on first login
+        isFirstLogin: true,         // Mark as first login
+        passwordChangedAt: null     // No password change yet
       },
       include: {
         branch: true,

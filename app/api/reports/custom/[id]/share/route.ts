@@ -5,9 +5,10 @@ import { prisma } from '@/lib/prisma'
 // POST /api/reports/custom/[id]/share - Toggle report sharing
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await auth()
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -18,7 +19,7 @@ export async function POST(
 
     // Get the report
     const report = await prisma.customReport.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: {
         id: true,
         title: true,
@@ -38,10 +39,9 @@ export async function POST(
 
     // Update sharing settings
     const updated = await prisma.customReport.update({
-      where: { id: params.id },
+      where: { id },
       data: {
-        isPublic: isPublic !== undefined ? isPublic : report.isPublic,
-        sharedWith: sharedWith || []
+        isPublic: isPublic !== undefined ? isPublic : report.isPublic
       }
     })
 
@@ -51,15 +51,18 @@ export async function POST(
         userId: session.user.id,
         action: 'UPDATE',
         entity: 'CustomReport',
-        entityId: params.id,
-        details: `Updated sharing settings for report ${report.title}: isPublic=${isPublic}`
+        entityId: id,
+        newValues: {
+          description: `Updated sharing settings for report ${report.title}: isPublic=${isPublic}`,
+          title: report.title,
+          isPublic: isPublic
+        }
       }
     })
 
     return NextResponse.json({
       id: updated.id,
-      isPublic: updated.isPublic,
-      sharedWith: updated.sharedWith
+      isPublic: updated.isPublic
     })
   } catch (error) {
     console.error('Failed to update sharing:', error)
@@ -73,21 +76,21 @@ export async function POST(
 // GET /api/reports/custom/[id]/share - Get sharing settings
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await auth()
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const report = await prisma.customReport.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: {
         id: true,
         title: true,
         isPublic: true,
-        sharedWith: true,
         createdBy: true,
         creator: {
           select: {
@@ -103,33 +106,14 @@ export async function GET(
     }
 
     // Check access
-    const hasAccess = report.isPublic || 
-                     report.createdBy === session.user.id ||
-                     (report.sharedWith as string[])?.includes(session.user.id)
+    const hasAccess = report.isPublic || report.createdBy === session.user.id
 
     if (!hasAccess) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 })
     }
 
-    // Get shared users if creator is viewing
-    let sharedUsers = []
-    if (report.createdBy === session.user.id && report.sharedWith) {
-      sharedUsers = await prisma.user.findMany({
-        where: {
-          id: { in: report.sharedWith as string[] }
-        },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          role: true
-        }
-      })
-    }
-
     return NextResponse.json({
       ...report,
-      sharedUsers,
       canEdit: report.createdBy === session.user.id
     })
   } catch (error) {

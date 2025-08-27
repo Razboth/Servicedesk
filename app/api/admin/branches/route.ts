@@ -145,9 +145,15 @@ export async function POST(request: NextRequest) {
       data: {
         userId: session.user.id,
         action: 'CREATE',
-        entityType: 'BRANCH',
+        entity: 'BRANCH',
         entityId: branch.id,
-        details: `Created branch: ${branch.name} (${branch.code})`
+        newValues: {
+          name: branch.name,
+          code: branch.code,
+          city: branch.city,
+          province: branch.province,
+          isActive: branch.isActive
+        }
       }
     });
 

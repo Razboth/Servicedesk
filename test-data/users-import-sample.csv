@@ -1,0 +1,4 @@
+username;email;name;password;phone;role;branchId;supportGroupId;isActive;updatePassword;mustChangePassword;isFirstLogin;passwordChangedAt
+importuser1;importuser1@banksulutgo.co.id;Import User One;ImportPass123!;+62812345678;USER;;;true;false;true;true;
+importuser2;importuser2@banksulutgo.co.id;Import User Two;ImportPass456!;+62812345679;TECHNICIAN;;;true;false;true;true;
+importuser3;importuser3@banksulutgo.co.id;Import User Three;ImportPass789!;+62812345680;MANAGER;;;true;false;true;true;

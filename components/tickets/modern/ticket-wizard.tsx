@@ -32,7 +32,8 @@ import {
   Tag,
   Zap,
   Upload,
-  Loader2
+  Loader2,
+  List
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -53,6 +54,14 @@ interface Service {
     id: string
     name: string
   }>
+  defaultTitle?: string | null
+  defaultItilCategory?: string | null
+  defaultIssueClassification?: string | null
+  fieldTemplates?: any[]
+  fields?: any[]
+  tier1CategoryId?: string | null
+  tier2SubcategoryId?: string | null
+  tier3ItemId?: string | null
 }
 
 interface Category {
@@ -360,13 +369,17 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
       if (response.ok) {
         const data = await response.json()
         console.log('Loaded categories:', data)
+        // Extract categories array from response object
+        const categoriesArray = data.categories || data || []
         // Transform categories to include visual information
-        const transformedCategories = data?.map((cat: any) => ({
-          ...cat,
-          icon: getCategoryIcon(cat.name),
-          color: getCategoryColor(cat.name),
-          subcategories: cat.children || []
-        })) || []
+        const transformedCategories = Array.isArray(categoriesArray) 
+          ? categoriesArray.map((cat: any) => ({
+              ...cat,
+              icon: getCategoryIcon(cat.name),
+              color: getCategoryColor(cat.name),
+              subcategories: cat.children || cat.subcategories || []
+            }))
+          : []
         setCategories(transformedCategories)
       } else {
         console.error('Failed to load categories:', response.status)
@@ -931,7 +944,7 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
 
   const filteredCategories = categories.filter(cat =>
     cat.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    cat.description.toLowerCase().includes(searchTerm.toLowerCase())
+    (cat.description && cat.description.toLowerCase().includes(searchTerm.toLowerCase()))
   )
 
   return (
@@ -1183,7 +1196,9 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                                   <div className="flex items-center gap-2">
                                     <span className="font-medium text-sm truncate">{service.name}</span>
                                     {isServiceFavorited(service.id) && (
-                                      <Star className="h-3 w-3 text-yellow-500 fill-current flex-shrink-0" title="Also in favorites" />
+                                      <span title="Also in favorites">
+                                        <Star className="h-3 w-3 text-yellow-500 fill-current flex-shrink-0" />
+                                      </span>
                                     )}
                                   </div>
                                   <div className="flex items-center gap-2 mt-1">
@@ -1396,6 +1411,33 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                       <X className="h-4 w-4" />
                     </button>
                   )}
+                </div>
+
+                {/* Add button to show all services */}
+                <div className="mb-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      setIsLoadingServices(true);
+                      try {
+                        // Load all services without category filter
+                        const response = await fetch('/api/services');
+                        if (response.ok) {
+                          const data = await response.json();
+                          setServices(data || []);
+                        }
+                      } catch (error) {
+                        console.error('Error loading all services:', error);
+                      } finally {
+                        setIsLoadingServices(false);
+                      }
+                    }}
+                    className="w-full"
+                  >
+                    <List className="h-4 w-4 mr-2" />
+                    Show All Services (Manual Selection)
+                  </Button>
                 </div>
 
                 <div className="grid gap-3">
@@ -1676,8 +1718,9 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                                 {template.fieldTemplate.label}
                                 {template.isRequired && <span className="text-red-500 ml-1">*</span>}
                               </Label>
-                              {template.fieldTemplate.type === 'text' && (
+                              {(template.fieldTemplate.type === 'TEXT' || template.fieldTemplate.type === 'EMAIL' || template.fieldTemplate.type === 'URL' || template.fieldTemplate.type === 'PHONE') && (
                                 <Input
+                                  type={template.fieldTemplate.type === 'EMAIL' ? 'email' : template.fieldTemplate.type === 'URL' ? 'url' : template.fieldTemplate.type === 'PHONE' ? 'tel' : 'text'}
                                   value={formData.fieldValues[template.fieldTemplate.name] || ''}
                                   onChange={(e) => setFormData({
                                     ...formData,
@@ -1690,7 +1733,7 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                                   className="mt-2"
                                 />
                               )}
-                              {template.fieldTemplate.type === 'textarea' && (
+                              {template.fieldTemplate.type === 'TEXTAREA' && (
                                 <Textarea
                                   value={formData.fieldValues[template.fieldTemplate.name] || ''}
                                   onChange={(e) => setFormData({
@@ -1704,7 +1747,7 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                                   className="mt-2"
                                 />
                               )}
-                              {template.fieldTemplate.type === 'number' && (
+                              {template.fieldTemplate.type === 'NUMBER' && (
                                 <Input
                                   type="number"
                                   value={formData.fieldValues[template.fieldTemplate.name] || ''}
@@ -1719,7 +1762,7 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                                   className="mt-2"
                                 />
                               )}
-                              {template.fieldTemplate.type === 'select' && (
+                              {(template.fieldTemplate.type === 'SELECT' || template.fieldTemplate.type === 'RADIO') && (
                                 <Select
                                   value={formData.fieldValues[template.fieldTemplate.name] || ''}
                                   onValueChange={(value) => setFormData({
@@ -1734,15 +1777,52 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                                     <SelectValue placeholder={template.fieldTemplate.placeholder || 'Select option'} />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {template.fieldTemplate.options?.split(',').map((option: string) => (
-                                      <SelectItem key={option.trim()} value={option.trim()}>
-                                        {option.trim()}
-                                      </SelectItem>
-                                    ))}
+                                    {template.fieldTemplate.options && Array.isArray(template.fieldTemplate.options) 
+                                      ? template.fieldTemplate.options.map((option: string) => (
+                                          <SelectItem key={option} value={option}>
+                                            {option}
+                                          </SelectItem>
+                                        ))
+                                      : typeof template.fieldTemplate.options === 'string' 
+                                        ? template.fieldTemplate.options.split(',').map((option: string) => (
+                                            <SelectItem key={option.trim()} value={option.trim()}>
+                                              {option.trim()}
+                                            </SelectItem>
+                                          ))
+                                        : null
+                                    }
                                   </SelectContent>
                                 </Select>
                               )}
-                              {template.fieldTemplate.type === 'checkbox' && (
+                              {template.fieldTemplate.type === 'DATE' && (
+                                <Input
+                                  type="date"
+                                  value={formData.fieldValues[template.fieldTemplate.name] || ''}
+                                  onChange={(e) => setFormData({
+                                    ...formData,
+                                    fieldValues: {
+                                      ...formData.fieldValues,
+                                      [template.fieldTemplate.name]: e.target.value
+                                    }
+                                  })}
+                                  className="mt-2"
+                                />
+                              )}
+                              {template.fieldTemplate.type === 'DATETIME' && (
+                                <Input
+                                  type="datetime-local"
+                                  value={formData.fieldValues[template.fieldTemplate.name] || ''}
+                                  onChange={(e) => setFormData({
+                                    ...formData,
+                                    fieldValues: {
+                                      ...formData.fieldValues,
+                                      [template.fieldTemplate.name]: e.target.value
+                                    }
+                                  })}
+                                  className="mt-2"
+                                />
+                              )}
+                              {template.fieldTemplate.type === 'CHECKBOX' && (
                                 <div className="flex items-center space-x-2 mt-2">
                                   <Checkbox
                                     checked={formData.fieldValues[template.fieldTemplate.name] === 'true'}
@@ -2070,7 +2150,7 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                                   {template.fieldTemplate.label}:
                                 </span>
                                 <span className="text-sm text-gray-900 dark:text-white max-w-xs text-right">
-                                  {template.fieldTemplate.type === 'checkbox' 
+                                  {template.fieldTemplate.type === 'CHECKBOX' 
                                     ? (formData.fieldValues[template.fieldTemplate.name] === 'true' ? 'Yes' : 'No')
                                     : formData.fieldValues[template.fieldTemplate.name]
                                   }

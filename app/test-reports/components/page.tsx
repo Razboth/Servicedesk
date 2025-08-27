@@ -43,7 +43,7 @@ export default function ComponentTestPage() {
       columnOrder: selectedColumns
     }
     
-    setTestResults(prev => ({ ...prev, columnSelector: results }))
+    setTestResults((prev: any) => ({ ...prev, columnSelector: results }))
   }
 
   const testFilterBuilder = () => {
@@ -54,7 +54,7 @@ export default function ComponentTestPage() {
       filterValidation: filters.every(f => f.column && f.operator)
     }
     
-    setTestResults(prev => ({ ...prev, filterBuilder: results }))
+    setTestResults((prev: any) => ({ ...prev, filterBuilder: results }))
   }
 
   const testQueryEditor = () => {
@@ -65,7 +65,7 @@ export default function ComponentTestPage() {
       syntaxHighlighting: true
     }
     
-    setTestResults(prev => ({ ...prev, queryEditor: results }))
+    setTestResults((prev: any) => ({ ...prev, queryEditor: results }))
   }
 
   const testScheduler = () => {
@@ -77,7 +77,7 @@ export default function ComponentTestPage() {
       cronExpression: schedule?.enabled ? generateCronExpression(schedule) : null
     }
     
-    setTestResults(prev => ({ ...prev, scheduler: results }))
+    setTestResults((prev: any) => ({ ...prev, scheduler: results }))
   }
 
   const generateCronExpression = (schedule: any): string => {
@@ -126,7 +126,6 @@ export default function ComponentTestPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <ColumnSelector
-                availableColumns={availableColumns}
                 selectedColumns={selectedColumns}
                 onColumnsChange={setSelectedColumns}
                 module="TICKETS"
@@ -163,7 +162,7 @@ export default function ComponentTestPage() {
               <FilterBuilder
                 filters={filters}
                 onFiltersChange={setFilters}
-                availableColumns={availableColumns}
+                module="TICKETS"
               />
               
               <div className="pt-4 border-t">

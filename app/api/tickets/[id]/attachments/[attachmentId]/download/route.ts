@@ -55,7 +55,7 @@ export async function GET(
       canAccess = userWithDetails?.branchId === ticket.branchId;
     } else if (session.user.role === 'TECHNICIAN') {
       const isCreatorOrAssignee = ticket.createdById === session.user.id || ticket.assignedToId === session.user.id;
-      const isSupportGroupMatch = userWithDetails?.supportGroupId && ticket.service?.supportGroupId === userWithDetails.supportGroupId;
+      const isSupportGroupMatch = !!(userWithDetails?.supportGroupId && ticket.service?.supportGroupId === userWithDetails.supportGroupId);
       canAccess = isCreatorOrAssignee || isSupportGroupMatch;
     } else if (session.user.role === 'USER') {
       canAccess = ticket.createdById === session.user.id;

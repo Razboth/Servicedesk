@@ -237,11 +237,11 @@ export default function KnowledgeArticleView({ articleId }: Props) {
 
   const canEdit = session?.user?.role === 'ADMIN' || 
                  session?.user?.role === 'MANAGER' ||
-                 article.authorId === session.user.id
+                 article.authorId === session?.user?.id
 
   const canDelete = session?.user?.role === 'ADMIN' || 
                    session?.user?.role === 'MANAGER' ||
-                   article.authorId === session.user.id
+                   article.authorId === session?.user?.id
 
   const isExpired = article.expiresAt && new Date(article.expiresAt) < new Date()
 

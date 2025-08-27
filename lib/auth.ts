@@ -176,7 +176,7 @@ const authOptions = {
         try {
           // Check if account is locked
           if (await isAccountLocked(username)) {
-            await recordLoginAttempt(username, false, ipAddress, userAgent)
+            await recordLoginAttempt(username, false, ipAddress, userAgent || undefined)
             throw new Error('ACCOUNT_LOCKED')
           }
 
@@ -192,7 +192,7 @@ const authOptions = {
           })
 
           if (!user || !user.password) {
-            await recordLoginAttempt(username, false, ipAddress, userAgent)
+            await recordLoginAttempt(username, false, ipAddress, userAgent || undefined)
             return null
           }
 
@@ -200,12 +200,20 @@ const authOptions = {
           const isPasswordValid = await bcrypt.compare(password, user.password)
 
           if (!isPasswordValid) {
-            await recordLoginAttempt(username, false, ipAddress, userAgent)
+            await recordLoginAttempt(username, false, ipAddress, userAgent || undefined)
             return null
           }
 
           // Successful login - record attempt and update activity
-          await recordLoginAttempt(username, true, ipAddress, userAgent)
+          await recordLoginAttempt(username, true, ipAddress, userAgent || undefined)
+          
+          // Update isFirstLogin to false after successful first login
+          if (user.isFirstLogin) {
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { isFirstLogin: false }
+            })
+          }
 
           // Get user with support group
           const userWithSupportGroup = await prisma.user.findUnique({
@@ -224,10 +232,12 @@ const authOptions = {
             branchId: user.branchId,
             branchName: user.branch?.name,
             supportGroupId: userWithSupportGroup?.supportGroupId,
-            supportGroupCode: userWithSupportGroup?.supportGroup?.code
+            supportGroupCode: userWithSupportGroup?.supportGroup?.code,
+            mustChangePassword: user.mustChangePassword,
+            isFirstLogin: user.isFirstLogin
           }
         } catch (error) {
-          if (error.message === 'ACCOUNT_LOCKED') {
+          if (error instanceof Error && error.message === 'ACCOUNT_LOCKED') {
             throw new Error('Your account has been locked due to too many failed login attempts. Please contact your administrator.')
           }
           console.error('Auth error:', error)
@@ -247,6 +257,8 @@ const authOptions = {
         token.branchName = user.branchName;
         token.supportGroupId = user.supportGroupId;
         token.supportGroupCode = user.supportGroupCode;
+        token.mustChangePassword = user.mustChangePassword;
+        token.isFirstLogin = user.isFirstLogin;
       }
       return token;
     },
@@ -258,6 +270,8 @@ const authOptions = {
         session.user.branchName = token.branchName as string | null;
         session.user.supportGroupId = token.supportGroupId as string | null;
         session.user.supportGroupCode = token.supportGroupCode as string | null;
+        session.user.mustChangePassword = token.mustChangePassword as boolean;
+        session.user.isFirstLogin = token.isFirstLogin as boolean;
       }
       return session;
     }

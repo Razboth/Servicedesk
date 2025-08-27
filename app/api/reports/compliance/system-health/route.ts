@@ -29,16 +29,18 @@ export async function GET(request: NextRequest) {
           lte: new Date(endDate)
         },
         OR: [
-          {
+          ...systemKeywords.map(keyword => ({
             title: {
-              in: systemKeywords.map(keyword => ({ contains: keyword, mode: 'insensitive' as const }))
+              contains: keyword,
+              mode: 'insensitive' as const
             }
-          },
-          {
+          })),
+          ...systemKeywords.map(keyword => ({
             description: {
-              in: systemKeywords.map(keyword => ({ contains: keyword, mode: 'insensitive' as const }))
+              contains: keyword,
+              mode: 'insensitive' as const
             }
-          },
+          })),
           {
             service: {
               tier1Category: {
@@ -62,7 +64,7 @@ export async function GET(request: NextRequest) {
         branch: {
           select: {
             name: true,
-            region: true
+            city: true
           }
         }
       },
@@ -76,10 +78,7 @@ export async function GET(request: NextRequest) {
       // Check for tickets with missing required fields
       ticketsWithoutDescription: await prisma.ticket.count({
         where: {
-          OR: [
-            { description: null },
-            { description: '' }
-          ]
+          description: ''
         }
       }),
       
@@ -96,16 +95,14 @@ export async function GET(request: NextRequest) {
       // Check for tickets without proper categorization
       uncategorizedTickets: await prisma.ticket.count({
         where: {
-          serviceId: null
+          categoryId: null
         }
       }),
       
       // Check for users without proper branch assignment
       usersWithoutBranch: await prisma.user.count({
         where: {
-          userBranches: {
-            none: {}
-          }
+          branchId: null
         }
       })
     };
@@ -113,7 +110,7 @@ export async function GET(request: NextRequest) {
     // System reliability metrics
     const reliabilityMetrics = {
       totalSystemIssues: systemTickets.length,
-      criticalSystemIssues: systemTickets.filter(t => ['HIGH', 'URGENT'].includes(t.priority)).length,
+      criticalSystemIssues: systemTickets.filter(t => ['HIGH', 'CRITICAL'].includes(t.priority)).length,
       resolvedSystemIssues: systemTickets.filter(t => ['RESOLVED', 'CLOSED'].includes(t.status)).length,
       openSystemIssues: systemTickets.filter(t => !['RESOLVED', 'CLOSED'].includes(t.status)).length
     };
@@ -216,7 +213,7 @@ export async function GET(request: NextRequest) {
 
     // Regional system health
     const regionalSystemHealth = systemTickets.reduce((acc, ticket) => {
-      const region = ticket.branch?.region || 'Unknown';
+      const region = ticket.branch?.city || 'Unknown';
       if (!acc[region]) {
         acc[region] = {
           issues: 0,
@@ -228,7 +225,7 @@ export async function GET(request: NextRequest) {
       }
       
       acc[region].issues++;
-      if (['HIGH', 'URGENT'].includes(ticket.priority)) {
+      if (['HIGH', 'CRITICAL'].includes(ticket.priority)) {
         acc[region].critical++;
       }
       if (['RESOLVED', 'CLOSED'].includes(ticket.status) && ticket.resolvedAt) {
@@ -314,7 +311,7 @@ export async function GET(request: NextRequest) {
         priority: ticket.priority,
         status: ticket.status,
         branch: ticket.branch?.name,
-        region: ticket.branch?.region,
+        region: ticket.branch?.city,
         createdAt: ticket.createdAt,
         resolvedAt: ticket.resolvedAt,
         category: ticket.service?.tier1Category?.name

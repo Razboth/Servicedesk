@@ -234,7 +234,7 @@ export async function DELETE(
       }
     });
 
-    if (!existingCategory) {
+    if (!category) {
       return NextResponse.json(
         { error: 'Category not found' },
         { status: 404 }
@@ -242,20 +242,20 @@ export async function DELETE(
     }
 
     // Check if category has associated services
-    if (existingCategory._count.services > 0) {
+    if (category._count.services > 0) {
       return NextResponse.json(
         { 
-          error: `Cannot delete category with ${existingCategory._count.services} associated services. Please deactivate instead.` 
+          error: `Cannot delete category with ${category._count.services} associated services. Please deactivate instead.` 
         },
         { status: 400 }
       );
     }
 
     // Check if category has child categories
-    if (existingCategory._count.children > 0) {
+    if (category._count.children > 0) {
       return NextResponse.json(
         { 
-          error: `Cannot delete category with ${existingCategory._count.children} child categories. Please delete child categories first.` 
+          error: `Cannot delete category with ${category._count.children} child categories. Please delete child categories first.` 
         },
         { status: 400 }
       );

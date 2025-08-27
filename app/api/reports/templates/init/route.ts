@@ -6,7 +6,7 @@ import { prisma } from '@/lib/prisma'
 export async function POST(request: NextRequest) {
   try {
     const session = await auth()
-    if (!session?.user || session.user.role !== 'SUPER_ADMIN') {
+    if (!session?.user || session.user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
           GROUP BY DATE(t.createdAt), s.id, s.name
           ORDER BY date DESC, request_count DESC
         `,
-        defaultColumns: ['date', 'service_name', 'request_count', 'resolved_count', 'avg_resolution_hours'],
+        availableFields: ['date', 'service_name', 'request_count', 'resolved_count', 'avg_resolution_hours'],
         defaultFilters: [
           {
             column: 'createdAt',
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
             a.location as atm_location,
             b.name as branch_name,
             COUNT(t.id) as incident_count,
-            COUNT(CASE WHEN t.priority = 'URGENT' THEN 1 END) as urgent_count,
+            COUNT(CASE WHEN t.priority = 'CRITICAL' THEN 1 END) as urgent_count,
             COUNT(CASE WHEN t.status = 'RESOLVED' THEN 1 END) as resolved_count,
             AVG(t.responseTime) as avg_response_time,
             AVG(t.resolutionTime) as avg_resolution_time
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
           GROUP BY a.id, a.name, a.location, b.id, b.name
           ORDER BY incident_count DESC
         `,
-        defaultColumns: ['atm_name', 'branch_name', 'incident_count', 'urgent_count', 'resolved_count'],
+        availableFields: ['atm_name', 'branch_name', 'incident_count', 'urgent_count', 'resolved_count'],
         defaultFilters: [
           {
             column: 'category',
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
           GROUP BY DATE(t.createdAt), u.id, u.name, b.id, b.name
           ORDER BY request_date DESC, reset_requests DESC
         `,
-        defaultColumns: ['request_date', 'requester_name', 'branch_name', 'reset_requests', 'completed_resets'],
+        availableFields: ['request_date', 'requester_name', 'branch_name', 'reset_requests', 'completed_resets'],
         defaultFilters: [
           {
             column: 'service',
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
           GROUP BY tech.id, tech.name, sg.id, sg.name
           ORDER BY total_tickets DESC
         `,
-        defaultColumns: ['technician_name', 'support_group', 'total_tickets', 'resolved_tickets', 'sla_compliance_percent'],
+        availableFields: ['technician_name', 'support_group', 'total_tickets', 'resolved_tickets', 'sla_compliance_percent'],
         defaultFilters: []
       },
       {
@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
             b.city as city,
             COUNT(t.id) as total_tickets,
             COUNT(DISTINCT t.createdById) as unique_users,
-            COUNT(CASE WHEN t.priority = 'URGENT' THEN 1 END) as urgent_tickets,
+            COUNT(CASE WHEN t.priority = 'CRITICAL' THEN 1 END) as urgent_tickets,
             COUNT(CASE WHEN t.priority = 'HIGH' THEN 1 END) as high_priority_tickets,
             AVG(t.resolutionTime) as avg_resolution_hours,
             COUNT(CASE WHEN t.status = 'RESOLVED' THEN 1 END) * 100.0 / COUNT(t.id) as resolution_rate
@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
           GROUP BY b.id, b.name, b.city
           ORDER BY total_tickets DESC
         `,
-        defaultColumns: ['branch_name', 'city', 'total_tickets', 'urgent_tickets', 'resolution_rate'],
+        availableFields: ['branch_name', 'city', 'total_tickets', 'urgent_tickets', 'resolution_rate'],
         defaultFilters: [
           {
             column: 'createdAt',
@@ -178,7 +178,7 @@ export async function POST(request: NextRequest) {
           GROUP BY s.id, s.name, s.slaHours
           ORDER BY total_tickets DESC
         `,
-        defaultColumns: ['service_name', 'total_tickets', 'within_sla', 'breached_sla', 'sla_compliance_rate'],
+        availableFields: ['service_name', 'total_tickets', 'within_sla', 'breached_sla', 'sla_compliance_rate'],
         defaultFilters: [
           {
             column: 'status',
@@ -207,7 +207,7 @@ export async function POST(request: NextRequest) {
           HAVING COUNT(t.id) >= 5
           ORDER BY occurrence_count DESC
         `,
-        defaultColumns: ['issue_type', 'root_cause', 'occurrence_count', 'affected_branches', 'kb_articles_created'],
+        availableFields: ['issue_type', 'root_cause', 'occurrence_count', 'affected_branches', 'kb_articles_created'],
         defaultFilters: []
       }
     ]

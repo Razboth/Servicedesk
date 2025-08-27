@@ -73,11 +73,13 @@ export async function GET(request: NextRequest) {
 
     atmsWithIncidents.forEach(atm => {
       // Check maintenance status
-      if (atm.lastMaintenanceDate && 
-          new Date(atm.lastMaintenanceDate) > new Date(Date.now() - 2 * 60 * 60 * 1000)) {
-        maintenance++;
-        return;
-      }
+      // Note: ATM model doesn't have lastMaintenanceDate field currently
+      // This would need to be added to track maintenance status
+      // if (atm.lastMaintenanceDate && 
+      //     new Date(atm.lastMaintenanceDate) > new Date(Date.now() - 2 * 60 * 60 * 1000)) {
+      //   maintenance++;
+      //   return;
+      // }
 
       // Check incident severity
       const criticalIncidents = atm.incidents.filter(i => 

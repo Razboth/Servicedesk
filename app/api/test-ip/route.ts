@@ -3,7 +3,7 @@ import { headers } from 'next/headers'
 
 export async function GET(request: NextRequest) {
   try {
-    const headersList = headers()
+    const headersList = await headers()
     
     // Extract IP using the same logic as auth
     const getClientIP = (): string | undefined => {

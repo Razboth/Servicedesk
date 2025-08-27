@@ -53,11 +53,11 @@ export async function GET(request: NextRequest) {
         }
       }),
 
-      // Agents in branch
+      // Users in branch
       prisma.user.count({
         where: {
           branchId,
-          role: 'AGENT',
+          role: 'USER',
           isActive: true
         }
       }),
@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
           branchId,
           isActive: true,
           role: {
-            in: ['TECHNICIAN', 'AGENT', 'MANAGER']
+            in: ['TECHNICIAN', 'USER', 'MANAGER']
           }
         }
       })
@@ -249,7 +249,7 @@ export async function GET(request: NextRequest) {
     });
 
     const workloadDistribution = technicianWorkload.map(tech => {
-      const urgentCount = tech.assignedTickets.filter(t => t.priority === 'URGENT').length;
+      const urgentCount = tech.assignedTickets.filter(t => t.priority === 'CRITICAL').length;
       const highCount = tech.assignedTickets.filter(t => t.priority === 'HIGH').length;
       
       return {

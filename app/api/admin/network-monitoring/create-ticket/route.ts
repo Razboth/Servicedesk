@@ -147,14 +147,14 @@ async function generateTicketDescription(
 
   // Add uptime information
   if (monitoringLog?.uptimeSeconds !== undefined && monitoringLog?.downtimeSeconds !== undefined) {
-    const currentDowntime = monitoringLog.downSince && ['OFFLINE', 'TIMEOUT', 'ERROR'].includes(pingResult?.status || incidentType)
+    const currentDowntime = monitoringLog.downSince && ['OUTAGE', 'TIMEOUT', 'ERROR'].includes(pingResult?.status || incidentType)
       ? Math.floor((Date.now() - monitoringLog.downSince.getTime()) / 1000)
       : 0;
     
-    const totalTime = monitoringLog.uptimeSeconds + monitoringLog.downtimeSeconds + currentDowntime;
+    const totalTime = (monitoringLog.uptimeSeconds || 0) + (monitoringLog.downtimeSeconds || 0) + currentDowntime;
     if (totalTime > 0) {
-      const uptimePercentage = Math.round((monitoringLog.uptimeSeconds / totalTime) * 100);
-      description += `- Uptime (Recent): ${uptimePercentage}% (${formatDuration(monitoringLog.uptimeSeconds)} up, ${formatDuration(monitoringLog.downtimeSeconds + currentDowntime)} down)\n`;
+      const uptimePercentage = Math.round(((monitoringLog.uptimeSeconds || 0) / totalTime) * 100);
+      description += `- Uptime (Recent): ${uptimePercentage}% (${formatDuration(monitoringLog.uptimeSeconds || 0)} up, ${formatDuration((monitoringLog.downtimeSeconds || 0) + currentDowntime)} down)\n`;
     }
   }
 
@@ -349,8 +349,7 @@ export async function POST(request: NextRequest) {
         serviceId,
         supportGroupId: service.supportGroupId,
         createdById: session.user.id,
-        branchId: endpointType === 'BRANCH' ? endpoint.id : (endpoint.branch?.id || null),
-        externalReferenceId: `NET-${timestamp}-${endpointId.slice(-8)}`
+        branchId: endpointType === 'BRANCH' ? endpoint.id : (endpoint.branch?.id || null)
       }
     });
 
@@ -583,12 +582,12 @@ export async function POST(request: NextRequest) {
     });
 
     // Create network incident record if applicable
-    if (['OUTAGE', 'OFFLINE', 'SLOW'].includes(incidentType)) {
+    if (['OUTAGE', 'SLOW', 'TIMEOUT', 'ERROR'].includes(incidentType)) {
       await prisma.networkIncident.create({
         data: {
           ...(endpointType === 'BRANCH' && { branchId: endpoint.id }),
           ...(endpointType === 'ATM' && { atmId: endpoint.id }),
-          type: incidentType === 'OUTAGE' || incidentType === 'OFFLINE' ? 'NETWORK_DOWN' : 'HARDWARE_FAILURE',
+          type: incidentType === 'OUTAGE' ? 'COMMUNICATION_OFFLINE' : 'SLOW_CONNECTION',
           severity: priority === 'HIGH' ? 'HIGH' : 'MEDIUM',
           description: `Automated network incident: ${incidentType}`,
           status: 'OPEN',

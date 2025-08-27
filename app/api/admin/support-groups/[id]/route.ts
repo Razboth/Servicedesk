@@ -3,11 +3,12 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export async function GET(request: NextRequest, { params }: Params) {
   try {
+    const { id } = await params;
     const session = await auth();
     
     if (!session || session.user.role !== 'ADMIN') {
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     }
 
     const supportGroup = await prisma.supportGroup.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         _count: {
           select: {
@@ -58,6 +59,7 @@ export async function GET(request: NextRequest, { params }: Params) {
 
 export async function PUT(request: NextRequest, { params }: Params) {
   try {
+    const { id } = await params;
     const session = await auth();
     
     if (!session || session.user.role !== 'ADMIN') {
@@ -72,7 +74,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
     // Get current support group
     const currentGroup = await prisma.supportGroup.findUnique({
-      where: { id: params.id }
+      where: { id }
     });
 
     if (!currentGroup) {
@@ -84,7 +86,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
     // Update support group
     const supportGroup = await prisma.supportGroup.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         ...(name !== undefined && { name }),
         ...(description !== undefined && { description }),
@@ -118,6 +120,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
 export async function DELETE(request: NextRequest, { params }: Params) {
   try {
+    const { id } = await params;
     const session = await auth();
     
     if (!session || session.user.role !== 'ADMIN') {
@@ -129,7 +132,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
 
     // Check if support group has any active assignments
     const group = await prisma.supportGroup.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         _count: {
           select: {
@@ -165,7 +168,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
 
     // Soft delete by marking as inactive
     const supportGroup = await prisma.supportGroup.update({
-      where: { id: params.id },
+      where: { id },
       data: { isActive: false }
     });
 

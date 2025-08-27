@@ -141,7 +141,6 @@ export async function PUT(
         action: 'UPDATE_USER',
         entity: 'User',
         entityId: userId,
-        details: `Updated user: ${name} (${email})`,
         newValues: {
           name,
           email,

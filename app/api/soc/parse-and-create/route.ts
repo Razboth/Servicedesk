@@ -205,7 +205,7 @@ export async function POST(request: NextRequest) {
 
     if (session) {
       userId = session.user.id;
-      userBranchId = session.user.branchId;
+      userBranchId = session.user.branchId || null;
     } else {
       // For API key access, use a system user or create tickets without user
       const systemUser = await prisma.user.findFirst({
@@ -274,8 +274,8 @@ export async function POST(request: NextRequest) {
               placeholder: fieldTemplateLink.fieldTemplate.placeholder,
               helpText: fieldTemplateLink.helpText || fieldTemplateLink.fieldTemplate.helpText,
               defaultValue: fieldTemplateLink.defaultValue || fieldTemplateLink.fieldTemplate.defaultValue,
-              options: fieldTemplateLink.fieldTemplate.options,
-              validation: fieldTemplateLink.fieldTemplate.validation,
+              options: fieldTemplateLink.fieldTemplate.options || undefined,
+              validation: fieldTemplateLink.fieldTemplate.validation || undefined,
               order: fieldTemplateLink.order,
               isActive: true
             }

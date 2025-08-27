@@ -201,7 +201,7 @@ async function executeTasksQuery(columns: string[], filters: any[], groupBy: str
     return acc
   }, {} as any)
 
-  const results = await prisma.task.findMany({
+  const results = await prisma.ticketTask.findMany({
     where,
     select: select.id ? select : { ...select, id: true },
     orderBy: Object.entries(orderBy || {}).map(([field, direction]) => ({

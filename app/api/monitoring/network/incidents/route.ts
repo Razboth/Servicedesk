@@ -117,8 +117,8 @@ export async function GET(request: NextRequest) {
           id: entity?.id,
           name: entity?.name,
           code: entity?.code,
-          location: entityType === 'BRANCH' ? entity?.city : entity?.location,
-          branch: entityType === 'ATM' ? entity?.branch : null
+          location: entityType === 'BRANCH' ? (entity as any)?.city : (entity as any)?.location,
+          branch: entityType === 'ATM' ? (entity as any)?.branch : null
         },
         type: incident.type,
         severity: incident.severity,
@@ -231,11 +231,12 @@ export async function POST(request: NextRequest) {
           const hashedPassword = await bcrypt.hash('system123', 10);
           systemUser = await prisma.user.create({
             data: {
+              username: 'network-monitor',
               name: 'Network Monitor System',
               email: 'system@banksulutgo.co.id',
               password: hashedPassword,
               role: 'ADMIN',
-              branchId: validatedData.entityType === 'BRANCH' ? entity.id : entity.branchId
+              branchId: validatedData.entityType === 'BRANCH' ? entity.id : (entity as any).branchId
             }
           });
         }
@@ -250,9 +251,20 @@ export async function POST(request: NextRequest) {
 
         if (!service) {
           // Create basic network service
-          const category = await prisma.serviceCategory.findFirst({
+          let category = await prisma.serviceCategory.findFirst({
             where: { name: { contains: 'Infrastructure', mode: 'insensitive' } }
           });
+          
+          // Create default category if none exists
+          if (!category) {
+            category = await prisma.serviceCategory.create({
+              data: {
+                name: 'Infrastructure',
+                description: 'Infrastructure and network services',
+                level: 1
+              }
+            });
+          }
           
           const supportGroup = await prisma.supportGroup.findFirst({
             where: { name: { contains: 'IT Helpdesk', mode: 'insensitive' } }
@@ -262,8 +274,8 @@ export async function POST(request: NextRequest) {
             data: {
               name: 'Network Infrastructure',
               description: 'Network connectivity and infrastructure issues',
-              categoryId: category?.id || null,
-              supportGroupId: supportGroup?.id || null,
+              categoryId: category.id,
+              supportGroupId: supportGroup?.id || undefined,
               priority: validatedData.severity === 'CRITICAL' ? 'CRITICAL' : 'HIGH',
               slaHours: validatedData.severity === 'CRITICAL' ? 2 : 4,
               requiresApproval: false
@@ -280,15 +292,15 @@ export async function POST(request: NextRequest) {
           data: {
             ticketNumber,
             title: `${validatedData.type.replace('_', ' ')} - ${entity.name}`,
-            description: `Network incident detected:\n\n${validatedData.description}\n\n${validatedData.entityType}: ${entity.name}\nLocation: ${validatedData.entityType === 'BRANCH' ? entity.city : entity.location}\nSeverity: ${validatedData.severity}\n\nExternal Reference: ${validatedData.externalReferenceId || 'N/A'}`,
+            description: `Network incident detected:\n\n${validatedData.description}\n\n${validatedData.entityType}: ${entity.name}\nLocation: ${validatedData.entityType === 'BRANCH' ? (entity as any).city : (entity as any).location}\nSeverity: ${validatedData.severity}\n\nExternal Reference: ${validatedData.externalReferenceId || 'N/A'}`,
             category: 'INCIDENT',
             serviceId: service.id,
             priority: validatedData.severity === 'CRITICAL' ? 'CRITICAL' : 
                      validatedData.severity === 'HIGH' ? 'HIGH' : 'MEDIUM',
             status: 'OPEN',
             createdById: session?.user?.id || systemUser.id,
-            branchId: validatedData.entityType === 'BRANCH' ? entity.id : entity.branchId,
-            issueClassification: validatedData.type === 'COMMUNICATION_OFFLINE' ? 'NETWORK_ISSUE' : 'PERFORMANCE_ISSUE'
+            branchId: validatedData.entityType === 'BRANCH' ? entity.id : (entity as any).branchId,
+            issueClassification: validatedData.type === 'COMMUNICATION_OFFLINE' ? 'NETWORK_ISSUE' : 'SYSTEM_ERROR'
           }
         });
 

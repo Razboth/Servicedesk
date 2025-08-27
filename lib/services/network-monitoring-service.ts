@@ -222,19 +222,14 @@ export class NetworkMonitoringService {
       }
 
       // Find ALL open network tickets for this entity
+      // Note: Since we don't have customFields, we'll match by title pattern
       const openTickets = await prisma.ticket.findMany({
         where: {
-          OR: [
-            { category: 'NETWORK_OFFLINE' },
-            { category: 'NETWORK_CONGESTION' },
-            { category: 'NETWORK_SLOW' },
-            { category: 'NETWORK_ERROR' }
-          ],
+          category: 'INCIDENT',
           status: { in: ['OPEN', 'IN_PROGRESS'] },
-          ...(entityType === 'BRANCH' ? 
-            { customFields: { path: ['monitoringEntityId'], equals: entityId } } : 
-            { customFields: { path: ['monitoringEntityId'], equals: entityId } }
-          )
+          title: {
+            contains: `Network Issue - ${entityName}`
+          }
         }
       });
 
@@ -306,14 +301,7 @@ export class NetworkMonitoringService {
         data: {
           status: 'RESOLVED',
           resolvedAt: currentTime,
-          resolutionNotes: `[AUTO-RESOLVED] Network connectivity restored for ${entityName}.\n\nDowntime: ${this.formatDowntime(downtime)}\nAuto-resolved by network monitoring system.\nConnection is now stable.`,
-          customFields: {
-            ...ticket.customFields,
-            autoResolved: true,
-            recoveredAt: currentTime.toISOString(),
-            downtime: downtime,
-            finalStatus: 'ONLINE'
-          }
+          resolutionNotes: `[AUTO-RESOLVED] Network connectivity restored for ${entityName}.\n\nDowntime: ${this.formatDowntime(downtime)}\nAuto-resolved by network monitoring system.\nConnection is now stable.`
         }
       });
 
@@ -352,7 +340,7 @@ export class NetworkMonitoringService {
         data: {
           status: 'CLOSED',
           closedAt: new Date(),
-          closureNotes: `[AUTO-CLOSED] Network issue resolved and connection stable.\n\nTicket automatically closed by monitoring system.`
+          resolutionNotes: `[AUTO-CLOSED] Network issue resolved and connection stable.\n\nTicket automatically closed by monitoring system.`
         }
       });
 
@@ -376,11 +364,12 @@ export class NetworkMonitoringService {
       const windowStart = new Date(Date.now() - deduplicationWindow);
 
       // Map status to ticket category
-      const categoryMap = {
+      const categoryMap: Record<string, string> = {
         'OFFLINE': 'NETWORK_OFFLINE',
         'SLOW': 'NETWORK_SLOW',
         'ERROR': 'NETWORK_ERROR',
-        'TIMEOUT': 'NETWORK_ERROR'
+        'TIMEOUT': 'NETWORK_ERROR',
+        'ONLINE': 'NETWORK_ONLINE'
       };
 
       const category = categoryMap[currentStatus] || 'NETWORK_ERROR';
@@ -388,10 +377,9 @@ export class NetworkMonitoringService {
       // Look for existing open ticket or recently closed ticket
       const existingTicket = await prisma.ticket.findFirst({
         where: {
-          category,
-          customFields: {
-            path: ['monitoringEntityId'],
-            equals: entityId
+          category: 'INCIDENT',
+          title: {
+            contains: `Network Issue`
           },
           OR: [
             { status: { in: ['OPEN', 'IN_PROGRESS'] } },
@@ -463,7 +451,7 @@ export class NetworkMonitoringService {
       const config = require('../../network-monitor/config');
       
       // Map status to ticket details
-      const ticketTypeMap = {
+      const ticketTypeMap: Record<string, any> = {
         'OFFLINE': {
           category: 'NETWORK_OFFLINE',
           title: 'Network Connection Lost',
@@ -478,6 +466,16 @@ export class NetworkMonitoringService {
           category: 'NETWORK_ERROR',
           title: 'Network Error Detected',
           priority: config.incidents.priorities.ERROR || 'MEDIUM'
+        },
+        'TIMEOUT': {
+          category: 'NETWORK_ERROR',
+          title: 'Network Timeout',
+          priority: config.incidents.priorities.ERROR || 'MEDIUM'
+        },
+        'ONLINE': {
+          category: 'NETWORK_ONLINE',
+          title: 'Network Online',
+          priority: 'LOW'
         }
       };
 
@@ -487,7 +485,10 @@ export class NetworkMonitoringService {
       // Get entity details for ticket
       const entity = entityType === 'BRANCH' ? 
         await prisma.branch.findUnique({ where: { id: entityId } }) :
-        await prisma.aTM.findUnique({ where: { id: entityId } });
+        await prisma.aTM.findUnique({ 
+          where: { id: entityId },
+          include: { branch: true }
+        });
 
       if (!entity) {
         console.error(`Entity not found: ${entityType} ${entityId}`);
@@ -504,31 +505,35 @@ export class NetworkMonitoringService {
         return;
       }
 
+      // Generate ticket number
+      const ticketCount = await prisma.ticket.count();
+      const ticketNumber = `TKT${String(ticketCount + 1).padStart(6, '0')}`;
+
+      // Find a default service for network issues
+      const service = await prisma.service.findFirst({
+        where: {
+          name: { contains: 'Network' },
+          isActive: true
+        }
+      });
+
+      if (!service) {
+        console.error('No network service found for ticket creation');
+        return;
+      }
+
       // Create the ticket
       const ticket = await prisma.ticket.create({
         data: {
+          ticketNumber,
           title: `[AUTO] ${entityName}: ${ticketType.title}`,
           description: this.generateTicketDescription(entity, currentStatus, threshold, latestResult, ipType),
-          category: ticketType.category,
+          category: 'INCIDENT',
           priority: ticketType.priority,
           status: 'OPEN',
+          serviceId: service.id,
           createdById: systemUser.id,
-          branchId: entityType === 'BRANCH' ? entityId : entity.branchId,
-          customFields: {
-            autoGenerated: true,
-            autoResolve: true,
-            monitoringEntityId: entityId,
-            monitoringEntityType: entityType,
-            networkIssueType: currentStatus,
-            consecutiveFailures: threshold,
-            detectedAt: new Date().toISOString(),
-            ipAddress: entity.ipAddress,
-            ipType,
-            networkMedia: entity.networkMedia,
-            networkVendor: entity.networkVendor,
-            occurrenceCount: 1
-          },
-          tags: ['auto-generated', 'network-monitoring', currentStatus.toLowerCase()]
+          branchId: entityType === 'BRANCH' ? entityId : (entity as any).branchId,
         }
       });
 

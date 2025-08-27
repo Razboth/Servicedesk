@@ -18,16 +18,17 @@ const updateTaskTemplateSchema = z.object({
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await auth();
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const taskTemplate = await prisma.taskTemplate.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         service: {
           select: {
@@ -62,9 +63,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await auth();
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -80,7 +82,7 @@ export async function PUT(
 
     // Check if task template exists
     const existingTemplate = await prisma.taskTemplate.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: { items: true }
     });
 
@@ -100,7 +102,7 @@ export async function PUT(
     if (validatedData.items) {
       // Delete existing items and create new ones
       await prisma.taskTemplateItem.deleteMany({
-        where: { taskTemplateId: params.id }
+        where: { taskTemplateId: id }
       });
 
       updateData.items = {
@@ -115,7 +117,7 @@ export async function PUT(
     }
 
     const taskTemplate = await prisma.taskTemplate.update({
-      where: { id: params.id },
+      where: { id },
       data: updateData,
       include: {
         service: {
@@ -151,9 +153,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await auth();
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -166,7 +169,7 @@ export async function DELETE(
 
     // Check if task template exists
     const existingTemplate = await prisma.taskTemplate.findUnique({
-      where: { id: params.id }
+      where: { id }
     });
 
     if (!existingTemplate) {
@@ -178,7 +181,7 @@ export async function DELETE(
 
     // Delete task template (items will be deleted due to cascade)
     await prisma.taskTemplate.delete({
-      where: { id: params.id }
+      where: { id }
     });
 
     return NextResponse.json({ message: 'Task template deleted successfully' });

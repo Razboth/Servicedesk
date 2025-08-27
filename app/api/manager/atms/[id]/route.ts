@@ -4,9 +4,10 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await auth();
     
     if (!session || !['MANAGER', 'ADMIN'].includes(session.user.role)) {
@@ -31,7 +32,7 @@ export async function GET(
 
     // Fetch ATM details
     const atm = await prisma.aTM.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         branch: {
           select: {
@@ -71,8 +72,8 @@ export async function GET(
       where: {
         OR: [
           { description: { contains: atm.code, mode: 'insensitive' } },
-          { title: { contains: atm.code, mode: 'insensitive' } },
-          { customFields: { path: '$.atmCode', equals: atm.code } }
+          { title: { contains: atm.code, mode: 'insensitive' } }
+          // Note: Custom field search would require joining with TicketFieldValue table
         ],
         branchId: atm.branchId
       },
@@ -82,7 +83,7 @@ export async function GET(
         status: true,
         priority: true,
         createdAt: true,
-        user: {
+        createdBy: {
           select: {
             name: true
           }

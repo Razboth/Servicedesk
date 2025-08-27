@@ -45,7 +45,7 @@ export async function DELETE(request: NextRequest) {
       deleteCounts.serviceFields = await tx.serviceField.deleteMany({}).then(r => r.count);
       deleteCounts.taskTemplateItems = await tx.taskTemplateItem.deleteMany({}).then(r => r.count);
       deleteCounts.taskTemplates = await tx.taskTemplate.deleteMany({}).then(r => r.count);
-      deleteCounts.slaTemplates = await tx.slaTemplate.deleteMany({}).then(r => r.count);
+      deleteCounts.slaTemplates = await tx.sLATemplate.deleteMany({}).then(r => r.count);
       deleteCounts.services = await tx.service.deleteMany({}).then(r => r.count);
 
       // 4. Delete category hierarchy (bottom-up)

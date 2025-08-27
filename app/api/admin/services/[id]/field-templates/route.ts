@@ -103,8 +103,7 @@ export async function POST(
         order: validatedData.order,
         isRequired: validatedData.isRequired ?? fieldTemplate.isRequired,
         isUserVisible: validatedData.isUserVisible ?? true,
-        helpText: validatedData.helpText,
-        placeholder: validatedData.placeholder
+        helpText: validatedData.helpText
       },
       include: {
         fieldTemplate: true

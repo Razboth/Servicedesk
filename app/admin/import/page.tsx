@@ -57,8 +57,8 @@ const entityConfigs: EntityConfig[] = [
     name: 'Users',
     icon: <Users className="h-4 w-4" />,
     description: 'Import user accounts and roles',
-    columns: ['username', 'email', 'name', 'phone', 'role', 'branchId', 'supportGroupId', 'isActive'],
-    example: ['john.doe', 'john.doe@banksulutgo.co.id', 'John Doe', '+62812345678', 'USER', 'branch_id', 'support_group_id', 'true'],
+    columns: ['username', 'email', 'name', 'password', 'phone', 'role', 'branchCode', 'supportGroupCode', 'isActive', 'updatePassword', 'mustChangePassword', 'isFirstLogin', 'passwordChangedAt'],
+    example: ['john.doe', 'john.doe@banksulutgo.co.id', 'John Doe', 'TempPass123!', '+62812345678', 'USER', 'MND01', 'IT-L1', 'true', 'false', 'true', 'true', ''],
     endpoint: '/api/admin/import/users'
   },
   {
@@ -66,8 +66,8 @@ const entityConfigs: EntityConfig[] = [
     name: 'ATMs',
     icon: <Database className="h-4 w-4" />,
     description: 'Import ATM locations and network details',
-    columns: ['code', 'name', 'branchId', 'ipAddress', 'location', 'latitude', 'longitude', 'networkMedia', 'networkVendor', 'isActive'],
-    example: ['ATM001', 'ATM Manado Plaza', 'branch_id', '192.168.2.1', 'Manado Plaza Lt. 1', '-1.4851', '124.8451', 'M2M', 'Indosat', 'true'],
+    columns: ['code', 'name', 'branchCode', 'ipAddress', 'location', 'latitude', 'longitude', 'networkMedia', 'networkVendor', 'isActive'],
+    example: ['ATM001', 'ATM Manado Plaza', 'MND01', '192.168.2.1', 'Manado Plaza Lt. 1', '-1.4851', '124.8451', 'M2M', 'Indosat', 'true'],
     endpoint: '/api/admin/import/atms'
   },
   {
@@ -105,6 +105,15 @@ const entityConfigs: EntityConfig[] = [
     columns: ['subcategoryId', 'name', 'description', 'isActive', 'order'],
     example: ['subcategory_id', 'Cash Dispenser', 'ATM cash dispensing unit', 'true', '1'],
     endpoint: '/api/admin/import/items'
+  },
+  {
+    id: 'service-field-templates',
+    name: 'Service Fields',
+    icon: <Layers className="h-4 w-4" />,
+    description: 'Link field templates to services for custom fields',
+    columns: ['serviceName', 'fieldTemplateName', 'order', 'isRequired', 'isUserVisible', 'helpText', 'defaultValue'],
+    example: ['Password Reset', 'user_email', '1', 'true', 'true', 'Enter the email address', ''],
+    endpoint: '/api/admin/import/service-field-templates'
   }
 ];
 
@@ -148,6 +157,7 @@ export default function ImportPage() {
     } catch (error) {
       setResult({
         success: false,
+        message: 'Import failed',
         error: 'Failed to import file',
         details: error instanceof Error ? error.message : 'Unknown error'
       });
@@ -178,6 +188,7 @@ export default function ImportPage() {
       } else {
         setResult({
           success: false,
+          message: 'Export failed',
           error: 'Failed to export data',
           details: 'Export request failed'
         });
@@ -185,6 +196,7 @@ export default function ImportPage() {
     } catch (error) {
       setResult({
         success: false,
+        message: 'Export failed',
         error: 'Failed to export data',
         details: error instanceof Error ? error.message : 'Unknown error'
       });
@@ -210,6 +222,7 @@ export default function ImportPage() {
     } catch (error) {
       setResult({
         success: false,
+        message: 'Clear failed',
         error: 'Failed to clear data',
         details: error instanceof Error ? error.message : 'Unknown error'
       });
@@ -235,7 +248,7 @@ export default function ImportPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8">
+        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-9">
           {entityConfigs.map((entity) => (
             <TabsTrigger key={entity.id} value={entity.id} className="flex items-center gap-1 text-xs">
               {entity.icon}
@@ -531,12 +544,33 @@ export default function ImportPage() {
                   <li><strong>name</strong>: Full name of the user (required)</li>
                   <li><strong>password</strong>: Plain text password, will be automatically hashed (required, min 8 characters)</li>
                   <li><strong>role</strong>: USER, TECHNICIAN, MANAGER, ADMIN, or SECURITY_ANALYST (defaults to USER)</li>
+                  <li><strong>branchCode</strong>: Branch code (e.g., "MND01") - accepts both codes and IDs for compatibility</li>
+                  <li><strong>supportGroupCode</strong>: Support group code (e.g., "IT-L1") - accepts both codes and IDs for compatibility</li>
                   <li><strong>updatePassword</strong>: Set to "true" or "1" to update password for existing users (optional, defaults to false)</li>
-                  <li><strong>branchId</strong> and <strong>supportGroupId</strong>: Should reference existing records (optional)</li>
                   <li><strong>isActive</strong>: Set to "false" to deactivate user (optional, defaults to true)</li>
+                  <li><strong>mustChangePassword</strong>: Force password change on next login (defaults to true for new users)</li>
+                  <li><strong>isFirstLogin</strong>: Mark as first login (defaults to true for new users)</li>
                 </ul>
                 <p className="text-xs mt-2 text-amber-600">
                   <strong>⚠️ Security Note:</strong> Passwords in CSV/Excel files are in plain text. Ensure files are handled securely and deleted after import.
+                </p>
+              </div>
+            )}
+            
+            {currentEntity.id === 'service-field-templates' && (
+              <div className="p-3 bg-blue-50 rounded-lg">
+                <p className="font-medium mb-2">Service Field Template Notes:</p>
+                <ul className="list-disc list-inside text-xs space-y-1 ml-4">
+                  <li><strong>serviceName</strong>: Must match an existing service name exactly</li>
+                  <li><strong>fieldTemplateName</strong>: Must match an existing field template name exactly</li>
+                  <li><strong>order</strong>: Display order for the field (lower numbers appear first)</li>
+                  <li><strong>isRequired</strong>: Override the template's required setting for this service (optional)</li>
+                  <li><strong>isUserVisible</strong>: true = users can see, false = technician-only (defaults to true)</li>
+                  <li><strong>helpText</strong>: Override the template's help text for this service (optional)</li>
+                  <li><strong>defaultValue</strong>: Override the template's default value for this service (optional)</li>
+                </ul>
+                <p className="text-xs mt-2 text-amber-600">
+                  <strong>⚠️ Important:</strong> Import field templates and services first before linking them.
                 </p>
               </div>
             )}
@@ -549,6 +583,9 @@ export default function ImportPage() {
                   <li>networkVendor: Any string (e.g., "Telkom", "Indosat")</li>
                   <li>IP addresses should be in valid IPv4 format</li>
                   <li>latitude/longitude should be decimal degrees</li>
+                  {currentEntity.id === 'atms' && (
+                    <li><strong>branchCode</strong>: Must reference an existing branch code (e.g., "MND01")</li>
+                  )}
                 </ul>
               </div>
             )}

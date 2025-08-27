@@ -13,9 +13,10 @@ const updateItemSchema = z.object({
 // PUT /api/admin/tier-categories/items/[id] - Update item
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await auth();
     
     if (!session || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
@@ -29,7 +30,7 @@ export async function PUT(
     const validatedData = updateItemSchema.parse(body);
 
     const item = await prisma.item.update({
-      where: { id: params.id },
+      where: { id },
       data: validatedData,
       include: {
         subcategory: {
@@ -60,9 +61,10 @@ export async function PUT(
 // DELETE /api/admin/tier-categories/items/[id] - Delete item
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await auth();
     
     if (!session || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
@@ -73,7 +75,7 @@ export async function DELETE(
     }
 
     const item = await prisma.item.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!item) {
@@ -84,7 +86,7 @@ export async function DELETE(
     }
 
     await prisma.item.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
     return NextResponse.json({ success: true });

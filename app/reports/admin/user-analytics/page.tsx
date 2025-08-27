@@ -89,6 +89,33 @@ export default function UserAnalyticsReport() {
     }
   };
 
+  const handleExport = async (format: string) => {
+    if (!data) return;
+    
+    const exportData = {
+      reportTitle: 'User Analytics Report',
+      dateRange: `${startDate} to ${endDate}`,
+      summary: data.summary,
+      userMetrics: data.userMetrics,
+      activityMetrics: data.activityMetrics,
+      engagementMetrics: data.engagementMetrics,
+      adoptionMetrics: data.adoptionMetrics,
+      insights: data.insights,
+      generatedAt: new Date().toISOString()
+    };
+
+    if (format === 'xlsx') {
+      // Excel export logic would go here
+      console.log('Exporting to Excel:', exportData);
+    } else if (format === 'pdf') {
+      // PDF export logic would go here  
+      console.log('Exporting to PDF:', exportData);
+    } else if (format === 'csv') {
+      // CSV export logic would go here
+      console.log('Exporting to CSV:', exportData);
+    }
+  };
+
   useEffect(() => {
     if (session?.user?.role === 'ADMIN') {
       fetchData();
@@ -176,9 +203,9 @@ export default function UserAnalyticsReport() {
         </div>
         <div className="flex items-center space-x-4">
           <ExportButton 
-            data={data} 
-            filename={`user-analytics-${startDate}-to-${endDate}`}
-            title="User Analytics Report"
+            onExport={handleExport}
+            reportName="User Analytics Report"
+            disabled={!data}
           />
         </div>
       </div>

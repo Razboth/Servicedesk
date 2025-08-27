@@ -7,11 +7,13 @@ import { z } from 'zod';
 const atmSchema = z.object({
   code: z.string().min(1).max(20),
   name: z.string().min(1).max(100),
-  branchId: z.string().uuid(),
+  branchId: z.string().min(1), // Changed from uuid() to allow CUID format
   ipAddress: z.string().optional(),
   location: z.string().optional(),
   latitude: z.number().optional(),
   longitude: z.number().optional(),
+  networkMedia: z.enum(['VSAT', 'M2M', 'FO']).optional(),
+  networkVendor: z.string().optional(),
   isActive: z.boolean().optional()
 });
 
@@ -172,9 +174,16 @@ export async function POST(request: NextRequest) {
       data: {
         userId: session.user.id,
         action: 'CREATE',
-        entityType: 'ATM',
+        entity: 'ATM',
         entityId: atm.id,
-        details: `Created ATM: ${atm.name} (${atm.code})`
+        newValues: {
+          name: atm.name,
+          code: atm.code,
+          branchId: atm.branchId,
+          location: atm.location,
+          ipAddress: atm.ipAddress,
+          isActive: atm.isActive
+        }
       }
     });
 

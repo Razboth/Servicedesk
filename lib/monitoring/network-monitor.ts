@@ -173,7 +173,7 @@ class NetworkMonitor {
       const pingResult = await pingHost(branch.ipAddress, branch.networkMedia as NetworkMedia);
       
       // Determine status based on ping result
-      let status: NetworkStatus = 'UNKNOWN';
+      let status: NetworkStatus = 'OFFLINE';
       if (pingResult.success) {
         if (pingResult.responseTimeMs! > 1000) {
           status = 'SLOW';
@@ -263,7 +263,7 @@ class NetworkMonitor {
       const pingResult = await pingHost(atm.ipAddress, atm.networkMedia as NetworkMedia);
       
       // Determine status
-      let status: NetworkStatus = 'UNKNOWN';
+      let status: NetworkStatus = 'OFFLINE';
       if (pingResult.success) {
         if (pingResult.responseTimeMs! > 800) {
           status = 'SLOW';
@@ -352,11 +352,9 @@ class NetworkMonitor {
     try {
       await prisma.networkIncident.create({
         data: {
-          entityType,
-          entityId,
           branchId: entityType === 'BRANCH' ? entityId : undefined,
           atmId: entityType === 'ATM' ? entityId : undefined,
-          type: 'CONNECTIVITY',
+          type: 'COMMUNICATION_OFFLINE',
           severity: 'HIGH',
           description: `Network connectivity lost for ${entityType.toLowerCase()} ${entityName}`,
           status: 'OPEN',

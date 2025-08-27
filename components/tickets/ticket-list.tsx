@@ -64,6 +64,18 @@ export function TicketList({ onCreateTicket, onViewTicket }: TicketListProps) {
 
   const pageSize = 10;
 
+  const loadBranches = async () => {
+    try {
+      const response = await fetch('/api/branches');
+      if (response.ok) {
+        const data = await response.json();
+        setBranches(data);
+      }
+    } catch (error) {
+      console.error('Error loading branches:', error);
+    }
+  };
+
   useEffect(() => {
     loadBranches();
   }, []);

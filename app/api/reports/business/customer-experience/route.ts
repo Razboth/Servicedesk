@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
         branch: {
           select: {
             name: true,
-            region: true
+            city: true
           }
         },
         assignedTo: {
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
           select: {
             id: true,
             createdAt: true,
-            createdBy: {
+            user: {
               select: {
                 role: true
               }
@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
     // Calculate response time metrics
     const responseTimeMetrics = tickets.map(ticket => {
       const firstTechnicianComment = ticket.comments.find(comment => 
-        comment.createdBy?.role === 'TECHNICIAN'
+        comment.user?.role === 'TECHNICIAN'
       );
       
       const responseTime = firstTechnicianComment
@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
 
     // Calculate average response times by priority
     const avgResponseByPriority = {
-      URGENT: responseTimeMetrics.filter(t => t.priority === 'URGENT'),
+      CRITICAL: responseTimeMetrics.filter(t => t.priority === 'CRITICAL'),
       HIGH: responseTimeMetrics.filter(t => t.priority === 'HIGH'),
       MEDIUM: responseTimeMetrics.filter(t => t.priority === 'MEDIUM'),
       LOW: responseTimeMetrics.filter(t => t.priority === 'LOW')
@@ -119,12 +119,12 @@ export async function GET(request: NextRequest) {
       
       escalatedTickets: tickets.filter(t => 
         t.comments.length > 5 || // Many comments might indicate escalation
-        t.priority === 'URGENT'
+        t.priority === 'CRITICAL'
       ).length,
       
       reopenedTickets: tickets.filter(t => 
-        t.status === 'REOPENED' || 
-        (t.comments.length > 0 && t.status === 'OPEN')
+        // Tickets that were resolved/closed but are now open again
+        (t.comments.length > 3 && t.status === 'OPEN')
       ).length
     };
 

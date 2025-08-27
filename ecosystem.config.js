@@ -1,0 +1,83 @@
+module.exports = {
+  apps: [{
+    // Application name
+    name: 'bsg-servicedesk',
+    
+    // Script to start the application  
+    script: 'server.js',
+    
+    // Cluster mode for better performance
+    instances: 1,
+    exec_mode: 'fork',
+    
+    // Auto restart on crash
+    autorestart: true,
+    watch: false,
+    
+    // Maximum memory before restart (useful to prevent memory leaks)
+    max_memory_restart: '1G',
+    
+    // Environment variables
+    env: {
+      NODE_ENV: 'production',
+      PORT: 443,
+      USE_HTTPS: 'true',
+      HOSTNAME: 'hd.bsg.id',
+      NEXTAUTH_URL: 'https://hd.bsg.id'
+    },
+    
+    // Log configuration
+    error_file: './logs/pm2-error.log',
+    out_file: './logs/pm2-out.log',
+    merge_logs: true,
+    time: true,
+    
+    // Restart delay
+    restart_delay: 4000,
+    
+    // Kill timeout
+    kill_timeout: 3000,
+    
+    // Listen timeout
+    listen_timeout: 10000,
+    
+    // Minimum uptime before considered successfully started
+    min_uptime: '10s',
+    
+    // Maximum restart within 1 minute
+    max_restarts: 10,
+    
+    // Ignore watch patterns
+    ignore_watch: ['node_modules', '.git', 'logs', '.next', 'public/uploads'],
+    
+    // Post setup commands
+    post_update: ['npm install'],
+    
+    // Interpreter arguments
+    node_args: '--max-old-space-size=2048'
+  },
+  {
+    // Development mode configuration
+    name: 'bsg-servicedesk-dev',
+    script: 'npm',
+    args: 'run dev:https',
+    instances: 1,
+    exec_mode: 'fork',
+    autorestart: false,
+    watch: true,
+    
+    env: {
+      NODE_ENV: 'development',
+      PORT: 3001,
+      USE_HTTPS: true,
+      HOSTNAME: 'localhost'
+    },
+    
+    error_file: './logs/pm2-dev-error.log',
+    out_file: './logs/pm2-dev-out.log',
+    merge_logs: true,
+    time: true,
+    
+    ignore_watch: ['node_modules', '.git', 'logs', '.next', 'public/uploads', '*.log']
+  }]
+};

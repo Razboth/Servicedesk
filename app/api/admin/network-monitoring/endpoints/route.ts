@@ -153,9 +153,9 @@ export async function GET(request: NextRequest) {
           }
 
           // Calculate uptime percentage (last 24 hours)
-          const totalTimeSeconds = log.uptimeSeconds + log.downtimeSeconds + currentDowntimeSeconds;
+          const totalTimeSeconds = (log.uptimeSeconds || 0) + (log.downtimeSeconds || 0) + currentDowntimeSeconds;
           const uptimePercentage = totalTimeSeconds > 0 
-            ? Math.round((log.uptimeSeconds / totalTimeSeconds) * 100)
+            ? Math.round(((log.uptimeSeconds || 0) / totalTimeSeconds) * 100)
             : 100;
 
           latestStatuses.set(log.entityId, {

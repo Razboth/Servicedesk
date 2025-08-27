@@ -33,7 +33,9 @@ import {
   Ticket, 
   CreditCard,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  ToggleLeft,
+  ToggleRight
 } from 'lucide-react';
 
 interface Branch {
@@ -104,25 +106,69 @@ export default function BranchesPage() {
     }
   };
 
+  const handleToggleStatus = async (branch: Branch) => {
+    try {
+      const response = await fetch(`/api/admin/branches/${branch.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          isActive: !branch.isActive
+        })
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to update branch status');
+      }
+
+      toast.success(`Branch ${branch.isActive ? 'deactivated' : 'activated'} successfully`);
+      fetchBranches();
+    } catch (error: any) {
+      console.error('Toggle status error:', error);
+      toast.error(error.message || 'Failed to update branch status');
+    }
+  };
+
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to deactivate this branch?')) {
+    if (!confirm('WARNING: This will permanently delete the branch from the database. This action cannot be undone. Are you sure?')) {
+      return;
+    }
+
+    if (!confirm('This is your final warning! The branch and all audit logs will be PERMANENTLY DELETED. Continue?')) {
       return;
     }
 
     try {
+      console.log('Deleting branch with ID:', id);
+      
       const response = await fetch(`/api/admin/branches/${id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
 
+      console.log('Delete response status:', response.status);
+      
+      const data = await response.json();
+      console.log('Delete response data:', data);
+
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to delete branch');
+        // Show detailed error if available
+        const errorMessage = data.error || 'Failed to delete branch';
+        const errorDetails = data.details ? `\n${data.details}` : '';
+        throw new Error(errorMessage + errorDetails);
       }
 
-      toast.success('Branch deactivated successfully');
+      toast.success(data.message || 'Branch permanently deleted');
       fetchBranches();
     } catch (error: any) {
-      toast.error(error.message || 'Failed to delete branch');
+      console.error('Delete error:', error);
+      // Show the actual error message
+      const errorMessage = error.message || 'Failed to delete branch';
+      toast.error(errorMessage);
     }
   };
 
@@ -244,15 +290,29 @@ export default function BranchesPage() {
                     <TableCell>
                       <div className="flex gap-2">
                         <Link href={`/admin/branches/${branch.id}`}>
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="sm" title="Edit Branch">
                             <Edit className="h-4 w-4" />
                           </Button>
                         </Link>
                         <Button
                           variant="ghost"
                           size="sm"
+                          onClick={() => handleToggleStatus(branch)}
+                          title={branch.isActive ? "Deactivate Branch" : "Activate Branch"}
+                        >
+                          {branch.isActive ? (
+                            <ToggleRight className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <ToggleLeft className="h-4 w-4 text-gray-400" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() => handleDelete(branch.id)}
-                          disabled={!branch.isActive}
+                          disabled={false}
+                          title="Permanently delete branch"
+                          className="text-red-600 hover:text-red-700"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

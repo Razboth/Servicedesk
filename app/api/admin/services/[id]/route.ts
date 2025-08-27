@@ -25,9 +25,10 @@ const updateServiceSchema = z.object({
 // GET /api/admin/services/[id] - Get specific service
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await auth();
     
     if (!session || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
@@ -38,11 +39,12 @@ export async function GET(
     }
 
     const service = await prisma.service.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         category: true,
-        subcategory: true,
-        item: true,
+        tier1Category: true,
+        tier2Subcategory: true,
+        tier3Item: true,
         supportGroup: true, // Include support group
         fields: {
           orderBy: {
@@ -77,9 +79,10 @@ export async function GET(
 // PUT /api/admin/services/[id] - Update service
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await auth();
     
     if (!session || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
@@ -94,7 +97,7 @@ export async function PUT(
 
     // Check if service exists
     const existingService = await prisma.service.findUnique({
-      where: { id: params.id }
+      where: { id }
     });
 
     if (!existingService) {
@@ -109,7 +112,7 @@ export async function PUT(
       const duplicateService = await prisma.service.findFirst({
         where: {
           name: validatedData.name,
-          id: { not: params.id }
+          id: { not: id }
         }
       });
 
@@ -151,15 +154,16 @@ export async function PUT(
 
     // Update the service
     const updatedService = await prisma.service.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         ...validatedData,
         updatedAt: new Date()
       },
       include: {
         category: true,
-        subcategory: true,
-        item: true,
+        tier1Category: true,
+        tier2Subcategory: true,
+        tier3Item: true,
         supportGroup: true, // Include support group
         fields: {
           orderBy: {
@@ -195,9 +199,10 @@ export async function PUT(
 // DELETE /api/admin/services/[id] - Delete service
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await auth();
     
     if (!session || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
@@ -209,7 +214,7 @@ export async function DELETE(
 
     // Check if service exists
     const existingService = await prisma.service.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         _count: {
           select: {
@@ -238,12 +243,12 @@ export async function DELETE(
 
     // Delete associated fields first
     await prisma.serviceField.deleteMany({
-      where: { serviceId: params.id }
+      where: { serviceId: id }
     });
 
     // Delete the service
     await prisma.service.delete({
-      where: { id: params.id }
+      where: { id }
     });
 
     return NextResponse.json(

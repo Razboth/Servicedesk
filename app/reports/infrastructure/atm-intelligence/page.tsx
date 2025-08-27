@@ -98,6 +98,25 @@ export default function ATMIntelligenceReport() {
     }
   };
 
+  const handleExport = async (format: string) => {
+    if (!data) return;
+    
+    const exportData = {
+      reportTitle: 'ATM Intelligence Report',
+      dateRange: `${startDate} to ${endDate}`,
+      ...data,
+      generatedAt: new Date().toISOString()
+    };
+
+    if (format === 'xlsx') {
+      console.log('Exporting to Excel:', exportData);
+    } else if (format === 'pdf') {
+      console.log('Exporting to PDF:', exportData);
+    } else if (format === 'csv') {
+      console.log('Exporting to CSV:', exportData);
+    }
+  };
+
   useEffect(() => {
     if (session?.user && ['TECHNICIAN', 'MANAGER', 'ADMIN'].includes(session.user.role)) {
       fetchData();
@@ -184,10 +203,9 @@ export default function ATMIntelligenceReport() {
         </div>
         <div className="flex items-center space-x-4">
           <ExportButton 
-            data={data} 
-            filename={`atm-intelligence-${startDate}-to-${endDate}`}
-            title="ATM Intelligence Report"
-          />
+            onExport={handleExport} 
+            reportName="ATM Intelligence Report"
+            disabled={!data} />
         </div>
       </div>
 
@@ -276,9 +294,9 @@ export default function ATMIntelligenceReport() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.summary.uptimePercentage.toFixed(1)}%</div>
+            <div className="text-2xl font-bold">{data.summary.healthScore.toFixed(1)}%</div>
             <p className="text-xs text-muted-foreground">
-              System availability
+              Health Score
             </p>
           </CardContent>
         </Card>
@@ -385,8 +403,8 @@ export default function ATMIntelligenceReport() {
                 <div className="flex-1">
                   <div className="font-medium">{incident.title}</div>
                   <div className="text-sm text-gray-500">
-                    {incident.branch} • {incident.region}
-                    {incident.atmId && ` • ATM ${incident.atmId}`}
+                    {incident.branch}
+                    {incident.category && ` • ${incident.category}`}
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -403,24 +421,6 @@ export default function ATMIntelligenceReport() {
         </CardContent>
       </Card>
 
-      {/* Recommendations */}
-      {data.recommendations.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Recommendations</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-2">
-              {data.recommendations.map((recommendation, index) => (
-                <li key={index} className="flex items-start gap-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                  <span className="text-sm">{recommendation}</span>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

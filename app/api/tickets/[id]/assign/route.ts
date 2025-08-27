@@ -10,9 +10,10 @@ const assignTicketSchema = z.object({
 // POST /api/tickets/[id]/assign - Assign ticket to a technician
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -25,7 +26,7 @@ export async function POST(
 
     const body = await request.json();
     const validatedData = assignTicketSchema.parse(body);
-    const ticketId = params.id;
+    const ticketId = id;
 
     // Check if ticket exists
     const existingTicket = await prisma.ticket.findUnique({
@@ -128,9 +129,10 @@ export async function POST(
 // DELETE /api/tickets/[id]/assign - Unassign ticket
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -141,7 +143,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const ticketId = params.id;
+    const ticketId = id;
 
     // Check if ticket exists
     const existingTicket = await prisma.ticket.findUnique({

@@ -114,7 +114,7 @@ export default function IdleTimer({
 
     // Sign out user
     await signOut({ 
-      callbackUrl: '/auth/signin?message=Session expired due to inactivity' 
+      callbackUrl: 'https://hd.bsg.id/auth/signin?message=Session expired due to inactivity' 
     })
   }
 

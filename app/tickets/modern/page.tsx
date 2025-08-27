@@ -43,7 +43,7 @@ export default function ModernTicketsPage() {
   const { data: session } = useSession()
   const { theme, setTheme } = useTheme()
   const [showWizard, setShowWizard] = useState(false)
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
+  const [viewMode, setViewMode] = useState<'table' | 'cards' | 'inbox'>('table')
   const [searchTerm, setSearchTerm] = useState('')
   const [quickStats, setQuickStats] = useState<QuickStat[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -180,17 +180,17 @@ export default function ModernTicketsPage() {
               {/* View Mode Toggle */}
               <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
                 <Button
-                  variant={viewMode === 'list' ? 'default' : 'ghost'}
+                  variant={viewMode === 'table' ? 'default' : 'ghost'}
                   size="sm"
-                  onClick={() => setViewMode('list')}
+                  onClick={() => setViewMode('table')}
                   className="h-8 px-3"
                 >
                   <List className="h-4 w-4" />
                 </Button>
                 <Button
-                  variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                  variant={viewMode === 'cards' ? 'default' : 'ghost'}
                   size="sm"
-                  onClick={() => setViewMode('grid')}
+                  onClick={() => setViewMode('cards')}
                   className="h-8 px-3"
                 >
                   <Grid3X3 className="h-4 w-4" />

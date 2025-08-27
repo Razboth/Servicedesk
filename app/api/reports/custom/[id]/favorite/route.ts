@@ -5,9 +5,10 @@ import { prisma } from '@/lib/prisma'
 // POST /api/reports/custom/[id]/favorite - Add report to favorites
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await auth()
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -15,7 +16,7 @@ export async function POST(
 
     // Check if report exists
     const report = await prisma.customReport.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: {
         id: true,
         title: true,
@@ -37,7 +38,7 @@ export async function POST(
     const existing = await prisma.reportFavorite.findUnique({
       where: {
         reportId_userId: {
-          reportId: params.id,
+          reportId: id,
           userId: session.user.id
         }
       }
@@ -50,7 +51,7 @@ export async function POST(
     // Add to favorites
     const favorite = await prisma.reportFavorite.create({
       data: {
-        reportId: params.id,
+        reportId: id,
         userId: session.user.id
       }
     })
@@ -62,7 +63,10 @@ export async function POST(
         action: 'CREATE',
         entity: 'ReportFavorite',
         entityId: favorite.id,
-        details: `Added report ${report.title} to favorites`
+        newValues: {
+          description: `Added report ${report.title} to favorites`,
+          title: report.title
+        }
       }
     })
 
@@ -79,9 +83,10 @@ export async function POST(
 // DELETE /api/reports/custom/[id]/favorite - Remove report from favorites
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await auth()
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -91,7 +96,7 @@ export async function DELETE(
     const favorite = await prisma.reportFavorite.findUnique({
       where: {
         reportId_userId: {
-          reportId: params.id,
+          reportId: id,
           userId: session.user.id
         }
       }
@@ -114,7 +119,9 @@ export async function DELETE(
         action: 'DELETE',
         entity: 'ReportFavorite',
         entityId: favorite.id,
-        details: `Removed report from favorites`
+        newValues: {
+          description: `Removed report from favorites`
+        }
       }
     })
 

@@ -26,9 +26,10 @@ const updateFieldsSchema = z.object({
 // PUT /api/admin/services/[id]/fields - Update service fields
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await auth();
     
     if (!session || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
@@ -43,7 +44,7 @@ export async function PUT(
 
     // Check if service exists
     const existingService = await prisma.service.findUnique({
-      where: { id: params.id }
+      where: { id }
     });
 
     if (!existingService) {
@@ -68,7 +69,7 @@ export async function PUT(
     const result = await prisma.$transaction(async (tx) => {
       // Delete existing fields
       await tx.serviceField.deleteMany({
-        where: { serviceId: params.id }
+        where: { serviceId: id }
       });
 
       // Create new fields
@@ -76,7 +77,7 @@ export async function PUT(
       for (const field of validatedData.fields) {
         const createdField = await tx.serviceField.create({
           data: {
-            serviceId: params.id,
+            serviceId: id,
             name: field.name,
             label: field.label,
             type: field.type,
@@ -98,7 +99,7 @@ export async function PUT(
 
       // Update service updated timestamp
       await tx.service.update({
-        where: { id: params.id },
+        where: { id },
         data: { updatedAt: new Date() }
       });
 
@@ -129,9 +130,10 @@ export async function PUT(
 // GET /api/admin/services/[id]/fields - Get service fields
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await auth();
     
     if (!session || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
@@ -143,7 +145,7 @@ export async function GET(
 
     // Check if service exists
     const existingService = await prisma.service.findUnique({
-      where: { id: params.id }
+      where: { id }
     });
 
     if (!existingService) {
@@ -154,7 +156,7 @@ export async function GET(
     }
 
     const fields = await prisma.serviceField.findMany({
-      where: { serviceId: params.id },
+      where: { serviceId: id },
       orderBy: { order: 'asc' }
     });
 
@@ -171,9 +173,10 @@ export async function GET(
 // POST /api/admin/services/[id]/fields - Add a single field
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await auth();
     
     if (!session || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
@@ -188,7 +191,7 @@ export async function POST(
 
     // Check if service exists
     const existingService = await prisma.service.findUnique({
-      where: { id: params.id }
+      where: { id }
     });
 
     if (!existingService) {
@@ -201,7 +204,7 @@ export async function POST(
     // Check if field name already exists for this service
     const existingField = await prisma.serviceField.findFirst({
       where: {
-        serviceId: params.id,
+        serviceId: id,
         name: validatedData.name
       }
     });
@@ -215,7 +218,7 @@ export async function POST(
 
     // Get the next order value
     const lastField = await prisma.serviceField.findFirst({
-      where: { serviceId: params.id },
+      where: { serviceId: id },
       orderBy: { order: 'desc' }
     });
 
@@ -224,7 +227,7 @@ export async function POST(
     // Create the field
     const field = await prisma.serviceField.create({
       data: {
-        serviceId: params.id,
+        serviceId: id,
         name: validatedData.name,
         label: validatedData.label,
         type: validatedData.type,
@@ -244,7 +247,7 @@ export async function POST(
 
     // Update service updated timestamp
     await prisma.service.update({
-      where: { id: params.id },
+      where: { id },
       data: { updatedAt: new Date() }
     });
 

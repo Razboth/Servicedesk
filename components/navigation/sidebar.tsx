@@ -24,7 +24,7 @@ export function Sidebar() {
   const { theme, setTheme } = useTheme();
 
   const handleLogout = async () => {
-    await signOut({ callbackUrl: '/auth/signin' });
+    await signOut({ callbackUrl: 'https://hd.bsg.id/auth/signin' });
   };
 
   if (!session) return null;
@@ -86,17 +86,25 @@ export function Sidebar() {
       {/* Header */}
       <div className="p-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between">
-          {(!isCollapsed || isMobile) && (
-            <Link href="/" className="flex items-center" onClick={handleLinkClick}>
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
+          {(!isCollapsed || isMobile) ? (
+            <Link href="/" className="flex items-center space-x-3" onClick={handleLinkClick}>
+              <img 
+                src="/logo-bsg.png" 
+                alt="Bank SulutGo" 
+                className="h-9 w-auto"
+              />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">ServiceDesk</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">IT Portal</p>
               </div>
-              <div>
-                <h1 className="text-lg font-bold text-gray-900 dark:text-white">Bank SulutGo</h1>
-                <p className="text-xs text-gray-500 dark:text-gray-400">ServiceDesk Portal</p>
-              </div>
+            </Link>
+          ) : (
+            <Link href="/" className="flex items-center justify-center" onClick={handleLinkClick}>
+              <img 
+                src="/logo-bsg.png" 
+                alt="BSG" 
+                className="h-8 w-auto"
+              />
             </Link>
           )}
           

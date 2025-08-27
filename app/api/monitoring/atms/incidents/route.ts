@@ -180,11 +180,12 @@ export async function POST(request: NextRequest) {
     }
 
     let ticketId = null;
+    let systemUser = null;
+    let service = null;
     
     if (validatedData.autoCreateTicket) {
       try {
         // Find or create a system user for external API calls
-        let systemUser = null;
         if (!session?.user?.id) {
           systemUser = await prisma.user.findFirst({
             where: { 
@@ -198,6 +199,7 @@ export async function POST(request: NextRequest) {
             const hashedPassword = await require('bcryptjs').hash('system123', 10);
             systemUser = await prisma.user.create({
               data: {
+                username: 'system',
                 name: 'System User',
                 email: 'system@banksulutgo.co.id',
                 password: hashedPassword,
@@ -212,7 +214,7 @@ export async function POST(request: NextRequest) {
         const mapping = ATM_INCIDENT_MAPPING[validatedData.type];
         
         // Find the corresponding service or create a generic ATM service
-        let service = await prisma.service.findFirst({
+        service = await prisma.service.findFirst({
           where: {
             name: { contains: 'ATM', mode: 'insensitive' },
             isActive: true
@@ -298,7 +300,7 @@ export async function POST(request: NextRequest) {
             serviceId: service.id,
             priority,
             status: 'OPEN',
-            createdById: session?.user?.id || systemUser?.id, // Use system user if external
+            createdById: session?.user?.id || systemUser!.id, // Use system user if external
             branchId: atm.branchId,
             isConfidential: validatedData.type === 'SECURITY_BREACH', // Security incidents are confidential
             issueClassification: validatedData.type === 'HARDWARE_FAILURE' ? 'HARDWARE_FAILURE' :
@@ -306,19 +308,19 @@ export async function POST(request: NextRequest) {
                                 validatedData.type === 'SECURITY_BREACH' ? 'SECURITY_INCIDENT' :
                                 validatedData.type === 'SOFTWARE_ERROR' ? 'SYSTEM_ERROR' : 'EXTERNAL_FACTOR',
             // Add security fields for security incidents
-            securityClassification: validatedData.type === 'SECURITY_BREACH' ? validatedData.severity : null,
+            securityClassification: validatedData.type === 'SECURITY_BREACH' ? validatedData.severity : undefined,
             securityFindings: validatedData.type === 'SECURITY_BREACH' && validatedData.metrics ? 
-              validatedData.metrics : null
+              validatedData.metrics : undefined
           }
         });
 
         ticketId = ticket.id;
         console.log(`✅ Auto-created ticket ${ticket.ticketNumber} for ATM incident`);
-      } catch (ticketError) {
+      } catch (ticketError: any) {
         console.error('❌ Failed to create ticket for ATM incident:', ticketError);
         console.error('Ticket creation error details:', {
-          errorMessage: ticketError.message,
-          errorCode: ticketError.code,
+          errorMessage: ticketError?.message,
+          errorCode: ticketError?.code,
           atmCode: validatedData.atmCode,
           hasSession: !!session?.user?.id,
           hasSystemUser: !!systemUser?.id,

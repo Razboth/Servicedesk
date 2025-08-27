@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Get all approvals handled by this manager
-    const approvals = await prisma.approval.findMany({
+    const approvals = await prisma.ticketApproval.findMany({
       where: {
         approverId: managerId,
         createdAt: {
@@ -66,12 +66,6 @@ export async function GET(request: NextRequest) {
               }
             }
           }
-        },
-        requester: {
-          select: {
-            name: true,
-            role: true
-          }
         }
       },
       orderBy: {
@@ -80,7 +74,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Get pending approvals
-    const pendingApprovals = await prisma.approval.findMany({
+    const pendingApprovals = await prisma.ticketApproval.findMany({
       where: {
         approverId: managerId,
         status: 'PENDING'
@@ -95,12 +89,13 @@ export async function GET(request: NextRequest) {
               select: {
                 name: true
               }
+            },
+            createdBy: {
+              select: {
+                name: true,
+                role: true
+              }
             }
-          }
-        },
-        requester: {
-          select: {
-            name: true
           }
         }
       },
@@ -118,16 +113,16 @@ export async function GET(request: NextRequest) {
     const approvalRate = totalApprovals > 0 ? Math.round((approvedCount / totalApprovals) * 100) : 0;
 
     // Calculate average response time for completed approvals
-    const completedApprovals = approvals.filter(a => a.status !== 'PENDING' && a.approvedAt);
+    const completedApprovals = approvals.filter(a => a.status !== 'PENDING');
     const avgResponseTime = completedApprovals.length > 0 ?
       completedApprovals.reduce((sum, approval) => {
-        const responseTimeHours = (approval.approvedAt!.getTime() - approval.createdAt.getTime()) / (1000 * 60 * 60);
+        const responseTimeHours = (approval.updatedAt.getTime() - approval.createdAt.getTime()) / (1000 * 60 * 60);
         return sum + responseTimeHours;
       }, 0) / completedApprovals.length : 0;
 
     // Analyze approval types
     const approvalTypes = approvals.reduce((acc, approval) => {
-      const type = approval.type || 'General';
+      const type = 'General';
       if (!acc[type]) {
         acc[type] = {
           total: 0,
@@ -155,7 +150,7 @@ export async function GET(request: NextRequest) {
 
     // Analyze by requester role
     const byRequesterRole = approvals.reduce((acc, approval) => {
-      const role = approval.requester.role;
+      const role = approval.ticket?.createdBy?.role || 'UNKNOWN';
       if (!acc[role]) {
         acc[role] = {
           total: 0,
@@ -170,8 +165,8 @@ export async function GET(request: NextRequest) {
       if (approval.status === 'APPROVED') acc[role].approved++;
       else if (approval.status === 'REJECTED') acc[role].rejected++;
       
-      if (approval.approvedAt) {
-        const responseTime = (approval.approvedAt.getTime() - approval.createdAt.getTime()) / (1000 * 60 * 60);
+      if (approval.updatedAt) {
+        const responseTime = (approval.updatedAt.getTime() - approval.createdAt.getTime()) / (1000 * 60 * 60);
         acc[role].totalResponseTime += responseTime;
         acc[role].completedCount++;
       }
@@ -224,7 +219,7 @@ export async function GET(request: NextRequest) {
         const dateEnd = new Date(date);
         dateEnd.setHours(23, 59, 59, 999);
 
-        const dayApprovals = await prisma.approval.count({
+        const dayApprovals = await prisma.ticketApproval.count({
           where: {
             approverId: managerId,
             createdAt: {
@@ -234,11 +229,11 @@ export async function GET(request: NextRequest) {
           }
         });
 
-        const dayApproved = await prisma.approval.count({
+        const dayApproved = await prisma.ticketApproval.count({
           where: {
             approverId: managerId,
             status: 'APPROVED',
-            approvedAt: {
+            updatedAt: {
               gte: dateStart,
               lte: dateEnd
             }
@@ -263,7 +258,7 @@ export async function GET(request: NextRequest) {
     };
 
     completedApprovals.forEach(approval => {
-      const responseHours = (approval.approvedAt!.getTime() - approval.createdAt.getTime()) / (1000 * 60 * 60);
+      const responseHours = (approval.updatedAt!.getTime() - approval.createdAt.getTime()) / (1000 * 60 * 60);
       if (responseHours < 1) responseTimeRanges.immediate++;
       else if (responseHours <= 4) responseTimeRanges.fast++;
       else if (responseHours <= 24) responseTimeRanges.normal++;
@@ -292,8 +287,8 @@ export async function GET(request: NextRequest) {
       acc[priority].total++;
       if (approval.status === 'APPROVED') acc[priority].approved++;
       
-      if (approval.approvedAt) {
-        const responseTime = (approval.approvedAt.getTime() - approval.createdAt.getTime()) / (1000 * 60 * 60);
+      if (approval.updatedAt) {
+        const responseTime = (approval.updatedAt.getTime() - approval.createdAt.getTime()) / (1000 * 60 * 60);
         acc[priority].totalResponseTime += responseTime;
         acc[priority].completedCount++;
       }
@@ -313,16 +308,16 @@ export async function GET(request: NextRequest) {
     // Identify bottlenecks (slow response items)
     const bottlenecks = approvals
       .filter(approval => {
-        if (!approval.approvedAt) return false;
-        const responseHours = (approval.approvedAt.getTime() - approval.createdAt.getTime()) / (1000 * 60 * 60);
+        if (!approval.updatedAt) return false;
+        const responseHours = (approval.updatedAt.getTime() - approval.createdAt.getTime()) / (1000 * 60 * 60);
         return responseHours > 48; // Items taking more than 48 hours
       })
       .map(approval => ({
         id: approval.id,
-        type: approval.type,
+        type: 'General',
         ticketTitle: approval.ticket?.title || 'N/A',
-        requesterName: approval.requester.name,
-        responseTime: Math.round(((approval.approvedAt!.getTime() - approval.createdAt.getTime()) / (1000 * 60 * 60)) * 10) / 10,
+        requesterName: approval.ticket?.createdBy?.name || 'Unknown',
+        responseTime: Math.round(((approval.updatedAt!.getTime() - approval.createdAt.getTime()) / (1000 * 60 * 60)) * 10) / 10,
         status: approval.status,
         createdAt: approval.createdAt
       }))
@@ -356,9 +351,9 @@ export async function GET(request: NextRequest) {
         bottlenecks: bottlenecks,
         pending: pendingApprovals.map(approval => ({
           id: approval.id,
-          type: approval.type,
+          type: 'General',
           ticketTitle: approval.ticket?.title || 'N/A',
-          requesterName: approval.requester.name,
+          requesterName: approval.ticket?.createdBy?.name || 'Unknown',
           priority: approval.ticket?.priority || 'MEDIUM',
           createdAt: approval.createdAt,
           daysPending: Math.floor((new Date().getTime() - approval.createdAt.getTime()) / (1000 * 60 * 60 * 24))

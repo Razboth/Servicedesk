@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Bank SulutGo ServiceDesk is an ITIL v4-compliant service management system built with Next.js 15, TypeScript, and PostgreSQL. It's a comprehensive IT ticketing and service management platform designed for Bank SulutGo's multi-branch operations.
+Bank SulutGo ServiceDesk is an ITIL v4-compliant service management system built with Next.js 15, TypeScript, and PostgreSQL. It's a comprehensive IT ticketing and service management platform designed for Bank SulutGo's multi-branch operations, featuring role-based access control, SLA management, ATM monitoring, and multi-level approval workflows.
 
 ## Development Commands
 
@@ -33,6 +33,12 @@ npm run db:seed:soc          # Seed SOC-related data
 npm run db:seed:network      # Seed network monitoring info
 npm run db:schema:update     # Update schema constraints
 
+# Monitoring Commands
+npm run monitoring:start     # Start monitoring service
+npm run monitoring:stop      # Stop monitoring service
+npm run monitoring:status    # Check monitoring status
+npm run monitoring:setup     # Initial monitoring setup
+
 # Security
 npm run security:audit       # Run security audit
 npm run security:audit:fix   # Fix security vulnerabilities
@@ -51,6 +57,8 @@ npm run security:check       # Run custom security checks
 - **State Management**: React Query for server state, Zustand for client state
 - **Real-time**: Socket.io (configured but not fully implemented)
 - **Monitoring**: Custom network monitoring for branches and ATMs
+- **Charts**: Chart.js and Recharts for data visualization
+- **Reports**: jsPDF for PDF generation, XLSX for Excel exports
 
 ### Key Architectural Patterns
 
@@ -69,6 +77,7 @@ npm run security:check       # Run custom security checks
    - Audit logging via AuditLog model for critical operations
    - Soft deletes using `isActive` flags on most models
    - Support for custom fields via FieldTemplate and ServiceField models
+   - Import/rollback capability via ImportLog tracking
 
 3. **API Structure**
    - RESTful API routes in `/app/api/`
@@ -102,12 +111,16 @@ npm run security:check       # Run custom security checks
 ## Environment Configuration
 
 Required environment variables (see `.env.example`):
-- `DATABASE_URL`: PostgreSQL connection string
-- `NEXTAUTH_URL`: Application URL for auth callbacks
+- `DATABASE_URL`: PostgreSQL connection string (format: postgresql://username:password@localhost:5432/servicedesk)
+- `NEXTAUTH_URL`: Application URL for auth callbacks (default: http://localhost:3000)
 - `NEXTAUTH_SECRET`: Secret key for JWT signing
 - `NODE_ENV`: Environment (development/production)
-- Email configuration for notifications (if needed)
-- File upload settings and limits
+- `EMAIL_SERVER_*`: SMTP configuration for notifications
+- `UPLOAD_MAX_SIZE`: Maximum file upload size (default: 10MB)
+- `UPLOAD_ALLOWED_TYPES`: Allowed MIME types for uploads
+- `ENCRYPTION_KEY`: 32-character encryption key
+- `JWT_SECRET`: JWT signing secret
+- `MONITORING_ENABLED`: Enable/disable monitoring features
 
 ## Important Implementation Details
 
@@ -138,9 +151,15 @@ Required environment variables (see `.env.example`):
    - Technician reports (performance, task execution, technical issues)
    - Compliance reports (security, system health)
 
+7. **Testing Approach**: 
+   - No test files currently exist in the codebase
+   - Manual testing recommended through the UI
+   - Use different user accounts to test role-based features
+   - Database seeds provide test data for development
+
 ## Development Guidelines
 
-- Always run `npm run type-check` before committing
+- Always run `npm run type-check` and `npm run lint` before committing
 - Use Prisma Studio (`npm run db:studio`) to inspect database during development
 - Follow existing patterns for API routes and components
 - Maintain TypeScript strict mode compliance
@@ -148,3 +167,6 @@ Required environment variables (see `.env.example`):
 - Implement proper error boundaries for better error handling
 - Add loading states for better UX
 - Check for duplicate entries when seeding data (use idempotent seeds)
+- Test changes across different user roles to ensure proper access control
+- Verify SLA calculations when modifying ticket workflows
+- Ensure audit logs are created for sensitive operations

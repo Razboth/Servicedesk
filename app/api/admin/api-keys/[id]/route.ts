@@ -63,9 +63,10 @@ export async function GET(
 // PUT: Update API key
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await auth();
     
     if (!session || session.user.role !== 'ADMIN') {
@@ -86,7 +87,7 @@ export async function PUT(
     }
 
     const existingKey = await prisma.apiKey.findUnique({
-      where: { id: params.id }
+      where: { id }
     });
 
     if (!existingKey) {
@@ -97,7 +98,7 @@ export async function PUT(
     }
 
     const updatedKey = await prisma.apiKey.update({
-      where: { id: params.id },
+      where: { id },
       data: validation.data,
       include: {
         createdBy: {
@@ -116,7 +117,7 @@ export async function PUT(
         userId: session.user.id,
         action: 'UPDATE',
         entity: 'ApiKey',
-        entityId: params.id,
+        entityId: id,
         oldValues: existingKey,
         newValues: validation.data,
         ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip'),
@@ -140,9 +141,10 @@ export async function PUT(
 // DELETE: Delete API key
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await auth();
     
     if (!session || session.user.role !== 'ADMIN') {
@@ -153,7 +155,7 @@ export async function DELETE(
     }
 
     const existingKey = await prisma.apiKey.findUnique({
-      where: { id: params.id }
+      where: { id }
     });
 
     if (!existingKey) {
@@ -164,7 +166,7 @@ export async function DELETE(
     }
 
     await prisma.apiKey.delete({
-      where: { id: params.id }
+      where: { id }
     });
 
     // Create audit log
@@ -173,7 +175,7 @@ export async function DELETE(
         userId: session.user.id,
         action: 'DELETE',
         entity: 'ApiKey',
-        entityId: params.id,
+        entityId: id,
         oldValues: {
           name: existingKey.name,
           permissions: existingKey.permissions

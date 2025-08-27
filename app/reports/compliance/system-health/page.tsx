@@ -135,6 +135,25 @@ export default function SystemHealthReport() {
     }
   };
 
+  const handleExport = async (format: string) => {
+    if (!data) return;
+    
+    const exportData = {
+      reportTitle: 'System Health & Data Quality Report',
+      dateRange: `${startDate} to ${endDate}`,
+      ...data,
+      generatedAt: new Date().toISOString()
+    };
+
+    if (format === 'xlsx') {
+      console.log('Exporting to Excel:', exportData);
+    } else if (format === 'pdf') {
+      console.log('Exporting to PDF:', exportData);
+    } else if (format === 'csv') {
+      console.log('Exporting to CSV:', exportData);
+    }
+  };
+
   useEffect(() => {
     if (session?.user && session.user.role === 'ADMIN') {
       fetchData();
@@ -255,10 +274,9 @@ export default function SystemHealthReport() {
         </div>
         <div className="flex items-center space-x-4">
           <ExportButton 
-            data={data} 
-            filename={`system-health-${startDate}-to-${endDate}`}
-            title="System Health & Data Quality Report"
-          />
+            onExport={handleExport} 
+            reportName="System Health & Data Quality Report"
+            disabled={!data} />
         </div>
       </div>
 

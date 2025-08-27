@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
       '30d': new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
     };
 
-    const fromDate = timeRanges[period] || timeRanges['24h'];
+    const fromDate = timeRanges[period as keyof typeof timeRanges] || timeRanges['24h'];
 
     // Build where clause for monitoring logs
     const where: any = {
@@ -163,7 +163,7 @@ export async function GET(request: NextRequest) {
     // Calculate summary statistics for each entity
     const entitySummaries = Array.from(entityMetrics.values()).map(metrics => {
       const avgResponseTime = metrics.responseTimes.length > 0 
-        ? Math.round(metrics.responseTimes.reduce((a, b) => a + b, 0) / metrics.responseTimes.length)
+        ? Math.round(metrics.responseTimes.reduce((a: number, b: number) => a + b, 0) / metrics.responseTimes.length)
         : null;
       
       const maxResponseTime = metrics.responseTimes.length > 0 
@@ -171,7 +171,7 @@ export async function GET(request: NextRequest) {
         : null;
       
       const avgPacketLoss = metrics.packetLosses.length > 0
-        ? Math.round((metrics.packetLosses.reduce((a, b) => a + b, 0) / metrics.packetLosses.length) * 100) / 100
+        ? Math.round((metrics.packetLosses.reduce((a: number, b: number) => a + b, 0) / metrics.packetLosses.length) * 100) / 100
         : null;
       
       const uptime = metrics.totalChecks > 0
@@ -214,9 +214,9 @@ export async function GET(request: NextRequest) {
       avgUptime: allUptimes.length > 0
         ? Math.round((allUptimes.reduce((a, b) => a + b, 0) / allUptimes.length) * 100) / 100
         : null,
-      healthyEntities: entitySummaries.filter(s => s.uptime >= 95).length,
-      degradedEntities: entitySummaries.filter(s => s.uptime >= 90 && s.uptime < 95).length,
-      unhealthyEntities: entitySummaries.filter(s => s.uptime < 90).length
+      healthyEntities: entitySummaries.filter(s => s.uptime !== null && s.uptime >= 95).length,
+      degradedEntities: entitySummaries.filter(s => s.uptime !== null && s.uptime >= 90 && s.uptime < 95).length,
+      unhealthyEntities: entitySummaries.filter(s => s.uptime !== null && s.uptime < 90).length
     };
 
     // Group time series data by time intervals for charts
@@ -241,13 +241,13 @@ export async function GET(request: NextRequest) {
       if (intervalLogs.length > 0) {
         const avgResponseTime = intervalLogs
           .filter(log => log.responseTime !== null)
-          .reduce((sum, log, _, arr) => sum + log.responseTime / arr.length, 0);
+          .reduce((sum, log, _, arr) => sum + (log.responseTime || 0) / arr.length, 0);
         
         const avgPacketLoss = intervalLogs
           .filter(log => log.packetLoss !== null)
-          .reduce((sum, log, _, arr) => sum + log.packetLoss / arr.length, 0);
+          .reduce((sum, log, _, arr) => sum + (log.packetLoss || 0) / arr.length, 0);
         
-        const statusCounts = intervalLogs.reduce((acc, log) => {
+        const statusCounts = intervalLogs.reduce((acc: Record<string, number>, log) => {
           acc[log.status] = (acc[log.status] || 0) + 1;
           return acc;
         }, {});

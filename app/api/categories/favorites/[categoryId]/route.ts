@@ -5,15 +5,14 @@ import { prisma } from '@/lib/prisma';
 // DELETE /api/categories/favorites/[categoryId] - Remove category from favorites
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { categoryId: string } }
+  { params }: { params: Promise<{ categoryId: string }> }
 ) {
   try {
+    const { categoryId } = await params;
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    const { categoryId } = params;
 
     if (!categoryId) {
       return NextResponse.json(

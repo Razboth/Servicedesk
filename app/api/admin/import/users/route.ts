@@ -97,28 +97,53 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        // Validate foreign key references
-        let branchId = row.branchId?.trim() || null;
-        let supportGroupId = row.supportGroupId?.trim() || null;
-
-        if (branchId) {
-          const branchExists = await prisma.branch.findUnique({
-            where: { id: branchId }
+        // Validate foreign key references - Support both codes and IDs
+        let branchId = null;
+        const branchRef = row.branchCode?.trim() || row.branchId?.trim();
+        
+        if (branchRef) {
+          // First try to find by code, then by ID
+          let branch = await prisma.branch.findUnique({
+            where: { code: branchRef }
           });
-          if (!branchExists) {
-            results.errors.push(`Row ${i + 1}: Branch ID ${branchId} not found`);
+          
+          if (!branch) {
+            // Try as ID if not found by code
+            branch = await prisma.branch.findUnique({
+              where: { id: branchRef }
+            });
+          }
+          
+          if (!branch) {
+            results.errors.push(`Row ${i + 1}: Branch '${branchRef}' not found (tried as code and ID)`);
             continue;
           }
+          
+          branchId = branch.id;
         }
 
-        if (supportGroupId) {
-          const supportGroupExists = await prisma.supportGroup.findUnique({
-            where: { id: supportGroupId }
+        let supportGroupId = null;
+        const supportGroupRef = row.supportGroupCode?.trim() || row.supportGroupId?.trim();
+        
+        if (supportGroupRef) {
+          // First try to find by code, then by ID
+          let supportGroup = await prisma.supportGroup.findUnique({
+            where: { code: supportGroupRef }
           });
-          if (!supportGroupExists) {
-            results.errors.push(`Row ${i + 1}: Support Group ID ${supportGroupId} not found`);
+          
+          if (!supportGroup) {
+            // Try as ID if not found by code
+            supportGroup = await prisma.supportGroup.findUnique({
+              where: { id: supportGroupRef }
+            });
+          }
+          
+          if (!supportGroup) {
+            results.errors.push(`Row ${i + 1}: Support Group '${supportGroupRef}' not found (tried as code and ID)`);
             continue;
           }
+          
+          supportGroupId = supportGroup.id;
         }
 
         // Hash the provided password
@@ -129,6 +154,19 @@ export async function POST(request: NextRequest) {
         }
         const hashedPassword = await bcrypt.hash(providedPassword, 12);
 
+        // Parse boolean values for password change flags
+        const mustChangePassword = row.mustChangePassword === undefined ? 
+          true : // Default to true for new users
+          (row.mustChangePassword === 'true' || row.mustChangePassword === '1');
+        
+        const isFirstLogin = row.isFirstLogin === undefined ? 
+          true : // Default to true for new users
+          (row.isFirstLogin === 'true' || row.isFirstLogin === '1');
+        
+        const passwordChangedAt = row.passwordChangedAt ? 
+          new Date(row.passwordChangedAt) : 
+          null;
+
         const userData = {
           username: row.username?.trim(),
           email: row.email?.trim().toLowerCase(),
@@ -138,7 +176,10 @@ export async function POST(request: NextRequest) {
           branchId: branchId,
           supportGroupId: supportGroupId,
           isActive: row.isActive === 'false' ? false : true,
-          password: hashedPassword
+          password: hashedPassword,
+          mustChangePassword: mustChangePassword,
+          isFirstLogin: isFirstLogin,
+          passwordChangedAt: passwordChangedAt
         };
 
         // Check if user exists by username or email
@@ -156,14 +197,18 @@ export async function POST(request: NextRequest) {
           const updatePassword = row.updatePassword?.toLowerCase() === 'true' || row.updatePassword === '1';
           
           if (updatePassword) {
-            // Update including password
+            // Update including password and set mustChangePassword to true when admin updates password
             await prisma.user.update({
               where: { id: existingUser.id },
-              data: userData
+              data: {
+                ...userData,
+                mustChangePassword: true, // Force password change when admin updates password
+                passwordChangedAt: null   // Reset password change timestamp
+              }
             });
           } else {
-            // Update excluding password to preserve existing password
-            const { password, ...updateData } = userData;
+            // Update excluding password to preserve existing password and password flags
+            const { password, mustChangePassword, isFirstLogin, passwordChangedAt, ...updateData } = userData;
             await prisma.user.update({
               where: { id: existingUser.id },
               data: updateData
@@ -171,9 +216,14 @@ export async function POST(request: NextRequest) {
           }
           results.updated++;
         } else {
-          // Create new user
+          // Create new user with mustChangePassword set to true
           await prisma.user.create({
-            data: userData
+            data: {
+              ...userData,
+              mustChangePassword: true,  // Always force password change for new users
+              isFirstLogin: true,        // Always mark as first login for new users
+              passwordChangedAt: null    // No password change yet for new users
+            }
           });
           results.created++;
         }
@@ -214,7 +264,7 @@ export async function GET(request: NextRequest) {
     
     const format = searchParams.get('format') || 'csv';
 
-    // Get users but add a placeholder password column for the template
+    // Get users including password change tracking fields and branch code
     const users = await prisma.user.findMany({
       select: {
         username: true,
@@ -222,18 +272,39 @@ export async function GET(request: NextRequest) {
         name: true,
         phone: true,
         role: true,
-        branchId: true,
-        supportGroupId: true,
-        isActive: true
+        branch: {
+          select: {
+            code: true
+          }
+        },
+        supportGroup: {
+          select: {
+            code: true
+          }
+        },
+        isActive: true,
+        mustChangePassword: true,
+        isFirstLogin: true,
+        passwordChangedAt: true
       },
       orderBy: { name: 'asc' }
     });
     
-    // Add password and updatePassword columns to the export as placeholders
+    // Transform data to include branch and support group codes
     const exportData = users.map(user => ({
-      ...user,
+      username: user.username,
+      email: user.email,
+      name: user.name,
+      phone: user.phone,
+      role: user.role,
+      branchCode: user.branch?.code || '',
+      supportGroupCode: user.supportGroup?.code || '',
+      isActive: user.isActive,
       password: '', // Empty placeholder for password
-      updatePassword: 'false' // Default to not updating password for existing users
+      updatePassword: 'false', // Default to not updating password for existing users
+      mustChangePassword: user.mustChangePassword,
+      isFirstLogin: user.isFirstLogin,
+      passwordChangedAt: user.passwordChangedAt ? user.passwordChangedAt.toISOString() : ''
     }));
 
     if (format === 'excel') {

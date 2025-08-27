@@ -206,11 +206,25 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
     const autofillServiceData = async () => {
       if (watchedServiceId) {
         console.log('🔍 Autofill Debug: Starting autofill for serviceId:', watchedServiceId);
-        const service = services.find(s => s.id === watchedServiceId);
+        let service = services.find(s => s.id === watchedServiceId);
         
-        // Skip if service is not found and services array is empty (still loading)
-        if (!service && services.length === 0) {
-          console.log('🔍 Autofill Debug: Services still loading, skipping autofill');
+        // If service not found in current list, try to fetch it directly
+        if (!service) {
+          console.log('🔍 Autofill Debug: Service not in current list, fetching directly');
+          try {
+            const response = await fetch(`/api/services/${watchedServiceId}`);
+            if (response.ok) {
+              service = await response.json();
+              console.log('🔍 Autofill Debug: Fetched service directly:', service);
+            }
+          } catch (error) {
+            console.error('Failed to fetch service:', error);
+          }
+        }
+        
+        // Skip if service is still not found
+        if (!service) {
+          console.log('🔍 Autofill Debug: Service not found');
           return;
         }
         
@@ -229,7 +243,7 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
           const allFields = [
             ...(service.fields || []),
             ...(service.fieldTemplates || []).map(template => template.fieldTemplate)
-          ].filter(field => field && (field.isUserVisible || 
+          ].filter(field => field && ((field as any).isUserVisible || 
             (service.fieldTemplates && service.fieldTemplates.some(t => t.fieldTemplate.id === field.id && t.isUserVisible))));
           
           // Initialize all field paths with empty strings to prevent controlled/uncontrolled issues
@@ -281,7 +295,7 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
             service.fieldTemplates
               .filter(template => template.isUserVisible)
               .forEach(template => {
-                const defaultValue = template.defaultValue || template.fieldTemplate.defaultValue || '';
+                const defaultValue = template.defaultValue || (template.fieldTemplate as any).defaultValue || '';
                 if (defaultValue) {
                   fieldValues[template.fieldTemplate.name] = defaultValue;
                   console.log('🔍 Autofill Debug: Added field template default value:', template.fieldTemplate.name, '=', defaultValue);
@@ -778,8 +792,8 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
   const renderFieldTemplate = (template: ServiceFieldTemplate) => {
     const field = template.fieldTemplate;
     const isRequired = template.isRequired ?? false;
-    const helpText = template.helpText || field.helpText || '';
-    const defaultValue = template.defaultValue || field.defaultValue || '';
+    const helpText = template.helpText || (field as any).helpText || '';
+    const defaultValue = template.defaultValue || (field as any).defaultValue || '';
     
     // Convert field template to service field format for rendering
     const serviceField: ServiceField = {
@@ -793,9 +807,8 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
       helpText,
       defaultValue,
       options: field.options,
-      validation: field.validation,
-      isActive: true
-    };
+      validation: field.validation
+    } as ServiceField;
     
     return renderDynamicField(serviceField);
   };
@@ -877,7 +890,7 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
               {isRequired && <span className="text-red-500 ml-1">*</span>}
             </Label>
             <Select 
-              value={watch(`fieldValues.${field.name}`) || ''}
+              value={String(watch(`fieldValues.${field.name}`) || '')}
               onValueChange={(value: string) => setValue(fieldName as any, value)}
             >
               <SelectTrigger>

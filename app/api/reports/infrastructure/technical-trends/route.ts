@@ -40,16 +40,18 @@ export async function GET(request: NextRequest) {
           }
         }),
         OR: [
-          {
+          ...technicalKeywords.map(keyword => ({
             title: {
-              in: technicalKeywords.map(keyword => ({ contains: keyword, mode: 'insensitive' as const }))
+              contains: keyword,
+              mode: 'insensitive' as const
             }
-          },
-          {
+          })),
+          ...technicalKeywords.map(keyword => ({
             description: {
-              in: technicalKeywords.map(keyword => ({ contains: keyword, mode: 'insensitive' as const }))
+              contains: keyword,
+              mode: 'insensitive' as const
             }
-          },
+          })),
           {
             service: {
               tier1Category: {
@@ -67,16 +69,13 @@ export async function GET(request: NextRequest) {
             name: true,
             tier1Category: {
               select: { name: true }
-            },
-            tier2Category: {
-              select: { name: true }
             }
           }
         },
         branch: {
           select: {
             name: true,
-            region: true
+            city: true
           }
         },
         assignedTo: {
@@ -107,7 +106,7 @@ export async function GET(request: NextRequest) {
     // Group by technical category
     const issuesByCategory = technicalTickets.reduce((acc, ticket) => {
       const category = ticket.service?.tier1Category?.name || 'General Technical';
-      const subCategory = ticket.service?.tier2Category?.name || 'Other';
+      const subCategory = 'Other';
       
       if (!acc[category]) {
         acc[category] = {
@@ -127,7 +126,7 @@ export async function GET(request: NextRequest) {
       LOW: technicalTickets.filter(t => t.priority === 'LOW').length,
       MEDIUM: technicalTickets.filter(t => t.priority === 'MEDIUM').length,
       HIGH: technicalTickets.filter(t => t.priority === 'HIGH').length,
-      URGENT: technicalTickets.filter(t => t.priority === 'URGENT').length
+      URGENT: technicalTickets.filter(t => t.priority === 'CRITICAL').length
     };
 
     // Resolution analysis
@@ -143,7 +142,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Average resolution time by category
-    const avgResolutionByCategory = resolutionTimes.reduce((acc, item) => {
+    const resolutionByCategory = resolutionTimes.reduce((acc, item) => {
       if (!acc[item.category]) {
         acc[item.category] = { total: 0, count: 0 };
       }
@@ -152,14 +151,14 @@ export async function GET(request: NextRequest) {
       return acc;
     }, {} as Record<string, { total: number; count: number }>);
 
-    Object.keys(avgResolutionByCategory).forEach(category => {
-      const data = avgResolutionByCategory[category];
-      avgResolutionByCategory[category] = {
+    const avgResolutionByCategory = Object.entries(resolutionByCategory).reduce((acc, [category, data]) => {
+      acc[category] = {
         avgHours: Math.round(data.total / data.count),
         count: data.count,
         total: data.total
       };
-    });
+      return acc;
+    }, {} as Record<string, { avgHours: number; count: number; total: number }>);
 
     // Daily trend analysis
     const dailyTrends = technicalTickets.reduce((acc, ticket) => {
@@ -177,7 +176,7 @@ export async function GET(request: NextRequest) {
 
     // Regional impact analysis
     const regionalImpact = technicalTickets.reduce((acc, ticket) => {
-      const region = ticket.branch?.region || 'Unknown';
+      const region = ticket.branch?.city || 'Unknown';
       if (!acc[region]) {
         acc[region] = {
           total: 0,
@@ -187,7 +186,7 @@ export async function GET(request: NextRequest) {
       }
       
       acc[region].total++;
-      if (['HIGH', 'URGENT'].includes(ticket.priority)) {
+      if (['HIGH', 'CRITICAL'].includes(ticket.priority)) {
         acc[region].critical++;
       }
       
@@ -216,7 +215,7 @@ export async function GET(request: NextRequest) {
       summary: {
         totalTechnicalIssues: technicalTickets.length,
         openIssues: technicalTickets.filter(t => !['RESOLVED', 'CLOSED'].includes(t.status)).length,
-        criticalIssues: technicalTickets.filter(t => ['HIGH', 'URGENT'].includes(t.priority)).length,
+        criticalIssues: technicalTickets.filter(t => ['HIGH', 'CRITICAL'].includes(t.priority)).length,
         avgResolutionHours: resolutionTimes.length > 0 
           ? Math.round(resolutionTimes.reduce((sum, item) => sum + item.hours, 0) / resolutionTimes.length)
           : 0,
@@ -243,11 +242,11 @@ export async function GET(request: NextRequest) {
         id: ticket.id,
         title: ticket.title,
         category: ticket.service?.tier1Category?.name,
-        subCategory: ticket.service?.tier2Category?.name,
+        subCategory: undefined,
         priority: ticket.priority,
         status: ticket.status,
         branch: ticket.branch?.name,
-        region: ticket.branch?.region,
+        region: ticket.branch?.city,
         assignedTo: ticket.assignedTo?.name,
         createdAt: ticket.createdAt,
         resolvedAt: ticket.resolvedAt

@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { name, description, category, serviceId, baseQuery, defaultColumns, defaultFilters } = body
+    const { name, description, category, serviceId, baseQuery, availableFields, defaultFilters } = body
 
     const template = await prisma.reportTemplate.create({
       data: {
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
         category,
         serviceId,
         baseQuery,
-        defaultColumns,
+        availableFields,
         defaultFilters,
         isActive: true
       },
@@ -84,7 +84,10 @@ export async function POST(request: NextRequest) {
         action: 'CREATE',
         entity: 'ReportTemplate',
         entityId: template.id,
-        details: `Created report template: ${template.name}`
+        newValues: {
+          description: `Created report template: ${template.name}`,
+          name: template.name
+        }
       }
     })
 

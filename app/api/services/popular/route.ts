@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
       },
       fields: {
         where: { isActive: true },
-        orderBy: { order: 'asc' },
+        orderBy: { order: 'asc' as const },
         select: {
           id: true,
           name: true,
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
         }
       },
       fieldTemplates: {
-        orderBy: { order: 'asc' },
+        orderBy: { order: 'asc' as const },
         where: {
           isUserVisible: true
         },
@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
       categoryId: true
     };
 
-    let popularServices = [];
+    let popularServices: any[] = [];
 
     switch (type) {
       case 'user':

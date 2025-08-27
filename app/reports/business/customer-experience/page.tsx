@@ -129,6 +129,25 @@ export default function CustomerExperienceReport() {
     }
   };
 
+  const handleExport = async (format: string) => {
+    if (!data) return;
+    
+    const exportData = {
+      reportTitle: 'Customer Experience Report',
+      dateRange: `${startDate} to ${endDate}`,
+      ...data,
+      generatedAt: new Date().toISOString()
+    };
+
+    if (format === 'xlsx') {
+      console.log('Exporting to Excel:', exportData);
+    } else if (format === 'pdf') {
+      console.log('Exporting to PDF:', exportData);
+    } else if (format === 'csv') {
+      console.log('Exporting to CSV:', exportData);
+    }
+  };
+
   useEffect(() => {
     if (session?.user && ['MANAGER', 'ADMIN'].includes(session.user.role)) {
       fetchData();
@@ -229,10 +248,9 @@ export default function CustomerExperienceReport() {
         </div>
         <div className="flex items-center space-x-4">
           <ExportButton 
-            data={data} 
-            filename={`customer-experience-${startDate}-to-${endDate}`}
-            title="Customer Experience Report"
-          />
+            onExport={handleExport} 
+            reportName="Customer Experience Report"
+            disabled={!data} />
         </div>
       </div>
 

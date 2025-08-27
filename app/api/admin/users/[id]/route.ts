@@ -7,16 +7,17 @@ const prisma = new PrismaClient()
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await auth()
     if (!session?.user || session.user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         branch: {
           select: { id: true, name: true, code: true }
@@ -53,9 +54,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await auth()
     if (!session?.user || session.user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -65,7 +67,7 @@ export async function PUT(
 
     // Check if user exists
     const existingUser = await prisma.user.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!existingUser) {
@@ -77,7 +79,7 @@ export async function PUT(
       const emailTaken = await prisma.user.findFirst({
         where: {
           email,
-          NOT: { id: params.id }
+          NOT: { id }
         }
       })
 
@@ -100,14 +102,16 @@ export async function PUT(
       isActive
     }
 
-    // Hash new password if provided
+    // Hash new password if provided and set mustChangePassword flag
     if (password && password.trim()) {
       updateData.password = await bcrypt.hash(password, 10)
+      updateData.mustChangePassword = true  // Force user to change password after admin reset
+      updateData.passwordChangedAt = null   // Reset password change timestamp
     }
 
     // Update user
     const updatedUser = await prisma.user.update({
-      where: { id: params.id },
+      where: { id },
       data: updateData,
       include: {
         branch: {
@@ -162,9 +166,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await auth()
     if (!session?.user || session.user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -172,7 +177,7 @@ export async function DELETE(
 
     // Check if user exists
     const existingUser = await prisma.user.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         _count: {
           select: {
@@ -205,7 +210,7 @@ export async function DELETE(
 
     // Delete user
     await prisma.user.delete({
-      where: { id: params.id }
+      where: { id }
     })
 
     // Log the deletion
@@ -214,7 +219,7 @@ export async function DELETE(
         userId: session.user.id,
         action: 'USER_DELETED',
         entity: 'USER',
-        entityId: params.id,
+        entityId: id,
         oldValues: {
           email: existingUser.email,
           name: existingUser.name,

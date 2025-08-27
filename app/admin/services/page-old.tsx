@@ -342,10 +342,10 @@ export default function AdminServicesPage() {
       // Clean up empty strings for optional fields
       const cleanedService = { ...newService };
       if (cleanedService.tier1CategoryId === '') cleanedService.tier1CategoryId = undefined;
-      if (cleanedService.tier2SubcategoryId === '') cleanedService.tier2SubcategoryId = undefined;
-      if (cleanedService.tier3ItemId === '') cleanedService.tier3ItemId = undefined;
-      if (cleanedService.subcategoryId === '') cleanedService.subcategoryId = undefined;
-      if (cleanedService.itemId === '') cleanedService.itemId = undefined;
+      if (cleanedService.tier2SubcategoryId === '') cleanedService.tier2SubcategoryId = undefined as any;
+      if (cleanedService.tier3ItemId === '') cleanedService.tier3ItemId = undefined as any;
+      if (cleanedService.subcategoryId === '') cleanedService.subcategoryId = undefined as any;
+      if (cleanedService.itemId === '') cleanedService.itemId = undefined as any;
       
       const response = await fetch('/api/admin/services', {
         method: 'POST',
@@ -368,8 +368,11 @@ export default function AdminServicesPage() {
           estimatedHours: 4,
           slaHours: 24,
           requiresApproval: true,
-          isConfidential: false
-        });
+          isConfidential: false,
+          defaultTitle: '',
+          defaultItilCategory: 'INCIDENT',
+          defaultIssueClassification: ''
+        } as NewService);
         fetchServices();
       } else {
         const error = await response.json();
@@ -1253,10 +1256,9 @@ export default function AdminServicesPage() {
       {/* Fields Management Dialog */}
       {showFieldsDialog && selectedService && (
         <ServiceFieldTemplatesDialog
-          serviceId={selectedService.id}
-          serviceName={selectedService.name}
-          isOpen={showFieldsDialog}
-          onClose={() => setShowFieldsDialog(false)}
+          service={selectedService}
+          open={showFieldsDialog}
+          onOpenChange={setShowFieldsDialog}
           onUpdate={fetchServices}
         />
       )}

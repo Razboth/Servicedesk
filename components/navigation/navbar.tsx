@@ -11,7 +11,7 @@ export function Navbar() {
   const pathname = usePathname();
 
   const handleLogout = async () => {
-    await signOut({ callbackUrl: '/auth/signin' });
+    await signOut({ callbackUrl: 'https://hd.bsg.id/auth/signin' });
   };
 
   if (!session) return null;

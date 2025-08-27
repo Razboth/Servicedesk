@@ -62,7 +62,9 @@ export async function GET(request: NextRequest) {
     // Get pending tasks assigned to this technician
     const pendingTasks = await prisma.ticketTask.findMany({
       where: {
-        assignedToId: userId,
+        ticket: {
+          assignedToId: userId
+        },
         status: 'PENDING'
       },
       include: {
@@ -129,7 +131,7 @@ export async function GET(request: NextRequest) {
       LOW: completedTasks.filter(t => t.ticket.priority === 'LOW').length,
       MEDIUM: completedTasks.filter(t => t.ticket.priority === 'MEDIUM').length,
       HIGH: completedTasks.filter(t => t.ticket.priority === 'HIGH').length,
-      URGENT: completedTasks.filter(t => t.ticket.priority === 'URGENT').length
+      CRITICAL: completedTasks.filter(t => t.ticket.priority === 'CRITICAL').length
     };
 
     // Group tasks by service category

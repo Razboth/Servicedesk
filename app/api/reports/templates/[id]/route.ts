@@ -5,9 +5,10 @@ import { prisma } from '@/lib/prisma'
 // GET /api/reports/templates/[id] - Get a specific report template
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await auth()
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -15,7 +16,7 @@ export async function GET(
 
     const template = await prisma.reportTemplate.findUnique({
       where: { 
-        id: params.id,
+        id,
         isActive: true
       },
       include: {
@@ -46,25 +47,26 @@ export async function GET(
 // PUT /api/reports/templates/[id] - Update a report template
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await auth()
-    if (!session?.user || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
+    if (!session?.user || session.user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const body = await request.json()
-    const { name, description, category, baseQuery, defaultColumns, defaultFilters } = body
+    const { name, description, category, baseQuery, availableFields, defaultFilters } = body
 
     const updated = await prisma.reportTemplate.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         name,
         description,
         category,
         baseQuery,
-        defaultColumns,
+        availableFields,
         defaultFilters
       }
     })
@@ -75,8 +77,11 @@ export async function PUT(
         userId: session.user.id,
         action: 'UPDATE',
         entity: 'ReportTemplate',
-        entityId: params.id,
-        details: `Updated report template: ${updated.name}`
+        entityId: id,
+        newValues: {
+          description: `Updated report template: ${updated.name}`,
+          name: updated.name
+        }
       }
     })
 
@@ -93,17 +98,18 @@ export async function PUT(
 // DELETE /api/reports/templates/[id] - Delete a report template
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await auth()
-    if (!session?.user || session.user.role !== 'SUPER_ADMIN') {
+    if (!session?.user || session.user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Soft delete by setting isActive to false
     const template = await prisma.reportTemplate.update({
-      where: { id: params.id },
+      where: { id },
       data: { isActive: false }
     })
 
@@ -113,8 +119,11 @@ export async function DELETE(
         userId: session.user.id,
         action: 'DELETE',
         entity: 'ReportTemplate',
-        entityId: params.id,
-        details: `Deleted report template: ${template.name}`
+        entityId: id,
+        newValues: {
+          description: `Deleted report template: ${template.name}`,
+          name: template.name
+        }
       }
     })
 

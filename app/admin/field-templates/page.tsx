@@ -645,7 +645,7 @@ export default function FieldTemplatesPage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDelete(template)}
-                            disabled={template._count?.serviceFieldTemplates && template._count.serviceFieldTemplates > 0}
+                            disabled={!!template._count?.serviceFieldTemplates && template._count.serviceFieldTemplates > 0}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

@@ -217,9 +217,9 @@ export async function GET(request: NextRequest) {
     const excellenceMetrics = {
       // Tickets resolved within 50% of SLA time
       excellentPerformance: slaData.filter(sla => {
-        if (!sla.resolutionTime || !sla.slaResolutionTarget) return false;
+        if (!sla.resolutionTime || !sla.ticket.service.resolutionHours) return false;
         const actualTime = (sla.resolutionTime.getTime() - sla.createdAt.getTime()) / (1000 * 60 * 60);
-        const targetTime = sla.slaResolutionTarget;
+        const targetTime = sla.ticket.service.resolutionHours;
         return actualTime <= (targetTime * 0.5);
       }).length,
 
@@ -227,11 +227,11 @@ export async function GET(request: NextRequest) {
       meetingSLA: compliantTickets,
 
       // Critical incidents (urgent tickets)
-      criticalIncidents: slaData.filter(sla => sla.ticket.priority === 'URGENT').length,
+      criticalIncidents: slaData.filter(sla => sla.ticket.priority === 'CRITICAL').length,
       
       // Critical incidents resolved on time
       criticalOnTime: slaData.filter(sla => 
-        sla.ticket.priority === 'URGENT' && !sla.isResponseBreached && !sla.isResolutionBreached
+        sla.ticket.priority === 'CRITICAL' && !sla.isResponseBreached && !sla.isResolutionBreached
       ).length
     };
 

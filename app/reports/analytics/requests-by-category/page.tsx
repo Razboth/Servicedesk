@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { FileDown, RefreshCw, TrendingUp, TrendingDown, Layers } from 'lucide-react'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, TreemapChart, Treemap, PieChart, Pie, Cell, AreaChart, Area } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Treemap, PieChart, Pie, Cell, AreaChart, Area } from 'recharts'
 import { format } from 'date-fns'
 
 interface CategoryData {

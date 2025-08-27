@@ -13,9 +13,10 @@ const updateCategorySchema = z.object({
 // PUT /api/admin/tier-categories/[id] - Update category
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await auth();
     
     if (!session || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
@@ -29,7 +30,7 @@ export async function PUT(
     const validatedData = updateCategorySchema.parse(body);
 
     const category = await prisma.category.update({
-      where: { id: params.id },
+      where: { id },
       data: validatedData,
       include: {
         subcategories: {
@@ -66,9 +67,10 @@ export async function PUT(
 // DELETE /api/admin/tier-categories/[id] - Delete category
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await auth();
     
     if (!session || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
@@ -80,7 +82,7 @@ export async function DELETE(
 
     // Check if category has subcategories
     const category = await prisma.category.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         _count: {
           select: {
@@ -113,7 +115,7 @@ export async function DELETE(
     }
 
     await prisma.category.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
     return NextResponse.json({ success: true });

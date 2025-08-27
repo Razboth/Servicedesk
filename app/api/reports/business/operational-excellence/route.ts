@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
         branch: {
           select: {
             name: true,
-            region: true
+            city: true
           }
         },
         assignedTo: {

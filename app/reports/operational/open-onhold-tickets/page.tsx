@@ -259,7 +259,7 @@ export default function OpenOnHoldTicketsReport() {
         </Card>
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-red-600">Critical (>30 days)</CardTitle>
+            <CardTitle className="text-sm font-medium text-red-600">Critical (&gt;30 days)</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">{stats.criticalAging}</div>

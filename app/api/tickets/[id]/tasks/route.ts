@@ -27,6 +27,12 @@ export async function GET(
         id: true,
         assignedToId: true,
         createdById: true,
+        branchId: true,
+        service: {
+          select: {
+            supportGroupId: true
+          }
+        },
         createdBy: {
           select: {
             supportGroup: true
@@ -64,7 +70,7 @@ export async function GET(
     } else if (session.user.role === 'TECHNICIAN') {
       // Technicians can see tasks from tickets they created, are assigned to, or match their support group
       const isCreatorOrAssignee = ticket.createdById === session.user.id || ticket.assignedToId === session.user.id;
-      const isSupportGroupMatch = userWithDetails?.supportGroupId && ticket.service?.supportGroupId === userWithDetails.supportGroupId;
+      const isSupportGroupMatch = !!(userWithDetails?.supportGroupId && ticket.service?.supportGroupId === userWithDetails.supportGroupId);
       hasAccess = isCreatorOrAssignee || isSupportGroupMatch;
     } else if (session.user.role === 'USER') {
       // Users can only see tasks from their own tickets
@@ -162,7 +168,8 @@ export async function POST(
       session.user.role === 'ADMIN' ||
       ticket.assignedToId === session.user.id ||
       (session.user.role === 'MANAGER' && 
-       ticket.createdBy.supportGroup === session.user.supportGroup);
+       ticket.createdBy?.supportGroup?.id === session.user.supportGroupId) ||
+      ticket.createdById === session.user.id;
 
     if (!canModify) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });

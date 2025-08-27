@@ -111,6 +111,25 @@ export default function TechnicalTrendsReport() {
     }
   };
 
+  const handleExport = async (format: string) => {
+    if (!data) return;
+    
+    const exportData = {
+      reportTitle: 'Technical Trends Report',
+      dateRange: `${startDate} to ${endDate}`,
+      ...data,
+      generatedAt: new Date().toISOString()
+    };
+
+    if (format === 'xlsx') {
+      console.log('Exporting to Excel:', exportData);
+    } else if (format === 'pdf') {
+      console.log('Exporting to PDF:', exportData);
+    } else if (format === 'csv') {
+      console.log('Exporting to CSV:', exportData);
+    }
+  };
+
   useEffect(() => {
     if (session?.user && ['TECHNICIAN', 'MANAGER', 'ADMIN'].includes(session.user.role)) {
       fetchData();
@@ -198,10 +217,9 @@ export default function TechnicalTrendsReport() {
         </div>
         <div className="flex items-center space-x-4">
           <ExportButton 
-            data={data} 
-            filename={`technical-trends-${startDate}-to-${endDate}`}
-            title="Technical Trends Report"
-          />
+            onExport={handleExport} 
+            reportName="Technical Trends Report"
+            disabled={!data} />
         </div>
       </div>
 

@@ -185,7 +185,7 @@ export default function TechnicianPerformancePage() {
     );
   }
 
-  const filterGroups = []; // No additional filters for personal dashboard
+  const filterGroups: any[] = []; // No additional filters for personal dashboard
 
   return (
     <div className="min-h-screen bg-gray-50">

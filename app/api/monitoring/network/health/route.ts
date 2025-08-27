@@ -178,7 +178,8 @@ export async function GET(request: NextRequest) {
       if (status.isStale) {
         statusCounts.STALE++;
       } else {
-        statusCounts[status.status] = (statusCounts[status.status] || 0) + 1;
+        const key = status.status as keyof typeof statusCounts;
+        statusCounts[key] = (statusCounts[key] || 0) + 1;
       }
     }
 
@@ -264,7 +265,7 @@ export async function GET(request: NextRequest) {
             entityId,
             entityName: entityDetails.name,
             entityCode: entityDetails.code,
-            location: entityType === 'BRANCH' ? entityDetails.city : entityDetails.location,
+            location: entityType === 'BRANCH' ? (entityDetails as any).city : (entityDetails as any).location,
             status: status.isStale ? 'STALE' : status.status,
             lastChecked: status.checkedAt,
             responseTime: status.responseTimeMs,
@@ -276,8 +277,8 @@ export async function GET(request: NextRequest) {
 
     // Sort problem entities by severity
     problemEntities.sort((a, b) => {
-      const severityOrder = { OFFLINE: 0, ERROR: 1, STALE: 2, SLOW: 3 };
-      return severityOrder[a.status] - severityOrder[b.status];
+      const severityOrder: Record<string, number> = { OFFLINE: 0, ERROR: 1, STALE: 2, SLOW: 3 };
+      return (severityOrder[a.status] || 999) - (severityOrder[b.status] || 999);
     });
 
     const healthData = {

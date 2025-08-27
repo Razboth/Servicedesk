@@ -6,9 +6,10 @@ import { exportToCSV, exportToExcel, exportToPDF } from '@/lib/export-utils'
 // POST /api/reports/custom/[id]/export - Export report data
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await auth()
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -26,7 +27,7 @@ export async function POST(
 
     // Get report details
     const report = await prisma.customReport.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: {
         title: true,
         description: true,
@@ -54,8 +55,12 @@ export async function POST(
         userId: session.user.id,
         action: 'EXPORT',
         entity: 'CustomReport',
-        entityId: params.id,
-        details: `Exported report ${report.title} as ${format}`
+        entityId: id,
+        newValues: {
+          description: `Exported report ${report.title} as ${format}`,
+          title: report.title,
+          format: format
+        }
       }
     })
 

@@ -204,8 +204,8 @@ export default function RequestsByStatusReport() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">
-              {statusData.find(s => s.status === 'OPEN')?.count || 0 + 
-               statusData.find(s => s.status === 'IN_PROGRESS')?.count || 0}
+              {(statusData.find(s => s.status === 'OPEN')?.count || 0) + 
+               (statusData.find(s => s.status === 'IN_PROGRESS')?.count || 0)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">Open + In Progress</p>
           </CardContent>
@@ -216,8 +216,8 @@ export default function RequestsByStatusReport() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {((statusData.find(s => s.status === 'RESOLVED')?.count || 0 + 
-                statusData.find(s => s.status === 'CLOSED')?.count || 0) / totalRequests * 100).toFixed(1)}%
+              {(((statusData.find(s => s.status === 'RESOLVED')?.count || 0) + 
+                (statusData.find(s => s.status === 'CLOSED')?.count || 0)) / totalRequests * 100).toFixed(1)}%
             </div>
             <p className="text-xs text-muted-foreground mt-1">Resolved + Closed</p>
           </CardContent>

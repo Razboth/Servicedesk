@@ -69,7 +69,7 @@ export async function GET(
     } else if (session.user.role === 'TECHNICIAN') {
       // Technicians can see comments from tickets they created, are assigned to, or match their support group
       const isCreatorOrAssignee = ticket.createdById === session.user.id || ticket.assignedToId === session.user.id;
-      const isSupportGroupMatch = userWithDetails?.supportGroupId && ticket.service?.supportGroupId === userWithDetails.supportGroupId;
+      const isSupportGroupMatch = !!(userWithDetails?.supportGroupId && ticket.service?.supportGroupId === userWithDetails.supportGroupId);
       canAccess = isCreatorOrAssignee || isSupportGroupMatch;
     } else if (session.user.role === 'USER') {
       // Users can only see comments from their own tickets
@@ -174,7 +174,7 @@ export async function POST(
     } else if (session.user.role === 'TECHNICIAN') {
       // Technicians can comment on tickets they created, are assigned to, or match their support group
       const isCreatorOrAssignee = ticket.createdById === session.user.id || ticket.assignedToId === session.user.id;
-      const isSupportGroupMatch = userWithDetails?.supportGroupId && ticket.service?.supportGroupId === userWithDetails.supportGroupId;
+      const isSupportGroupMatch = !!(userWithDetails?.supportGroupId && ticket.service?.supportGroupId === userWithDetails.supportGroupId);
       canComment = isCreatorOrAssignee || isSupportGroupMatch;
     } else if (session.user.role === 'USER') {
       // Users can only comment on their own tickets
@@ -214,7 +214,8 @@ export async function POST(
         await fs.writeFile(filePath, buffer);
         
         attachmentData.push({
-          filename: attachment.filename,
+          filename: filename,
+          originalName: attachment.filename,
           mimeType: attachment.mimeType,
           size: attachment.size,
           path: `uploads/comments/${filename}`

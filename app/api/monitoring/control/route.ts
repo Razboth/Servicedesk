@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
       monitoringStatus = {
         isRunning: true,
         startedAt: new Date(),
-        startedBy: session.user.name || session.user.email
+        startedBy: session.user.name || session.user.email || null
       };
 
       return NextResponse.json({

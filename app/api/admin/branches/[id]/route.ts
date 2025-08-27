@@ -142,9 +142,9 @@ export async function PUT(
       data: {
         userId: session.user.id,
         action: 'UPDATE',
-        entityType: 'BRANCH',
+        entity: 'BRANCH',
         entityId: branch.id,
-        details: `Updated branch: ${branch.name} (${branch.code})`
+        newValues: validatedData
       }
     });
 
@@ -165,78 +165,170 @@ export async function PUT(
   }
 }
 
-// DELETE /api/admin/branches/[id] - Soft delete branch
+// DELETE /api/admin/branches/[id] - Hard delete branch (permanent removal)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
   try {
+    const { id } = await params;
+    
+    console.log('DELETE Branch Request - ID:', id);
+    
+    // Early validation
+    if (!id || id === 'undefined' || id === 'null') {
+      console.log('Invalid ID provided:', id);
+      return NextResponse.json(
+        { error: 'Invalid Branch ID provided' },
+        { status: 400 }
+      );
+    }
+    
     const session = await auth();
     
+    console.log('Session:', session ? { userId: session.user.id, role: session.user.role } : 'No session');
+    
     if (!session || session.user.role !== 'ADMIN') {
+      console.log('Unauthorized - Role:', session?.user?.role);
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
-    // Check if branch has active users or tickets
+    console.log('Checking Branch with ID:', id);
+
+    // Check if branch exists and has related data
     const branch = await prisma.branch.findUnique({
       where: { id },
       include: {
         _count: {
           select: {
-            users: { where: { isActive: true } },
-            tickets: { where: { status: { not: 'CLOSED' } } }
+            users: true,
+            tickets: { where: { status: { not: 'CLOSED' } } },
+            atms: true
           }
         }
       }
     });
 
     if (!branch) {
+      console.log('Branch not found with ID:', id);
       return NextResponse.json(
         { error: 'Branch not found' },
         { status: 404 }
       );
     }
 
+    console.log('Found Branch:', { 
+      id: branch.id, 
+      name: branch.name, 
+      code: branch.code,
+      users: branch._count.users,
+      openTickets: branch._count.tickets,
+      atms: branch._count.atms
+    });
+
+    // Check for related records
     if (branch._count.users > 0) {
+      console.log('Branch has users:', branch._count.users);
       return NextResponse.json(
-        { error: 'Cannot delete branch with active users' },
+        { error: `Cannot delete branch: It has ${branch._count.users} user(s). Please reassign or delete users first.` },
         { status: 400 }
       );
     }
 
     if (branch._count.tickets > 0) {
+      console.log('Branch has open tickets:', branch._count.tickets);
       return NextResponse.json(
-        { error: 'Cannot delete branch with open tickets' },
+        { error: `Cannot delete branch: It has ${branch._count.tickets} open ticket(s). Please close or reassign tickets first.` },
         { status: 400 }
       );
     }
 
-    // Soft delete the branch
-    const updatedBranch = await prisma.branch.update({
-      where: { id },
-      data: { isActive: false }
-    });
+    if (branch._count.atms > 0) {
+      console.log('Branch has ATMs:', branch._count.atms);
+      return NextResponse.json(
+        { error: `Cannot delete branch: It has ${branch._count.atms} ATM(s). Please reassign or delete ATMs first.` },
+        { status: 400 }
+      );
+    }
 
-    // Create audit log
+    console.log('Proceeding to permanently delete Branch');
+
+    // Store branch details for audit log before deletion
+    const branchDetails = `${branch.name} (${branch.code})`;
+
+    // Create audit log BEFORE deletion (since we need the branch details)
     await prisma.auditLog.create({
       data: {
         userId: session.user.id,
         action: 'DELETE',
-        entityType: 'BRANCH',
+        entity: 'BRANCH',
         entityId: branch.id,
-        details: `Deactivated branch: ${branch.name} (${branch.code})`
+        oldValues: {
+          name: branch.name,
+          code: branch.code,
+          city: branch.city,
+          province: branch.province,
+          isActive: branch.isActive
+        }
       }
     });
 
-    return NextResponse.json({ message: 'Branch deactivated successfully' });
-  } catch (error) {
+    // Hard delete the branch
+    try {
+      await prisma.branch.delete({
+        where: { id }
+      });
+      
+      console.log('Branch permanently deleted:', id);
+    } catch (deleteError: any) {
+      console.error('Failed to delete Branch:', deleteError);
+      
+      // If delete fails, provide more specific error message
+      if (deleteError.code === 'P2003') {
+        return NextResponse.json(
+          { error: 'Cannot delete branch due to foreign key constraints. Please ensure all related records are removed first.' },
+          { status: 400 }
+        );
+      }
+      throw deleteError;
+    }
+
+    return NextResponse.json({ 
+      success: true,
+      message: 'Branch permanently deleted from database',
+      deletedId: id,
+      deletedName: branchDetails
+    });
+  } catch (error: any) {
     console.error('Error deleting branch:', error);
+    
+    // Handle Prisma-specific errors
+    if (error.code === 'P2003') {
+      // Foreign key constraint violation
+      return NextResponse.json(
+        { error: 'Cannot delete branch: It has related records that must be removed first' },
+        { status: 400 }
+      );
+    }
+    
+    if (error.code === 'P2025') {
+      // Record not found
+      return NextResponse.json(
+        { error: 'Branch not found or already deleted' },
+        { status: 404 }
+      );
+    }
+    
+    // Return more detailed error for debugging
     return NextResponse.json(
-      { error: 'Failed to delete branch' },
+      { 
+        error: 'Failed to delete branch',
+        details: error.message || 'Unknown error occurred',
+        code: error.code
+      },
       { status: 500 }
     );
   }

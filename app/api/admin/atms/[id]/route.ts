@@ -7,11 +7,13 @@ import { z } from 'zod';
 const updateATMSchema = z.object({
   code: z.string().min(1).max(20).optional(),
   name: z.string().min(1).max(100).optional(),
-  branchId: z.string().uuid().optional(),
+  branchId: z.string().min(1).optional(), // Changed from uuid() to allow CUID format
   ipAddress: z.string().optional(),
   location: z.string().optional(),
   latitude: z.number().optional(),
   longitude: z.number().optional(),
+  networkMedia: z.enum(['VSAT', 'M2M', 'FO']).optional(),
+  networkVendor: z.string().optional(),
   isActive: z.boolean().optional()
 });
 
@@ -162,9 +164,9 @@ export async function PUT(
       data: {
         userId: session.user.id,
         action: 'UPDATE',
-        entityType: 'ATM',
+        entity: 'ATM',
         entityId: atm.id,
-        details: `Updated ATM: ${atm.name} (${atm.code})`
+        newValues: validatedData
       }
     });
 
@@ -190,11 +192,19 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
-  
-  console.log('DELETE ATM Request - ID:', id);
-  
   try {
+    const { id } = await params;
+    
+    console.log('DELETE ATM Request - ID:', id);
+  
+    // Early validation
+    if (!id || id === 'undefined' || id === 'null') {
+      console.log('Invalid ID provided:', id);
+      return NextResponse.json(
+        { error: 'Invalid ATM ID provided' },
+        { status: 400 }
+      );
+    }
     const session = await auth();
     
     console.log('Session:', session ? { userId: session.user.id, role: session.user.role } : 'No session');
@@ -204,15 +214,6 @@ export async function DELETE(
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
-      );
-    }
-
-    // Validate that id is provided
-    if (!id) {
-      console.log('No ID provided');
-      return NextResponse.json(
-        { error: 'ATM ID is required' },
-        { status: 400 }
       );
     }
 
@@ -258,18 +259,33 @@ export async function DELETE(
       data: {
         userId: session.user.id,
         action: 'DELETE',
-        entityType: 'ATM',
+        entity: 'ATM',
         entityId: atm.id,
-        details: `Permanently deleted ATM: ${atmDetails}`
+        oldValues: {
+          name: atm.name,
+          code: atm.code,
+          branchId: atm.branchId,
+          isActive: atm.isActive
+        }
       }
     });
 
     // Hard delete the ATM (this will cascade delete related records due to onDelete: Cascade in schema)
-    await prisma.aTM.delete({
-      where: { id }
-    });
-
-    console.log('ATM permanently deleted:', id);
+    try {
+      await prisma.aTM.delete({
+        where: { id }
+      });
+      
+      console.log('ATM permanently deleted:', id);
+    } catch (deleteError: any) {
+      console.error('Failed to delete ATM:', deleteError);
+      
+      // If delete fails, provide more specific error message
+      if (deleteError.code === 'P2003') {
+        throw new Error('Cannot delete ATM due to foreign key constraints. Please ensure all related records are removed first.');
+      }
+      throw deleteError;
+    }
 
     return NextResponse.json({ 
       success: true,
@@ -277,10 +293,33 @@ export async function DELETE(
       deletedId: id,
       deletedName: atmDetails
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error deleting ATM:', error);
+    
+    // Handle Prisma-specific errors
+    if (error.code === 'P2003') {
+      // Foreign key constraint violation
+      return NextResponse.json(
+        { error: 'Cannot delete ATM: It has related records that must be removed first' },
+        { status: 400 }
+      );
+    }
+    
+    if (error.code === 'P2025') {
+      // Record not found
+      return NextResponse.json(
+        { error: 'ATM not found or already deleted' },
+        { status: 404 }
+      );
+    }
+    
+    // Return more detailed error for debugging
     return NextResponse.json(
-      { error: 'Failed to delete ATM' },
+      { 
+        error: 'Failed to delete ATM',
+        details: error.message || 'Unknown error occurred',
+        code: error.code
+      },
       { status: 500 }
     );
   }

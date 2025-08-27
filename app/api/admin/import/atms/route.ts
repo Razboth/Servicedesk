@@ -18,8 +18,8 @@ function validateATMData(data: any): string[] {
     errors.push('Name is required');
   }
   
-  if (!data.branchId || data.branchId.trim() === '') {
-    errors.push('Branch ID is required');
+  if (!data.branchCode || data.branchCode.trim() === '') {
+    errors.push('Branch Code is required');
   }
   
   if (data.networkMedia && !['VSAT', 'M2M', 'FO'].includes(data.networkMedia)) {
@@ -90,19 +90,19 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        // Validate branch exists
+        // Validate branch exists by code
         const branchExists = await prisma.branch.findUnique({
-          where: { id: row.branchId.trim() }
+          where: { code: row.branchCode.trim() }
         });
         if (!branchExists) {
-          results.errors.push(`Row ${i + 1}: Branch ID ${row.branchId} not found`);
+          results.errors.push(`Row ${i + 1}: Branch Code ${row.branchCode} not found`);
           continue;
         }
 
         const atmData = {
           code: row.code?.trim(),
           name: row.name?.trim(),
-          branchId: row.branchId?.trim(),
+          branchId: branchExists.id, // Use the found branch's ID
           ipAddress: row.ipAddress?.trim() || null,
           location: row.location?.trim() || null,
           latitude: row.latitude ? parseFloat(row.latitude) : null,
@@ -169,23 +169,32 @@ export async function GET(request: NextRequest) {
     const format = searchParams.get('format') || 'csv';
 
     const atms = await prisma.aTM.findMany({
-      select: {
-        code: true,
-        name: true,
-        branchId: true,
-        ipAddress: true,
-        location: true,
-        latitude: true,
-        longitude: true,
-        networkMedia: true,
-        networkVendor: true,
-        isActive: true
+      include: {
+        branch: {
+          select: {
+            code: true
+          }
+        }
       },
       orderBy: { name: 'asc' }
     });
 
+    // Transform data to include branchCode instead of branchId
+    const exportData = atms.map(atm => ({
+      code: atm.code,
+      name: atm.name,
+      branchCode: atm.branch.code,
+      ipAddress: atm.ipAddress,
+      location: atm.location,
+      latitude: atm.latitude,
+      longitude: atm.longitude,
+      networkMedia: atm.networkMedia,
+      networkVendor: atm.networkVendor,
+      isActive: atm.isActive
+    }));
+
     if (format === 'excel') {
-      const worksheet = XLSX.utils.json_to_sheet(atms);
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, 'ATMs');
       
@@ -198,7 +207,7 @@ export async function GET(request: NextRequest) {
         }
       });
     } else {
-      const csv = Papa.unparse(atms, { delimiter: ';' });
+      const csv = Papa.unparse(exportData, { delimiter: ';' });
       
       return new NextResponse(csv, {
         headers: {

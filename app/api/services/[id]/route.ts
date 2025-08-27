@@ -62,6 +62,7 @@ export async function GET(
             isUserVisible: true,
             defaultValue: true,
             options: true,
+            validation: true,
             order: true
           },
           orderBy: { order: 'asc' }
@@ -87,7 +88,9 @@ export async function GET(
                 placeholder: true,
                 helpText: true,
                 defaultValue: true,
-                options: true
+                options: true,
+                validation: true,
+                category: true
               }
             }
           }
