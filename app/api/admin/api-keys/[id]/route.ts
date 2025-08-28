@@ -20,7 +20,7 @@ export async function GET(
     const { id } = await params;
     const session = await auth();
     
-    if (!session || session.user.role !== 'ADMIN') {
+    if (!session || (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN')) {
       return NextResponse.json(
         { error: 'Unauthorized. Admin access required.' },
         { status: 401 }
@@ -69,7 +69,7 @@ export async function PUT(
     const { id } = await params;
     const session = await auth();
     
-    if (!session || session.user.role !== 'ADMIN') {
+    if (!session || (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN')) {
       return NextResponse.json(
         { error: 'Unauthorized. Admin access required.' },
         { status: 401 }
@@ -147,7 +147,7 @@ export async function DELETE(
     const { id } = await params;
     const session = await auth();
     
-    if (!session || session.user.role !== 'ADMIN') {
+    if (!session || (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN')) {
       return NextResponse.json(
         { error: 'Unauthorized. Admin access required.' },
         { status: 401 }

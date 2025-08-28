@@ -22,11 +22,30 @@ export async function GET(request: NextRequest) {
       isActive: true
     };
 
-    if (categoryId) {
-      where.categoryId = categoryId;
-    }
-
-    if (search) {
+    if (categoryId && search) {
+      // When both categoryId and search are provided, combine the filters
+      where.AND = [
+        {
+          OR: [
+            { categoryId: categoryId },
+            { tier1CategoryId: categoryId }
+          ]
+        },
+        {
+          OR: [
+            { name: { contains: search, mode: 'insensitive' } },
+            { description: { contains: search, mode: 'insensitive' } }
+          ]
+        }
+      ];
+    } else if (categoryId) {
+      // Check if this is a tier1CategoryId (for the 3-tier system)
+      // Services can be filtered by either categoryId (old system) or tier1CategoryId (new system)
+      where.OR = [
+        { categoryId: categoryId },
+        { tier1CategoryId: categoryId }
+      ];
+    } else if (search) {
       where.OR = [
         { name: { contains: search, mode: 'insensitive' } },
         { description: { contains: search, mode: 'insensitive' } }

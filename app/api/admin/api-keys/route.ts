@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   try {
     const session = await auth();
     
-    if (!session || session.user.role !== 'ADMIN') {
+    if (!session || (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN')) {
       return NextResponse.json(
         { error: 'Unauthorized. Admin access required.' },
         { status: 401 }
@@ -39,11 +39,11 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // Don't send the hashed keys to the client
+    // Mask the API keys for security
     const sanitizedKeys = apiKeys.map(key => ({
       id: key.id,
       name: key.name,
-      key: key.key, // This is the masked version
+      key: maskApiKey(key.key), // Mask the key for display
       description: key.description,
       permissions: key.permissions,
       isActive: key.isActive,
@@ -51,8 +51,9 @@ export async function GET(request: NextRequest) {
       lastUsedAt: key.lastUsedAt,
       usageCount: key.usageCount,
       createdAt: key.createdAt,
-      createdBy: key.createdBy
-    }));
+      createdBy: key.createdBy,
+      isExpired: key.expiresAt ? new Date() > key.expiresAt : false
+    }))
 
     return NextResponse.json(sanitizedKeys);
   } catch (error) {
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await auth();
     
-    if (!session || session.user.role !== 'ADMIN') {
+    if (!session || (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN')) {
       return NextResponse.json(
         { error: 'Unauthorized. Admin access required.' },
         { status: 401 }
@@ -103,7 +104,7 @@ export async function POST(request: NextRequest) {
     const dbApiKey = await prisma.apiKey.create({
       data: {
         name,
-        key: maskApiKey(apiKey), // Store masked version for display
+        key: apiKey, // Store the actual key (will be masked when displayed)
         hashedKey,
         description,
         permissions: permissions || ['soc'],

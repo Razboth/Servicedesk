@@ -228,7 +228,7 @@ export function Sidebar() {
           </div>
         )}
 
-        {session.user?.role === 'ADMIN' && (
+        {(session.user?.role === 'ADMIN' || session.user?.role === 'SUPER_ADMIN') && (
           <div className="space-y-1">
             {(!isCollapsed || isMobile) && <div className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider px-3 py-2">Administration</div>}
             <Link href="/admin/task-templates" className={linkClass('/admin/task-templates')} onClick={handleLinkClick}>
@@ -298,6 +298,12 @@ export function Sidebar() {
               </svg>
               {(!isCollapsed || isMobile) && 'Security'}
             </Link>
+            <Link href="/admin/api-keys" className={linkClass('/admin/api-keys')} onClick={handleLinkClick}>
+              <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 11-4 0 2 2 0 014 0zM7 10.172A2 2 0 116.172 9L7 10.172zM14 18.243a2 2 0 101.414-1.414L14 18.243zM17.828 10.172a2 2 0 11-1.414 1.414L17.828 10.172zM11 11h2v6h-2v-6z" />
+              </svg>
+              {(!isCollapsed || isMobile) && 'API Keys'}
+            </Link>
             <Link href="/admin/import" className={linkClass('/admin/import')} onClick={handleLinkClick}>
               <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -307,8 +313,9 @@ export function Sidebar() {
           </div>
         )}
         
-        {/* Network Monitoring - For ADMIN, TECHNICIAN, and Network Operations Center users */}
+        {/* Network Monitoring - For ADMIN, SUPER_ADMIN, TECHNICIAN, and Network Operations Center users */}
         {(session.user?.role === 'ADMIN' || 
+          session.user?.role === 'SUPER_ADMIN' ||
           session.user?.role === 'TECHNICIAN' || 
           session.user?.supportGroupCode === 'NETWORK_OPERATIONS_CENTER') && (
           <div className="space-y-1">
