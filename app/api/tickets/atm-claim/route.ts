@@ -85,7 +85,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Use apiKeyUser for reporting branch (already loaded above)
+    // Find the system user for the ATM's branch
+    const systemUsername = `system_${atm.branch.code.toLowerCase()}`
+    const branchSystemUser = await prisma.user.findFirst({
+      where: {
+        username: systemUsername,
+        branch: { id: atm.branch.id }
+      }
+    })
+
+    // Use branch system user if available, otherwise fall back to API key creator
+    const ticketCreator = branchSystemUser || apiKeyUser
 
     // Generate ticket number
     const today = new Date()
@@ -145,6 +155,14 @@ ${body.transaction_ref ? `- No. Referensi: ${body.transaction_ref}` : ''}
 
     // Start transaction
     const result = await prisma.$transaction(async (tx) => {
+      // Determine initial status based on service approval requirements
+      let initialStatus: 'OPEN' | 'PENDING_APPROVAL' = 'OPEN'
+      
+      if (service.requiresApproval) {
+        // Always require approval for API-created tickets (system users are not managers)
+        initialStatus = 'PENDING_APPROVAL'
+      }
+      
       // Create ticket with auto-routing to ATM owner branch
       const ticket = await tx.ticket.create({
         data: {
@@ -154,8 +172,8 @@ ${body.transaction_ref ? `- No. Referensi: ${body.transaction_ref}` : ''}
           serviceId: service.id,
           categoryId: service.categoryId!,
           priority: service.priority,
-          status: 'OPEN',
-          createdById: apiKeyUser.id,
+          status: initialStatus,
+          createdById: ticketCreator.id, // Use branch system user
           branchId: atm.branchId, // Route to ATM owner branch
           supportGroupId: service.supportGroupId,
           isConfidential: false,
@@ -163,6 +181,19 @@ ${body.transaction_ref ? `- No. Referensi: ${body.transaction_ref}` : ''}
           issueClassification: 'SYSTEM_ERROR'
         }
       })
+      
+      // Handle approval if needed
+      if (service.requiresApproval) {
+        // Create pending approval record with system user as temporary approver
+        await tx.ticketApproval.create({
+          data: {
+            ticketId: ticket.id,
+            approverId: ticketCreator.id, // Will be updated when actually approved
+            status: 'PENDING',
+            reason: 'Awaiting manager approval'
+          }
+        })
+      }
 
       // Create field values for all custom fields
       const fieldValues = []
@@ -230,8 +261,8 @@ ${body.transaction_ref ? `- No. Referensi: ${body.transaction_ref}` : ''}
       await tx.ticketComment.create({
         data: {
           ticketId: ticket.id,
-          userId: apiKeyUser.id,
-          content: `Ticket klaim ATM dibuat melalui API.\nATM: ${body.atm_code}\nJenis: ${claimTypeLabels[body.claim_type] || body.claim_type}`,
+          userId: ticketCreator.id, // Use system user for comment
+          content: `Ticket klaim ATM dibuat melalui API.\nATM: ${body.atm_code}\nJenis: ${claimTypeLabels[body.claim_type] || body.claim_type}\nDibuat oleh: ${apiKeyUser.name} (via API)`,
           isInternal: true
         }
       })
@@ -240,9 +271,9 @@ ${body.transaction_ref ? `- No. Referensi: ${body.transaction_ref}` : ''}
       await tx.serviceUsage.create({
         data: {
           serviceId: service.id,
-          userId: apiKeyUser.id,
+          userId: ticketCreator.id, // Use system user
           ticketId: ticket.id,
-          branchId: apiKeyUser?.branchId || null
+          branchId: atm.branchId // Use ATM's branch
         }
       })
 
@@ -254,10 +285,10 @@ ${body.transaction_ref ? `- No. Referensi: ${body.transaction_ref}` : ''}
       where: { id: result.id },
       include: {
         service: {
-          select: { name: true }
+          select: { name: true, requiresApproval: true }
         },
         createdBy: {
-          select: { name: true, email: true }
+          select: { name: true, email: true, role: true }
         },
         branch: {
           select: { name: true, code: true }
@@ -269,7 +300,11 @@ ${body.transaction_ref ? `- No. Referensi: ${body.transaction_ref}` : ''}
             }
           }
         },
-        attachments: true
+        attachments: true,
+        approvals: {
+          orderBy: { createdAt: 'desc' },
+          take: 1
+        }
       }
     })
 
@@ -286,7 +321,12 @@ ${body.transaction_ref ? `- No. Referensi: ${body.transaction_ref}` : ''}
           code: atm.code,
           location: atm.location
         }
-      }
+      },
+      approval: createdTicket?.approvals?.[0] ? {
+        status: createdTicket.approvals[0].status,
+        reason: createdTicket.approvals[0].reason,
+        requiresApproval: service.requiresApproval
+      } : null
     }, 201)
 
   } catch (error) {

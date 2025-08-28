@@ -5,13 +5,13 @@ import { z } from 'zod';
 
 // Validation schema for creating comments
 const createCommentSchema = z.object({
-  content: z.string().min(1, 'Comment content is required').max(2000),
+  content: z.string().max(500000).default(''), // Increased to 500KB to support base64 images
   isInternal: z.boolean().default(false),
   attachments: z.array(z.object({
     filename: z.string(),
+    originalName: z.string(),
     mimeType: z.string(),
-    size: z.number(),
-    content: z.string() // base64 encoded content
+    size: z.number()
   })).optional()
 });
 
@@ -196,29 +196,16 @@ export async function POST(
     // Handle comment attachments
     const attachmentData = [];
     if (validatedData.attachments && validatedData.attachments.length > 0) {
-      const fs = require('fs').promises;
       const path = require('path');
       
       for (const attachment of validatedData.attachments) {
-        // Create uploads directory if it doesn't exist
-        const uploadsDir = path.join(process.cwd(), 'uploads', 'comments');
-        await fs.mkdir(uploadsDir, { recursive: true });
-        
-        // Generate unique filename
-        const timestamp = Date.now();
-        const filename = `${timestamp}-${attachment.filename}`;
-        const filePath = path.join(uploadsDir, filename);
-        
-        // Save file
-        const buffer = Buffer.from(attachment.content, 'base64');
-        await fs.writeFile(filePath, buffer);
-        
+        // File already uploaded via /api/upload, just reference it
         attachmentData.push({
-          filename: filename,
-          originalName: attachment.filename,
+          filename: attachment.filename,
+          originalName: attachment.originalName,
           mimeType: attachment.mimeType,
           size: attachment.size,
-          path: `uploads/comments/${filename}`
+          path: path.join('uploads', attachment.filename)
         });
       }
     }

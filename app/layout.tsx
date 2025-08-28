@@ -7,6 +7,7 @@ import { SidebarLayout } from '@/components/navigation/sidebar-layout'
 import { ThemeProvider } from '@/components/providers/theme-provider'
 import { Toaster } from 'sonner'
 import IdleTimer from '@/components/auth/idle-timer'
+import { TicketNotifications } from '@/components/notifications/ticket-notifications'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -39,7 +40,8 @@ export default function RootLayout({
               </SidebarLayout>
             </SidebarProvider>
             <IdleTimer />
-            <Toaster />
+            <TicketNotifications />
+            <Toaster position="top-right" richColors />
           </Providers>
         </ThemeProvider>
       </body>

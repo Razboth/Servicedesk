@@ -85,6 +85,7 @@ export async function GET(request: NextRequest) {
     const securityClassification = searchParams.get('securityClassification');
     const requestStats = searchParams.get('stats') === 'true';
     const filter = searchParams.get('filter'); // 'my-tickets' or 'available-tickets'
+    const categoryId = searchParams.get('categoryId'); // Category filter
 
     // Get user's branch and support group for filtering
     const userWithDetails = await prisma.user.findUnique({
@@ -168,7 +169,63 @@ export async function GET(request: NextRequest) {
         }
       ]
     } else if (session.user.role === 'TECHNICIAN') {
-      // Technicians can see ALL tickets without any restrictions
+      // Technicians can see:
+      // 1. Tickets they created or are assigned to
+      // 2. All unassigned tickets (for general /tickets page)
+      // 3. For workbench available-tickets: only approved or no-approval-required tickets
+      const technicianConditions: any[] = [
+        { createdById: session.user.id }, // Their own tickets
+        { assignedToId: session.user.id }  // Tickets assigned to them
+      ];
+
+      // Only apply approval filtering for workbench available-tickets filter
+      // NOT for general /tickets page
+      if (filter === 'available-tickets') {
+        // This is specifically for the workbench - apply strict approval filtering
+        // Get services that require approval
+        const servicesRequiringApproval = await prisma.service.findMany({
+          where: { requiresApproval: true },
+          select: { id: true }
+        });
+        const approvalServiceIds = servicesRequiringApproval.map(s => s.id);
+
+        // For workbench available tickets, only show approved or no-approval-required
+        technicianConditions.push({
+          OR: [
+            // Tickets that don't require approval
+            {
+              serviceId: {
+                notIn: approvalServiceIds
+              }
+            },
+            // Tickets that require approval and are approved
+            {
+              AND: [
+                {
+                  serviceId: {
+                    in: approvalServiceIds
+                  }
+                },
+                {
+                  approvals: {
+                    some: {
+                      status: 'APPROVED'
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        });
+      } else {
+        // For general /tickets page, show all tickets (including pending approval)
+        // Add all unassigned tickets as viewable
+        technicianConditions.push({
+          assignedToId: null
+        });
+      }
+
+      where.OR = technicianConditions;
     } else if (session.user.role === 'MANAGER') {
       // Managers can ONLY see tickets created by users from their own branch, excluding security analyst tickets
       if (userWithDetails?.branchId) {
@@ -188,12 +245,13 @@ export async function GET(request: NextRequest) {
     // ADMIN sees all tickets (no additional filtering)
 
     // Apply filters
-    if (status) {
+    if (status && status !== 'all' && status !== 'ALL') {
       where.status = status;
-    } else {
+    } else if (!status) {
       // Exclude rejected tickets by default when no specific status is requested
       where.status = { not: 'REJECTED' };
     }
+    // If status is 'all' or 'ALL', don't add any status filter
     if (priority) where.priority = priority;
     if (assignedTo) where.assignedToId = assignedTo;
     if (mineAndAvailable) {
@@ -220,17 +278,62 @@ export async function GET(request: NextRequest) {
       if (filter === 'my-tickets') {
         // Show tickets assigned to or claimed by current user
         where.assignedToId = session.user.id;
+        // Clear any OR conditions set earlier for technicians
+        delete where.OR;
       } else if (filter === 'available-tickets') {
-        // Show unassigned tickets that match technician's support group
-        where.AND = (where.AND || []).concat([
-          { assignedToId: null },
-          userWithDetails?.supportGroupId ? {
-            service: {
-              supportGroupId: userWithDetails.supportGroupId
+        // For available tickets: must be unassigned AND (approved if requires approval OR doesn't require approval)
+        where.assignedToId = null;
+        where.status = 'OPEN'; // Only show open tickets as available
+        
+        // Get services that require approval
+        const approvalServices = await prisma.service.findMany({
+          where: { requiresApproval: true },
+          select: { id: true }
+        });
+        const approvalServiceIds = approvalServices.map(s => s.id);
+        
+        // Override the OR conditions to ensure proper approval filtering
+        where.OR = [
+          // Tickets that don't require approval
+          {
+            serviceId: {
+              notIn: approvalServiceIds
             }
-          } : {}
-        ]);
+          },
+          // Tickets that require approval AND are approved
+          {
+            AND: [
+              {
+                serviceId: {
+                  in: approvalServiceIds
+                }
+              },
+              {
+                approvals: {
+                  some: {
+                    status: 'APPROVED'
+                  }
+                }
+              }
+            ]
+          }
+        ];
+        
+        // If technician has a support group, also filter by that
+        if (userWithDetails?.supportGroupId) {
+          where.service = {
+            supportGroupId: userWithDetails.supportGroupId
+          };
+        }
       }
+    }
+
+    // Category filter
+    if (categoryId) {
+      where.service = {
+        ...where.service,
+        categoryId: categoryId
+      };
     }
 
     if (search) {
@@ -340,6 +443,7 @@ export async function GET(request: NextRequest) {
             select: { 
               name: true,
               slaHours: true,
+              requiresApproval: true,
               category: {
                 select: { name: true }
               }
@@ -348,6 +452,21 @@ export async function GET(request: NextRequest) {
           createdBy: { select: { id: true, name: true, email: true, branchId: true } },
           assignedTo: { select: { id: true, name: true, email: true } },
           branch: { select: { id: true, name: true, code: true } },
+          approvals: {
+            select: {
+              id: true,
+              status: true,
+              createdAt: true,
+              approver: {
+                select: {
+                  name: true,
+                  email: true
+                }
+              }
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 1
+          },
           _count: { select: { comments: true } }
         },
         orderBy: getSortOrder(sortBy, sortOrder),
@@ -438,9 +557,19 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Determine initial status based on user role and approval workflow
-    // Regular users' tickets go to PENDING_APPROVAL, managers and technicians bypass approval
-    const initialStatus = (session.user.role === 'USER') ? 'PENDING_APPROVAL' : 'OPEN';
+    // Get service to check if it requires approval
+    const serviceToCheck = await prisma.service.findUnique({
+      where: { id: validatedData.serviceId },
+      select: { requiresApproval: true }
+    });
+    
+    // Determine initial status based on service approval requirement and user role
+    let initialStatus: 'OPEN' | 'PENDING_APPROVAL' = 'OPEN';
+    if (serviceToCheck?.requiresApproval) {
+      // Manager-created tickets are auto-approved, so status is OPEN
+      // Others need approval, so status starts as PENDING_APPROVAL
+      initialStatus = (session.user.role === 'MANAGER') ? 'OPEN' : 'PENDING_APPROVAL';
+    }
 
     // Handle file attachments
     const attachmentData: any[] = [];
@@ -692,6 +821,53 @@ export async function POST(request: NextRequest) {
 
       return createdTicket;
     });
+
+    // Check if service requires approval and create approval entry
+    const serviceDetails = await prisma.service.findUnique({
+      where: { id: validatedData.serviceId },
+      select: { requiresApproval: true }
+    });
+
+    if (serviceDetails?.requiresApproval) {
+      // Check if creator is a manager - auto-approve their own tickets
+      if (session.user.role === 'MANAGER') {
+        await prisma.ticketApproval.create({
+          data: {
+            ticketId: ticket.id,
+            approverId: session.user.id,
+            status: 'APPROVED',
+            reason: 'Auto-approved: Manager-created ticket'
+          }
+        });
+        
+        // Update ticket status to reflect approval
+        await prisma.ticket.update({
+          where: { id: ticket.id },
+          data: { status: 'OPEN' }
+        });
+      } else {
+        // For non-managers, create pending approval
+        // Find a manager from the same branch to approve
+        const branchManager = await prisma.user.findFirst({
+          where: {
+            branchId: targetBranchId,
+            role: 'MANAGER',
+            isActive: true
+          }
+        });
+
+        if (branchManager) {
+          await prisma.ticketApproval.create({
+            data: {
+              ticketId: ticket.id,
+              approverId: branchManager.id,
+              status: 'PENDING',
+              reason: null
+            }
+          });
+        }
+      }
+    }
 
     // Check if service has task templates and create tasks automatically
     const taskTemplates = await prisma.taskTemplate.findMany({

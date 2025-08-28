@@ -36,6 +36,7 @@ export async function GET(
           select: {
             name: true,
             supportGroupId: true,
+            requiresApproval: true,
             category: { select: { name: true } },
             // Include 3-tier category IDs from service
             categoryId: true,
@@ -43,7 +44,21 @@ export async function GET(
             itemId: true
           }
         },
-        createdBy: { select: { name: true, email: true, role: true, branchId: true } },
+        createdBy: { 
+          select: { 
+            name: true, 
+            email: true, 
+            role: true, 
+            branchId: true,
+            branch: {
+              select: { 
+                id: true, 
+                name: true, 
+                code: true 
+              }
+            }
+          } 
+        },
         assignedTo: { select: { name: true, email: true, role: true } },
         fieldValues: {
           include: {
@@ -113,16 +128,33 @@ export async function GET(
       const isCreatorFromSameBranch = ticket.createdBy?.branchId === userWithDetails?.branchId;
       canAccess = isFromSameBranch && isCreatorFromSameBranch;
     } else if (session.user.role === 'TECHNICIAN') {
-      // Technicians can see tickets they created, are assigned to, or match their support group
+      // Technicians can see:
+      // 1. Tickets they created or are assigned to
       const isCreatorOrAssignee = ticket.createdById === session.user.id || ticket.assignedToId === session.user.id;
-      const isSupportGroupMatch = !!(userWithDetails?.supportGroupId && ticket.service?.supportGroupId === userWithDetails.supportGroupId);
-      canAccess = isCreatorOrAssignee || isSupportGroupMatch;
+      
+      // 2. All approved tickets (or tickets that don't require approval)
+      let isApprovedOrNoApprovalNeeded = true;
+      if (ticket.service?.requiresApproval) {
+        // Check if ticket is approved
+        const latestApproval = ticket.approvals?.[0]; // Already ordered by desc
+        isApprovedOrNoApprovalNeeded = latestApproval?.status === 'APPROVED';
+      }
+      
+      canAccess = isCreatorOrAssignee || isApprovedOrNoApprovalNeeded;
     } else if (session.user.role === 'SECURITY_ANALYST') {
-      // Security Analysts function like technicians but with additional security access
+      // Security Analysts function like technicians
       const isCreatorOrAssignee = ticket.createdById === session.user.id || ticket.assignedToId === session.user.id;
-      const isSupportGroupMatch = !!(userWithDetails?.supportGroupId && ticket.service?.supportGroupId === userWithDetails.supportGroupId);
+      
+      // All approved tickets (or tickets that don't require approval)
+      let isApprovedOrNoApprovalNeeded = true;
+      if (ticket.service?.requiresApproval) {
+        // Check if ticket is approved
+        const latestApproval = ticket.approvals?.[0]; // Already ordered by desc
+        isApprovedOrNoApprovalNeeded = latestApproval?.status === 'APPROVED';
+      }
+      
       const isSecurityAnalystTicket = ticket.createdBy?.role === 'SECURITY_ANALYST';
-      canAccess = isCreatorOrAssignee || isSupportGroupMatch || isSecurityAnalystTicket;
+      canAccess = isCreatorOrAssignee || isApprovedOrNoApprovalNeeded || isSecurityAnalystTicket;
     } else if (session.user.role === 'USER') {
       // Users can only see their own tickets
       canAccess = ticket.createdById === session.user.id;
@@ -172,41 +204,49 @@ export async function PATCH(
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
-    // Check permissions for updates
-    const canUpdate = 
-      session.user.role === 'ADMIN' ||
-      session.user.role === 'TECHNICIAN' ||
-      session.user.role === 'SECURITY_ANALYST' ||
-      (session.user.role === 'USER' && existingTicket.createdById === session.user.id) ||
-      (session.user.role === 'MANAGER' && existingTicket.createdById === session.user.id);
+    // Check permissions for updates based on role
+    let canUpdate = false;
+    let allowedFields: string[] = [];
+    
+    if (session.user.role === 'ADMIN') {
+      // Admin can update everything
+      canUpdate = true;
+      allowedFields = Object.keys(validatedData);
+    } else if (session.user.role === 'TECHNICIAN' || session.user.role === 'SECURITY_ANALYST') {
+      // Technicians can only update tickets they are assigned to
+      if (existingTicket.assignedToId === session.user.id) {
+        canUpdate = true;
+        allowedFields = Object.keys(validatedData);
+      } else {
+        return NextResponse.json(
+          { error: 'Only the assigned technician can update this ticket' },
+          { status: 403 }
+        );
+      }
+    } else if (session.user.role === 'USER' && existingTicket.createdById === session.user.id) {
+      // Users can only update title and description of their own tickets
+      canUpdate = true;
+      allowedFields = ['title', 'description'];
+    } else if (session.user.role === 'MANAGER' && existingTicket.createdById === session.user.id) {
+      // Managers can update basic fields of tickets they created
+      canUpdate = true;
+      allowedFields = ['title', 'description', 'priority'];
+    }
 
     if (!canUpdate) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    // Managers can only update certain fields (cannot change status, assign tickets, etc.)
-    if (session.user.role === 'MANAGER') {
-      const allowedFields = ['title', 'description', 'priority'];
+    // Check if user is trying to update fields they're not allowed to
+    if (session.user.role !== 'ADMIN' && allowedFields.length > 0) {
       const updateFields = Object.keys(validatedData);
       const hasDisallowedFields = updateFields.some(field => !allowedFields.includes(field));
       
       if (hasDisallowedFields) {
+        const disallowedFields = updateFields.filter(f => !allowedFields.includes(f));
+        const role = session.user.role?.toLowerCase() || 'user';
         return NextResponse.json(
-          { error: 'Managers cannot update ticket status, assignments, or technical fields' },
-          { status: 403 }
-        );
-      }
-    }
-
-    // Users can only update certain fields
-    if (session.user.role === 'USER') {
-      const allowedFields = ['title', 'description'];
-      const updateFields = Object.keys(validatedData);
-      const hasDisallowedFields = updateFields.some(field => !allowedFields.includes(field));
-      
-      if (hasDisallowedFields) {
-        return NextResponse.json(
-          { error: 'Users can only update title and description' },
+          { error: `${role}s cannot update these fields: ${disallowedFields.join(', ')}` },
           { status: 403 }
         );
       }
@@ -225,6 +265,12 @@ export async function PATCH(
       updateData.closedAt = null;
     }
 
+    // Track what's changing for audit log
+    const changes: any = {};
+    if (validatedData.status && validatedData.status !== existingTicket.status) {
+      changes.status = { old: existingTicket.status, new: validatedData.status };
+    }
+    
     // Update the ticket
     const updatedTicket = await prisma.ticket.update({
       where: { id },
@@ -236,7 +282,21 @@ export async function PATCH(
             category: { select: { name: true } }
           }
         },
-        createdBy: { select: { name: true, email: true, role: true, branchId: true } },
+        createdBy: { 
+          select: { 
+            name: true, 
+            email: true, 
+            role: true, 
+            branchId: true,
+            branch: {
+              select: { 
+                id: true, 
+                name: true, 
+                code: true 
+              }
+            }
+          } 
+        },
         assignedTo: { select: { name: true, email: true, role: true } },
         fieldValues: {
           include: {
@@ -254,6 +314,20 @@ export async function PATCH(
         }
       }
     });
+
+    // Create audit log if there were changes
+    if (Object.keys(changes).length > 0) {
+      await prisma.auditLog.create({
+        data: {
+          userId: session.user.id,
+          action: 'STATUS_UPDATE',
+          entity: 'TICKET',
+          entityId: id,
+          oldValues: changes.status ? { status: changes.status.old } : {},
+          newValues: changes.status ? { status: changes.status.new, updatedBy: session.user.name || session.user.email } : {}
+        },
+      });
+    }
 
     return NextResponse.json(updatedTicket);
   } catch (error) {

@@ -7,6 +7,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { RichTextEditor, RichTextViewer } from '@/components/ui/rich-text-editor';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -24,6 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowLeft, Clock, User, MessageSquare, AlertCircle, CheckCircle, CheckCheck, Plus, X, Paperclip, Download, FileText, Eye, Edit, Sparkles, Shield, UserCheck, UserX, Timer } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { RelatedArticles } from '@/components/knowledge/related-articles';
+import { AttachmentPreview } from '@/components/ui/attachment-preview';
 
 interface TicketFieldValue {
   id: string;
@@ -33,6 +35,15 @@ interface TicketFieldValue {
     label: string;
     type: string;
   };
+}
+
+interface CommentAttachment {
+  id: string;
+  filename: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  createdAt: string;
 }
 
 interface TicketComment {
@@ -46,6 +57,7 @@ interface TicketComment {
     email: string;
     role: string;
   };
+  attachments?: CommentAttachment[];
 }
 
 interface TicketTask {
@@ -103,8 +115,10 @@ interface Ticket {
   updatedAt: string;
   resolvedAt?: string;
   closedAt?: string;
+  assignedToId?: string;
   service: {
     name: string;
+    requiresApproval?: boolean;
     category: {
       name: string;
     };
@@ -113,6 +127,11 @@ interface Ticket {
     name: string;
     email: string;
     role: string;
+    branch?: {
+      id: string;
+      name: string;
+      code: string;
+    };
   };
   assignedTo?: {
     name: string;
@@ -143,6 +162,7 @@ export default function TicketDetailPage() {
   const [isSubmittingResolution, setIsSubmittingResolution] = useState(false);
   const [selectedResolutionStatus, setSelectedResolutionStatus] = useState<string>('RESOLVED');
   const [previewAttachment, setPreviewAttachment] = useState<TicketAttachment | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   // Helper function to check if file is previewable
   const isPreviewable = (mimeType: string) => {
@@ -194,6 +214,42 @@ export default function TicketDetailPage() {
     }
   }, [ticketId]);
 
+  // Poll for approval status changes every 10 seconds if ticket is pending approval
+  useEffect(() => {
+    if (!ticket) return;
+    
+    // Check if ticket requires approval and is pending
+    const requiresApproval = ticket.service?.requiresApproval;
+    const latestApproval = ticket.approvals?.[0];
+    const isPendingApproval = requiresApproval && (!latestApproval || latestApproval.status === 'PENDING');
+    
+    if (isPendingApproval) {
+      // Set up polling interval
+      const pollInterval = setInterval(async () => {
+        try {
+          const response = await fetch(`/api/tickets/${ticketId}`);
+          if (response.ok) {
+            const updatedTicket = await response.json();
+            const updatedApproval = updatedTicket.approvals?.[0];
+            
+            // Check if approval status changed
+            if (updatedApproval?.status === 'APPROVED') {
+              // Reload the page to refresh all data and UI
+              window.location.reload();
+            } else if (updatedApproval?.status === 'REJECTED') {
+              // Update ticket data without full reload for rejections
+              setTicket(updatedTicket);
+            }
+          }
+        } catch (error) {
+          console.error('Error polling for approval status:', error);
+        }
+      }, 10000); // Poll every 10 seconds
+      
+      return () => clearInterval(pollInterval);
+    }
+  }, [ticket, ticketId]);
+
   const fetchTicket = async () => {
     try {
       setLoading(true);
@@ -203,7 +259,7 @@ export default function TicketDetailPage() {
         if (response.status === 404) {
           setError('Ticket not found');
         } else if (response.status === 403) {
-          setError('Access denied');
+          setError('Access denied. This ticket may require approval or you may not have permission to view it.');
         } else {
           setError('Failed to load ticket');
         }
@@ -217,6 +273,56 @@ export default function TicketDetailPage() {
       console.error('Error fetching ticket:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleClaimTicket = async () => {
+    try {
+      setIsUpdatingStatus(true);
+      const response = await fetch(`/api/tickets/${ticketId}/claim`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        fetchTicket(); // Refresh ticket data
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to claim ticket');
+      }
+    } catch (err) {
+      console.error('Error claiming ticket:', err);
+      alert('Failed to claim ticket');
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
+  const handleReleaseTicket = async () => {
+    if (!confirm('Are you sure you want to release this ticket?')) return;
+    
+    try {
+      setIsUpdatingStatus(true);
+      const response = await fetch(`/api/tickets/${ticketId}/claim`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        fetchTicket(); // Refresh ticket data
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to release ticket');
+      }
+    } catch (err) {
+      console.error('Error releasing ticket:', err);
+      alert('Failed to release ticket');
+    } finally {
+      setIsUpdatingStatus(false);
     }
   };
 
@@ -237,6 +343,7 @@ export default function TicketDetailPage() {
     
     try {
       setIsSubmittingComment(true);
+      
       const response = await fetch(`/api/tickets/${ticketId}/comments`, {
         method: 'POST',
         headers: {
@@ -446,14 +553,15 @@ export default function TicketDetailPage() {
   const canUpdateStatus = () => {
     if (!session?.user?.role || !ticket) return false;
     
-    return (
-      session.user.role === 'ADMIN' ||
-      (session.user.role === 'TECHNICIAN' && ticket.assignedTo?.email === session.user.email) ||
-      (session.user.role === 'TECHNICIAN' && ticket.status === 'CLOSED') ||
-      (session.user.role === 'SECURITY_ANALYST' && ticket.assignedTo?.email === session.user.email) ||
-      (session.user.role === 'SECURITY_ANALYST' && ticket.createdBy?.email === session.user.email) ||
-      (session.user.role === 'SECURITY_ANALYST' && ticket.status === 'CLOSED')
-    );
+    // Admin can always update
+    if (session.user.role === 'ADMIN') return true;
+    
+    // Only assigned technician can update status (not just any technician)
+    if (session.user.role === 'TECHNICIAN' || session.user.role === 'SECURITY_ANALYST') {
+      return ticket.assignedTo?.email === session.user.email;
+    }
+    
+    return false;
   };
 
   const canModifyTicket = () => {
@@ -471,6 +579,77 @@ export default function TicketDetailPage() {
       (session.user.role === 'SECURITY_ANALYST' && ticket.createdBy?.email === session.user.email) ||
       (session.user.role === 'USER' && ticket.createdBy?.email === session.user.email)
     );
+  };
+
+  const canViewTicket = () => {
+    if (!session?.user?.role || !ticket) return false;
+    
+    // Admin can always view
+    if (session.user.role === 'ADMIN' || session.user.role === 'SUPER_ADMIN') return true;
+    
+    // User who created the ticket can always view
+    if (ticket.createdBy?.email === session.user.email) return true;
+    
+    // Assigned technician can always view
+    if (ticket.assignedTo?.email === session.user.email) return true;
+    
+    // Managers can view tickets from their branch
+    if (session.user.role === 'MANAGER') {
+      // Add branch check if needed
+      return true;
+    }
+    
+    // All technicians can view tickets that are approved (if approval required)
+    if (session.user.role === 'TECHNICIAN' || session.user.role === 'SECURITY_ANALYST') {
+      // If ticket doesn't require approval, all technicians can view
+      if (!ticket.service?.requiresApproval) return true;
+      
+      // If ticket requires approval, check if it's approved
+      const latestApproval = getLatestApproval();
+      return latestApproval?.status === 'APPROVED';
+    }
+    
+    return false;
+  };
+
+  const canClaimTicket = () => {
+    if (!session?.user?.role || !ticket) return false;
+    
+    // Only technicians can claim tickets
+    if (!['TECHNICIAN', 'SECURITY_ANALYST', 'ADMIN'].includes(session.user.role)) return false;
+    
+    // Can't claim if already assigned
+    if (ticket.assignedToId) return false;
+    
+    // Check if ticket requires approval
+    if (ticket.service?.requiresApproval) {
+      const latestApproval = getLatestApproval();
+      // Must have an approval and it must be APPROVED status
+      if (!latestApproval || latestApproval.status !== 'APPROVED') {
+        return false;
+      }
+    }
+    
+    // Ticket must be in a claimable status (OPEN)
+    if (!['OPEN'].includes(ticket.status)) {
+      return false;
+    }
+    
+    return true;
+  };
+
+  const canReleaseTicket = () => {
+    if (!session?.user?.role || !ticket) return false;
+    
+    // Admin can always release
+    if (session.user.role === 'ADMIN') return true;
+    
+    // Only the assigned technician can release their own ticket
+    if (session.user.role === 'TECHNICIAN' || session.user.role === 'SECURITY_ANALYST') {
+      return ticket.assignedTo?.email === session.user.email;
+    }
+    
+    return false;
   };
 
   if (status === 'loading' || loading) {
@@ -511,6 +690,32 @@ export default function TicketDetailPage() {
     return null;
   }
 
+  // Check if user can view this ticket after it's loaded
+  if (!canViewTicket()) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <main className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-6">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
+            <p className="text-gray-600 mb-4">
+              {ticket.service?.requiresApproval && !getLatestApproval() 
+                ? 'This ticket requires manager approval before it can be viewed by technicians.'
+                : ticket.service?.requiresApproval && getLatestApproval()?.status === 'PENDING'
+                ? 'This ticket is pending approval from a manager.'
+                : ticket.service?.requiresApproval && getLatestApproval()?.status === 'REJECTED'
+                ? 'This ticket has been rejected by a manager.'
+                : 'You do not have permission to view this ticket.'}
+            </p>
+            <Button onClick={() => router.back()} className="flex items-center gap-2">
+              <ArrowLeft className="h-4 w-4" />
+              Go Back
+            </Button>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       <main className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-6">
@@ -527,9 +732,28 @@ export default function TicketDetailPage() {
             </Button>
             <div className="flex-1">
               <h1 className="text-3xl font-bold text-gray-900">{ticket.title}</h1>
-              <p className="text-gray-600">Ticket #{ticket.ticketNumber}</p>
+              <div className="flex items-center gap-3">
+                <p className="text-gray-600">Ticket #{ticket.ticketNumber}</p>
+                {!ticket.assignedToId && (
+                  <Badge variant="outline" className="border-orange-300 text-orange-600">
+                    <AlertCircle className="h-3 w-3 mr-1" />
+                    Unassigned
+                  </Badge>
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-2">
+              {/* Prominent Claim Button for unclaimed tickets */}
+              {canClaimTicket() && (
+                <Button
+                  onClick={handleClaimTicket}
+                  disabled={isUpdatingStatus}
+                  className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white shadow-lg"
+                >
+                  <UserCheck className="h-4 w-4" />
+                  Claim Ticket
+                </Button>
+              )}
               <Badge variant={getStatusBadgeVariant(ticket.status)}>
                 {ticket.status.replace('_', ' ')}
               </Badge>
@@ -853,11 +1077,14 @@ export default function TicketDetailPage() {
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            {isPreviewable(attachment.mimeType) && (
+                            {(isPreviewable(attachment.mimeType) || attachment.mimeType === 'application/pdf') && (
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => setPreviewAttachment(attachment)}
+                                onClick={() => {
+                                  setPreviewAttachment(attachment);
+                                  setShowPreview(true);
+                                }}
                                 className="flex items-center gap-2"
                               >
                                 <Eye className="h-4 w-4" />
@@ -1000,7 +1227,7 @@ export default function TicketDetailPage() {
                               {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
                             </span>
                           </div>
-                          <p className="text-gray-700 whitespace-pre-wrap">{comment.content}</p>
+                          <RichTextViewer content={comment.content} className="text-gray-700" />
                         </div>
                       ))
                     )}
@@ -1008,18 +1235,21 @@ export default function TicketDetailPage() {
                     {/* Add Comment */}
                     <div className="border-t pt-4">
                       <Label htmlFor="comment">Add Comment</Label>
-                      <Textarea
-                        id="comment"
-                        value={newComment}
-                        onChange={(e) => setNewComment(e.target.value)}
-                        placeholder="Type your comment here..."
-                        className="mt-2"
-                        rows={3}
-                      />
+                      <div className="mt-2">
+                        <RichTextEditor
+                          content={newComment}
+                          onChange={setNewComment}
+                          placeholder="Type your comment here... (You can paste images directly)"
+                        />
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Tip: You can paste images directly from clipboard or drag & drop them into the editor
+                      </div>
+                      
                       <Button
                         onClick={addComment}
                         disabled={!newComment.trim() || isSubmittingComment}
-                        className="mt-2 flex items-center gap-2"
+                        className="mt-3 flex items-center gap-2"
                       >
                         <Plus className="h-4 w-4" />
                         {isSubmittingComment ? 'Adding...' : 'Add Comment'}
@@ -1033,13 +1263,35 @@ export default function TicketDetailPage() {
             {/* Sidebar */}
             <div className="space-y-6">
               {/* Actions */}
-              {canUpdateStatus() && (
+              {(canUpdateStatus() || canClaimTicket() || canReleaseTicket()) && (
                 <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
                   <CardHeader>
                     <CardTitle>Actions</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2">
+                      {/* Claim/Release Button */}
+                      {canClaimTicket() && (
+                        <Button
+                          onClick={handleClaimTicket}
+                          disabled={isUpdatingStatus}
+                          className="w-full flex items-center gap-2 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white shadow-lg"
+                        >
+                          <UserCheck className="h-4 w-4" />
+                          Claim Ticket
+                        </Button>
+                      )}
+                      {canReleaseTicket() && (
+                        <Button
+                          onClick={handleReleaseTicket}
+                          disabled={isUpdatingStatus}
+                          variant="outline"
+                          className="w-full flex items-center gap-2 border-red-300 text-red-600 hover:bg-red-50"
+                        >
+                          <UserX className="h-4 w-4" />
+                          Release Ticket
+                        </Button>
+                      )}
                       {ticket.status === 'OPEN' && (
                         <Button
                           onClick={() => updateTicketStatus('IN_PROGRESS')}
@@ -1125,12 +1377,45 @@ export default function TicketDetailPage() {
                       <span className="font-medium text-gray-700">Created by:</span>
                       <p className="text-gray-600">{ticket.createdBy.name}</p>
                       <p className="text-sm text-gray-500">{ticket.createdBy.email}</p>
+                      {ticket.createdBy.branch && (
+                        <p className="text-sm text-gray-500">
+                          Branch: {ticket.createdBy.branch.name} ({ticket.createdBy.branch.code})
+                        </p>
+                      )}
                     </div>
-                    {ticket.assignedTo && (
+                    <div>
+                      <span className="font-medium text-gray-700">Assigned to:</span>
+                      {ticket.assignedTo ? (
+                        <>
+                          <p className="text-gray-600">{ticket.assignedTo.name}</p>
+                          <p className="text-sm text-gray-500">{ticket.assignedTo.email}</p>
+                        </>
+                      ) : (
+                        <p className="text-gray-500 italic">Unassigned</p>
+                      )}
+                    </div>
+                    {/* Show approval status if required */}
+                    {ticket.service?.requiresApproval && (
                       <div>
-                        <span className="font-medium text-gray-700">Assigned to:</span>
-                        <p className="text-gray-600">{ticket.assignedTo.name}</p>
-                        <p className="text-sm text-gray-500">{ticket.assignedTo.email}</p>
+                        <span className="font-medium text-gray-700">Approval Status:</span>
+                        {(() => {
+                          const approval = getLatestApproval();
+                          if (!approval) {
+                            return <p className="text-yellow-600">Pending Approval</p>;
+                          }
+                          return (
+                            <>
+                              <p className="text-gray-600">
+                                <Badge variant={getApprovalStatusBadgeVariant(approval.status)}>
+                                  {approval.status}
+                                </Badge>
+                              </p>
+                              <p className="text-sm text-gray-500">
+                                by {approval.approver.name}
+                              </p>
+                            </>
+                          );
+                        })()}
                       </div>
                     )}
                     <div>
@@ -1238,65 +1523,19 @@ export default function TicketDetailPage() {
         </ModernDialogContent>
       </ModernDialog>
 
-      {/* Attachment Preview Modal - Modern Style */}
-      <ModernDialog open={!!previewAttachment} onOpenChange={() => setPreviewAttachment(null)}>
-        <ModernDialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
-          <ModernDialogHeader variant="gradient" icon={<FileText className="w-5 h-5" />}>
-            <ModernDialogTitle>{previewAttachment?.originalName}</ModernDialogTitle>
-            <ModernDialogDescription>
-              {previewAttachment && (
-                <span className="text-sm opacity-90">
-                  {(previewAttachment.size / 1024 / 1024).toFixed(2)} MB • {previewAttachment.mimeType}
-                </span>
-              )}
-            </ModernDialogDescription>
-          </ModernDialogHeader>
-          <ModernDialogBody className="p-0 flex-1 overflow-hidden">
-            {previewAttachment && (
-              <div className="w-full h-[70vh] border rounded-lg overflow-hidden m-6">
-                {previewAttachment.mimeType === 'application/pdf' ? (
-                  <iframe
-                    src={`/api/tickets/${ticketId}/attachments/${previewAttachment.id}/preview`}
-                    className="w-full h-full"
-                    title={previewAttachment.originalName}
-                  />
-                ) : (
-                  <img
-                    src={`/api/tickets/${ticketId}/attachments/${previewAttachment.id}/preview`}
-                    alt={previewAttachment.originalName}
-                    className="w-full h-full object-contain"
-                  />
-                )}
-              </div>
-            )}
-          </ModernDialogBody>
-          <ModernDialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                if (previewAttachment) {
-                  const link = document.createElement('a');
-                  link.href = `/api/tickets/${ticketId}/attachments/${previewAttachment.id}/download`;
-                  link.download = previewAttachment.originalName;
-                  document.body.appendChild(link);
-                  link.click();
-                  document.body.removeChild(link);
-                }
-              }}
-              className="flex items-center gap-2 bg-white/50 hover:bg-white/70"
-            >
-              <Download className="h-4 w-4" />
-              Download
-            </Button>
-            <Button 
-              onClick={() => setPreviewAttachment(null)}
-              className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg"
-            >
-              Close
-            </Button>
-          </ModernDialogFooter>
-        </ModernDialogContent>
-      </ModernDialog>
+
+      {/* Attachment Preview Modal */}
+      {previewAttachment && (
+        <AttachmentPreview
+          isOpen={showPreview}
+          onClose={() => {
+            setShowPreview(false);
+            setPreviewAttachment(null);
+          }}
+          attachment={previewAttachment}
+          ticketTitle={ticket?.title}
+        />
+      )}
     </div>
   );
 }

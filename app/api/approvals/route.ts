@@ -40,19 +40,11 @@ export async function GET(request: NextRequest) {
     const priority = searchParams.get('priority');
 
     // Build where clause for pending approvals in manager's branch
-    // Managers can ONLY approve tickets created by users from their own branch
+    // Managers can approve tickets assigned to their branch
     const where: any = {
       status: 'PENDING_APPROVAL',
-      AND: [
-        // Ticket must be assigned to manager's branch
-        { branchId: userWithBranch.branchId },
-        // Ticket creator must be from the same branch as the manager
-        {
-          createdBy: {
-            branchId: userWithBranch.branchId
-          }
-        }
-      ]
+      // Ticket must be assigned to manager's branch
+      branchId: userWithBranch.branchId
     };
 
     // Apply filters
@@ -136,21 +128,13 @@ export async function POST(request: NextRequest) {
     const validatedData = bulkApprovalSchema.parse(body);
 
     // Verify all tickets belong to manager's branch and are pending approval
-    // Managers can ONLY approve tickets created by users from their own branch
+    // Managers can approve any ticket assigned to their branch
     const tickets = await prisma.ticket.findMany({
       where: {
         id: { in: validatedData.ticketIds },
         status: 'PENDING_APPROVAL',
-        AND: [
-          // Ticket must be assigned to manager's branch
-          { branchId: userWithBranch.branchId },
-          // Ticket creator must be from the same branch as the manager
-          {
-            createdBy: {
-              branchId: userWithBranch.branchId
-            }
-          }
-        ]
+        // Ticket must be assigned to manager's branch (regardless of who created it)
+        branchId: userWithBranch.branchId
       },
       include: {
         createdBy: { select: { name: true, email: true, branchId: true } }

@@ -4,7 +4,8 @@ module.exports = {
     name: 'bsg-servicedesk',
     
     // Script to start the application  
-    script: 'server.js',
+    script: 'npm',
+    args: 'start',
     
     // Cluster mode for better performance
     instances: 1,
@@ -20,10 +21,9 @@ module.exports = {
     // Environment variables
     env: {
       NODE_ENV: 'production',
-      PORT: 443,
-      USE_HTTPS: 'true',
-      HOSTNAME: 'hd.bsg.id',
-      NEXTAUTH_URL: 'https://hd.bsg.id'
+      PORT: 5000,
+      HOSTNAME: 'localhost',
+      NEXTAUTH_URL: 'http://localhost:5000'
     },
     
     // Log configuration

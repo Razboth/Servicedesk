@@ -33,18 +33,10 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
 
-    // Build where clause - managers can only see tickets from users in their branch
+    // Build where clause - managers can see tickets assigned to their branch
     const where: any = {
-      AND: [
-        // Ticket must be from the manager's branch
-        { branchId: user.branch.id },
-        // Ticket creator must be from the same branch as the manager
-        {
-          createdBy: {
-            branchId: user.branch.id
-          }
-        }
-      ]
+      // Ticket must be assigned to the manager's branch
+      branchId: user.branch.id
     };
 
     if (search) {
@@ -110,28 +102,14 @@ export async function GET(request: NextRequest) {
     const stats = await prisma.ticket.groupBy({
       by: ['status'],
       where: {
-        AND: [
-          { branchId: user.branch.id },
-          {
-            createdBy: {
-              branchId: user.branch.id
-            }
-          }
-        ]
+        branchId: user.branch.id
       },
       _count: true
     });
 
     const avgResolutionTime = await prisma.ticket.aggregate({
       where: {
-        AND: [
-          { branchId: user.branch.id },
-          {
-            createdBy: {
-              branchId: user.branch.id
-            }
-          }
-        ],
+        branchId: user.branch.id,
         status: 'RESOLVED',
         actualHours: { not: null }
       },

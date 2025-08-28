@@ -87,22 +87,28 @@ interface ModernTicketListProps {
   onClaimTicket?: (ticketId: string) => void
   enableBulkActions?: boolean
   onUpdateStatus?: (ticketId: string) => void
+  categoryFilter?: string
+  statusFilter?: string
 }
 
-export function ModernTicketList({ viewMode, searchTerm, onCreateTicket, ticketFilter, onClaimTicket, enableBulkActions = false, onUpdateStatus }: ModernTicketListProps) {
+export function ModernTicketList({ viewMode, searchTerm, onCreateTicket, ticketFilter, onClaimTicket, enableBulkActions = false, onUpdateStatus, categoryFilter, statusFilter: propStatusFilter }: ModernTicketListProps) {
   const { data: session } = useSession()
   const router = useRouter()
   
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [statusFilter, setStatusFilter] = useState('ALL')
+  const [statusFilter, setStatusFilter] = useState(propStatusFilter || 'ALL')
   const [priorityFilter, setPriorityFilter] = useState('ALL')
+  const [categoryFilterState, setCategoryFilterState] = useState(categoryFilter || 'all')
+  const [categories, setCategories] = useState<Array<{id: string, name: string}>>([])
   const [sortBy, setSortBy] = useState('newest')
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalItems, setTotalItems] = useState(0)
   const [selectedTickets, setSelectedTickets] = useState<string[]>([])
   const [isSelecting, setIsSelecting] = useState(false)
+  const [isAutoRefreshing, setIsAutoRefreshing] = useState(false)
+  const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null)
   const [pageSize, setPageSize] = useState(() => {
     switch (viewMode) {
       case 'cards': return 20
@@ -111,6 +117,23 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket, ticketF
       default: return 20
     }
   })
+
+  // Load categories on mount
+  useEffect(() => {
+    loadCategories()
+  }, [])
+
+  const loadCategories = async () => {
+    try {
+      const response = await fetch('/api/categories')
+      if (response.ok) {
+        const data = await response.json()
+        setCategories(data.categories || [])
+      }
+    } catch (error) {
+      console.error('Error loading categories:', error)
+    }
+  }
 
   // Update page size when view mode changes
   useEffect(() => {
@@ -125,14 +148,47 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket, ticketF
     setPageSize(defaultSize)
   }, [viewMode])
 
+  // Update status filter when prop changes
+  useEffect(() => {
+    if (propStatusFilter && propStatusFilter !== 'all') {
+      setStatusFilter(propStatusFilter)
+    } else {
+      setStatusFilter('ALL')
+    }
+  }, [propStatusFilter])
+
   useEffect(() => {
     loadTickets()
-  }, [currentPage, statusFilter, priorityFilter, sortBy, searchTerm, ticketFilter])
+  }, [currentPage, statusFilter, priorityFilter, sortBy, searchTerm, ticketFilter, categoryFilterState])
   
   // Reset to page 1 when filters or page size change
   useEffect(() => {
     setCurrentPage(1)
-  }, [statusFilter, priorityFilter, searchTerm, pageSize, ticketFilter])
+  }, [statusFilter, priorityFilter, searchTerm, pageSize, ticketFilter, categoryFilterState])
+
+  // Auto-refresh tickets every 15 seconds to catch newly approved tickets
+  useEffect(() => {
+    // Only auto-refresh for technicians and on specific pages
+    const shouldAutoRefresh = 
+      session?.user?.role && 
+      ['TECHNICIAN', 'SECURITY_ANALYST', 'ADMIN'].includes(session.user.role) &&
+      (ticketFilter === 'available-tickets' || !ticketFilter); // Refresh on available tickets or main tickets page
+    
+    if (shouldAutoRefresh) {
+      setIsAutoRefreshing(true)
+      const refreshInterval = setInterval(() => {
+        setLastRefreshTime(new Date())
+        loadTickets()
+      }, 15000); // Refresh every 15 seconds
+      
+      return () => {
+        clearInterval(refreshInterval)
+        setIsAutoRefreshing(false)
+      }
+    } else {
+      setIsAutoRefreshing(false)
+    }
+  }, [session, ticketFilter])
 
   const loadTickets = async () => {
     try {
@@ -156,6 +212,9 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket, ticketF
       }
       if (ticketFilter) {
         params.append('filter', ticketFilter)
+      }
+      if (categoryFilterState && categoryFilterState !== 'all') {
+        params.append('categoryId', categoryFilterState)
       }
 
       const response = await fetch(`/api/tickets?${params}`)
@@ -233,8 +292,29 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket, ticketF
         return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
       case 'CANCELLED':
         return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+      case 'PENDING_VENDOR':
+        return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+    }
+  }
+
+  const getCardBorderColor = (status: string) => {
+    switch (status) {
+      case 'OPEN':
+        return 'border-l-4 border-l-blue-500'
+      case 'IN_PROGRESS':
+        return 'border-l-4 border-l-yellow-500'
+      case 'RESOLVED':
+        return 'border-l-4 border-l-green-500'
+      case 'CLOSED':
+        return 'border-l-4 border-l-gray-400'
+      case 'CANCELLED':
+        return 'border-l-4 border-l-red-500'
+      case 'PENDING_VENDOR':
+        return 'border-l-4 border-l-purple-500'
+      default:
+        return 'border-l-4 border-l-gray-400'
     }
   }
 
@@ -442,7 +522,7 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket, ticketF
 
   const TicketCard = ({ ticket }: { ticket: Ticket }) => (
     <Card 
-      className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group h-full flex flex-col"
+      className={`bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group h-full flex flex-col ${getCardBorderColor(ticket.status)}`}
       onClick={() => handleTicketClick(ticket.id)}
     >
       <CardContent className="p-4 flex-1 flex flex-col">
@@ -559,7 +639,7 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket, ticketF
 
   const TicketListItem = ({ ticket }: { ticket: Ticket }) => (
     <Card 
-      className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group"
+      className={`bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group ${getCardBorderColor(ticket.status)}`}
       onClick={() => handleTicketClick(ticket.id)}
     >
       <CardContent className="p-4">
@@ -678,7 +758,7 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket, ticketF
               {tickets.map((ticket) => (
                 <tr key={ticket.id} className={`hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer ${
                   selectedTickets.includes(ticket.id) ? 'bg-blue-50 dark:bg-blue-900/20' : ''
-                }`}
+                } ${getCardBorderColor(ticket.status).replace('border-l-4', 'border-l-[3px]')}`}
                     onClick={() => handleTicketClick(ticket.id)}>
                   {/* Checkbox column for bulk selection */}
                   {enableBulkActions && ticketFilter === 'available-tickets' && (
@@ -907,8 +987,39 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket, ticketF
       {/* Filters and Controls */}
       <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
         <CardContent className="p-4">
+          {/* Auto-refresh indicator */}
+          {isAutoRefreshing && (
+            <div className="flex items-center justify-between mb-4 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+              <div className="flex items-center space-x-2">
+                <RefreshCw className="h-4 w-4 text-blue-600 dark:text-blue-400 animate-spin" />
+                <span className="text-sm text-blue-600 dark:text-blue-400">
+                  Auto-refreshing every 15 seconds to show newly approved tickets
+                </span>
+              </div>
+              {lastRefreshTime && (
+                <span className="text-xs text-blue-500 dark:text-blue-300">
+                  Last refresh: {formatDistanceToNow(lastRefreshTime, { addSuffix: true })}
+                </span>
+              )}
+            </div>
+          )}
           <div className="flex flex-col lg:flex-row gap-4">
-            <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-5 gap-4">
+              {/* Category Filter */}
+              <Select value={categoryFilterState} onValueChange={setCategoryFilterState}>
+                <SelectTrigger className="bg-white/[0.5] dark:bg-gray-800/[0.5]">
+                  <SelectValue placeholder="All Categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem key={category.id} value={category.id}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
               {/* Status Filter */}
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="bg-white/[0.5] dark:bg-gray-800/[0.5]">

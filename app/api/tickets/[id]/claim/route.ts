@@ -1,0 +1,279 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+
+// POST /api/tickets/[id]/claim - Claim an unassigned ticket
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Only technicians can claim tickets
+    if (!session.user.role || !['TECHNICIAN', 'ADMIN', 'SECURITY_ANALYST'].includes(session.user.role)) {
+      return NextResponse.json({ error: 'Only technicians can claim tickets' }, { status: 403 });
+    }
+
+    const ticketId = id;
+
+    // Check if ticket exists and get its details including approval status
+    const existingTicket = await prisma.ticket.findUnique({
+      where: { id: ticketId },
+      include: {
+        assignedTo: true,
+        createdBy: true,
+        approvals: {
+          orderBy: {
+            createdAt: 'desc'
+          },
+          take: 1,
+          include: {
+            approver: true
+          }
+        },
+        service: {
+          select: {
+            requiresApproval: true
+          }
+        }
+      }
+    });
+
+    if (!existingTicket) {
+      return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
+    }
+
+    // Check if ticket is in a claimable status
+    if (existingTicket.status !== 'OPEN') {
+      return NextResponse.json({ 
+        error: 'Only open tickets can be claimed' 
+      }, { status: 400 });
+    }
+
+    // Check if ticket is already assigned
+    if (existingTicket.assignedToId) {
+      if (existingTicket.assignedToId === session.user.id) {
+        return NextResponse.json({ error: 'You have already claimed this ticket' }, { status: 400 });
+      } else {
+        return NextResponse.json({ 
+          error: `Ticket is already assigned to ${existingTicket.assignedTo?.name}` 
+        }, { status: 400 });
+      }
+    }
+
+    // Check if ticket requires approval and is approved
+    if (existingTicket.service?.requiresApproval) {
+      const latestApproval = existingTicket.approvals[0];
+      
+      if (!latestApproval) {
+        return NextResponse.json({ 
+          error: 'This ticket requires manager approval before it can be claimed' 
+        }, { status: 403 });
+      }
+      
+      if (latestApproval.status !== 'APPROVED') {
+        return NextResponse.json({ 
+          error: `Ticket ${latestApproval.status === 'REJECTED' ? 'was rejected' : 'is pending approval'} and cannot be claimed` 
+        }, { status: 403 });
+      }
+    }
+
+    // Claim the ticket by assigning it to the current user
+    const newStatus = existingTicket.status === 'OPEN' ? 'IN_PROGRESS' : existingTicket.status;
+    const updatedTicket = await prisma.ticket.update({
+      where: { id: ticketId },
+      data: {
+        assignedToId: session.user.id,
+        status: newStatus,
+        updatedAt: new Date()
+      },
+      include: {
+        service: {
+          select: {
+            name: true,
+            category: {
+              select: {
+                name: true
+              }
+            }
+          }
+        },
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        },
+        assignedTo: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true
+          }
+        },
+        approvals: {
+          include: {
+            approver: {
+              select: {
+                name: true,
+                email: true
+              }
+            }
+          }
+        },
+        _count: {
+          select: {
+            comments: true
+          }
+        }
+      }
+    });
+
+    // Create a comment to log the claim
+    await prisma.ticketComment.create({
+      data: {
+        ticketId: ticketId,
+        userId: session.user.id,
+        content: `Ticket claimed by ${session.user.name}`,
+        isInternal: false
+      }
+    });
+
+    // Create an audit log entry
+    await prisma.auditLog.create({
+      data: {
+        action: 'CLAIMED',
+        entity: 'TICKET',
+        entityId: ticketId,
+        userId: session.user.id,
+        oldValues: { assignedToId: null, status: existingTicket.status },
+        newValues: { assignedToId: session.user.id, status: newStatus, claimedBy: session.user.name }
+      }
+    });
+
+    return NextResponse.json({
+      message: 'Ticket claimed successfully',
+      ticket: updatedTicket
+    });
+  } catch (error) {
+    console.error('Error claiming ticket:', error);
+    
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE /api/tickets/[id]/claim - Unclaim/release a ticket
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const ticketId = id;
+
+    // Check if ticket exists
+    const existingTicket = await prisma.ticket.findUnique({
+      where: { id: ticketId },
+      include: {
+        assignedTo: true
+      }
+    });
+
+    if (!existingTicket) {
+      return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
+    }
+
+    // Check if the current user is the one who claimed it
+    if (existingTicket.assignedToId !== session.user.id) {
+      // Allow admins to unclaim any ticket
+      if (session.user.role !== 'ADMIN') {
+        return NextResponse.json({ 
+          error: 'You can only unclaim tickets that you have claimed' 
+        }, { status: 403 });
+      }
+    }
+
+    // Unclaim the ticket
+    const newStatus = existingTicket.status === 'IN_PROGRESS' ? 'OPEN' : existingTicket.status;
+    const updatedTicket = await prisma.ticket.update({
+      where: { id: ticketId },
+      data: {
+        assignedToId: null,
+        status: newStatus,
+        updatedAt: new Date()
+      },
+      include: {
+        service: {
+          select: {
+            name: true,
+            category: {
+              select: {
+                name: true
+              }
+            }
+          }
+        },
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        },
+        _count: {
+          select: {
+            comments: true
+          }
+        }
+      }
+    });
+
+    // Create a comment to log the unclaim
+    await prisma.ticketComment.create({
+      data: {
+        ticketId: ticketId,
+        userId: session.user.id,
+        content: `Ticket released by ${session.user.name}`,
+        isInternal: false
+      }
+    });
+
+    // Create an audit log entry
+    await prisma.auditLog.create({
+      data: {
+        action: 'UNCLAIMED',
+        entity: 'TICKET',
+        entityId: ticketId,
+        userId: session.user.id,
+        oldValues: { assignedToId: existingTicket.assignedToId, status: existingTicket.status },
+        newValues: { assignedToId: null, status: newStatus, unclaimedBy: session.user.name }
+      }
+    });
+
+    return NextResponse.json({
+      message: 'Ticket released successfully',
+      ticket: updatedTicket
+    });
+  } catch (error) {
+    console.error('Error unclaiming ticket:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
