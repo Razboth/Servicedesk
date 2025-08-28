@@ -34,6 +34,28 @@ interface ApiKey {
   };
 }
 
+// Available permissions
+const AVAILABLE_PERMISSIONS = [
+  { value: '*', label: 'Full Access', description: 'Complete API access' },
+  { value: 'tickets:*', label: 'Tickets (All)', description: 'Full access to tickets' },
+  { value: 'tickets:create', label: 'Create Tickets', description: 'Create new tickets' },
+  { value: 'tickets:read', label: 'Read Tickets', description: 'View ticket details' },
+  { value: 'tickets:update', label: 'Update Tickets', description: 'Modify existing tickets' },
+  { value: 'tickets:delete', label: 'Delete Tickets', description: 'Remove tickets' },
+  { value: 'claims:*', label: 'Claims (All)', description: 'Full access to claims' },
+  { value: 'claims:create', label: 'Create Claims', description: 'Submit new claims' },
+  { value: 'claims:read', label: 'Read Claims', description: 'View claim details' },
+  { value: 'atms:*', label: 'ATMs (All)', description: 'Full access to ATM data' },
+  { value: 'atms:read', label: 'Read ATMs', description: 'View ATM information' },
+  { value: 'services:*', label: 'Services (All)', description: 'Full access to services' },
+  { value: 'services:read', label: 'Read Services', description: 'View service catalog' },
+  { value: 'users:*', label: 'Users (All)', description: 'Full access to users' },
+  { value: 'users:read', label: 'Read Users', description: 'View user information' },
+  { value: 'soc', label: 'SOC Integration', description: 'Security Operations Center access' },
+  { value: 'reports:*', label: 'Reports (All)', description: 'Full access to reports' },
+  { value: 'reports:read', label: 'Read Reports', description: 'View and generate reports' },
+];
+
 export default function ApiKeysPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -49,7 +71,7 @@ export default function ApiKeysPage() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [expiresIn, setExpiresIn] = useState('365');
-  const [permissions, setPermissions] = useState<string[]>(['soc']);
+  const [permissions, setPermissions] = useState<string[]>([]);
 
   // Check authorization
   useEffect(() => {
@@ -216,29 +238,46 @@ export default function ApiKeysPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>Permissions</Label>
-                    <div className="space-y-2">
-                      <label className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          checked={permissions.includes('soc')}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setPermissions([...permissions, 'soc']);
-                            } else {
-                              setPermissions(permissions.filter(p => p !== 'soc'));
-                            }
-                          }}
-                        />
-                        <span>SOC Integration</span>
-                      </label>
+                    <div className="border rounded-lg p-3 max-h-60 overflow-y-auto space-y-2">
+                      {AVAILABLE_PERMISSIONS.map((perm) => (
+                        <label key={perm.value} className="flex items-start space-x-2 hover:bg-gray-50 p-2 rounded cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="mt-1"
+                            checked={permissions.includes(perm.value)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                // If selecting full access, clear other permissions
+                                if (perm.value === '*') {
+                                  setPermissions(['*']);
+                                } else {
+                                  // Remove full access if selecting specific permission
+                                  const newPerms = permissions.filter(p => p !== '*');
+                                  setPermissions([...newPerms, perm.value]);
+                                }
+                              } else {
+                                setPermissions(permissions.filter(p => p !== perm.value));
+                              }
+                            }}
+                            disabled={perm.value !== '*' && permissions.includes('*')}
+                          />
+                          <div className="flex-1">
+                            <div className="font-medium text-sm">{perm.label}</div>
+                            <div className="text-xs text-gray-500">{perm.description}</div>
+                          </div>
+                        </label>
+                      ))}
                     </div>
+                    {permissions.length === 0 && (
+                      <p className="text-sm text-amber-600">Please select at least one permission</p>
+                    )}
                   </div>
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
                     Cancel
                   </Button>
-                  <Button onClick={handleCreate} disabled={!name}>
+                  <Button onClick={handleCreate} disabled={!name || permissions.length === 0}>
                     Create API Key
                   </Button>
                 </DialogFooter>
@@ -252,10 +291,10 @@ export default function ApiKeysPage() {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Key</TableHead>
+                <TableHead>Permissions</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Usage</TableHead>
                 <TableHead>Expires</TableHead>
-                <TableHead>Created</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -274,6 +313,28 @@ export default function ApiKeysPage() {
                     <code className="text-sm bg-gray-100 px-2 py-1 rounded">
                       {apiKey.key}
                     </code>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1 max-w-xs">
+                      {apiKey.permissions && Array.isArray(apiKey.permissions) ? (
+                        apiKey.permissions.length > 0 ? (
+                          apiKey.permissions.slice(0, 3).map((perm: string, idx: number) => (
+                            <Badge key={idx} variant="outline" className="text-xs">
+                              {perm}
+                            </Badge>
+                          ))
+                        ) : (
+                          <span className="text-sm text-gray-500">No permissions</span>
+                        )
+                      ) : (
+                        <span className="text-sm text-gray-500">Legacy</span>
+                      )}
+                      {apiKey.permissions && Array.isArray(apiKey.permissions) && apiKey.permissions.length > 3 && (
+                        <Badge variant="outline" className="text-xs">
+                          +{apiKey.permissions.length - 3} more
+                        </Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <Badge variant={apiKey.isActive ? 'default' : 'secondary'}>
@@ -298,12 +359,6 @@ export default function ApiKeysPage() {
                     ) : (
                       <span className="text-sm text-gray-500">Never</span>
                     )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm">
-                      <div>{format(new Date(apiKey.createdAt), 'MMM d, yyyy')}</div>
-                      <div className="text-gray-500">by {apiKey.createdBy.name}</div>
-                    </div>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">

@@ -32,7 +32,7 @@ async function generateClaimApiKey() {
           email: 'api@system.local',
           name: 'API System User',
           password: null, // No password for system user
-          role: 'AGENT',
+          role: 'TECHNICIAN',
           branchId: defaultBranch?.id,
           isActive: true,
           mustChangePassword: false,
