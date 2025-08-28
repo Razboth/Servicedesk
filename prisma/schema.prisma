@@ -67,6 +67,12 @@ model User {
   createdReports     CustomReport[] @relation("ReportCreator")
   executedReports    ReportExecution[] @relation("ReportExecutor")
   favoriteReports    ReportFavorite[] @relation("ReportFavorites")
+  
+  // Branch-based ATM claim processing
+  verifiedClaims        ATMClaimVerification[]
+  assignedBranchTasks   BranchAssignment[] @relation("AssignedBranchTasks")
+  createdBranchTasks    BranchAssignment[] @relation("AssignedByBranchTasks")
+  branchCommunications  BranchCommunication[]
 
   @@map("users")
 }
@@ -136,6 +142,11 @@ model Branch {
   
   // Service usage tracking
   serviceUsage    ServiceUsage[]
+  
+  // Branch-based ATM claim processing
+  branchAssignments    BranchAssignment[]
+  sentCommunications   BranchCommunication[] @relation("SentCommunications")
+  receivedCommunications BranchCommunication[] @relation("ReceivedCommunications")
 
   @@map("branches")
 }
@@ -344,6 +355,11 @@ model Ticket {
   
   // Knowledge Base relations
   knowledgeArticles TicketKnowledge[]
+  
+  // Branch-based ATM claim processing
+  atmClaimVerification ATMClaimVerification?
+  branchAssignments    BranchAssignment[]
+  branchCommunications BranchCommunication[]
 
   @@map("tickets")
 }
@@ -1339,4 +1355,158 @@ enum ExecutionStatus {
   RUNNING
   COMPLETED
   FAILED
+}
+
+// ========== BRANCH-BASED ATM CLAIM PROCESSING MODELS ==========
+
+// ATM Claim Verification model for branch processing
+model ATMClaimVerification {
+  id              String    @id @default(cuid())
+  ticketId        String    @unique
+  
+  // Journal verification
+  journalChecked      Boolean   @default(false)
+  journalFindings     String?   @db.Text
+  journalAttachments  Json?
+  
+  // Electronic Journal
+  ejTransactionFound  Boolean?
+  ejReferenceNumber   String?
+  amountMatches       Boolean?
+  
+  // Cash reconciliation
+  cashOpening         Decimal?  @db.Decimal(15, 2)
+  cashDispensed       Decimal?  @db.Decimal(15, 2)
+  cashRemaining       Decimal?  @db.Decimal(15, 2)
+  cashVariance        Decimal?  @db.Decimal(15, 2)
+  
+  // CCTV Review
+  cctvReviewed        Boolean   @default(false)
+  cctvFindings        String?   @db.Text
+  cctvEvidenceUrl     String?
+  cctvRequestedAt     DateTime?
+  
+  // Core banking check
+  debitSuccessful     Boolean?
+  reversalCompleted   Boolean?
+  coreSystemCheckedAt DateTime?
+  
+  // Verification result
+  verifiedById        String?
+  verifiedAt          DateTime?
+  recommendation      VerificationRecommendation?
+  recommendationNotes String?   @db.Text
+  
+  // Evidence and attachments
+  attachments         Json?     // Array of {filename, url, type, uploadedAt}
+  
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  
+  // Relations
+  ticket              Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  verifiedBy          User?     @relation(fields: [verifiedById], references: [id])
+  
+  @@map("atm_claim_verifications")
+}
+
+// Branch Assignment model for staff task allocation
+model BranchAssignment {
+  id            String    @id @default(cuid())
+  ticketId      String
+  branchId      String
+  assignedToId  String
+  assignedById  String
+  
+  // Task details
+  taskType      BranchTaskType
+  dueTime       DateTime
+  priority      TicketPriority  @default(MEDIUM)
+  
+  // Status tracking
+  status        AssignmentStatus @default(ASSIGNED)
+  startedAt     DateTime?
+  completedAt   DateTime?
+  
+  // Notes and communication
+  instructions  String?   @db.Text
+  notes         String?   @db.Text
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  ticket        Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  branch        Branch    @relation(fields: [branchId], references: [id])
+  assignedTo    User      @relation("AssignedBranchTasks", fields: [assignedToId], references: [id])
+  assignedBy    User      @relation("AssignedByBranchTasks", fields: [assignedById], references: [id])
+  
+  @@index([branchId, status])
+  @@index([assignedToId, status])
+  @@map("branch_assignments")
+}
+
+// Inter-branch communication for collaboration
+model BranchCommunication {
+  id            String    @id @default(cuid())
+  ticketId      String
+  fromBranchId  String
+  toBranchId    String?   // Null for broadcast to all related branches
+  userId        String
+  
+  message       String    @db.Text
+  messageType   CommunicationType @default(INFO)
+  
+  // Attachments
+  attachments   Json?
+  
+  // Read receipts
+  readBy        Json?     // Array of {userId, readAt}
+  
+  createdAt     DateTime  @default(now())
+  
+  // Relations
+  ticket        Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  fromBranch    Branch    @relation("SentCommunications", fields: [fromBranchId], references: [id])
+  toBranch      Branch?   @relation("ReceivedCommunications", fields: [toBranchId], references: [id])
+  user          User      @relation(fields: [userId], references: [id])
+  
+  @@index([ticketId, createdAt])
+  @@map("branch_communications")
+}
+
+// Enum for verification recommendations
+enum VerificationRecommendation {
+  APPROVE
+  REJECT
+  ESCALATE
+  NEED_MORE_INFO
+}
+
+// Enum for branch task types
+enum BranchTaskType {
+  VERIFY_CLAIM
+  REVIEW_DOCUMENTS
+  PROCESS_REFUND
+  CONTACT_CUSTOMER
+  CHECK_CCTV
+  RECONCILE_CASH
+}
+
+// Enum for assignment status
+enum AssignmentStatus {
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  OVERDUE
+}
+
+// Enum for communication types
+enum CommunicationType {
+  INFO
+  URGENT
+  REQUEST
+  RESPONSE
+  ESCALATION
 }
