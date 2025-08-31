@@ -98,6 +98,21 @@ export async function GET(
           include: {
             slaTemplate: true
           }
+        },
+        branch: {
+          select: {
+            id: true,
+            name: true,
+            code: true
+          }
+        },
+        atmClaimVerification: true,
+        branchAssignments: {
+          include: {
+            assignedTo: { select: { name: true } },
+            assignedBy: { select: { name: true } }
+          },
+          orderBy: { createdAt: 'desc' }
         }
       }
     });
@@ -123,10 +138,9 @@ export async function GET(
       // Super admin can see all tickets
       canAccess = true;
     } else if (session.user.role === 'MANAGER') {
-      // Managers can ONLY see tickets created by users from their own branch
+      // Managers can see tickets assigned to their branch (for ATM claims and inter-branch tickets)
       const isFromSameBranch = userWithDetails?.branchId === ticket.branchId;
-      const isCreatorFromSameBranch = ticket.createdBy?.branchId === userWithDetails?.branchId;
-      canAccess = isFromSameBranch && isCreatorFromSameBranch;
+      canAccess = isFromSameBranch;
     } else if (session.user.role === 'TECHNICIAN') {
       // Technicians can see:
       // 1. Tickets they created or are assigned to
@@ -155,9 +169,21 @@ export async function GET(
       
       const isSecurityAnalystTicket = ticket.createdBy?.role === 'SECURITY_ANALYST';
       canAccess = isCreatorOrAssignee || isApprovedOrNoApprovalNeeded || isSecurityAnalystTicket;
-    } else if (session.user.role === 'USER') {
-      // Users can only see their own tickets
-      canAccess = ticket.createdById === session.user.id;
+    } else if (session.user.role === 'USER' || session.user.role === 'AGENT') {
+      // Users can see:
+      // 1. Their own tickets
+      // 2. Tickets assigned to their branch (for ATM claims processing)
+      const isOwnTicket = ticket.createdById === session.user.id;
+      const isBranchTicket = userWithDetails?.branchId === ticket.branchId;
+      
+      // For ATM claims, check if this is an ATM claim service
+      const isATMClaim = ticket.service?.name?.toLowerCase().includes('atm claim');
+      
+      if (isATMClaim && isBranchTicket) {
+        canAccess = true;
+      } else {
+        canAccess = isOwnTicket;
+      }
     }
 
     if (!canAccess) {
