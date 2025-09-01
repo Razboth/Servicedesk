@@ -5,9 +5,8 @@ import { sanitizeFilename } from './security';
 
 // File storage configuration
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
-const MAX_FILE_SIZE = parseInt(process.env.UPLOAD_MAX_SIZE || '10485760'); // 10MB default
-const ALLOWED_MIME_TYPES = (process.env.UPLOAD_ALLOWED_TYPES || 
-  'image/jpeg,image/png,image/gif,application/pdf,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document').split(',');
+const MAX_FILE_SIZE = parseInt(process.env.UPLOAD_MAX_SIZE || '52428800'); // 50MB default
+const ALLOWED_MIME_TYPES = process.env.UPLOAD_ALLOWED_TYPES?.split(',') || null; // null means allow all types
 
 // Ensure upload directory exists
 export async function ensureUploadDir(): Promise<void> {
@@ -43,17 +42,17 @@ export function validateFile(file: {
     };
   }
 
-  // Check MIME type
-  if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+  // Check MIME type only if restrictions are configured
+  if (ALLOWED_MIME_TYPES && !ALLOWED_MIME_TYPES.includes(file.type)) {
     return {
       isValid: false,
       error: `File type ${file.type} is not allowed. Allowed types: ${ALLOWED_MIME_TYPES.join(', ')}`
     };
   }
 
-  // Check for suspicious file extensions
+  // Check for dangerous executable extensions (minimal security)
   const ext = path.extname(file.name).toLowerCase();
-  const dangerousExts = ['.exe', '.bat', '.cmd', '.com', '.scr', '.vbs', '.js', '.jar', '.php', '.asp'];
+  const dangerousExts = ['.exe', '.bat', '.cmd', '.com', '.scr', '.vbs'];
   if (dangerousExts.includes(ext)) {
     return {
       isValid: false,

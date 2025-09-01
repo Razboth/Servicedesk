@@ -2,13 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { emitTicketUpdated, emitTicketStatusChanged, emitTicketAssigned } from '@/lib/socket-manager';
+import { createTicketNotifications, createNotification } from '@/lib/notifications';
 
 // Validation schema for updating tickets
 const updateTicketSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   description: z.string().min(1).optional(),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).optional(),
-  status: z.enum(['OPEN', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'IN_PROGRESS', 'PENDING_VENDOR', 'RESOLVED', 'CLOSED', 'CANCELLED']).optional(),
+  status: z.enum(['OPEN', 'PENDING', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'IN_PROGRESS', 'PENDING_VENDOR', 'RESOLVED', 'CLOSED', 'CANCELLED']).optional(),
   assignedToId: z.string().nullable().optional(),
   issueClassification: z.enum(['INCIDENT', 'SERVICE_REQUEST', 'CHANGE_REQUEST', 'PROBLEM']).optional(),
   rootCause: z.string().optional(),
@@ -67,7 +69,17 @@ export async function GET(
         },
         comments: {
           include: {
-            user: { select: { name: true, email: true, role: true } }
+            user: { select: { name: true, email: true, role: true } },
+            attachments: {
+              select: {
+                id: true,
+                filename: true,
+                originalName: true,
+                mimeType: true,
+                size: true,
+                createdAt: true
+              }
+            }
           },
           orderBy: { createdAt: 'asc' }
         },
@@ -305,7 +317,17 @@ export async function PATCH(
         },
         comments: {
           include: {
-            user: { select: { name: true, email: true, role: true } }
+            user: { select: { name: true, email: true, role: true } },
+            attachments: {
+              select: {
+                id: true,
+                filename: true,
+                originalName: true,
+                mimeType: true,
+                size: true,
+                createdAt: true
+              }
+            }
           },
           orderBy: { createdAt: 'desc' }
         },
@@ -328,6 +350,53 @@ export async function PATCH(
         },
       });
     }
+
+    // Emit socket events for real-time updates
+    if (validatedData.status && validatedData.status !== existingTicket.status) {
+      emitTicketStatusChanged(
+        id,
+        existingTicket.status,
+        validatedData.status,
+        session.user.id
+      );
+      
+      // Create notifications based on status change
+      let notificationType: 'TICKET_UPDATED' | 'TICKET_RESOLVED' | 'TICKET_CLOSED' = 'TICKET_UPDATED';
+      if (validatedData.status === 'RESOLVED') {
+        notificationType = 'TICKET_RESOLVED';
+      } else if (validatedData.status === 'CLOSED') {
+        notificationType = 'TICKET_CLOSED';
+      }
+      
+      await createTicketNotifications(id, notificationType, session.user.id)
+        .catch(err => console.error('Failed to create status change notifications:', err));
+    }
+    
+    if (validatedData.assignedToId && validatedData.assignedToId !== existingTicket.assignedToId) {
+      emitTicketAssigned(
+        id,
+        validatedData.assignedToId,
+        session.user.id
+      );
+      
+      // Create notification for newly assigned technician
+      if (validatedData.assignedToId) {
+        await createNotification({
+          userId: validatedData.assignedToId,
+          type: 'TICKET_ASSIGNED',
+          title: `Ticket #${updatedTicket.ticketNumber} Assigned to You`,
+          message: `You have been assigned to: ${updatedTicket.title}`,
+          data: {
+            ticketId: id,
+            ticketNumber: updatedTicket.ticketNumber,
+            ticketTitle: updatedTicket.title
+          }
+        }).catch(err => console.error('Failed to create assignment notification:', err));
+      }
+    }
+    
+    // Emit general update event
+    emitTicketUpdated(id, validatedData, session.user.id);
 
     return NextResponse.json(updatedTicket);
   } catch (error) {
@@ -452,6 +521,27 @@ export async function PUT(
         }
       }
     });
+
+    // Emit socket events for real-time updates
+    if (validatedData.status && validatedData.status !== existingTicket.status) {
+      emitTicketStatusChanged(
+        id,
+        existingTicket.status,
+        validatedData.status,
+        session.user.id
+      );
+    }
+    
+    if (validatedData.assignedToId && validatedData.assignedToId !== existingTicket.assignedToId) {
+      emitTicketAssigned(
+        id,
+        validatedData.assignedToId,
+        session.user.id
+      );
+    }
+    
+    // Emit general update event
+    emitTicketUpdated(id, validatedData, session.user.id);
 
     return NextResponse.json(updatedTicket);
   } catch (error) {

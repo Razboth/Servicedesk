@@ -30,7 +30,8 @@ export async function GET(request: NextRequest) {
       where.parentId = null;
     }
 
-    // For Knowledge Base, return the 3-tier Category structure
+    // All users can see all categories - no role-based filtering
+    // Branch users (USER role) can now see and create tickets for any category
     const categories = await prisma.category.findMany({
       where: {
         isActive: true

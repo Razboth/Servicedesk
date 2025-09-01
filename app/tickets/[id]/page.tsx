@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useParams, useRouter } from 'next/navigation';
 
@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/modern-dialog';
 import { ProgressTracker } from '@/components/ui/progress-tracker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Clock, User, MessageSquare, AlertCircle, CheckCircle, CheckCheck, Plus, X, Paperclip, Download, FileText, Eye, Edit, Sparkles, Shield, UserCheck, UserX, Timer } from 'lucide-react';
+import { ArrowLeft, Clock, User, MessageSquare, AlertCircle, CheckCircle, CheckCheck, Plus, X, Paperclip, Download, FileText, Eye, Edit, Sparkles, Shield, UserCheck, UserX, Timer, Trash2, Image as ImageIcon, File, MoreVertical } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { RelatedArticles } from '@/components/knowledge/related-articles';
 import { AttachmentPreview } from '@/components/ui/attachment-preview';
@@ -156,6 +156,15 @@ export default function TicketDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [newComment, setNewComment] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [commentAttachments, setCommentAttachments] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [deleteCommentId, setDeleteCommentId] = useState<string | null>(null);
+  const [imagePreview, setImagePreview] = useState<{ url: string; name: string } | null>(null);
+  const [pdfPreview, setPdfPreview] = useState<{ url: string; name: string } | null>(null);
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingContent, setEditingContent] = useState('');
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [isUploading, setIsUploading] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [showResolveModal, setShowResolveModal] = useState(false);
   const [resolutionComment, setResolutionComment] = useState('');
@@ -339,10 +348,52 @@ export default function TicketDetailPage() {
   };
 
   const addComment = async () => {
-    if (!newComment.trim()) return;
+    if (!newComment.trim() && commentAttachments.length === 0) return;
     
     try {
       setIsSubmittingComment(true);
+      setIsUploading(true);
+      setUploadProgress(0);
+      
+      // Upload attachments first if any
+      const uploadedAttachments = [];
+      const totalFiles = commentAttachments.length;
+      
+      for (let i = 0; i < totalFiles; i++) {
+        const file = commentAttachments[i];
+        setUploadProgress(Math.round((i / totalFiles) * 80)); // Up to 80% for uploads
+        const base64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const result = reader.result as string;
+            resolve(result.split(',')[1]); // Remove data:type;base64, prefix
+          };
+          reader.readAsDataURL(file);
+        });
+        
+        const uploadResponse = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            filename: file.name,
+            mimeType: file.type || 'application/octet-stream', // Default for unknown types
+            size: file.size,
+            content: base64
+          })
+        });
+        
+        if (uploadResponse.ok) {
+          const uploadedFile = await uploadResponse.json();
+          uploadedAttachments.push({
+            filename: uploadedFile.filename,
+            originalName: file.name,
+            mimeType: file.type || 'application/octet-stream',
+            size: file.size
+          });
+        }
+      }
+      
+      setUploadProgress(90); // 90% before submitting comment
       
       const response = await fetch(`/api/tickets/${ticketId}/comments`, {
         method: 'POST',
@@ -350,24 +401,122 @@ export default function TicketDetailPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          content: newComment,
-          isInternal: false
+          content: newComment || 'Attached files',
+          isInternal: false,
+          attachments: uploadedAttachments
         }),
       });
       
       if (response.ok) {
+        setUploadProgress(100);
         setNewComment('');
+        setCommentAttachments([]);
         fetchTicket(); // Refresh ticket data
+        setTimeout(() => {
+          setUploadProgress(0);
+          setIsUploading(false);
+        }, 500);
       } else {
         const errorData = await response.json().catch(() => null);
         console.error('Failed to add comment:', errorData);
         alert(errorData?.error || 'Failed to add comment. Please try again.');
+        setUploadProgress(0);
+        setIsUploading(false);
       }
     } catch (err) {
       console.error('Error adding comment:', err);
+      setUploadProgress(0);
+      setIsUploading(false);
     } finally {
       setIsSubmittingComment(false);
     }
+  };
+  
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const MAX_SIZE = 50 * 1024 * 1024; // 50MB
+    
+    const validFiles = files.filter(file => {
+      if (file.size > MAX_SIZE) {
+        alert(`File "${file.name}" is too large. Maximum size is 50MB.`);
+        return false;
+      }
+      return true;
+    });
+    
+    if (validFiles.length > 0) {
+      setCommentAttachments(prev => [...prev, ...validFiles]);
+    }
+    
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+  
+  const removeAttachment = (index: number) => {
+    setCommentAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+  
+  const deleteComment = async (commentId: string) => {
+    try {
+      const response = await fetch(`/api/tickets/${ticketId}/comments/${commentId}`, {
+        method: 'DELETE',
+      });
+      
+      if (response.ok) {
+        fetchTicket(); // Refresh ticket data
+        setDeleteCommentId(null);
+      } else {
+        const error = await response.json();
+        alert('Failed to delete comment: ' + (error.error || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('Error deleting comment:', error);
+      alert('Failed to delete comment');
+    }
+  };
+  
+  const getFileIcon = (mimeType: string, filename?: string) => {
+    // Check by MIME type first
+    if (mimeType) {
+      if (mimeType.startsWith('image/')) return ImageIcon;
+      if (mimeType.includes('pdf')) return FileText;
+      if (mimeType.includes('word') || mimeType.includes('document')) return FileText;
+      if (mimeType.includes('sheet') || mimeType.includes('excel')) return FileText;
+      if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) return FileText;
+      if (mimeType.includes('text')) return FileText;
+      if (mimeType.includes('zip') || mimeType.includes('rar') || mimeType.includes('7z') || mimeType.includes('tar')) return File;
+      if (mimeType.includes('video')) return File;
+      if (mimeType.includes('audio')) return File;
+    }
+    
+    // Check by file extension if filename is provided
+    if (filename) {
+      const ext = filename.split('.').pop()?.toLowerCase();
+      if (ext) {
+        // Images
+        if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp', 'ico'].includes(ext)) return ImageIcon;
+        // Documents
+        if (['pdf', 'doc', 'docx', 'txt', 'rtf', 'odt', 'xls', 'xlsx', 'ppt', 'pptx', 'csv'].includes(ext)) return FileText;
+        // Archives and others
+        if (['zip', 'rar', '7z', 'tar', 'gz', 'bz2'].includes(ext)) return File;
+      }
+    }
+    
+    return File;
+  };
+  
+  const isImageFile = (mimeType: string) => {
+    return mimeType.startsWith('image/');
+  };
+  
+  const isPdfFile = (mimeType: string, filename?: string) => {
+    if (mimeType === 'application/pdf' || mimeType.includes('pdf')) return true;
+    if (filename) {
+      const ext = filename.split('.').pop()?.toLowerCase();
+      return ext === 'pdf';
+    }
+    return false;
   };
 
   const updateTicketStatus = async (newStatus: string) => {
@@ -1198,36 +1347,146 @@ export default function TicketDetailPage() {
 
               {/* Comments */}
               <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <MessageSquare className="h-5 w-5" />
-                    Comments ({ticket.comments.length})
+                <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-900">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <MessageSquare className="h-5 w-5 text-blue-600" />
+                    <span>Discussion</span>
+                    <Badge variant="secondary" className="ml-auto">
+                      {ticket.comments.length} {ticket.comments.length === 1 ? 'comment' : 'comments'}
+                    </Badge>
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-6">
                   <div className="space-y-4">
                     {ticket.comments.length === 0 ? (
-                      <p className="text-gray-500 text-center py-4">No comments yet</p>
+                      <div className="text-center py-12">
+                        <MessageSquare className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                        <p className="text-gray-500">No comments yet</p>
+                        <p className="text-sm text-gray-400 mt-1">Be the first to comment on this ticket</p>
+                      </div>
                     ) : (
                       ticket.comments.map((comment) => (
-                        <div key={comment.id} className="border-l-4 border-blue-200 pl-4 py-2">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium text-gray-900">{comment.user.name}</span>
-                              <Badge variant="outline" className="text-xs">
-                                {comment.user.role}
-                              </Badge>
-                              {comment.isInternal && (
-                                <Badge variant="secondary" className="text-xs">
-                                  Internal
-                                </Badge>
-                              )}
+                        <div key={comment.id} className="group relative bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow">
+                          {/* Comment Header */}
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-center gap-3">
+                              {/* User Avatar */}
+                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-semibold">
+                                {comment.user.name?.charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-semibold text-gray-900 dark:text-gray-100">
+                                    {comment.user.name}
+                                  </span>
+                                  <Badge variant="outline" className="text-xs">
+                                    {comment.user.role}
+                                  </Badge>
+                                  {comment.isInternal && (
+                                    <Badge variant="secondary" className="text-xs bg-yellow-100 text-yellow-800">
+                                      Internal
+                                    </Badge>
+                                  )}
+                                </div>
+                                <span className="text-xs text-gray-500">
+                                  {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
+                                </span>
+                              </div>
                             </div>
-                            <span className="text-sm text-gray-500">
-                              {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
-                            </span>
+                            
+                            {/* Actions */}
+                            {(session?.user?.id === comment.user.id || session?.user?.role === 'ADMIN') && (
+                              <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setDeleteCommentId(comment.id)}
+                                  className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            )}
                           </div>
-                          <RichTextViewer content={comment.content} className="text-gray-700" />
+                          
+                          {/* Comment Content */}
+                          <div className="pl-13">
+                            <RichTextViewer content={comment.content} className="text-gray-700 dark:text-gray-300" />
+                            
+                            {/* Attachments */}
+                            {comment.attachments && comment.attachments.length > 0 && (
+                              <div className="mt-4 p-4 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                                <div className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                                  <Paperclip className="h-4 w-4" />
+                                  Attached Files ({comment.attachments.length})
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                  {comment.attachments.map((attachment: any) => {
+                                    const Icon = getFileIcon(attachment.mimeType, attachment.originalName);
+                                    const isImage = isImageFile(attachment.mimeType);
+                                    const isPdf = isPdfFile(attachment.mimeType, attachment.originalName);
+                                    const downloadUrl = `/api/tickets/${ticket.id}/comments/${comment.id}/attachments/${attachment.id}/download`;
+                                    
+                                    return (
+                                      <div
+                                        key={attachment.id}
+                                        className="flex items-center gap-3 p-3 bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-600 hover:shadow-md transition-all"
+                                      >
+                                        <div className={`p-2.5 rounded-lg ${
+                                          isImage ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' : 
+                                          isPdf ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' :
+                                          'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+                                        }`}>
+                                          <Icon className="h-5 w-5" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                                            {attachment.originalName}
+                                          </p>
+                                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                                            {attachment.size < 1024 
+                                              ? `${attachment.size} B`
+                                              : attachment.size < 1024 * 1024
+                                              ? `${(attachment.size / 1024).toFixed(1)} KB`
+                                              : `${(attachment.size / (1024 * 1024)).toFixed(1)} MB`
+                                            }
+                                          </p>
+                                        </div>
+                                        <div className="flex gap-1">
+                                          {(isImage || isPdf) && (
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              onClick={() => {
+                                                if (isImage) {
+                                                  setImagePreview({ url: downloadUrl, name: attachment.originalName });
+                                                } else if (isPdf) {
+                                                  setPdfPreview({ url: downloadUrl, name: attachment.originalName });
+                                                }
+                                              }}
+                                              className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-800"
+                                              title="Preview"
+                                            >
+                                              <Eye className="h-4 w-4" />
+                                            </Button>
+                                          )}
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => window.open(downloadUrl, '_blank')}
+                                            className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-800"
+                                            title="Download"
+                                          >
+                                            <Download className="h-4 w-4" />
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       ))
                     )}
@@ -1246,14 +1505,82 @@ export default function TicketDetailPage() {
                         Tip: You can paste images directly from clipboard or drag & drop them into the editor
                       </div>
                       
-                      <Button
-                        onClick={addComment}
-                        disabled={!newComment.trim() || isSubmittingComment}
-                        className="mt-3 flex items-center gap-2"
-                      >
-                        <Plus className="h-4 w-4" />
-                        {isSubmittingComment ? 'Adding...' : 'Add Comment'}
-                      </Button>
+                      {/* File attachments */}
+                      {commentAttachments.length > 0 && (
+                        <div className="mt-3 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                          <div className="text-sm font-medium mb-2">Attachments:</div>
+                          <div className="space-y-1">
+                            {commentAttachments.map((file, index) => (
+                              <div key={index} className="flex items-center justify-between p-2 bg-white dark:bg-gray-700 rounded">
+                                <div className="flex items-center gap-2">
+                                  <FileText className="h-4 w-4 text-gray-500" />
+                                  <span className="text-sm">{file.name}</span>
+                                  <span className="text-xs text-gray-500">({(file.size / 1024).toFixed(1)} KB)</span>
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeAttachment(index)}
+                                  className="h-6 w-6 p-0"
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Upload Progress Bar */}
+                      {isUploading && (
+                        <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                              {uploadProgress < 90 ? 'Uploading files...' : 'Posting comment...'}
+                            </span>
+                            <span className="text-sm text-blue-600 dark:text-blue-400">
+                              {uploadProgress}%
+                            </span>
+                          </div>
+                          <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2 overflow-hidden">
+                            <div 
+                              className="bg-blue-600 dark:bg-blue-400 h-full rounded-full transition-all duration-300 ease-out"
+                              style={{ width: `${uploadProgress}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div className="flex gap-2 mt-3">
+                        <Button
+                          onClick={addComment}
+                          disabled={(!newComment.trim() && commentAttachments.length === 0) || isSubmittingComment}
+                          className="flex items-center gap-2"
+                        >
+                          <Plus className="h-4 w-4" />
+                          {isSubmittingComment ? 'Adding...' : 'Add Comment'}
+                        </Button>
+                        
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="flex items-center gap-2"
+                        >
+                          <Paperclip className="h-4 w-4" />
+                          Attach Files
+                        </Button>
+                        
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          multiple
+                          onChange={handleFileSelect}
+                          className="hidden"
+                          accept="*"
+                        />
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -1343,11 +1670,12 @@ export default function TicketDetailPage() {
                           </Button>
                         </>
                       )}
-                      {ticket.status === 'CLOSED' && ['TECHNICIAN', 'SECURITY_ANALYST'].includes(session?.user?.role) && (
+                      {/* Allow reopening from any closed/resolved/cancelled status */}
+                      {['CLOSED', 'CANCELLED', 'RESOLVED', 'REJECTED', 'PENDING_APPROVAL', 'APPROVED', 'PENDING', 'PENDING_VENDOR'].includes(ticket.status) && canUpdateStatus() && (
                         <Button
-                          onClick={() => updateTicketStatus('IN_PROGRESS')}
+                          onClick={() => updateTicketStatus('OPEN')}
                           disabled={isUpdatingStatus}
-                          className="w-full flex items-center gap-2 bg-orange-600 hover:bg-orange-700"
+                          className="w-full flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
                         >
                           <AlertCircle className="h-4 w-4" />
                           Reopen Ticket
@@ -1535,6 +1863,102 @@ export default function TicketDetailPage() {
           attachment={previewAttachment}
           ticketTitle={ticket?.title}
         />
+      )}
+
+      {/* Delete Comment Confirmation Dialog */}
+      <ModernDialog open={!!deleteCommentId} onOpenChange={() => setDeleteCommentId(null)}>
+        <ModernDialogContent className="sm:max-w-[400px]">
+          <ModernDialogHeader icon={<Trash2 className="w-5 h-5 text-red-500" />}>
+            <ModernDialogTitle>Delete Comment</ModernDialogTitle>
+            <ModernDialogDescription>
+              Are you sure you want to delete this comment? This action cannot be undone.
+            </ModernDialogDescription>
+          </ModernDialogHeader>
+          <ModernDialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setDeleteCommentId(null)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={() => deleteCommentId && deleteComment(deleteCommentId)}
+            >
+              Delete Comment
+            </Button>
+          </ModernDialogFooter>
+        </ModernDialogContent>
+      </ModernDialog>
+
+      {/* Image Preview Modal */}
+      {imagePreview && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+          onClick={() => setImagePreview(null)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] bg-white dark:bg-gray-900 rounded-lg overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="font-semibold">{imagePreview.name}</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setImagePreview(null)}
+                className="h-8 w-8 p-0"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="p-4 overflow-auto max-h-[calc(90vh-80px)]">
+              <img 
+                src={imagePreview.url} 
+                alt={imagePreview.name}
+                className="max-w-full h-auto"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* PDF Preview Modal */}
+      {pdfPreview && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+          onClick={() => setPdfPreview(null)}
+        >
+          <div className="relative w-full max-w-6xl h-[90vh] bg-white dark:bg-gray-900 rounded-lg overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b bg-gray-50 dark:bg-gray-800">
+              <div className="flex items-center gap-3">
+                <FileText className="h-5 w-5 text-red-600" />
+                <h3 className="font-semibold">{pdfPreview.name}</h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(pdfPreview.url, '_blank')}
+                  className="flex items-center gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  Download
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setPdfPreview(null)}
+                  className="h-8 w-8 p-0"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <iframe
+              src={pdfPreview.url}
+              className="w-full h-[calc(100%-73px)]"
+              title={pdfPreview.name}
+            />
+          </div>
+        </div>
       )}
     </div>
   );

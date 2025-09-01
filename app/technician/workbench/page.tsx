@@ -9,8 +9,6 @@ import { Badge } from '@/components/ui/badge'
 import { ModernTicketList } from '@/components/tickets/modern/modern-ticket-list'
 import { 
   Search,
-  Moon,
-  Sun,
   Sparkles,
   User,
   Inbox,
@@ -23,7 +21,7 @@ import {
   CheckCircle
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
-import { useTheme } from 'next-themes'
+// import { useTheme } from 'next-themes' // Removed to fix React error
 
 interface QuickStat {
   label: string
@@ -35,7 +33,7 @@ interface QuickStat {
 
 export default function TechnicianWorkbenchPage() {
   const { data: session } = useSession()
-  const { theme, setTheme } = useTheme()
+  // const { theme, setTheme } = useTheme() // Removed to fix React error
   const router = useRouter()
   const [searchTerm, setSearchTerm] = useState('')
   const [activeTab, setActiveTab] = useState('my-tickets')
@@ -218,19 +216,7 @@ export default function TechnicianWorkbenchPage() {
                   {viewMode === 'inbox' && <Inbox className="h-4 w-4" />}
                 </Button>
 
-                {/* Theme Toggle */}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                  className="hidden xs:block h-8 w-8 px-0"
-                >
-                  {theme === 'dark' ? (
-                    <Sun className="h-4 w-4" />
-                  ) : (
-                    <Moon className="h-4 w-4" />
-                  )}
-                </Button>
+                {/* Theme Toggle - Removed to fix React error */}
               </div>
             </div>
           </div>

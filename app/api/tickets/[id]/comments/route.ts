@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { emitTicketCommented } from '@/lib/socket-manager';
+import { createTicketNotifications } from '@/lib/notifications';
 
 // Validation schema for creating comments
 const createCommentSchema = z.object({
@@ -196,16 +198,14 @@ export async function POST(
     // Handle comment attachments
     const attachmentData = [];
     if (validatedData.attachments && validatedData.attachments.length > 0) {
-      const path = require('path');
-      
       for (const attachment of validatedData.attachments) {
         // File already uploaded via /api/upload, just reference it
         attachmentData.push({
-          filename: attachment.filename,
+          filename: attachment.filename, // This is the secure filename from storage
           originalName: attachment.originalName,
           mimeType: attachment.mimeType,
           size: attachment.size,
-          path: path.join('uploads', attachment.filename)
+          path: `uploads/${attachment.filename}` // Store relative path
         });
       }
     }
@@ -238,6 +238,21 @@ export async function POST(
     await prisma.ticket.update({
       where: { id },
       data: { updatedAt: new Date() }
+    });
+
+    // Create notifications for ticket participants (except internal comments)
+    if (!comment.isInternal) {
+      await createTicketNotifications(id, 'TICKET_COMMENT', session.user.id)
+        .catch(err => console.error('Failed to create comment notifications:', err));
+    }
+
+    // Emit socket event for real-time updates
+    emitTicketCommented(id, {
+      id: comment.id,
+      content: comment.content,
+      isInternal: comment.isInternal,
+      user: comment.user,
+      createdAt: comment.createdAt
     });
 
     return NextResponse.json(comment, { status: 201 });

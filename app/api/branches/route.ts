@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    return NextResponse.json(branches);
+    return NextResponse.json({ branches });
 
   } catch (error) {
     console.error('Failed to fetch branches:', error);

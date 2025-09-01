@@ -153,6 +153,7 @@ export function RichTextEditor({
     ],
     content,
     editable,
+    immediatelyRender: false, // Prevent SSR hydration mismatches
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
     },
