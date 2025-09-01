@@ -24,6 +24,7 @@ import { cn } from '@/lib/utils'
 interface TicketsDataTableProps {
   onCreateTicket?: () => void
   ticketFilter?: 'my-tickets' | 'available-tickets'
+  hideHeader?: boolean
   initialFilters?: {
     status?: string
     priority?: string
@@ -37,6 +38,7 @@ interface TicketsDataTableProps {
 export function TicketsDataTable({ 
   onCreateTicket,
   ticketFilter,
+  hideHeader = false,
   initialFilters 
 }: TicketsDataTableProps) {
   const { data: session } = useSession()
@@ -328,31 +330,33 @@ export function TicketsDataTable({
   return (
     <div className="space-y-6">
       {/* Modern Header with gradient background */}
-      <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                Support Tickets
-              </h2>
-              <p className="text-gray-600 dark:text-gray-400 mt-1">
-                Manage and track support tickets across all branches
-              </p>
+      {!hideHeader && (
+        <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                  Support Tickets
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400 mt-1">
+                  Manage and track support tickets across all branches
+                </p>
+              </div>
+              <div className="flex items-center space-x-3">
+                {onCreateTicket && (
+                  <Button 
+                    onClick={onCreateTicket}
+                    className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-lg"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create Ticket
+                  </Button>
+                )}
+              </div>
             </div>
-            <div className="flex items-center space-x-3">
-              {onCreateTicket && (
-                <Button 
-                  onClick={onCreateTicket}
-                  className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-lg"
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create Ticket
-                </Button>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Real-time connection status with modern styling */}
       <Card className="bg-white/[0.5] dark:bg-gray-800/[0.5] backdrop-blur-sm border-0 shadow-md">

@@ -256,29 +256,6 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer">
-            <CardHeader>
-              <CardTitle className="text-lg">Knowledge Base</CardTitle>
-              <CardDescription>Search for solutions and documentation</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button variant="outline" className="w-full bg-white/50 hover:bg-white/70 border-gray-300/50">
-                Browse Articles
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer">
-            <CardHeader>
-              <CardTitle className="text-lg">ATM Monitoring</CardTitle>
-              <CardDescription>Real-time ATM status across branches</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button variant="outline" className="w-full bg-white/50 hover:bg-white/70 border-gray-300/50">
-                View ATM Status
-              </Button>
-            </CardContent>
-          </Card>
 
           {/* SOC Parser Card - Only visible for Security Analysts */}
           {(session.user.role === 'SECURITY_ANALYST' || session.user.supportGroupCode === 'SECURITY_OPS') && (

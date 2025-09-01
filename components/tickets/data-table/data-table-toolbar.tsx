@@ -93,46 +93,8 @@ export function DataTableToolbar<TData>({
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Bulk Actions Bar */}
-      {enableBulkActions && selectedRows.length > 0 && (
-        <div className="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-          <div className="flex items-center gap-2">
-            <CheckSquare className="h-4 w-4 text-blue-600" />
-            <span className="text-sm font-medium text-blue-600">
-              {selectedRows.length} ticket(s) selected
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onBulkAction?.('assign', selectedRows)}
-              className="text-blue-600 border-blue-200 hover:bg-blue-50"
-            >
-              <UserPlus className="h-4 w-4 mr-2" />
-              Bulk Assign
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onBulkAction?.('export', selectedRows)}
-              className="text-green-600 border-green-200 hover:bg-green-50"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Export Selected
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => table.resetRowSelection()}
-              className="text-red-600 border-red-200 hover:bg-red-50"
-            >
-              Clear Selection
-            </Button>
-          </div>
-        </div>
-      )}
-
+      {/* Bulk Actions Bar - Removed since checkboxes are disabled */}
+      
       {/* Main Toolbar */}
       <div className="flex flex-col gap-4">
         {/* Search Bar */}

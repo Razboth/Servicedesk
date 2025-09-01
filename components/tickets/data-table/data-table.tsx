@@ -91,7 +91,7 @@ export function DataTable<TData, TValue>({
     state: {
       sorting,
       columnVisibility,
-      rowSelection,
+      // rowSelection, // Disabled - checkboxes removed
       columnFilters,
       globalFilter,
     },
