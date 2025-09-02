@@ -1,289 +1,78 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, Suspense } from 'react'
 import { useSession } from 'next-auth/react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { useSearchParams } from 'next/navigation'
+import { TicketsDataTable } from '@/components/tickets/data-table/tickets-data-table'
 import { TicketWizard } from '@/components/tickets/modern/ticket-wizard'
-import { ModernTicketList } from '@/components/tickets/modern/modern-ticket-list'
-import { 
-  Plus, 
-  List, 
-  Grid3X3, 
-  Filter,
-  Search,
-  Sparkles,
-  Clock,
-  Play,
-  Pause,
-  CheckCircle,
-  XCircle,
-  HourglassIcon,
-  ThumbsUp,
-  CheckCheck,
-  ThumbsDown,
-  Inbox,
-  Table
-} from 'lucide-react'
-import { Input } from '@/components/ui/input'
+import { Card, CardContent } from '@/components/ui/card'
 
-interface QuickStat {
-  label: string
-  count: number
-  color: string
-  icon: React.ReactNode
-  trend?: number
-}
-
-export default function TicketsPage() {
+function TicketsPageContent() {
   const { data: session } = useSession()
+  const searchParams = useSearchParams()
   const [showWizard, setShowWizard] = useState(false)
-  const [viewMode, setViewMode] = useState<'cards' | 'table' | 'inbox'>('cards')
-  const [searchTerm, setSearchTerm] = useState('')
-  const [quickStats, setQuickStats] = useState<QuickStat[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-
-  useEffect(() => {
-    loadQuickStats()
-  }, [])
-
-  const loadQuickStats = async () => {
-    try {
-      setIsLoading(true)
-      const response = await fetch('/api/tickets?stats=true')
-      if (response.ok) {
-        const data = await response.json()
-        setQuickStats([
-          {
-            label: 'Open',
-            count: data.stats?.open || 0,
-            color: 'bg-blue-500',
-            icon: <Clock className="w-4 h-4 text-white" />,
-            trend: undefined
-          },
-          {
-            label: 'Pending',
-            count: data.stats?.pending || 0,
-            color: 'bg-yellow-500',
-            icon: <HourglassIcon className="w-4 h-4 text-white" />,
-            trend: undefined
-          },
-          {
-            label: 'Approved',
-            count: data.stats?.approved || 0,
-            color: 'bg-emerald-500',
-            icon: <ThumbsUp className="w-4 h-4 text-white" />,
-            trend: undefined
-          },
-          {
-            label: 'In Progress',
-            count: data.stats?.inProgress || 0,
-            color: 'bg-orange-500',
-            icon: <Play className="w-4 h-4 text-white" />,
-            trend: undefined
-          },
-          {
-            label: 'On Hold',
-            count: data.stats?.onHold || 0,
-            color: 'bg-purple-500',
-            icon: <Pause className="w-4 h-4 text-white" />,
-            trend: undefined
-          },
-          {
-            label: 'Resolved',
-            count: data.stats?.resolved || 0,
-            color: 'bg-teal-500',
-            icon: <CheckCheck className="w-4 h-4 text-white" />,
-            trend: undefined
-          },
-          {
-            label: 'Closed',
-            count: data.stats?.closed || 0,
-            color: 'bg-green-500',
-            icon: <CheckCircle className="w-4 h-4 text-white" />,
-            trend: undefined
-          },
-          {
-            label: 'Rejected',
-            count: data.stats?.rejected || 0,
-            color: 'bg-red-500',
-            icon: <ThumbsDown className="w-4 h-4 text-white" />,
-            trend: undefined
-          },
-          {
-            label: 'Cancelled',
-            count: data.stats?.cancelled || 0,
-            color: 'bg-gray-500',
-            icon: <XCircle className="w-4 h-4 text-white" />,
-            trend: undefined
-          }
-        ])
-      }
-    } catch (error) {
-      console.error('Error loading stats:', error)
-    } finally {
-      setIsLoading(false)
-    }
+  
+  // Get initial filters from URL
+  const initialFilters = {
+    status: searchParams.get('status') || undefined,
+    priority: searchParams.get('priority') || undefined,
+    category: searchParams.get('category') || undefined,
+    sort: searchParams.get('sort') || undefined,
+    page: searchParams.get('page') ? parseInt(searchParams.get('page')!) : undefined,
+    pageSize: searchParams.get('pageSize') ? parseInt(searchParams.get('pageSize')!) : undefined,
   }
 
-  if (!session) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
-        <Card className="w-full max-w-md mx-4">
-          <CardContent className="p-8 text-center">
-            <div className="w-16 h-16 mx-auto mb-4 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
-              <Sparkles className="w-8 h-8 text-blue-600 dark:text-blue-400" />
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Access Required</h2>
-            <p className="text-gray-600 dark:text-gray-400">Please sign in to access the ticket interface.</p>
-          </CardContent>
-        </Card>
-      </div>
-    )
+  const handleCreateTicket = () => {
+    setShowWizard(true)
+  }
+
+  const handleTicketCreated = () => {
+    setShowWizard(false)
+    // The data table will auto-refresh
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-      {/* Header */}
-      <div className="bg-white/[0.8] dark:bg-gray-900/[0.8] backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40">
-        <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
-          <div className="flex items-center justify-between h-14 sm:h-16">
-            <div className="flex items-center space-x-2 sm:space-x-4">
-              <div className="flex items-center space-x-2">
-                <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
-                  <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-                </div>
-                <div className="hidden sm:block">
-                  <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">Tickets</h1>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Modern Experience</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-1 sm:space-x-2">
-              {/* Search - Hidden on mobile */}
-              <div className="hidden lg:block relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Quick search..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 w-48 bg-white/[0.5] dark:bg-gray-800/[0.5] border-gray-300 dark:border-gray-600"
-                />
-              </div>
-
-              {/* View Mode Toggle - Simplified on mobile */}
-              <div className="hidden sm:flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1 border shadow-sm">
-                <Button
-                  variant={viewMode === 'cards' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('cards')}
-                  className="h-7 px-2"
-                  title="Cards View"
-                >
-                  <Grid3X3 className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant={viewMode === 'table' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('table')}
-                  className="h-7 px-2"
-                  title="Table View"
-                >
-                  <Table className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant={viewMode === 'inbox' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('inbox')}
-                  className="h-7 px-2"
-                  title="Inbox View"
-                >
-                  <Inbox className="h-4 w-4" />
-                </Button>
-              </div>
-
-              {/* Mobile View Toggle - Single button cycling through modes */}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  const modes: ('cards' | 'table' | 'inbox')[] = ['cards', 'table', 'inbox'];
-                  const currentIndex = modes.indexOf(viewMode);
-                  const nextIndex = (currentIndex + 1) % modes.length;
-                  setViewMode(modes[nextIndex]);
-                }}
-                className="sm:hidden h-8 w-8 px-0"
-                title={`Current: ${viewMode}`}
-              >
-                {viewMode === 'cards' && <Grid3X3 className="h-4 w-4" />}
-                {viewMode === 'table' && <Table className="h-4 w-4" />}
-                {viewMode === 'inbox' && <Inbox className="h-4 w-4" />}
-              </Button>
-
-
-              {/* Create Ticket */}
-              <Button 
-                onClick={() => setShowWizard(true)}
-                className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-lg text-sm px-3 sm:px-4"
-              >
-                <Plus className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Create Ticket</span>
-              </Button>
-            </div>
-          </div>
-        </div>
+      {/* Decorative background elements */}
+      <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-96 h-96 bg-gradient-to-r from-blue-400 to-indigo-400 dark:from-blue-800 dark:to-indigo-800 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-3xl opacity-20 animate-blob"></div>
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-r from-purple-400 to-pink-400 dark:from-purple-800 dark:to-pink-800 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-cyan-400 to-teal-400 dark:from-cyan-800 dark:to-teal-800 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
       </div>
 
-      {/* Quick Stats */}
-      <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-4 sm:py-6">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 mb-4 sm:mb-6">
-          {quickStats.map((stat, index) => (
-            <Card key={index} className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{stat.label}</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{stat.count}</p>
-                  </div>
-                  <div className={`w-10 h-10 ${stat.color} rounded-lg flex items-center justify-center shadow-lg`}>
-                    {stat.icon}
-                  </div>
-                </div>
-                {stat.trend && (
-                  <div className="mt-2 flex items-center">
-                    <span className={`text-xs font-medium ${stat.trend > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {stat.trend > 0 ? '+' : ''}{stat.trend}%
-                    </span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">vs last week</span>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {/* Main Content */}
-        <div className="space-y-6">
-          <ModernTicketList 
-            viewMode={viewMode}
-            searchTerm={searchTerm}
-            onCreateTicket={() => setShowWizard(true)}
-          />
-        </div>
-      </div>
-
-      {/* Ticket Creation Wizard */}
-      {showWizard && (
-        <TicketWizard 
-          onClose={() => setShowWizard(false)}
-          onSuccess={() => {
-            setShowWizard(false)
-            loadQuickStats()
-          }}
+      <div className="w-full pl-3 pr-6 sm:pl-4 sm:pr-8 lg:pl-6 lg:pr-10 py-4">
+        <TicketsDataTable 
+          onCreateTicket={handleCreateTicket}
+          initialFilters={initialFilters}
         />
-      )}
+        
+        {showWizard && (
+          <TicketWizard
+            onClose={() => setShowWizard(false)}
+            onSuccess={handleTicketCreated}
+          />
+        )}
+      </div>
     </div>
+  )
+}
+
+export default function TicketsPage() {
+  return (
+    <Suspense 
+      fallback={
+        <div className="container mx-auto py-6">
+          <Card>
+            <CardContent className="p-12">
+              <div className="flex items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white"></div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      }
+    >
+      <TicketsPageContent />
+    </Suspense>
   )
 }

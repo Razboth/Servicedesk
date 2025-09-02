@@ -6,24 +6,22 @@ import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ModernTicketList } from '@/components/tickets/modern/modern-ticket-list'
+import { TicketsDataTable } from '@/components/tickets/data-table/tickets-data-table'
+import { TicketCards } from '@/components/tickets/ticket-cards'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { 
-  Search,
-  Moon,
-  Sun,
   Sparkles,
   User,
   Inbox,
   UserCheck,
   ClipboardList,
-  Grid3X3,
-  Table,
   Clock,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  LayoutGrid,
+  Table
 } from 'lucide-react'
-import { Input } from '@/components/ui/input'
-import { useTheme } from 'next-themes'
 
 interface QuickStat {
   label: string
@@ -35,13 +33,10 @@ interface QuickStat {
 
 export default function TechnicianWorkbenchPage() {
   const { data: session } = useSession()
-  const { theme, setTheme } = useTheme()
   const router = useRouter()
-  const [searchTerm, setSearchTerm] = useState('')
-  const [activeTab, setActiveTab] = useState('my-tickets')
-  const [viewMode, setViewMode] = useState<'cards' | 'table' | 'inbox'>('table')
   const [quickStats, setQuickStats] = useState<QuickStat[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table')
 
   useEffect(() => {
     loadQuickStats()
@@ -57,29 +52,29 @@ export default function TechnicianWorkbenchPage() {
           {
             label: 'My Tickets',
             count: data.stats?.assigned || 0,
-            color: 'bg-blue-100 dark:bg-blue-900/50',
-            icon: <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />,
+            color: 'bg-blue-500',
+            icon: <User className="h-4 w-4 text-white" />,
             trend: undefined
           },
           {
             label: 'Available',
             count: data.stats?.unassigned || 0,
-            color: 'bg-orange-100 dark:bg-orange-900/50',
-            icon: <AlertCircle className="h-4 w-4 text-orange-600 dark:text-orange-400" />,
+            color: 'bg-orange-500',
+            icon: <AlertCircle className="h-4 w-4 text-white" />,
             trend: undefined
           },
           {
             label: 'In Progress',
             count: data.stats?.inProgress || 0,
-            color: 'bg-yellow-100 dark:bg-yellow-900/50',
-            icon: <Clock className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />,
+            color: 'bg-yellow-500',
+            icon: <Clock className="h-4 w-4 text-white" />,
             trend: undefined
           },
           {
             label: 'Resolved Today',
             count: data.stats?.resolvedToday || 0,
-            color: 'bg-green-100 dark:bg-green-900/50',
-            icon: <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />,
+            color: 'bg-green-500',
+            icon: <CheckCircle className="h-4 w-4 text-white" />,
             trend: undefined
           }
         ])
@@ -91,19 +86,6 @@ export default function TechnicianWorkbenchPage() {
     }
   }
 
-  const handleTabChange = (tab: string) => {
-    setActiveTab(tab)
-  }
-
-  const handleClaimTicket = (ticketId: string) => {
-    // Refresh stats when a ticket is claimed
-    loadQuickStats()
-  }
-
-  const handleUpdateStatus = (ticketId: string) => {
-    // Navigate to the ticket detail page for status update
-    router.push(`/tickets/${ticketId}`)
-  }
 
   if (!session) {
     return (
@@ -140,191 +122,117 @@ export default function TechnicianWorkbenchPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-      <main className="w-full py-4 sm:py-6 px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
-        <div className="space-y-6 sm:space-y-8">
+      {/* Decorative background elements */}
+      <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-96 h-96 bg-gradient-to-r from-blue-400 to-indigo-400 dark:from-blue-800 dark:to-indigo-800 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-3xl opacity-20 animate-blob"></div>
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-r from-purple-400 to-pink-400 dark:from-purple-800 dark:to-pink-800 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-cyan-400 to-teal-400 dark:from-cyan-800 dark:to-teal-800 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
+      </div>
+
+      <div className="w-full pl-3 pr-6 sm:pl-4 sm:pr-8 lg:pl-6 lg:pr-10 py-4">
+        <div className="space-y-4">
           {/* Header */}
-          <div className="mb-6 sm:mb-8">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
-              <div className="flex items-center space-x-2 sm:space-x-4">
-                <div className="flex items-center space-x-2">
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
-                    <ClipboardList className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-                  </div>
-                  <div>
-                    <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Technician Workbench</h1>
-                    <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Manage and process your assigned tickets</p>
-                  </div>
-                </div>
+          <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
+            <CardContent className="p-6">
+              <div>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                  Technician Workbench
+                </h1>
+                <p className="text-gray-600 dark:text-gray-400 mt-1">
+                  Manage and process your assigned tickets
+                </p>
               </div>
-
-              <div className="flex items-center space-x-1 sm:space-x-2 overflow-x-auto">
-                {/* Search */}
-                <div className="hidden lg:block relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    placeholder="Quick search..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 w-48 bg-white/[0.5] dark:bg-gray-800/[0.5] border-gray-300 dark:border-gray-600"
-                  />
-                </div>
-
-                {/* View Mode Toggle - Hidden on mobile */}
-                <div className="hidden sm:flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1 border shadow-sm">
-                  <Button
-                    variant={viewMode === 'cards' ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setViewMode('cards')}
-                    className="h-7 px-2"
-                    title="Cards View"
-                  >
-                    <Grid3X3 className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={viewMode === 'table' ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setViewMode('table')}
-                    className="h-7 px-2"
-                    title="Table View"
-                  >
-                    <Table className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={viewMode === 'inbox' ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setViewMode('inbox')}
-                    className="h-7 px-2"
-                    title="Inbox View"
-                  >
-                    <Inbox className="h-4 w-4" />
-                  </Button>
-                </div>
-
-                {/* Mobile View Toggle */}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    const modes: ('cards' | 'table' | 'inbox')[] = ['cards', 'table', 'inbox'];
-                    const currentIndex = modes.indexOf(viewMode);
-                    const nextIndex = (currentIndex + 1) % modes.length;
-                    setViewMode(modes[nextIndex]);
-                  }}
-                  className="sm:hidden h-8 w-8 px-0"
-                  title={`Current: ${viewMode}`}
-                >
-                  {viewMode === 'cards' && <Grid3X3 className="h-4 w-4" />}
-                  {viewMode === 'table' && <Table className="h-4 w-4" />}
-                  {viewMode === 'inbox' && <Inbox className="h-4 w-4" />}
-                </Button>
-
-                {/* Theme Toggle */}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                  className="hidden xs:block h-8 w-8 px-0"
-                >
-                  {theme === 'dark' ? (
-                    <Sun className="h-4 w-4" />
-                  ) : (
-                    <Moon className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {quickStats.map((stat, index) => (
               <Card key={index} className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">{stat.label}</CardTitle>
-                  <div className={`w-8 h-8 ${stat.color} rounded-lg flex items-center justify-center`}>
-                    {stat.icon}
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{stat.label}</p>
+                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{stat.count}</p>
+                    </div>
+                    <div className={`w-10 h-10 ${stat.color} rounded-lg flex items-center justify-center shadow-lg`}>
+                      {stat.icon}
+                    </div>
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{stat.count}</div>
-                  <p className="text-xs text-muted-foreground">
-                    {stat.label === 'My Tickets' && 'Currently assigned to you'}
-                    {stat.label === 'Available' && 'Unassigned tickets'}
-                    {stat.label === 'In Progress' && 'Active work items'}
-                    {stat.label === 'Resolved Today' && 'Completed today'}
-                  </p>
+                  <div className="mt-2">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {stat.label === 'My Tickets' && 'Currently assigned to you'}
+                      {stat.label === 'Available' && 'Unassigned tickets'}
+                      {stat.label === 'In Progress' && 'Active work items'}
+                      {stat.label === 'Resolved Today' && 'Completed today'}
+                    </p>
+                  </div>
                 </CardContent>
               </Card>
             ))}
           </div>
 
-          {/* Tab Navigation */}
-          <div className="w-full">
-            <div className="border-b border-gray-200 mb-6">
-              <nav className="-mb-px flex space-x-8">
-                <button
-                  onClick={() => handleTabChange('my-tickets')}
-                  className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
-                    activeTab === 'my-tickets'
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  <User className="h-4 w-4" />
-                  My Tickets
-                </button>
-                <button
-                  onClick={() => handleTabChange('available-tickets')}
-                  className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
-                    activeTab === 'available-tickets'
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  <Inbox className="h-4 w-4" />
-                  Available Tickets
-                </button>
-              </nav>
-            </div>
-            
-            {activeTab === 'my-tickets' && (
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-semibold">My Assigned Tickets</h2>
-                  <Badge variant="outline">Assigned to you</Badge>
+          {/* Tabs with Data Tables/Cards */}
+          <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
+            <CardContent className="p-6">
+              <Tabs defaultValue="my-tickets" className="w-full">
+                <div className="flex items-center justify-between mb-6">
+                  <TabsList className="grid w-full max-w-md grid-cols-2">
+                    <TabsTrigger value="my-tickets" className="flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      My Tickets
+                    </TabsTrigger>
+                    <TabsTrigger value="available-tickets" className="flex items-center gap-2">
+                      <Inbox className="h-4 w-4" />
+                      Available Tickets
+                    </TabsTrigger>
+                  </TabsList>
+                  
+                  {/* View Mode Toggle */}
+                  <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value as 'table' | 'cards')}>
+                    <ToggleGroupItem value="table" aria-label="Table view" className="px-3">
+                      <Table className="h-4 w-4 mr-2" />
+                      Table
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="cards" aria-label="Cards view" className="px-3">
+                      <LayoutGrid className="h-4 w-4 mr-2" />
+                      Cards
+                    </ToggleGroupItem>
+                  </ToggleGroup>
                 </div>
                 
-                <ModernTicketList 
-                  viewMode={viewMode}
-                  searchTerm={searchTerm}
-                  onCreateTicket={() => {}} // Empty function since no create button
-                  ticketFilter="my-tickets" // Filter for assigned tickets
-                  onClaimTicket={handleClaimTicket}
-                  onUpdateStatus={handleUpdateStatus}
-                />
-              </div>
-            )}
-            
-            {activeTab === 'available-tickets' && (
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-semibold">Available Tickets</h2>
-                  <Badge variant="outline">Unassigned tickets</Badge>
-                </div>
+                <TabsContent value="my-tickets" className="mt-0">
+                  {viewMode === 'table' ? (
+                    <TicketsDataTable 
+                      ticketFilter="my-tickets"
+                      hideHeader={true}
+                    />
+                  ) : (
+                    <TicketCards 
+                      ticketFilter="my-tickets"
+                    />
+                  )}
+                </TabsContent>
                 
-                <ModernTicketList 
-                  viewMode={viewMode}
-                  searchTerm={searchTerm}
-                  onCreateTicket={() => {}} // Empty function since no create button
-                  ticketFilter="available-tickets" // Filter for unassigned tickets
-                  onClaimTicket={handleClaimTicket}
-                  enableBulkActions={true} // Enable bulk selection for available tickets
-                />
-              </div>
-            )}
-          </div>
+                <TabsContent value="available-tickets" className="mt-0">
+                  {viewMode === 'table' ? (
+                    <TicketsDataTable 
+                      ticketFilter="available-tickets"
+                      hideHeader={true}
+                      showClaimButton={true}
+                    />
+                  ) : (
+                    <TicketCards 
+                      ticketFilter="available-tickets"
+                      showClaimButton={true}
+                    />
+                  )}
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
         </div>
-      </main>
+      </div>
     </div>
   )
 }

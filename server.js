@@ -43,6 +43,7 @@ const next_1 = __importDefault(require("next"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const dotenv = __importStar(require("dotenv"));
+const socket_manager_1 = require("./lib/socket-manager");
 // Load environment variables
 dotenv.config();
 const dev = process.env.NODE_ENV !== 'production';
@@ -56,26 +57,22 @@ const handle = app.getRequestHandler();
 const certsDir = path.join(__dirname, 'certificates');
 // Function to check if certificates exist
 const certificatesExist = () => {
-    // Use the wildcard certificate for *.banksulutgo.co.id
-    const certPath = path.join(certsDir, 'star_banksulutgo_co_id.crt');
-    const keyPath = path.join(certsDir, 'star_banksulutgo_co_id.key');
-    const caPath = path.join(certsDir, 'DigiCertCA.crt');
+    const certPath = path.join(certsDir, 'localhost.pem');
+    const keyPath = path.join(certsDir, 'localhost-key.pem');
     return fs.existsSync(certPath) && fs.existsSync(keyPath);
 };
 // Function to start the server
 const startServer = async () => {
     try {
         await app.prepare();
+        let server;
         if (useHttps && certificatesExist()) {
-            // HTTPS Server with proper certificate chain
+            // HTTPS Server
             const httpsOptions = {
-                key: fs.readFileSync(path.join(certsDir, 'star_banksulutgo_co_id.key')),
-                cert: fs.readFileSync(path.join(certsDir, 'star_banksulutgo_co_id.crt')),
-                ca: fs.existsSync(path.join(certsDir, 'DigiCertCA.crt')) 
-                    ? fs.readFileSync(path.join(certsDir, 'DigiCertCA.crt'))
-                    : undefined
+                key: fs.readFileSync(path.join(certsDir, 'localhost-key.pem')),
+                cert: fs.readFileSync(path.join(certsDir, 'localhost.pem')),
             };
-            (0, https_1.createServer)(httpsOptions, async (req, res) => {
+            server = (0, https_1.createServer)(httpsOptions, async (req, res) => {
                 try {
                     const parsedUrl = (0, url_1.parse)(req.url, true);
                     await handle(req, res, parsedUrl);
@@ -85,12 +82,14 @@ const startServer = async () => {
                     res.statusCode = 500;
                     res.end('Internal server error');
                 }
-            })
-                .once('error', (err) => {
+            });
+            server.once('error', (err) => {
                 console.error('Server error:', err);
                 process.exit(1);
-            })
-                .listen(port, () => {
+            });
+            server.listen(port, () => {
+                // Initialize Socket.io
+                const io = (0, socket_manager_1.initializeSocketServer)(server);
                 console.log('╔════════════════════════════════════════════════════════╗');
                 console.log('║                                                        ║');
                 console.log('║     🏦 Bank SulutGo ServiceDesk Server Started        ║');
@@ -99,6 +98,7 @@ const startServer = async () => {
                 console.log();
                 console.log(`🔒 HTTPS Server ready on https://${hostname}:${port}`);
                 console.log(`🚀 Environment: ${dev ? 'development' : 'production'}`);
+                console.log(`🔌 Socket.io server initialized`);
                 console.log();
                 if (dev) {
                     console.log('📝 Development Notes:');
@@ -110,7 +110,8 @@ const startServer = async () => {
                 if (process.env.REDIRECT_HTTP === 'true') {
                     const httpPort = 80;
                     (0, http_1.createServer)((req, res) => {
-                        const host = req.headers.host?.replace(/:\d+$/, '');
+                        var _a;
+                        const host = (_a = req.headers.host) === null || _a === void 0 ? void 0 : _a.replace(/:\d+$/, '');
                         res.writeHead(301, {
                             Location: `https://${host}:${port}${req.url}`
                         });
@@ -128,7 +129,7 @@ const startServer = async () => {
                 console.log('   Run "npm run cert:generate" to create certificates');
                 console.log('   Falling back to HTTP...\n');
             }
-            (0, http_1.createServer)(async (req, res) => {
+            server = (0, http_1.createServer)(async (req, res) => {
                 try {
                     const parsedUrl = (0, url_1.parse)(req.url, true);
                     await handle(req, res, parsedUrl);
@@ -138,12 +139,14 @@ const startServer = async () => {
                     res.statusCode = 500;
                     res.end('Internal server error');
                 }
-            })
-                .once('error', (err) => {
+            });
+            server.once('error', (err) => {
                 console.error('Server error:', err);
                 process.exit(1);
-            })
-                .listen(port, () => {
+            });
+            server.listen(port, () => {
+                // Initialize Socket.io
+                const io = (0, socket_manager_1.initializeSocketServer)(server);
                 console.log('╔════════════════════════════════════════════════════════╗');
                 console.log('║                                                        ║');
                 console.log('║     🏦 Bank SulutGo ServiceDesk Server Started        ║');
@@ -152,6 +155,7 @@ const startServer = async () => {
                 console.log();
                 console.log(`⚠️  HTTP Server ready on http://${hostname}:${port}`);
                 console.log(`🚀 Environment: ${dev ? 'development' : 'production'}`);
+                console.log(`🔌 Socket.io server initialized`);
                 console.log();
                 console.log('⚠️  WARNING: Running on HTTP (not secure)');
                 console.log('   For HTTPS, run "npm run cert:generate" then restart');

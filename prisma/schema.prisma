@@ -48,6 +48,7 @@ model User {
   accounts        Account[]
   auditLogs       AuditLog[]
   completedTasks  TicketTask[]
+  notifications   Notification[]
   createdApiKeys  ApiKey[]         @relation("ApiKeyCreatedBy")
   linkedApiKeys   ApiKey[]         @relation("ApiKeyLinkedUser")
   
@@ -1003,6 +1004,41 @@ enum NetworkIncidentType {
   HIGH_LATENCY
   DNS_ISSUE
   NETWORK_CONGESTION
+}
+
+// Notification System
+model Notification {
+  id          String               @id @default(cuid())
+  userId      String
+  type        NotificationType
+  title       String
+  message     String
+  data        Json?                // Additional data like ticketId, commentId, etc.
+  isRead      Boolean              @default(false)
+  readAt      DateTime?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  
+  // Relations
+  user        User                 @relation(fields: [userId], references: [id])
+  
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+
+enum NotificationType {
+  TICKET_CREATED
+  TICKET_ASSIGNED
+  TICKET_UPDATED
+  TICKET_RESOLVED
+  TICKET_CLOSED
+  TICKET_COMMENT
+  TICKET_APPROVED
+  TICKET_REJECTED
+  TICKET_ESCALATED
+  SYSTEM_ALERT
+  MENTION
 }
 
 model ApiKey {

@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { cn } from "@/lib/utils"
+import { RichTextViewer } from "@/components/ui/rich-text-editor"
 import { 
   Clock, 
   User, 
@@ -343,9 +344,7 @@ export const ProgressTracker = React.forwardRef<
                   </div>
                   {step.comments.map((comment) => (
                     <div key={comment.id} className="bg-blue-50 dark:bg-blue-900/20 border-l-2 border-blue-200 dark:border-blue-700 p-2 rounded-r">
-                      <p className="text-sm text-gray-700 dark:text-gray-300 mb-1">
-                        {comment.content}
-                      </p>
+                      <RichTextViewer content={comment.content} className="text-sm text-gray-700 dark:text-gray-300 mb-1" />
                       <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
                         <span className="font-medium">{comment.user.name} ({comment.user.role})</span>
                         <span>{new Date(comment.createdAt).toLocaleDateString()}</span>

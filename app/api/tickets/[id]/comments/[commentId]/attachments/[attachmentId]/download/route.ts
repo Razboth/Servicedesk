@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { readFile } from 'fs/promises';
-import path from 'path';
 
 // GET /api/tickets/[id]/comments/[commentId]/attachments/[attachmentId]/download
 export async function GET(
@@ -73,9 +71,19 @@ export async function GET(
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    // Read the file
-    const filePath = path.join(process.cwd(), attachment.path);
-    const fileBuffer = await readFile(filePath);
+    // Read the file using the file-storage library
+    const { readFile: readStoredFile } = await import('@/lib/file-storage');
+    const result = await readStoredFile(attachment.filename);
+    
+    if (!result.success || !result.data) {
+      console.error('Failed to read file:', attachment.filename);
+      return NextResponse.json(
+        { error: 'File not found' },
+        { status: 404 }
+      );
+    }
+    
+    const fileBuffer = result.data;
 
     // Return file with proper headers
     return new NextResponse(fileBuffer as unknown as BodyInit, {

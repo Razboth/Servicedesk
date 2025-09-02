@@ -5,6 +5,8 @@ import next from 'next';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as dotenv from 'dotenv';
+import { Server as SocketIOServer } from 'socket.io';
+import { initializeSocketServer } from './lib/socket-manager';
 
 // Load environment variables
 dotenv.config();
@@ -33,6 +35,8 @@ const startServer = async () => {
   try {
     await app.prepare();
     
+    let server: any;
+    
     if (useHttps && certificatesExist()) {
       // HTTPS Server
       const httpsOptions = {
@@ -40,7 +44,7 @@ const startServer = async () => {
         cert: fs.readFileSync(path.join(certsDir, 'localhost.pem')),
       };
       
-      createHttpsServer(httpsOptions, async (req, res) => {
+      server = createHttpsServer(httpsOptions, async (req, res) => {
         try {
           const parsedUrl = parse(req.url!, true);
           await handle(req, res, parsedUrl);
@@ -49,21 +53,26 @@ const startServer = async () => {
           res.statusCode = 500;
           res.end('Internal server error');
         }
-      })
-        .once('error', (err) => {
-          console.error('Server error:', err);
-          process.exit(1);
-        })
-        .listen(port, () => {
-          console.log('╔════════════════════════════════════════════════════════╗');
-          console.log('║                                                        ║');
-          console.log('║     🏦 Bank SulutGo ServiceDesk Server Started        ║');
-          console.log('║                                                        ║');
-          console.log('╚════════════════════════════════════════════════════════╝');
-          console.log();
-          console.log(`🔒 HTTPS Server ready on https://${hostname}:${port}`);
-          console.log(`🚀 Environment: ${dev ? 'development' : 'production'}`);
-          console.log();
+      });
+      
+      server.once('error', (err: any) => {
+        console.error('Server error:', err);
+        process.exit(1);
+      });
+      
+      server.listen(port, () => {
+        // Initialize Socket.io
+        const io = initializeSocketServer(server);
+        console.log('╔════════════════════════════════════════════════════════╗');
+        console.log('║                                                        ║');
+        console.log('║     🏦 Bank SulutGo ServiceDesk Server Started        ║');
+        console.log('║                                                        ║');
+        console.log('╚════════════════════════════════════════════════════════╝');
+        console.log();
+        console.log(`🔒 HTTPS Server ready on https://${hostname}:${port}`);
+        console.log(`🚀 Environment: ${dev ? 'development' : 'production'}`);
+        console.log(`🔌 Socket.io server initialized`);
+        console.log();
           
           if (dev) {
             console.log('📝 Development Notes:');
@@ -94,7 +103,7 @@ const startServer = async () => {
         console.log('   Falling back to HTTP...\n');
       }
       
-      createHttpServer(async (req, res) => {
+      server = createHttpServer(async (req, res) => {
         try {
           const parsedUrl = parse(req.url!, true);
           await handle(req, res, parsedUrl);
@@ -103,12 +112,16 @@ const startServer = async () => {
           res.statusCode = 500;
           res.end('Internal server error');
         }
-      })
-        .once('error', (err) => {
-          console.error('Server error:', err);
-          process.exit(1);
-        })
-        .listen(port, () => {
+      });
+      
+      server.once('error', (err: any) => {
+        console.error('Server error:', err);
+        process.exit(1);
+      });
+      
+      server.listen(port, () => {
+          // Initialize Socket.io
+          const io = initializeSocketServer(server);
           console.log('╔════════════════════════════════════════════════════════╗');
           console.log('║                                                        ║');
           console.log('║     🏦 Bank SulutGo ServiceDesk Server Started        ║');
@@ -117,6 +130,7 @@ const startServer = async () => {
           console.log();
           console.log(`⚠️  HTTP Server ready on http://${hostname}:${port}`);
           console.log(`🚀 Environment: ${dev ? 'development' : 'production'}`);
+          console.log(`🔌 Socket.io server initialized`);
           console.log();
           console.log('⚠️  WARNING: Running on HTTP (not secure)');
           console.log('   For HTTPS, run "npm run cert:generate" then restart');

@@ -7,7 +7,7 @@ import { z } from 'zod';
 const uploadSchema = z.object({
   filename: z.string().min(1).max(255),
   mimeType: z.string().min(1),
-  size: z.number().min(1).max(10485760), // 10MB limit
+  size: z.number().min(1).max(52428800), // 50MB limit
   content: z.string().min(1) // base64 encoded content
 });
 

@@ -4,6 +4,8 @@ import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { trackServiceUsage, updateFavoriteServiceUsage } from '@/lib/services/usage-tracker';
 import { sanitizeSearchInput } from '@/lib/security';
+import { emitTicketCreated } from '@/lib/socket-manager';
+import { createNotification } from '@/lib/notifications';
 
 // Helper function to determine sort order
 function getSortOrder(sortBy: string, sortOrder: string) {
@@ -121,17 +123,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Apply role-based filtering (Security Analyst filtering already applied above)
-    if (session.user.role === 'USER') {
-      // Users see only their own tickets, excluding security analyst tickets
-      where.AND = [
-        { createdById: session.user.id },
-        {
-          createdBy: {
-            role: { not: 'SECURITY_ANALYST' }
-          }
-        }
-      ];
-    } else if (session.user.role === 'SECURITY_ANALYST') {
+    if (session.user.role === 'SECURITY_ANALYST') {
       // Security Analysts function like technicians but with additional security access
       // They can see tickets from their support group like technicians do
       const baseConditions: any[] = [
@@ -272,6 +264,15 @@ export async function GET(request: NextRequest) {
             }
           }
         ];
+      }
+    } else if (session.user.role === 'USER') {
+      // Branch users (USER role) can see all tickets from their own branch
+      // This includes tickets created by any user in the same branch
+      if (userWithDetails?.branchId) {
+        where.branchId = userWithDetails.branchId;
+      } else {
+        // If user has no branch, only show their own tickets
+        where.createdById = session.user.id;
       }
     }
     // ADMIN sees all tickets (no additional filtering)
@@ -1025,6 +1026,32 @@ export async function POST(request: NextRequest) {
     // Update favorite service usage if it exists (run in background)
     // This only updates lastUsedAt for already-favorited services
     updateFavoriteServiceUsage(validatedData.serviceId, session.user.id);
+
+    // Emit socket event for real-time updates
+    emitTicketCreated({
+      id: ticket.id,
+      ticketNumber: ticket.ticketNumber,
+      title: ticket.title,
+      status: ticket.status,
+      priority: validatedData.priority,
+      branchId: targetBranchId || undefined,
+      createdBy: session.user.id
+    });
+
+    // Create notification for assigned technician if ticket is assigned
+    if (ticket.assignedToId && ticket.assignedToId !== session.user.id) {
+      await createNotification({
+        userId: ticket.assignedToId,
+        type: 'TICKET_ASSIGNED',
+        title: `New Ticket #${ticket.ticketNumber} Assigned`,
+        message: `You have been assigned to: ${ticket.title}`,
+        data: {
+          ticketId: ticket.id,
+          ticketNumber: ticket.ticketNumber,
+          ticketTitle: ticket.title
+        }
+      }).catch(err => console.error('Failed to create notification:', err));
+    }
 
     return NextResponse.json(ticket, { status: 201 });
   } catch (error) {

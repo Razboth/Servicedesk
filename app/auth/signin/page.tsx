@@ -5,6 +5,7 @@ import { signIn, getSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { getVersionString, APP_VERSION } from '@/lib/version';
 
 export default function SignInPage() {
   const [username, setUsername] = useState('');
@@ -144,6 +145,16 @@ export default function SignInPage() {
             <div className="mt-6 text-center">
               <p className="text-xs text-gray-500">
                 Need help? Contact IT Support
+              </p>
+            </div>
+            
+            {/* Version Information */}
+            <div className="mt-4 pt-4 border-t border-gray-100 text-center">
+              <p className="text-xs text-gray-400 font-medium">
+                {getVersionString()}
+              </p>
+              <p className="text-xs text-gray-400 mt-1">
+                {APP_VERSION.copyright}
               </p>
             </div>
           </CardContent>

@@ -21,6 +21,10 @@ export async function GET(request: NextRequest) {
     const where: any = {
       isActive: true
     };
+    
+    // No role-based filtering for services - all users can see all active services
+    // Branch users (USER role) can now create tickets for any service
+    // The ticket viewing permissions are already handled in /api/tickets route
 
     if (categoryId && search) {
       // When both categoryId and search are provided, combine the filters

@@ -12,8 +12,10 @@ Bank SulutGo ServiceDesk is an ITIL v4-compliant service management system built
 ```bash
 # Development
 npm run dev              # Start development server (http://localhost:3000)
+npm run dev:https        # Start development server with HTTPS
 npm run build           # Build for production
 npm run start           # Start production server
+npm run start:https     # Start production server with HTTPS
 npm run lint            # Run ESLint
 npm run type-check      # Check TypeScript types
 
@@ -31,7 +33,12 @@ npm run db:seed:validate     # Validate seed data integrity
 npm run db:seed:cleanup      # Clean up duplicate entries
 npm run db:seed:soc          # Seed SOC-related data
 npm run db:seed:network      # Seed network monitoring info
+npm run db:seed:atm-claims   # Seed ATM claim templates (TypeScript)
+npm run db:seed:atm-claims:js # Seed ATM claim templates (JavaScript)
 npm run db:schema:update     # Update schema constraints
+
+# API Key Management
+npm run api:generate-claim-key  # Generate API key for ATM claims
 
 # Monitoring Commands
 npm run monitoring:start     # Start monitoring service
@@ -43,6 +50,23 @@ npm run monitoring:setup     # Initial monitoring setup
 npm run security:audit       # Run security audit
 npm run security:audit:fix   # Fix security vulnerabilities
 npm run security:check       # Run custom security checks
+
+# PM2 Process Management (Production)
+npm run pm2:start        # Start production server with PM2
+npm run pm2:start:dev    # Start development server with PM2
+npm run pm2:stop         # Stop PM2 process
+npm run pm2:restart      # Restart PM2 process
+npm run pm2:reload       # Reload PM2 process (zero downtime)
+npm run pm2:delete       # Delete PM2 process
+npm run pm2:logs         # View PM2 logs
+npm run pm2:status       # Check PM2 status
+npm run pm2:monitor      # Open PM2 monitoring
+npm run pm2:setup        # Build and start with PM2
+npm run pm2:save         # Save PM2 process list
+npm run pm2:startup      # Generate PM2 startup script
+
+# Certificate Generation
+npm run cert:generate    # Generate SSL certificates for HTTPS
 ```
 
 ## Architecture Overview
@@ -156,6 +180,12 @@ Required environment variables (see `.env.example`):
    - Manual testing recommended through the UI
    - Use different user accounts to test role-based features
    - Database seeds provide test data for development
+
+8. **API Keys System**: The system includes an API key management system for external integrations:
+   - API keys can be created with specific permissions (READ, WRITE, DELETE, ADMIN)
+   - Keys are scoped to specific services (TICKET_STATUS, ATM_CLAIMS, etc.)
+   - Rate limiting and IP restrictions can be applied
+   - Keys can be revoked and have expiration dates
 
 ## Development Guidelines
 

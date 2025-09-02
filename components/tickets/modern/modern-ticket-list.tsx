@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -42,6 +42,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { formatDistanceToNow } from 'date-fns'
 import { toast } from 'sonner'
 import { BulkActionsBar } from './bulk-actions-bar'
+import { ColumnCustomizer, type ColumnConfig, DEFAULT_COLUMNS } from '../column-customizer'
 
 interface Ticket {
   id: string
@@ -89,20 +90,29 @@ interface ModernTicketListProps {
   onUpdateStatus?: (ticketId: string) => void
   categoryFilter?: string
   statusFilter?: string
+  onSearchChange?: (searchTerm: string) => void
+  initialFilters?: {
+    status?: string
+    priority?: string
+    category?: string
+    sort?: string
+    page?: number
+    pageSize?: number
+  }
 }
 
-export function ModernTicketList({ viewMode, searchTerm, onCreateTicket, ticketFilter, onClaimTicket, enableBulkActions = false, onUpdateStatus, categoryFilter, statusFilter: propStatusFilter }: ModernTicketListProps) {
+export function ModernTicketList({ viewMode, searchTerm, onCreateTicket, ticketFilter, onClaimTicket, enableBulkActions = false, onUpdateStatus, categoryFilter, statusFilter: propStatusFilter, onSearchChange, initialFilters }: ModernTicketListProps) {
   const { data: session } = useSession()
   const router = useRouter()
   
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [statusFilter, setStatusFilter] = useState(propStatusFilter || 'ALL')
-  const [priorityFilter, setPriorityFilter] = useState('ALL')
-  const [categoryFilterState, setCategoryFilterState] = useState(categoryFilter || 'all')
+  const [statusFilter, setStatusFilter] = useState(initialFilters?.status || propStatusFilter || 'ALL')
+  const [priorityFilter, setPriorityFilter] = useState(initialFilters?.priority || 'ALL')
+  const [categoryFilterState, setCategoryFilterState] = useState(initialFilters?.category || categoryFilter || 'all')
   const [categories, setCategories] = useState<Array<{id: string, name: string}>>([])
-  const [sortBy, setSortBy] = useState('newest')
-  const [currentPage, setCurrentPage] = useState(1)
+  const [sortBy, setSortBy] = useState(initialFilters?.sort || 'newest')
+  const [currentPage, setCurrentPage] = useState(initialFilters?.page || 1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalItems, setTotalItems] = useState(0)
   const [selectedTickets, setSelectedTickets] = useState<string[]>([])
@@ -110,6 +120,7 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket, ticketF
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(false)
   const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null)
   const [pageSize, setPageSize] = useState(() => {
+    if (initialFilters?.pageSize) return initialFilters.pageSize
     switch (viewMode) {
       case 'cards': return 20
       case 'table': return 50  
@@ -117,6 +128,30 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket, ticketF
       default: return 20
     }
   })
+  const [tableColumns, setTableColumns] = useState<ColumnConfig[]>(() => {
+    // Initialize from localStorage if available
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('ticketColumnPreferences')
+      if (saved) {
+        try {
+          return JSON.parse(saved)
+        } catch (e) {
+          console.error('Failed to parse column preferences:', e)
+        }
+      }
+    }
+    return DEFAULT_COLUMNS
+  })
+  
+  // Drag and drop state for column reordering
+  const [draggedColumn, setDraggedColumn] = useState<string | null>(null)
+  const [dragOverColumn, setDragOverColumn] = useState<string | null>(null)
+  
+  // Memoized column change handler to prevent re-renders
+  const handleColumnsChange = useCallback((columns: ColumnConfig[]) => {
+    setTableColumns(columns)
+    localStorage.setItem('ticketColumnPreferences', JSON.stringify(columns))
+  }, [])
 
   // Load categories on mount
   useEffect(() => {
@@ -135,18 +170,20 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket, ticketF
     }
   }
 
-  // Update page size when view mode changes
+  // Update page size when view mode changes (only if no initial pageSize was provided)
   useEffect(() => {
-    const defaultSize = (() => {
-      switch (viewMode) {
-        case 'cards': return 20
-        case 'table': return 50
-        case 'inbox': return 100
-        default: return 20
-      }
-    })()
-    setPageSize(defaultSize)
-  }, [viewMode])
+    if (!initialFilters?.pageSize) {
+      const defaultSize = (() => {
+        switch (viewMode) {
+          case 'cards': return 20
+          case 'table': return 50
+          case 'inbox': return 100
+          default: return 20
+        }
+      })()
+      setPageSize(defaultSize)
+    }
+  }, [viewMode, initialFilters?.pageSize])
 
   // Update status filter when prop changes
   useEffect(() => {
@@ -468,7 +505,7 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket, ticketF
   }
 
   // Reusable dropdown menu for ticket actions
-  const TicketDropdownMenu = ({ ticket, showOnHover = true }: { ticket: Ticket, showOnHover?: boolean }) => (
+  const renderTicketDropdownMenu = (ticket: Ticket, showOnHover: boolean = true) => (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button 
@@ -520,7 +557,7 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket, ticketF
     </DropdownMenu>
   )
 
-  const TicketCard = ({ ticket }: { ticket: Ticket }) => (
+  const renderTicketCard = (ticket: Ticket) => (
     <Card 
       className={`bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group h-full flex flex-col ${getCardBorderColor(ticket.status)}`}
       onClick={() => handleTicketClick(ticket.id)}
@@ -537,7 +574,7 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket, ticketF
             <Badge className={`${getPriorityColor(ticket.priority)} text-xs px-1 py-0`}>
               {ticket.priority}
             </Badge>
-            <TicketDropdownMenu ticket={ticket} />
+            {renderTicketDropdownMenu(ticket)}
           </div>
         </div>
 
@@ -637,7 +674,7 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket, ticketF
     </Card>
   )
 
-  const TicketListItem = ({ ticket }: { ticket: Ticket }) => (
+  const renderTicketListItem = (ticket: Ticket) => (
     <Card 
       className={`bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group ${getCardBorderColor(ticket.status)}`}
       onClick={() => handleTicketClick(ticket.id)}
@@ -695,7 +732,185 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket, ticketF
     </Card>
   )
 
-  const TableView = () => (
+  // Render functions for each column type
+  const renderColumnContent = (column: ColumnConfig, ticket: Ticket) => {
+    switch (column.id) {
+      case 'ticketNumber':
+        return (
+          <div className="flex items-center gap-1">
+            {getStatusIcon(ticket.status)}
+            <span className="font-mono text-xs text-gray-900 dark:text-white">
+              #{ticket.ticketNumber.slice(-4)}
+            </span>
+          </div>
+        )
+      case 'title':
+        return (
+          <div className="min-w-0">
+            <Link 
+              href={`/tickets/${ticket.id}`}
+              className="font-medium text-sm text-gray-900 dark:text-white hover:text-pink-600 dark:hover:text-pink-400 hover:italic transition-colors"
+              title={ticket.title}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {ticket.title}
+            </Link>
+          </div>
+        )
+      case 'status':
+        return (
+          <Badge variant="outline" className={`${getStatusColor(ticket.status)} text-xs px-1 py-0`}>
+            {ticket.status.replace('_', ' ')}
+          </Badge>
+        )
+      case 'priority':
+        return (
+          <Badge className={`${getPriorityColor(ticket.priority)} text-xs px-1 py-0`}>
+            {ticket.priority}
+          </Badge>
+        )
+      case 'assignedTo':
+        return (
+          <div className="min-w-0 text-xs text-gray-900 dark:text-white" title={ticket.assignedTo ? ticket.assignedTo.name : 'Unassigned'}>
+            {ticket.assignedTo ? ticket.assignedTo.name : 'Unassigned'}
+          </div>
+        )
+      case 'service':
+        return (
+          <div className="min-w-0 text-xs text-gray-500 dark:text-gray-400" title={ticket.service.name}>
+            {ticket.service.name}
+          </div>
+        )
+      case 'branch':
+        return ticket.branch ? (
+          <div className="text-xs text-gray-900 dark:text-gray-300" title={ticket.branch.name}>
+            <span className="font-medium">{ticket.branch.code}</span>
+            <span className="text-gray-500 dark:text-gray-400 ml-1">({ticket.branch.name})</span>
+          </div>
+        ) : <span className="text-xs text-gray-400">-</span>
+      case 'createdBy':
+        return (
+          <div className="text-xs text-gray-500 dark:text-gray-400" title={ticket.createdBy.name}>
+            {ticket.createdBy.name}
+          </div>
+        )
+      case 'createdAt':
+        return (
+          <div className="flex flex-col text-xs text-gray-500 dark:text-gray-400">
+            <span className="truncate">{formatDistanceToNow(new Date(ticket.createdAt), { addSuffix: true })}</span>
+            <span className="text-xs truncate" title={ticket.createdBy.name}>{ticket.createdBy.name.split(' ')[0]}</span>
+          </div>
+        )
+      case 'updatedAt':
+        return (
+          <div className="text-xs text-gray-500 dark:text-gray-400">
+            {formatDistanceToNow(new Date(ticket.updatedAt), { addSuffix: true })}
+          </div>
+        )
+      case 'comments':
+        return ticket._count.comments > 0 ? (
+          <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
+            <MessageCircle className="h-3 w-3 mr-1" />
+            {ticket._count.comments}
+          </div>
+        ) : <span className="text-xs text-gray-400">-</span>
+      case 'actions':
+        return (
+          <div className="flex items-center space-x-1">
+            {ticketFilter === 'available-tickets' && 
+             !ticket.assignedTo && 
+             ['TECHNICIAN', 'SECURITY_ANALYST'].includes(session?.user?.role || '') && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={(e) => { 
+                  e.stopPropagation(); 
+                  handleClaimTicket(ticket.id); 
+                }}
+                className="text-blue-600 border-blue-200 hover:bg-blue-50 text-xs px-2 py-1 h-7"
+              >
+                <UserPlus className="h-3 w-3 mr-1" />
+                Claim
+              </Button>
+            )}
+            
+            {canUpdateTicketStatus(ticket) && onUpdateStatus && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={(e) => { 
+                  e.stopPropagation(); 
+                  onUpdateStatus(ticket.id); 
+                }}
+                className="text-orange-600 border-orange-200 hover:bg-orange-50 text-xs px-2 py-1 h-7"
+              >
+                <Edit className="h-3 w-3 mr-1" />
+                Update
+              </Button>
+            )}
+            
+            {renderTicketDropdownMenu(ticket, false)}
+          </div>
+        )
+      default:
+        return null
+    }
+  }
+
+  // Drag and drop handlers for column reordering
+  const handleDragStart = (e: React.DragEvent, columnId: string) => {
+    setDraggedColumn(columnId)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+  
+  const handleDragOver = (e: React.DragEvent, columnId: string) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    if (draggedColumn && draggedColumn !== columnId) {
+      setDragOverColumn(columnId)
+    }
+  }
+  
+  const handleDragLeave = () => {
+    setDragOverColumn(null)
+  }
+  
+  const handleDrop = (e: React.DragEvent, targetColumnId: string) => {
+    e.preventDefault()
+    
+    if (draggedColumn && draggedColumn !== targetColumnId) {
+      const newColumns = [...tableColumns]
+      const draggedIndex = newColumns.findIndex(col => col.id === draggedColumn)
+      const targetIndex = newColumns.findIndex(col => col.id === targetColumnId)
+      
+      if (draggedIndex !== -1 && targetIndex !== -1) {
+        // Remove dragged column and insert at target position
+        const [draggedCol] = newColumns.splice(draggedIndex, 1)
+        newColumns.splice(targetIndex, 0, draggedCol)
+        
+        // Update state and save to localStorage
+        setTableColumns(newColumns)
+        localStorage.setItem('ticketColumnPreferences', JSON.stringify(newColumns))
+        
+        toast.success('Column order updated')
+      }
+    }
+    
+    // Reset drag state
+    setDraggedColumn(null)
+    setDragOverColumn(null)
+  }
+  
+  const handleDragEnd = () => {
+    setDraggedColumn(null)
+    setDragOverColumn(null)
+  }
+
+  const renderTableView = () => {
+    // Filter to only visible columns
+    const visibleColumns = tableColumns.filter(col => col.visible)
+    
+    return (
     <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
       <CardContent className="p-0">
         <div className="overflow-x-auto">
@@ -712,46 +927,35 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket, ticketF
                     />
                   </th>
                 )}
-                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 min-w-[5rem]"
-                    onClick={() => handleSort('ticketNumber')}>
-                  <div className="flex items-center gap-1">
-                    #
-                    <ArrowUpDown className="h-3 w-3" />
-                  </div>
-                </th>
-                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 min-w-[20rem] w-auto"
-                    onClick={() => handleSort('title')}>
-                  <div className="flex items-center gap-1">
-                    Title
-                    <ArrowUpDown className="h-3 w-3" />
-                  </div>
-                </th>
-                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[5rem]">
-                  Status
-                </th>
-                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 min-w-[5rem]"
-                    onClick={() => handleSort('priority')}>
-                  <div className="flex items-center gap-1">
-                    Priority
-                    <ArrowUpDown className="h-3 w-3" />
-                  </div>
-                </th>
-                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[6rem]">
-                  Assigned
-                </th>
-                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[8rem]">
-                  Service
-                </th>
-                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 min-w-[5rem]"
-                    onClick={() => handleSort('createdAt')}>
-                  <div className="flex items-center gap-1">
-                    Created
-                    <ArrowUpDown className="h-3 w-3" />
-                  </div>
-                </th>
-                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[8rem]">
-                  Actions
-                </th>
+                {visibleColumns.map((column) => (
+                  <th 
+                    key={column.id}
+                    draggable={!column.required}
+                    onDragStart={(e) => !column.required && handleDragStart(e, column.id)}
+                    onDragOver={(e) => handleDragOver(e, column.id)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, column.id)}
+                    onDragEnd={handleDragEnd}
+                    className={`px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider ${
+                      column.sortable ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800' : ''
+                    } min-w-[${column.width}] ${
+                      !column.required ? 'cursor-move' : ''
+                    } ${
+                      dragOverColumn === column.id ? 'bg-blue-100 dark:bg-blue-900/30 border-l-2 border-blue-500' : ''
+                    } ${
+                      draggedColumn === column.id ? 'opacity-50' : ''
+                    } transition-all duration-200`}
+                    onClick={column.sortable ? () => handleSort(column.id) : undefined}
+                  >
+                    <div className="flex items-center gap-1 select-none">
+                      {!column.required && (
+                        <Grid3X3 className="h-3 w-3 text-gray-400 mr-1" />
+                      )}
+                      {column.label}
+                      {column.sortable && <ArrowUpDown className="h-3 w-3" />}
+                    </div>
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -775,91 +979,16 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket, ticketF
                       )}
                     </td>
                   )}
-                  <td className="px-2 py-2 whitespace-nowrap">
-                    <div className="flex items-center gap-1">
-                      {getStatusIcon(ticket.status)}
-                      <span className="font-mono text-xs text-gray-900 dark:text-white">
-                        #{ticket.ticketNumber.slice(-4)}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-2 py-2">
-                    <div className="min-w-0">
-                      <Link 
-                        href={`/tickets/${ticket.id}`}
-                        className="font-medium text-sm text-gray-900 dark:text-white hover:text-pink-600 dark:hover:text-pink-400 hover:italic transition-colors"
-                        title={ticket.title}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {ticket.title}
-                      </Link>
-                    </div>
-                  </td>
-                  <td className="px-2 py-2 whitespace-nowrap">
-                    <Badge variant="outline" className={`${getStatusColor(ticket.status)} text-xs px-1 py-0`}>
-                      {ticket.status.replace('_', ' ')}
-                    </Badge>
-                  </td>
-                  <td className="px-2 py-2 whitespace-nowrap">
-                    <Badge className={`${getPriorityColor(ticket.priority)} text-xs px-1 py-0`}>
-                      {ticket.priority}
-                    </Badge>
-                  </td>
-                  <td className="px-2 py-2 text-xs text-gray-900 dark:text-white">
-                    <div className="min-w-0" title={ticket.assignedTo ? ticket.assignedTo.name : 'Unassigned'}>
-                      {ticket.assignedTo ? ticket.assignedTo.name : 'Unassigned'}
-                    </div>
-                  </td>
-                  <td className="px-2 py-2 text-xs text-gray-500 dark:text-gray-400">
-                    <div className="min-w-0" title={ticket.service.name}>
-                      {ticket.service.name}
-                    </div>
-                  </td>
-                  <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-500 dark:text-gray-400">
-                    <div className="flex flex-col">
-                      <span className="truncate">{formatDistanceToNow(new Date(ticket.createdAt), { addSuffix: true })}</span>
-                      <span className="text-xs truncate" title={ticket.createdBy.name}>{ticket.createdBy.name.split(' ')[0]}</span>
-                    </div>
-                  </td>
-                  <td className="px-2 py-2 whitespace-nowrap">
-                    <div className="flex items-center space-x-1">
-                      {/* Show claim button for available tickets when user is technician/security analyst */}
-                      {ticketFilter === 'available-tickets' && 
-                       !ticket.assignedTo && 
-                       ['TECHNICIAN', 'SECURITY_ANALYST'].includes(session?.user?.role || '') && (
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={(e) => { 
-                            e.stopPropagation(); 
-                            handleClaimTicket(ticket.id); 
-                          }}
-                          className="text-blue-600 border-blue-200 hover:bg-blue-50 text-xs px-2 py-1 h-7"
-                        >
-                          <UserPlus className="h-3 w-3 mr-1" />
-                          Claim
-                        </Button>
-                      )}
-                      
-                      {/* Show update status button for my tickets that can be updated */}
-                      {canUpdateTicketStatus(ticket) && onUpdateStatus && (
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={(e) => { 
-                            e.stopPropagation(); 
-                            onUpdateStatus(ticket.id); 
-                          }}
-                          className="text-orange-600 border-orange-200 hover:bg-orange-50 text-xs px-2 py-1 h-7"
-                        >
-                          <Edit className="h-3 w-3 mr-1" />
-                          Update
-                        </Button>
-                      )}
-                      
-                      <TicketDropdownMenu ticket={ticket} showOnHover={false} />
-                    </div>
-                  </td>
+                  {visibleColumns.map((column) => (
+                    <td 
+                      key={column.id}
+                      className={`px-2 py-2 ${
+                        column.id === 'title' ? '' : 'whitespace-nowrap'
+                      }`}
+                    >
+                      {renderColumnContent(column, ticket)}
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>
@@ -867,9 +996,10 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket, ticketF
         </div>
       </CardContent>
     </Card>
-  )
+    )
+  }
 
-  const InboxView = () => (
+  const renderInboxView = () => (
     <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
       <CardContent className="p-0">
         <div className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -965,7 +1095,7 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket, ticketF
                   </Button>
                 )}
                 
-                <TicketDropdownMenu ticket={ticket} showOnHover={false} />
+                {renderTicketDropdownMenu(ticket, false)}
               </div>
             </div>
           ))}
@@ -982,11 +1112,41 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket, ticketF
     }
   }
 
+  // Update URL parameters helper function
+  const updateURLParams = (params: Record<string, string | number | undefined>) => {
+    if (typeof window === 'undefined') return
+    
+    const searchParams = new URLSearchParams(window.location.search)
+    
+    Object.entries(params).forEach(([key, value]) => {
+      if (value === undefined || value === null) {
+        searchParams.delete(key)
+      } else {
+        searchParams.set(key, value.toString())
+      }
+    })
+    
+    const newURL = `${window.location.pathname}?${searchParams.toString()}`
+    window.history.replaceState({}, '', newURL)
+  }
+
   return (
     <div className="space-y-6">
       {/* Filters and Controls */}
       <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
         <CardContent className="p-4">
+          {/* Call Center Indicator */}
+          {session?.user?.role === 'USER' && (
+            <div className="flex items-center justify-between mb-4 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+              <div className="flex items-center space-x-2">
+                <Filter className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                <span className="text-sm text-yellow-600 dark:text-yellow-400">
+                  Viewing Transaction Claims category only
+                </span>
+              </div>
+            </div>
+          )}
+          
           {/* Auto-refresh indicator */}
           {isAutoRefreshing && (
             <div className="flex items-center justify-between mb-4 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
@@ -1005,23 +1165,31 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket, ticketF
           )}
           <div className="flex flex-col lg:flex-row gap-4">
             <div className="flex-1 grid grid-cols-1 md:grid-cols-5 gap-4">
-              {/* Category Filter */}
-              <Select value={categoryFilterState} onValueChange={setCategoryFilterState}>
-                <SelectTrigger className="bg-white/[0.5] dark:bg-gray-800/[0.5]">
-                  <SelectValue placeholder="All Categories" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {/* Category Filter - Hidden for Call Center (USER role) */}
+              {session?.user?.role !== 'USER' && (
+                <Select value={categoryFilterState} onValueChange={(value) => {
+                  setCategoryFilterState(value)
+                  updateURLParams({ category: value === 'all' ? undefined : value })
+                }}>
+                  <SelectTrigger className="bg-white/[0.5] dark:bg-gray-800/[0.5]">
+                    <SelectValue placeholder="All Categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {categories.map((category) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
 
               {/* Status Filter */}
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <Select value={statusFilter} onValueChange={(value) => {
+                setStatusFilter(value)
+                updateURLParams({ status: value === 'ALL' ? undefined : value })
+              }}>
                 <SelectTrigger className="bg-white/[0.5] dark:bg-gray-800/[0.5]">
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
@@ -1036,7 +1204,10 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket, ticketF
               </Select>
 
               {/* Priority Filter */}
-              <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+              <Select value={priorityFilter} onValueChange={(value) => {
+                setPriorityFilter(value)
+                updateURLParams({ priority: value === 'ALL' ? undefined : value })
+              }}>
                 <SelectTrigger className="bg-white/[0.5] dark:bg-gray-800/[0.5]">
                   <SelectValue placeholder="Filter by priority" />
                 </SelectTrigger>
@@ -1050,7 +1221,10 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket, ticketF
               </Select>
 
               {/* Sort */}
-              <Select value={sortBy} onValueChange={setSortBy}>
+              <Select value={sortBy} onValueChange={(value) => {
+                setSortBy(value)
+                updateURLParams({ sort: value === 'newest' ? undefined : value })
+              }}>
                 <SelectTrigger className="bg-white/[0.5] dark:bg-gray-800/[0.5]">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
@@ -1063,7 +1237,11 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket, ticketF
               </Select>
 
               {/* Page Size Selector */}
-              <Select value={pageSize.toString()} onValueChange={(value) => setPageSize(parseInt(value))}>
+              <Select value={pageSize.toString()} onValueChange={(value) => {
+                const newSize = parseInt(value)
+                setPageSize(newSize)
+                updateURLParams({ pageSize: newSize === 20 ? undefined : newSize })
+              }}>
                 <SelectTrigger className="bg-white/[0.5] dark:bg-gray-800/[0.5]">
                   <SelectValue placeholder="Items per page" />
                 </SelectTrigger>
@@ -1077,6 +1255,13 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket, ticketF
             </div>
 
             <div className="flex items-center gap-2">
+              {viewMode === 'table' && (
+                <ColumnCustomizer 
+                  columns={tableColumns}
+                  onColumnsChange={handleColumnsChange}
+                  storageKey="ticket-table-columns"
+                />
+              )}
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -1128,17 +1313,17 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket, ticketF
           {viewMode === 'cards' ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
               {tickets.map((ticket) => (
-                <TicketCard key={ticket.id} ticket={ticket} />
+                <div key={ticket.id}>{renderTicketCard(ticket)}</div>
               ))}
             </div>
           ) : viewMode === 'table' ? (
-            <TableView />
+            renderTableView()
           ) : viewMode === 'inbox' ? (
-            <InboxView />
+            renderInboxView()
           ) : (
             <div className="space-y-3">
               {tickets.map((ticket) => (
-                <TicketListItem key={ticket.id} ticket={ticket} />
+                <div key={ticket.id}>{renderTicketListItem(ticket)}</div>
               ))}
             </div>
           )}
@@ -1155,7 +1340,11 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket, ticketF
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      onClick={() => {
+                        const newPage = Math.max(1, currentPage - 1)
+                        setCurrentPage(newPage)
+                        updateURLParams({ page: newPage === 1 ? undefined : newPage })
+                      }}
                       disabled={currentPage === 1}
                       className="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border-gray-300 dark:border-gray-600 z-10 relative"
                     >
@@ -1167,7 +1356,11 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket, ticketF
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      onClick={() => {
+                        const newPage = Math.min(totalPages, currentPage + 1)
+                        setCurrentPage(newPage)
+                        updateURLParams({ page: newPage === 1 ? undefined : newPage })
+                      }}
                       disabled={currentPage === totalPages}
                       className="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border-gray-300 dark:border-gray-600 z-10 relative"
                     >
