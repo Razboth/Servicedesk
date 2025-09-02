@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { DataTable } from './data-table'
-import { columns, type Ticket } from './columns'
+import { getColumns, type Ticket } from './columns'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -25,6 +25,7 @@ interface TicketsDataTableProps {
   onCreateTicket?: () => void
   ticketFilter?: 'my-tickets' | 'available-tickets'
   hideHeader?: boolean
+  showClaimButton?: boolean
   initialFilters?: {
     status?: string
     priority?: string
@@ -39,6 +40,7 @@ export function TicketsDataTable({
   onCreateTicket,
   ticketFilter,
   hideHeader = false,
+  showClaimButton = false,
   initialFilters 
 }: TicketsDataTableProps) {
   const { data: session } = useSession()
@@ -314,6 +316,47 @@ export function TicketsDataTable({
 
   const handleBulkAction = async (action: string, selectedTickets: Ticket[]) => {
     switch (action) {
+      case 'claim':
+        // Handle bulk claim
+        if (!session?.user?.id) {
+          toast.error('You must be logged in to claim tickets')
+          return
+        }
+        
+        toast.info(`Claiming ${selectedTickets.length} tickets...`)
+        
+        try {
+          // Claim tickets one by one (can be optimized with a bulk API endpoint)
+          const promises = selectedTickets.map(ticket => 
+            fetch(`/api/tickets/${ticket.id}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                assignedToId: session.user.id,
+              }),
+            })
+          )
+          
+          const results = await Promise.allSettled(promises)
+          const successful = results.filter(r => r.status === 'fulfilled' && (r.value as Response).ok).length
+          const failed = results.length - successful
+          
+          if (successful > 0) {
+            toast.success(`Successfully claimed ${successful} ticket${successful > 1 ? 's' : ''}`)
+            // Reload tickets to reflect the changes
+            loadTickets()
+          }
+          
+          if (failed > 0) {
+            toast.error(`Failed to claim ${failed} ticket${failed > 1 ? 's' : ''}`)
+          }
+        } catch (error) {
+          console.error('Error claiming tickets:', error)
+          toast.error('Failed to claim tickets')
+        }
+        break
       case 'assign':
         // Handle bulk assign
         toast.info(`Assigning ${selectedTickets.length} tickets...`)
@@ -327,8 +370,49 @@ export function TicketsDataTable({
     }
   }
 
+  const handleClaimTicket = async (ticketId: string) => {
+    if (!session?.user?.id) {
+      toast.error('You must be logged in to claim tickets')
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/tickets/${ticketId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          assignedToId: session.user.id,
+        }),
+      })
+
+      if (response.ok) {
+        toast.success('Ticket claimed successfully')
+        // Reload tickets to reflect the change
+        loadTickets()
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'Failed to claim ticket')
+      }
+    } catch (error) {
+      console.error('Error claiming ticket:', error)
+      toast.error('Failed to claim ticket')
+    }
+  }
+
+  // Get columns with claim button if needed
+  const tableColumns = React.useMemo(
+    () => getColumns({
+      showClaimButton,
+      onClaimTicket: handleClaimTicket,
+      enableBulkActions: ticketFilter === 'available-tickets',
+    }),
+    [showClaimButton, ticketFilter]
+  )
+
   return (
-    <div className="space-y-6">
+    <div className="w-full space-y-6">
       {/* Modern Header with gradient background */}
       {!hideHeader && (
         <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
@@ -387,24 +471,20 @@ export function TicketsDataTable({
         </CardContent>
       </Card>
 
-      {/* Data Table with modern card styling */}
-      <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-shadow duration-300">
-        <CardContent className="p-6">
-          <DataTable
-            columns={columns}
-            data={tickets}
-            onRowClick={handleRowClick}
-            onRefresh={loadTickets}
-            isLoading={isLoading}
-            enableBulkActions={ticketFilter === 'available-tickets'}
-            onBulkAction={handleBulkAction}
-            branchOptions={branchOptions}
-            categoryOptions={categoryOptions}
-            serviceOptions={serviceOptions}
-            technicianOptions={technicianOptions}
-          />
-        </CardContent>
-      </Card>
+      {/* Data Table */}
+      <DataTable
+        columns={tableColumns}
+        data={tickets}
+        onRowClick={handleRowClick}
+        onRefresh={loadTickets}
+        isLoading={isLoading}
+        enableBulkActions={ticketFilter === 'available-tickets'}
+        onBulkAction={handleBulkAction}
+        branchOptions={branchOptions}
+        categoryOptions={categoryOptions}
+        serviceOptions={serviceOptions}
+        technicianOptions={technicianOptions}
+      />
     </div>
   )
 }

@@ -1,7 +1,8 @@
 'use client'
 
 import { ColumnDef } from '@tanstack/react-table'
-// import { Checkbox } from '@/components/ui/checkbox' // Not needed - checkboxes removed
+import Link from 'next/link'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DataTableColumnHeader } from './data-table-column-header'
@@ -18,7 +19,8 @@ import {
   UserPlus,
   Edit,
   ExternalLink,
-  Copy
+  Copy,
+  UserCheck
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -138,20 +140,53 @@ const getPriorityColor = (priority: string) => {
   }
 }
 
-export const columns: ColumnDef<Ticket>[] = [
-  // Checkbox column removed - not needed for the current implementation
+// Function to create columns with optional features
+export const getColumns = (options?: { 
+  showClaimButton?: boolean; 
+  onClaimTicket?: (ticketId: string) => Promise<void>;
+  enableBulkActions?: boolean;
+}): ColumnDef<Ticket>[] => {
+  const baseColumns: ColumnDef<Ticket>[] = []
+  
+  // Add checkbox column if bulk actions are enabled
+  if (options?.enableBulkActions) {
+    baseColumns.push({
+      id: 'select',
+      header: ({ table }) => (
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && "indeterminate")
+          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    })
+  }
+  
+  // Add the rest of the columns
+  baseColumns.push(
   {
     accessorKey: 'ticketNumber',
-    size: 120,
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Ticket #" />
     ),
     cell: ({ row }) => {
       const ticket = row.original
       return (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           {getStatusIcon(ticket.status)}
-          <span className="font-mono text-xs font-medium">
+          <span className="font-mono text-xs">
             #{ticket.ticketNumber.slice(-6)}
           </span>
         </div>
@@ -160,18 +195,21 @@ export const columns: ColumnDef<Ticket>[] = [
   },
   {
     accessorKey: 'title',
-    size: 300,
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Title" />
     ),
     cell: ({ row }) => {
       const ticket = row.original
       return (
-        <div className="flex flex-col">
-          <span className="font-medium truncate max-w-[300px]" title={ticket.title}>
+        <div className="max-w-[300px]">
+          <Link 
+            href={`/tickets/${ticket.id}`}
+            className="block font-medium text-pink-600 hover:text-pink-700 dark:text-pink-400 dark:hover:text-pink-300 hover:underline truncate" 
+            title={ticket.title}
+          >
             {ticket.title}
-          </span>
-          <span className="text-xs text-muted-foreground">
+          </Link>
+          <span className="block text-xs text-muted-foreground truncate">
             {ticket.service.category.name} / {ticket.service.name}
           </span>
         </div>
@@ -180,7 +218,6 @@ export const columns: ColumnDef<Ticket>[] = [
   },
   {
     accessorKey: 'status',
-    size: 120,
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Status" />
     ),
@@ -198,7 +235,6 @@ export const columns: ColumnDef<Ticket>[] = [
   },
   {
     accessorKey: 'priority',
-    size: 100,
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Priority" />
     ),
@@ -217,17 +253,16 @@ export const columns: ColumnDef<Ticket>[] = [
   {
     id: 'branch.code',
     accessorFn: (row) => row.branch?.code,
-    size: 150,
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Branch" />
     ),
     cell: ({ row }) => {
       const branch = row.original.branch
-      if (!branch) return <span className="text-muted-foreground">-</span>
+      if (!branch) return <span className="text-muted-foreground text-xs">-</span>
       return (
-        <div className="flex flex-col">
-          <span className="font-medium text-xs">{branch.code}</span>
-          <span className="text-xs text-muted-foreground truncate max-w-[150px]" title={branch.name}>
+        <div className="max-w-[120px]">
+          <span className="block font-medium text-xs">{branch.code}</span>
+          <span className="block text-xs text-muted-foreground truncate" title={branch.name}>
             {branch.name}
           </span>
         </div>
@@ -251,9 +286,9 @@ export const columns: ColumnDef<Ticket>[] = [
         return <Badge variant="outline" className="text-gray-500">Unassigned</Badge>
       }
       return (
-        <div className="flex flex-col">
-          <Badge variant="outline" className="text-green-700">Assigned</Badge>
-          <span className="text-xs text-muted-foreground mt-1 truncate max-w-[150px]" title={assignedTo.name}>
+        <div className="max-w-[120px]">
+          <Badge variant="outline" className="text-green-700 text-xs">Assigned</Badge>
+          <span className="block text-xs text-muted-foreground mt-1 truncate" title={assignedTo.name}>
             {assignedTo.name}
           </span>
         </div>
@@ -273,10 +308,10 @@ export const columns: ColumnDef<Ticket>[] = [
     cell: ({ row }) => {
       const assignedTo = row.original.assignedTo
       if (!assignedTo) {
-        return <span className="text-muted-foreground">Unassigned</span>
+        return <span className="text-muted-foreground text-xs">Unassigned</span>
       }
       return (
-        <span className="text-sm truncate max-w-[150px]" title={assignedTo.name}>
+        <span className="text-xs truncate block max-w-[120px]" title={assignedTo.name}>
           {assignedTo.name}
         </span>
       )
@@ -295,7 +330,7 @@ export const columns: ColumnDef<Ticket>[] = [
     ),
     cell: ({ row }) => {
       const category = row.original.service.category.name
-      return <span className="text-sm">{category}</span>
+      return <span className="text-xs truncate block max-w-[120px]" title={category}>{category}</span>
     },
     filterFn: (row, id, value) => {
       const category = row.original.service.category.name
@@ -311,7 +346,7 @@ export const columns: ColumnDef<Ticket>[] = [
     ),
     cell: ({ row }) => {
       const service = row.original.service.name
-      return <span className="text-sm truncate max-w-[150px]" title={service}>{service}</span>
+      return <span className="text-xs truncate block max-w-[150px]" title={service}>{service}</span>
     },
     filterFn: (row, id, value) => {
       const service = row.original.service.name
@@ -321,14 +356,13 @@ export const columns: ColumnDef<Ticket>[] = [
   },
   {
     accessorKey: 'createdBy',
-    size: 150,
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Created By" />
     ),
     cell: ({ row }) => {
       const createdBy = row.original.createdBy
       return (
-        <span className="text-sm truncate max-w-[150px]" title={createdBy.name}>
+        <span className="text-xs truncate block max-w-[120px]" title={createdBy.name}>
           {createdBy.name}
         </span>
       )
@@ -337,7 +371,6 @@ export const columns: ColumnDef<Ticket>[] = [
   },
   {
     accessorKey: 'createdAt',
-    size: 150,
     enableColumnFilter: true,
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Created" />
@@ -381,7 +414,6 @@ export const columns: ColumnDef<Ticket>[] = [
   },
   {
     accessorKey: 'updatedAt',
-    size: 150,
     enableColumnFilter: true,
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Updated" />
@@ -426,7 +458,6 @@ export const columns: ColumnDef<Ticket>[] = [
   },
   {
     id: 'comments',
-    size: 80,
     header: 'Comments',
     cell: ({ row }) => {
       const count = row.original._count.comments
@@ -440,9 +471,49 @@ export const columns: ColumnDef<Ticket>[] = [
     },
     enableHiding: true,
   },
-  {
+  );
+
+  // Add claim button column if enabled
+  if (options?.showClaimButton) {
+    baseColumns.push({
+      id: 'claim',
+      header: '',
+      cell: ({ row }) => {
+        const ticket = row.original
+        // Only show claim button for unassigned tickets
+        if (ticket.assignedTo) {
+          return (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <UserCheck className="h-3 w-3" />
+              <span>Assigned</span>
+            </div>
+          )
+        }
+        
+        return (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 px-2 text-xs bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800"
+            onClick={(e) => {
+              e.stopPropagation()
+              if (options.onClaimTicket) {
+                options.onClaimTicket(ticket.id)
+              }
+            }}
+          >
+            <UserPlus className="h-3 w-3 mr-1" />
+            Claim
+          </Button>
+        )
+      },
+      enableHiding: false,
+    });
+  }
+
+  // Add actions column
+  baseColumns.push({
     id: 'actions',
-    size: 50,
     cell: ({ row }) => {
       const ticket = row.original
 
@@ -495,5 +566,10 @@ export const columns: ColumnDef<Ticket>[] = [
         </DropdownMenu>
       )
     },
-  },
-]
+  });
+
+  return baseColumns;
+}
+
+// Default columns for backward compatibility
+export const columns: ColumnDef<Ticket>[] = getColumns()

@@ -23,6 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { Card, CardContent } from '@/components/ui/card'
 import { DataTablePagination } from './data-table-pagination'
 import { DataTableToolbar } from './data-table-toolbar'
 
@@ -58,14 +59,16 @@ export function DataTable<TData, TValue>({
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [globalFilter, setGlobalFilter] = React.useState('')
+  const [columnOrder, setColumnOrder] = React.useState<string[]>([])
   // Remove separate pagination state - let the table manage it internally
 
-  // Load column visibility from localStorage
+  // Load column visibility and order from localStorage
   React.useEffect(() => {
-    const saved = localStorage.getItem('ticketTableColumnVisibility')
-    if (saved) {
+    // Load column visibility
+    const savedVisibility = localStorage.getItem('ticketTableColumnVisibility')
+    if (savedVisibility) {
       try {
-        setColumnVisibility(JSON.parse(saved))
+        setColumnVisibility(JSON.parse(savedVisibility))
       } catch (e) {
         console.error('Failed to parse column visibility:', e)
       }
@@ -78,12 +81,35 @@ export function DataTable<TData, TValue>({
         'updatedAt': false, // Hide updated at column by default
       })
     }
+    
+    // Load column order
+    const savedOrder = localStorage.getItem('ticketTableColumnOrder')
+    if (savedOrder) {
+      try {
+        let parsedOrder = JSON.parse(savedOrder)
+        // Ensure 'select' column is always first if it exists
+        if (columns.some(col => col.id === 'select')) {
+          parsedOrder = parsedOrder.filter((id: string) => id !== 'select')
+          parsedOrder.unshift('select')
+        }
+        setColumnOrder(parsedOrder)
+      } catch (e) {
+        console.error('Failed to parse column order:', e)
+      }
+    }
   }, [])
 
   // Save column visibility to localStorage
   React.useEffect(() => {
     localStorage.setItem('ticketTableColumnVisibility', JSON.stringify(columnVisibility))
   }, [columnVisibility])
+  
+  // Save column order to localStorage
+  React.useEffect(() => {
+    if (columnOrder.length > 0) {
+      localStorage.setItem('ticketTableColumnOrder', JSON.stringify(columnOrder))
+    }
+  }, [columnOrder])
 
   const table = useReactTable({
     data,
@@ -91,9 +117,10 @@ export function DataTable<TData, TValue>({
     state: {
       sorting,
       columnVisibility,
-      // rowSelection, // Disabled - checkboxes removed
+      rowSelection,
       columnFilters,
       globalFilter,
+      columnOrder,
     },
     initialState: {
       pagination: {
@@ -107,6 +134,7 @@ export function DataTable<TData, TValue>({
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
     onGlobalFilterChange: setGlobalFilter,
+    onColumnOrderChange: setColumnOrder,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -127,23 +155,25 @@ export function DataTable<TData, TValue>({
   }, [table.getState().pagination, data.length])
 
   return (
-    <div className="space-y-4">
-      <DataTableToolbar 
-        table={table}
-        onRefresh={onRefresh}
-        globalFilter={globalFilter}
-        setGlobalFilter={setGlobalFilter}
-        enableBulkActions={enableBulkActions}
-        selectedRows={selectedRows}
-        onBulkAction={onBulkAction}
-        branchOptions={branchOptions}
-        categoryOptions={categoryOptions}
-        serviceOptions={serviceOptions}
-        technicianOptions={technicianOptions}
-      />
-      <div className="rounded-lg border bg-white dark:bg-gray-800 overflow-hidden">
-        <div className="p-4">
-          <Table>
+    <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg overflow-hidden">
+      <CardContent className="p-6">
+        <div className="space-y-4">
+          <DataTableToolbar 
+            table={table}
+            onRefresh={onRefresh}
+            globalFilter={globalFilter}
+            setGlobalFilter={setGlobalFilter}
+            enableBulkActions={enableBulkActions}
+            selectedRows={selectedRows}
+            onBulkAction={onBulkAction}
+            branchOptions={branchOptions}
+            categoryOptions={categoryOptions}
+            serviceOptions={serviceOptions}
+            technicianOptions={technicianOptions}
+          />
+          <div className="relative -mx-6">
+            <div className="overflow-x-auto px-6">
+              <Table className="min-w-full">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
@@ -151,10 +181,7 @@ export function DataTable<TData, TValue>({
                   return (
                     <TableHead 
                       key={header.id}
-                      style={{
-                        width: header.getSize() !== 150 ? header.getSize() : undefined,
-                      }}
-                      className="relative"
+                      className="text-xs"
                     >
                       {header.isPlaceholder
                         ? null
@@ -185,11 +212,12 @@ export function DataTable<TData, TValue>({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
-                  onClick={() => onRowClick && onRowClick(row.original)}
-                  className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
+                  className="hover:bg-gray-50 dark:hover:bg-gray-700"
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell 
+                      key={cell.id}
+                    >
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()
@@ -209,10 +237,14 @@ export function DataTable<TData, TValue>({
               </TableRow>
             )}
           </TableBody>
-          </Table>
+              </Table>
+            </div>
+          </div>
+          <div className="mt-4">
+            <DataTablePagination table={table} />
+          </div>
         </div>
-      </div>
-      <DataTablePagination table={table} />
-    </div>
+      </CardContent>
+    </Card>
   )
 }

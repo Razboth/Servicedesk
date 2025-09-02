@@ -124,7 +124,7 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       {/* Header */}
       <header className="bg-white/[0.8] dark:bg-gray-900/[0.8] backdrop-blur-sm border-b border-gray-200/50 dark:border-gray-700/50">
-        <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
+        <div className="w-full pl-3 pr-6 sm:pl-4 sm:pr-8 lg:pl-6 lg:pr-10">
           <div className="flex justify-between items-center py-4 sm:py-6">
             <div className="flex items-center">
               <div className="flex items-center gap-2 sm:gap-3">
@@ -147,7 +147,7 @@ export default function Dashboard() {
       </header>
 
       {/* Main Content */}
-      <main className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-4 sm:py-8">
+      <main className="w-full pl-3 pr-6 sm:pl-4 sm:pr-8 lg:pl-6 lg:pr-10 py-4">
         {/* Welcome Section */}
         <div className="mb-6 sm:mb-8 text-center px-4">
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">

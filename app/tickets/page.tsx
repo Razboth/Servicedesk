@@ -40,7 +40,7 @@ function TicketsPageContent() {
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-cyan-400 to-teal-400 dark:from-cyan-800 dark:to-teal-800 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
       </div>
 
-      <div className="w-full max-w-[1920px] mx-auto px-6 sm:px-8 lg:px-12 py-8">
+      <div className="w-full pl-3 pr-6 sm:pl-4 sm:pr-8 lg:pl-6 lg:pr-10 py-4">
         <TicketsDataTable 
           onCreateTicket={handleCreateTicket}
           initialFilters={initialFilters}

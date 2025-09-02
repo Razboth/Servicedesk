@@ -7,7 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { TicketsDataTable } from '@/components/tickets/data-table/tickets-data-table'
+import { TicketCards } from '@/components/tickets/ticket-cards'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { 
   Sparkles,
   User,
@@ -16,7 +18,9 @@ import {
   ClipboardList,
   Clock,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  LayoutGrid,
+  Table
 } from 'lucide-react'
 
 interface QuickStat {
@@ -32,6 +36,7 @@ export default function TechnicianWorkbenchPage() {
   const router = useRouter()
   const [quickStats, setQuickStats] = useState<QuickStat[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table')
 
   useEffect(() => {
     loadQuickStats()
@@ -124,8 +129,8 @@ export default function TechnicianWorkbenchPage() {
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-cyan-400 to-teal-400 dark:from-cyan-800 dark:to-teal-800 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
       </div>
 
-      <div className="w-full max-w-[1920px] mx-auto px-6 sm:px-8 lg:px-12 py-8">
-        <div className="space-y-6">
+      <div className="w-full pl-3 pr-6 sm:pl-4 sm:pr-8 lg:pl-6 lg:pr-10 py-4">
+        <div className="space-y-4">
           {/* Header */}
           <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
             <CardContent className="p-6">
@@ -167,33 +172,61 @@ export default function TechnicianWorkbenchPage() {
             ))}
           </div>
 
-          {/* Tabs with Data Tables */}
+          {/* Tabs with Data Tables/Cards */}
           <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
             <CardContent className="p-6">
               <Tabs defaultValue="my-tickets" className="w-full">
-                <TabsList className="grid w-full max-w-md grid-cols-2 mb-6">
-                  <TabsTrigger value="my-tickets" className="flex items-center gap-2">
-                    <User className="h-4 w-4" />
-                    My Tickets
-                  </TabsTrigger>
-                  <TabsTrigger value="available-tickets" className="flex items-center gap-2">
-                    <Inbox className="h-4 w-4" />
-                    Available Tickets
-                  </TabsTrigger>
-                </TabsList>
+                <div className="flex items-center justify-between mb-6">
+                  <TabsList className="grid w-full max-w-md grid-cols-2">
+                    <TabsTrigger value="my-tickets" className="flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      My Tickets
+                    </TabsTrigger>
+                    <TabsTrigger value="available-tickets" className="flex items-center gap-2">
+                      <Inbox className="h-4 w-4" />
+                      Available Tickets
+                    </TabsTrigger>
+                  </TabsList>
+                  
+                  {/* View Mode Toggle */}
+                  <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value as 'table' | 'cards')}>
+                    <ToggleGroupItem value="table" aria-label="Table view" className="px-3">
+                      <Table className="h-4 w-4 mr-2" />
+                      Table
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="cards" aria-label="Cards view" className="px-3">
+                      <LayoutGrid className="h-4 w-4 mr-2" />
+                      Cards
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+                </div>
                 
                 <TabsContent value="my-tickets" className="mt-0">
-                  <TicketsDataTable 
-                    ticketFilter="my-tickets"
-                    hideHeader={true}
-                  />
+                  {viewMode === 'table' ? (
+                    <TicketsDataTable 
+                      ticketFilter="my-tickets"
+                      hideHeader={true}
+                    />
+                  ) : (
+                    <TicketCards 
+                      ticketFilter="my-tickets"
+                    />
+                  )}
                 </TabsContent>
                 
                 <TabsContent value="available-tickets" className="mt-0">
-                  <TicketsDataTable 
-                    ticketFilter="available-tickets"
-                    hideHeader={true}
-                  />
+                  {viewMode === 'table' ? (
+                    <TicketsDataTable 
+                      ticketFilter="available-tickets"
+                      hideHeader={true}
+                      showClaimButton={true}
+                    />
+                  ) : (
+                    <TicketCards 
+                      ticketFilter="available-tickets"
+                      showClaimButton={true}
+                    />
+                  )}
                 </TabsContent>
               </Tabs>
             </CardContent>
