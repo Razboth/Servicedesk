@@ -20,6 +20,44 @@ export async function GET(request: NextRequest) {
       console.log('ATM Lookup - No session found');
     }
 
+    const searchParams = request.nextUrl.searchParams;
+    const atmCode = searchParams.get('code');
+
+    // If searching for a specific ATM by code
+    if (atmCode) {
+      const atm = await prisma.aTM.findFirst({
+        where: { 
+          code: atmCode.toUpperCase(),
+          isActive: true 
+        },
+        include: {
+          branch: {
+            select: { 
+              id: true,
+              name: true, 
+              code: true 
+            }
+          }
+        }
+      });
+
+      if (atm) {
+        return NextResponse.json({
+          id: atm.id,
+          code: atm.code,
+          name: atm.name,
+          location: atm.location || '',
+          branch: {
+            id: atm.branch.id,
+            name: atm.branch.name,
+            code: atm.branch.code
+          }
+        });
+      } else {
+        return NextResponse.json(null, { status: 404 });
+      }
+    }
+
     // Get user's branch for comparison
     let userWithBranch = null;
     if (session?.user?.id) {

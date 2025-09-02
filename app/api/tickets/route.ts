@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
         role: true, 
         supportGroupId: true,
         supportGroup: {
-          select: { id: true, name: true }
+          select: { id: true, name: true, code: true }
         }
       }
     });
@@ -161,14 +161,45 @@ export async function GET(request: NextRequest) {
         }
       ]
     } else if (session.user.role === 'TECHNICIAN') {
-      // Technicians can see:
-      // 1. Tickets they created or are assigned to
-      // 2. All unassigned tickets (for general /tickets page)
-      // 3. For workbench available-tickets: only approved or no-approval-required tickets
-      const technicianConditions: any[] = [
-        { createdById: session.user.id }, // Their own tickets
-        { assignedToId: session.user.id }  // Tickets assigned to them
-      ];
+      // Check if this is a Call Center technician
+      const isCallCenterTech = userWithDetails?.supportGroup?.code === 'CALL_CENTER';
+      
+      if (isCallCenterTech) {
+        // Call Center technicians can ONLY see transaction-related claims from all branches
+        // They do NOT see their own non-claim tickets or non-claim tickets assigned to them
+        // ATM Claims are excluded and should be accessed through /branch/atm-claims
+        where.AND = [
+          {
+            // Must be a claim-related ticket - using more specific filters
+            OR: [
+              { service: { name: { contains: 'Claim' } } },
+              { service: { name: { contains: 'claim' } } },
+              { service: { name: { contains: 'Dispute' } } },
+              { service: { name: { contains: 'dispute' } } },
+              // Only include "Transaction" if it also contains "Claim" or "Error"
+              { 
+                AND: [
+                  { service: { name: { contains: 'Transaction' } } },
+                  {
+                    OR: [
+                      { service: { name: { contains: 'Claim' } } },
+                      { service: { name: { contains: 'Error' } } }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ];
+      } else {
+        // Regular technicians can see:
+        // 1. Tickets they created or are assigned to
+        // 2. All unassigned tickets (for general /tickets page)
+        // 3. For workbench available-tickets: only approved or no-approval-required tickets
+        const technicianConditions: any[] = [
+          { createdById: session.user.id }, // Their own tickets
+          { assignedToId: session.user.id }  // Tickets assigned to them
+        ];
 
       // Only apply approval filtering for workbench available-tickets filter
       // NOT for general /tickets page
@@ -217,7 +248,8 @@ export async function GET(request: NextRequest) {
         });
       }
 
-      where.OR = technicianConditions;
+        where.OR = technicianConditions;
+      }
     } else if (session.user.role === 'MANAGER') {
       // Managers can ONLY see tickets created by users from their own branch, excluding security analyst tickets
       if (userWithDetails?.branchId) {
@@ -276,52 +308,112 @@ export async function GET(request: NextRequest) {
 
     // Handle technician workbench filters
     if (filter && ['TECHNICIAN', 'SECURITY_ANALYST'].includes(session.user.role)) {
+      // Check if this is a Call Center technician
+      const isCallCenterTech = session.user.role === 'TECHNICIAN' && 
+                              userWithDetails?.supportGroup?.code === 'CALL_CENTER';
+      
       if (filter === 'my-tickets') {
-        // Show tickets assigned to or claimed by current user
-        where.assignedToId = session.user.id;
-        // Clear any OR conditions set earlier for technicians
-        delete where.OR;
-      } else if (filter === 'available-tickets') {
-        // For available tickets: must be unassigned AND (approved if requires approval OR doesn't require approval)
-        where.assignedToId = null;
-        where.status = 'OPEN'; // Only show open tickets as available
-        
-        // Get services that require approval
-        const approvalServices = await prisma.service.findMany({
-          where: { requiresApproval: true },
-          select: { id: true }
-        });
-        const approvalServiceIds = approvalServices.map(s => s.id);
-        
-        // Override the OR conditions to ensure proper approval filtering
-        where.OR = [
-          // Tickets that don't require approval
-          {
-            serviceId: {
-              notIn: approvalServiceIds
-            }
-          },
-          // Tickets that require approval AND are approved
-          {
-            AND: [
-              {
-                serviceId: {
-                  in: approvalServiceIds
+        if (isCallCenterTech) {
+          // Call Center: Only show transaction claims assigned to them (excluding ATM Claims)
+          where.AND = [
+            { assignedToId: session.user.id },
+            {
+              OR: [
+                { service: { name: { contains: 'Claim' } } },
+                { service: { name: { contains: 'claim' } } },
+                { service: { name: { contains: 'Dispute' } } },
+                { service: { name: { contains: 'dispute' } } },
+                // Only include "Transaction" if it also contains "Claim" or "Error"
+                { 
+                  AND: [
+                    { service: { name: { contains: 'Transaction' } } },
+                    {
+                      OR: [
+                        { service: { name: { contains: 'Claim' } } },
+                        { service: { name: { contains: 'Error' } } }
+                      ]
+                    }
+                  ]
                 }
-              },
-              {
-                approvals: {
-                  some: {
-                    status: 'APPROVED'
+              ]
+            }
+          ];
+        } else {
+          // Regular technicians: Show tickets assigned to or claimed by current user
+          where.assignedToId = session.user.id;
+          // Clear any OR conditions set earlier for technicians
+          delete where.OR;
+        }
+      } else if (filter === 'available-tickets') {
+        if (isCallCenterTech) {
+          // Call Center: Only show unassigned transaction claims (excluding ATM Claims)
+          where.AND = [
+            { assignedToId: null },
+            { status: 'OPEN' },
+            {
+              OR: [
+                { service: { name: { contains: 'Claim' } } },
+                { service: { name: { contains: 'claim' } } },
+                { service: { name: { contains: 'Dispute' } } },
+                { service: { name: { contains: 'dispute' } } },
+                // Only include "Transaction" if it also contains "Claim" or "Error"
+                { 
+                  AND: [
+                    { service: { name: { contains: 'Transaction' } } },
+                    {
+                      OR: [
+                        { service: { name: { contains: 'Claim' } } },
+                        { service: { name: { contains: 'Error' } } }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ];
+        } else {
+          // Regular technicians: For available tickets: must be unassigned AND (approved if requires approval OR doesn't require approval)
+          where.assignedToId = null;
+          where.status = 'OPEN'; // Only show open tickets as available
+          
+          // Get services that require approval
+          const approvalServices = await prisma.service.findMany({
+            where: { requiresApproval: true },
+            select: { id: true }
+          });
+          const approvalServiceIds = approvalServices.map(s => s.id);
+          
+          // Override the OR conditions to ensure proper approval filtering
+          where.OR = [
+            // Tickets that don't require approval
+            {
+              serviceId: {
+                notIn: approvalServiceIds
+              }
+            },
+            // Tickets that require approval AND are approved
+            {
+              AND: [
+                {
+                  serviceId: {
+                    in: approvalServiceIds
+                  }
+                },
+                {
+                  approvals: {
+                    some: {
+                      status: 'APPROVED'
+                    }
                   }
                 }
-              }
-            ]
-          }
-        ];
+              ]
+            }
+          ];
+        }
         
         // If technician has a support group, also filter by that
-        if (userWithDetails?.supportGroupId) {
+        // BUT skip this for Call Center technicians as they have their own filtering
+        if (userWithDetails?.supportGroupId && !isCallCenterTech) {
           where.service = {
             supportGroupId: userWithDetails.supportGroupId
           };
@@ -435,6 +527,25 @@ export async function GET(request: NextRequest) {
         }
       });
     }
+
+    // IMPORTANT: Exclude ATM Claim tickets from /tickets page
+    // ATM Claims should only be accessed through /branch/atm-claims
+    // This prevents users from accessing ATM claims through the wrong detail page
+    if (!where.AND) {
+      where.AND = [];
+    } else if (!Array.isArray(where.AND)) {
+      where.AND = [where.AND];
+    }
+    
+    where.AND.push({
+      NOT: {
+        service: {
+          name: {
+            contains: 'ATM Claim'
+          }
+        }
+      }
+    });
 
     const [tickets, total] = await Promise.all([
       prisma.ticket.findMany({

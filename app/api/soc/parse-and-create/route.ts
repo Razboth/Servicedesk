@@ -202,28 +202,66 @@ export async function POST(request: NextRequest) {
     // Determine the user creating the ticket
     let userId: string;
     let userBranchId: string | null = null;
+    let keyRecord: any = null;
 
     if (session) {
       userId = session.user.id;
       userBranchId = session.user.branchId || null;
     } else {
-      // For API key access, use a system user or create tickets without user
-      const systemUser = await prisma.user.findFirst({
-        where: { 
-          email: 'soc.analyst@banksulutgo.co.id',
-          role: 'SECURITY_ANALYST'
-        }
-      });
+      // For API key access, check if key has a linked user
+      if (apiKey) {
+        // Get the validated key record from earlier
+        const apiKeys = await prisma.apiKey.findMany({
+          where: {
+            isActive: true,
+            OR: [
+              { expiresAt: null },
+              { expiresAt: { gt: new Date() } }
+            ]
+          },
+          include: {
+            linkedUser: true,
+            createdBy: true
+          }
+        });
 
-      if (!systemUser) {
-        return NextResponse.json(
-          { error: 'System SOC user not found. Please run the SOC seed script.' },
-          { status: 500 }
-        );
+        for (const key of apiKeys) {
+          const { verifyApiKey } = await import('@/lib/api-key');
+          if (await verifyApiKey(apiKey, key.hashedKey)) {
+            keyRecord = key;
+            break;
+          }
+        }
       }
 
-      userId = systemUser.id;
-      userBranchId = systemUser.branchId;
+      if (keyRecord) {
+        // Use linked user if available, otherwise use the API key creator
+        if (keyRecord.linkedUserId && keyRecord.linkedUser) {
+          userId = keyRecord.linkedUserId;
+          userBranchId = keyRecord.linkedUser.branchId;
+        } else {
+          userId = keyRecord.createdById;
+          userBranchId = keyRecord.createdBy.branchId;
+        }
+      } else {
+        // Fallback to system user
+        const systemUser = await prisma.user.findFirst({
+          where: { 
+            email: 'soc.analyst@banksulutgo.co.id',
+            role: 'SECURITY_ANALYST'
+          }
+        });
+
+        if (!systemUser) {
+          return NextResponse.json(
+            { error: 'System SOC user not found. Please run the SOC seed script.' },
+            { status: 500 }
+          );
+        }
+
+        userId = systemUser.id;
+        userBranchId = systemUser.branchId;
+      }
     }
 
     // Generate ticket number

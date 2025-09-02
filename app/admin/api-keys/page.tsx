@@ -32,6 +32,12 @@ interface ApiKey {
     name: string;
     email: string;
   };
+  linkedUser?: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+  };
 }
 
 // Available permissions
@@ -72,18 +78,21 @@ export default function ApiKeysPage() {
   const [description, setDescription] = useState('');
   const [expiresIn, setExpiresIn] = useState('365');
   const [permissions, setPermissions] = useState<string[]>([]);
+  const [linkedUserId, setLinkedUserId] = useState<string>('');
+  const [availableUsers, setAvailableUsers] = useState<any[]>([]);
 
   // Check authorization
   useEffect(() => {
     if (status === 'loading') return;
-    if (!session || (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN')) {
+    if (!session || session.user.role !== 'ADMIN') {
       router.push('/');
     }
   }, [session, status, router]);
 
-  // Fetch API keys
+  // Fetch API keys and users
   useEffect(() => {
     fetchApiKeys();
+    fetchAvailableUsers();
   }, []);
 
   const fetchApiKeys = async () => {
@@ -100,6 +109,18 @@ export default function ApiKeysPage() {
     }
   };
 
+  const fetchAvailableUsers = async () => {
+    try {
+      const response = await fetch('/api/admin/users?role=TECHNICIAN,ADMIN');
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableUsers(data.users || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+    }
+  };
+
   const handleCreate = async () => {
     try {
       const response = await fetch('/api/admin/api-keys', {
@@ -109,7 +130,8 @@ export default function ApiKeysPage() {
           name,
           description,
           permissions,
-          expiresIn: parseInt(expiresIn)
+          expiresIn: parseInt(expiresIn),
+          linkedUserId: linkedUserId || null
         })
       });
 
@@ -123,6 +145,8 @@ export default function ApiKeysPage() {
         setName('');
         setDescription('');
         setExpiresIn('365');
+        setLinkedUserId('');
+        setPermissions([]);
       }
     } catch (error) {
       console.error('Failed to create API key:', error);
@@ -222,6 +246,25 @@ export default function ApiKeysPage() {
                     />
                   </div>
                   <div className="space-y-2">
+                    <Label htmlFor="linkedUser">Link to User (Optional)</Label>
+                    <Select value={linkedUserId || "none"} onValueChange={(value) => setLinkedUserId(value === "none" ? "" : value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a user to link this API key to" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No linked user (use Admin account)</SelectItem>
+                        {availableUsers.map((user) => (
+                          <SelectItem key={user.id} value={user.id}>
+                            {user.name} ({user.email}) - {user.role}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-gray-500">
+                      Tickets created with this API key will be attributed to the linked user. Only Technicians and Admins can be selected.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
                     <Label htmlFor="expires">Expires In</Label>
                     <Select value={expiresIn} onValueChange={setExpiresIn}>
                       <SelectTrigger>
@@ -291,6 +334,7 @@ export default function ApiKeysPage() {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Key</TableHead>
+                <TableHead>Linked User</TableHead>
                 <TableHead>Permissions</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Usage</TableHead>
@@ -313,6 +357,19 @@ export default function ApiKeysPage() {
                     <code className="text-sm bg-gray-100 px-2 py-1 rounded">
                       {apiKey.key}
                     </code>
+                  </TableCell>
+                  <TableCell>
+                    {apiKey.linkedUser ? (
+                      <div className="text-sm">
+                        <div className="font-medium">{apiKey.linkedUser.name}</div>
+                        <div className="text-gray-500">{apiKey.linkedUser.role}</div>
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-500">
+                        <div>Admin Account</div>
+                        <div className="text-xs">{apiKey.createdBy.name}</div>
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1 max-w-xs">

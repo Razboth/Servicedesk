@@ -37,7 +37,12 @@ export async function GET(request: NextRequest) {
     }
 
     if (role && role !== 'all') {
-      where.role = role;
+      // Support comma-separated roles
+      if (role.includes(',')) {
+        where.role = { in: role.split(',') };
+      } else {
+        where.role = role;
+      }
     }
 
     if (branchId && branchId !== 'all') {
@@ -96,7 +101,7 @@ export async function GET(request: NextRequest) {
       orderBy: { name: 'asc' }
     });
 
-    return NextResponse.json(users);
+    return NextResponse.json({ users });
   } catch (error) {
     console.error('Error fetching users:', error);
     return NextResponse.json(
