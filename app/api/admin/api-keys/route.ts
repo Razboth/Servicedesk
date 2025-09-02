@@ -9,7 +9,8 @@ const createApiKeySchema = z.object({
   name: z.string().min(1, 'Name is required'),
   description: z.string().optional(),
   permissions: z.array(z.string()).optional(),
-  expiresIn: z.number().optional() // Days until expiration
+  expiresIn: z.number().optional(), // Days until expiration
+  linkedUserId: z.string().nullable().optional() // User to link API key to
 });
 
 // GET: List all API keys
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
   try {
     const session = await auth();
     
-    if (!session || (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN')) {
+    if (!session || session.user.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Unauthorized. Admin access required.' },
         { status: 401 }
@@ -31,6 +32,14 @@ export async function GET(request: NextRequest) {
             id: true,
             name: true,
             email: true
+          }
+        },
+        linkedUser: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true
           }
         }
       },
@@ -52,6 +61,7 @@ export async function GET(request: NextRequest) {
       usageCount: key.usageCount,
       createdAt: key.createdAt,
       createdBy: key.createdBy,
+      linkedUser: key.linkedUser,
       isExpired: key.expiresAt ? new Date() > key.expiresAt : false
     }))
 
@@ -70,7 +80,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await auth();
     
-    if (!session || (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN')) {
+    if (!session || session.user.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Unauthorized. Admin access required.' },
         { status: 401 }
@@ -87,7 +97,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { name, description, permissions, expiresIn } = validation.data;
+    const { name, description, permissions, expiresIn, linkedUserId } = validation.data;
+
+    // Validate linkedUserId if provided
+    if (linkedUserId) {
+      const linkedUser = await prisma.user.findUnique({
+        where: { id: linkedUserId },
+        select: { id: true, role: true }
+      });
+
+      if (!linkedUser) {
+        return NextResponse.json(
+          { error: 'Linked user not found' },
+          { status: 400 }
+        );
+      }
+
+      // Only allow linking to TECHNICIAN or ADMIN users
+      if (linkedUser.role !== 'TECHNICIAN' && linkedUser.role !== 'ADMIN') {
+        return NextResponse.json(
+          { error: 'API keys can only be linked to Technician or Admin users' },
+          { status: 400 }
+        );
+      }
+    }
 
     // Generate the API key
     const apiKey = generateApiKey();
@@ -109,7 +142,8 @@ export async function POST(request: NextRequest) {
         description,
         permissions: permissions || ['soc'],
         expiresAt,
-        createdById: session.user.id
+        createdById: session.user.id,
+        linkedUserId: linkedUserId || null
       },
       include: {
         createdBy: {

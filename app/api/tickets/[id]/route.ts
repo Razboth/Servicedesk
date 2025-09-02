@@ -127,7 +127,10 @@ export async function GET(
       select: { 
         branchId: true, 
         role: true, 
-        supportGroupId: true
+        supportGroupId: true,
+        supportGroup: {
+          select: { code: true }
+        }
       }
     });
 
@@ -142,19 +145,39 @@ export async function GET(
       const isFromSameBranch = userWithDetails?.branchId === ticket.branchId;
       canAccess = isFromSameBranch;
     } else if (session.user.role === 'TECHNICIAN') {
-      // Technicians can see:
-      // 1. Tickets they created or are assigned to
-      const isCreatorOrAssignee = ticket.createdById === session.user.id || ticket.assignedToId === session.user.id;
+      // Check if this is a Call Center technician
+      const isCallCenterTech = userWithDetails?.supportGroup?.code === 'CALL_CENTER';
       
-      // 2. All approved tickets (or tickets that don't require approval)
-      let isApprovedOrNoApprovalNeeded = true;
-      if (ticket.service?.requiresApproval) {
-        // Check if ticket is approved
-        const latestApproval = ticket.approvals?.[0]; // Already ordered by desc
-        isApprovedOrNoApprovalNeeded = latestApproval?.status === 'APPROVED';
+      if (isCallCenterTech) {
+        // Call Center can ONLY access transaction-related claims - strict filtering
+        const serviceName = ticket.service?.name || '';
+        const isTransactionClaim = 
+          serviceName.includes('Claim') ||
+          serviceName.includes('claim') ||
+          serviceName.includes('Dispute') ||
+          serviceName.includes('dispute') ||
+          // Only allow "Transaction" if it also contains "Claim" or "Error"
+          (serviceName.includes('Transaction') && 
+           (serviceName.includes('Claim') || serviceName.includes('Error'))) ||
+          // Only allow ATM if it's specifically ATM Claim
+          (serviceName.includes('ATM') && serviceName.includes('Claim'));
+        
+        canAccess = isTransactionClaim;
+      } else {
+        // Regular technicians can see:
+        // 1. Tickets they created or are assigned to
+        const isCreatorOrAssignee = ticket.createdById === session.user.id || ticket.assignedToId === session.user.id;
+        
+        // 2. All approved tickets (or tickets that don't require approval)
+        let isApprovedOrNoApprovalNeeded = true;
+        if (ticket.service?.requiresApproval) {
+          // Check if ticket is approved
+          const latestApproval = ticket.approvals?.[0]; // Already ordered by desc
+          isApprovedOrNoApprovalNeeded = latestApproval?.status === 'APPROVED';
+        }
+        
+        canAccess = isCreatorOrAssignee || isApprovedOrNoApprovalNeeded;
       }
-      
-      canAccess = isCreatorOrAssignee || isApprovedOrNoApprovalNeeded;
     } else if (session.user.role === 'SECURITY_ANALYST') {
       // Security Analysts function like technicians
       const isCreatorOrAssignee = ticket.createdById === session.user.id || ticket.assignedToId === session.user.id;
@@ -222,7 +245,12 @@ export async function PATCH(
         id: true,
         createdById: true,
         assignedToId: true,
-        status: true
+        status: true,
+        service: {
+          select: {
+            name: true
+          }
+        }
       }
     });
 
@@ -393,24 +421,17 @@ export async function PUT(
         id: true,
         createdById: true,
         assignedToId: true,
-        status: true
+        status: true,
+        service: {
+          select: {
+            name: true
+          }
+        }
       }
     });
 
     if (!existingTicket) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
-    }
-
-    // Check permissions for updates
-    const canUpdate = 
-      session.user.role === 'ADMIN' ||
-      session.user.role === 'TECHNICIAN' ||
-      session.user.role === 'SECURITY_ANALYST' ||
-      (session.user.role === 'USER' && existingTicket.createdById === session.user.id) ||
-      (session.user.role === 'MANAGER' && existingTicket.createdById === session.user.id);
-
-    if (!canUpdate) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     // Get user details for additional permission checks
@@ -419,9 +440,47 @@ export async function PUT(
       select: { 
         branchId: true, 
         role: true, 
-        supportGroupId: true
+        supportGroupId: true,
+        supportGroup: {
+          select: { code: true }
+        }
       }
     });
+
+    // Check permissions for updates
+    let canUpdate = false;
+    if (session.user.role === 'ADMIN' || session.user.role === 'SECURITY_ANALYST') {
+      canUpdate = true;
+    } else if (session.user.role === 'TECHNICIAN') {
+      // Check if Call Center technician
+      const isCallCenterTech = userWithDetails?.supportGroup?.code === 'CALL_CENTER';
+      if (isCallCenterTech) {
+        // Call Center can only update transaction claims - strict filtering
+        const serviceName = existingTicket.service?.name || '';
+        const isTransactionClaim = 
+          serviceName.includes('Claim') ||
+          serviceName.includes('claim') ||
+          serviceName.includes('Dispute') ||
+          serviceName.includes('dispute') ||
+          // Only allow "Transaction" if it also contains "Claim" or "Error"
+          (serviceName.includes('Transaction') && 
+           (serviceName.includes('Claim') || serviceName.includes('Error'))) ||
+          // Only allow ATM if it's specifically ATM Claim
+          (serviceName.includes('ATM') && serviceName.includes('Claim'));
+        canUpdate = isTransactionClaim;
+      } else {
+        // Regular technicians can update
+        canUpdate = true;
+      }
+    } else if (session.user.role === 'USER' && existingTicket.createdById === session.user.id) {
+      canUpdate = true;
+    } else if (session.user.role === 'MANAGER' && existingTicket.createdById === session.user.id) {
+      canUpdate = true;
+    }
+
+    if (!canUpdate) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
 
     // Users can only update certain fields
     if (session.user.role === 'USER') {

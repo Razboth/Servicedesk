@@ -62,8 +62,14 @@ export async function GET(
       }
     });
 
+    // If no verification exists yet, return empty verification data
     if (!verification) {
-      return NextResponse.json({ error: 'Verification record not found' }, { status: 404 });
+      return NextResponse.json({
+        verification: null,
+        progress: 0,
+        completedSteps: 0,
+        totalSteps: 7
+      });
     }
 
     // Calculate verification progress

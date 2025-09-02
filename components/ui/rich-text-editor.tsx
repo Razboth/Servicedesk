@@ -140,6 +140,7 @@ export function RichTextEditor({
   editable = true
 }: RichTextEditorProps) {
   const editor = useEditor({
+    immediatelyRender: false, // Prevent SSR hydration issues
     extensions: [
       StarterKit,
       Image.configure({

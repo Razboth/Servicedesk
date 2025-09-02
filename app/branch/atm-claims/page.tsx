@@ -65,10 +65,15 @@ export default function BranchATMClaimsPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [statistics, setStatistics] = useState({
+  const [statistics, setStatistics] = useState<any>({
     total: 0,
     pendingVerifications: 0,
-    fromOtherBranches: 0
+    fromOtherBranches: 0,
+    breakdown: {
+      all: { total: 0, pendingVerifications: 0 },
+      internal: { total: 0, pendingVerifications: 0 },
+      external: { total: 0, pendingVerifications: 0 }
+    }
   });
 
   const fetchClaims = async () => {
@@ -161,12 +166,24 @@ export default function BranchATMClaimsPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Claims</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              {activeTab === 'internal' ? 'Internal Claims' : 
+               activeTab === 'external' ? 'External Claims' : 
+               'Total Claims'}
+            </CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{statistics.total}</div>
-            <p className="text-xs text-muted-foreground">Active claims</p>
+            <div className="text-2xl font-bold">
+              {activeTab === 'internal' ? statistics.breakdown?.internal?.total || 0 :
+               activeTab === 'external' ? statistics.breakdown?.external?.total || 0 :
+               statistics.total}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {activeTab === 'internal' ? 'From your branch' :
+               activeTab === 'external' ? 'From other branches' :
+               'All active claims'}
+            </p>
           </CardContent>
         </Card>
 
@@ -176,8 +193,16 @@ export default function BranchATMClaimsPage() {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{statistics.pendingVerifications}</div>
-            <p className="text-xs text-muted-foreground">Awaiting verification</p>
+            <div className="text-2xl font-bold">
+              {activeTab === 'internal' ? statistics.breakdown?.internal?.pendingVerifications || 0 :
+               activeTab === 'external' ? statistics.breakdown?.external?.pendingVerifications || 0 :
+               statistics.breakdown?.all?.pendingVerifications || statistics.pendingVerifications}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {activeTab === 'internal' ? 'Internal pending' :
+               activeTab === 'external' ? 'External pending' :
+               'Total awaiting verification'}
+            </p>
           </CardContent>
         </Card>
 

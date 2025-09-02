@@ -236,10 +236,11 @@ export default function ATMClaimDetailPage() {
             <CheckCircle2 className="w-4 h-4" />
             Verification
           </TabsTrigger>
-          <TabsTrigger value="assignments" className="flex items-center gap-2">
+          {/* Assignments tab - hidden for now but implementation preserved */}
+          {/* <TabsTrigger value="assignments" className="flex items-center gap-2">
             <Users className="w-4 h-4" />
             Assignments
-          </TabsTrigger>
+          </TabsTrigger> */}
           <TabsTrigger value="communication" className="flex items-center gap-2">
             <MessageSquare className="w-4 h-4" />
             Communication
@@ -333,14 +334,15 @@ export default function ATMClaimDetailPage() {
           />
         </TabsContent>
 
-        <TabsContent value="assignments">
+        {/* Assignments tab content - hidden for now but implementation preserved */}
+        {/* <TabsContent value="assignments">
           <AssignmentPanel 
             ticketId={claim.id}
             branchId={claim.branch?.code || ''}
             currentAssignments={claim.branchAssignments || []}
             onUpdate={fetchClaimDetails}
           />
-        </TabsContent>
+        </TabsContent> */}
 
         <TabsContent value="communication">
           <CommunicationPanel 

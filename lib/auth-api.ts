@@ -7,6 +7,7 @@ export interface ApiKeyData {
   name: string;
   permissions: any;
   createdById: string;
+  linkedUserId?: string | null;
 }
 
 export async function authenticateApiKey(request: NextRequest): Promise<{
@@ -47,7 +48,8 @@ export async function authenticateApiKey(request: NextRequest): Promise<{
         permissions: true,
         isActive: true,
         expiresAt: true,
-        createdById: true
+        createdById: true,
+        linkedUserId: true
       }
     });
     
@@ -86,7 +88,8 @@ export async function authenticateApiKey(request: NextRequest): Promise<{
         id: apiKeyRecord.id,
         name: apiKeyRecord.name,
         permissions: apiKeyRecord.permissions,
-        createdById: apiKeyRecord.createdById
+        createdById: apiKeyRecord.createdById,
+        linkedUserId: apiKeyRecord.linkedUserId
       }
     };
   } catch (error) {

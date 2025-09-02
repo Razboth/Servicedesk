@@ -49,6 +49,7 @@ model User {
   auditLogs       AuditLog[]
   completedTasks  TicketTask[]
   createdApiKeys  ApiKey[]         @relation("ApiKeyCreatedBy")
+  linkedApiKeys   ApiKey[]         @relation("ApiKeyLinkedUser")
   
   // Service usage tracking
   serviceUsage    ServiceUsage[]
@@ -1019,10 +1020,13 @@ model ApiKey {
   updatedAt     DateTime  @updatedAt
   createdBy     User      @relation("ApiKeyCreatedBy", fields: [createdById], references: [id])
   createdById   String
+  linkedUser    User?     @relation("ApiKeyLinkedUser", fields: [linkedUserId], references: [id])
+  linkedUserId  String?
   
   @@index([key])
   @@index([hashedKey])
   @@index([isActive])
+  @@index([linkedUserId])
 }
 
 // Network Ping Result Model for monitoring

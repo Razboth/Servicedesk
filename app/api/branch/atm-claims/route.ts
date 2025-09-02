@@ -10,18 +10,28 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check if user is a branch manager or staff
-    if (!['MANAGER', 'ADMIN', 'USER', 'AGENT'].includes(session.user.role)) {
+    // Get user's details including support group
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { 
+        branchId: true, 
+        role: true,
+        supportGroup: {
+          select: { code: true }
+        }
+      }
+    });
+
+    // Check if user is a Call Center technician
+    const isCallCenterAgent = session.user.role === 'TECHNICIAN' && user?.supportGroup?.code === 'CALL_CENTER';
+
+    // Check if user has access
+    if (!['MANAGER', 'ADMIN', 'USER', 'AGENT', 'TECHNICIAN'].includes(session.user.role)) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    // Get user's branch
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { branchId: true, role: true }
-    });
-
-    if (!user?.branchId && session.user.role !== 'ADMIN') {
+    // For non-Call Center users, they must have a branch assigned
+    if (!isCallCenterAgent && !user?.branchId && session.user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'No branch assigned' }, { status: 400 });
     }
 
@@ -39,8 +49,8 @@ export async function GET(request: NextRequest) {
       }
     };
 
-    // For non-admin users, filter by branch
-    if (user?.branchId) {
+    // For non-admin and non-Call Center users, filter by branch
+    if (!isCallCenterAgent && user?.branchId) {
       if (source === 'internal') {
         // Claims from own branch
         where.AND = [
@@ -58,6 +68,7 @@ export async function GET(request: NextRequest) {
         where.branchId = user.branchId;
       }
     }
+    // Call Center agents see all ATM claims regardless of branch
 
     if (status) {
       where.status = status;
@@ -111,21 +122,98 @@ export async function GET(request: NextRequest) {
       prisma.ticket.count({ where })
     ]);
 
-    // Get summary statistics
+    // Get overall statistics for the branch (not filtered by tab/source)
+    const baseWhereForStats: any = {
+      service: {
+        name: { contains: 'ATM Claim' }
+      }
+    };
+    
+    // Only apply branch filter for non-Call Center agents
+    if (!isCallCenterAgent && user?.branchId) {
+      baseWhereForStats.branchId = user.branchId;
+    }
+
+    // Calculate statistics separately for each context
+    const [
+      totalClaims,
+      internalClaims,
+      externalClaims,
+      allPendingVerifications,
+      internalPendingVerifications,
+      externalPendingVerifications
+    ] = await Promise.all([
+      // Total claims for the branch
+      prisma.ticket.count({ where: baseWhereForStats }),
+      
+      // Internal claims (from same branch)
+      !isCallCenterAgent && user?.branchId ? prisma.ticket.count({
+        where: {
+          ...baseWhereForStats,
+          createdBy: { branchId: user.branchId }
+        }
+      }) : isCallCenterAgent ? prisma.ticket.count({
+        where: baseWhereForStats
+      }) : 0,
+      
+      // External claims (from other branches)
+      !isCallCenterAgent && user?.branchId ? prisma.ticket.count({
+        where: {
+          ...baseWhereForStats,
+          createdBy: { branchId: { not: user.branchId } }
+        }
+      }) : 0,
+      
+      // All pending verifications
+      prisma.ticket.count({
+        where: {
+          ...baseWhereForStats,
+          OR: [
+            { atmClaimVerification: null },
+            { atmClaimVerification: { verifiedAt: null } }
+          ]
+        }
+      }),
+      
+      // Internal pending verifications
+      user?.branchId ? prisma.ticket.count({
+        where: {
+          ...baseWhereForStats,
+          createdBy: { branchId: user.branchId },
+          OR: [
+            { atmClaimVerification: null },
+            { atmClaimVerification: { verifiedAt: null } }
+          ]
+        }
+      }) : 0,
+      
+      // External pending verifications
+      user?.branchId ? prisma.ticket.count({
+        where: {
+          ...baseWhereForStats,
+          createdBy: { branchId: { not: user.branchId } },
+          OR: [
+            { atmClaimVerification: null },
+            { atmClaimVerification: { verifiedAt: null } }
+          ]
+        }
+      }) : 0
+    ]);
+
+    // Get status breakdown
     const stats = await prisma.ticket.groupBy({
       by: ['status'],
-      where: user?.branchId ? { branchId: user.branchId } : {},
+      where: baseWhereForStats,
       _count: true
     });
 
-    const pendingVerifications = await prisma.ticket.count({
-      where: {
-        ...where,
-        atmClaimVerification: {
-          verifiedAt: null
-        }
-      }
-    });
+    // Determine which pending verification count to return based on current filter
+    let pendingVerificationsForTab = allPendingVerifications;
+    if (source === 'internal') {
+      pendingVerificationsForTab = internalPendingVerifications;
+    } else if (source === 'external') {
+      pendingVerificationsForTab = externalPendingVerifications;
+    }
 
     return NextResponse.json({
       claims,
@@ -136,15 +224,25 @@ export async function GET(request: NextRequest) {
         pages: Math.ceil(total / limit)
       },
       statistics: {
-        total,
+        total: totalClaims,
         byStatus: stats,
-        pendingVerifications,
-        fromOtherBranches: user?.branchId ? await prisma.ticket.count({
-          where: {
-            branchId: user.branchId,
-            createdBy: { branchId: { not: user.branchId } }
+        pendingVerifications: pendingVerificationsForTab,
+        fromOtherBranches: externalClaims,
+        // Additional breakdown for UI
+        breakdown: {
+          internal: {
+            total: internalClaims,
+            pendingVerifications: internalPendingVerifications
+          },
+          external: {
+            total: externalClaims,
+            pendingVerifications: externalPendingVerifications
+          },
+          all: {
+            total: totalClaims,
+            pendingVerifications: allPendingVerifications
           }
-        }) : 0
+        }
       }
     });
   } catch (error) {
@@ -195,16 +293,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'ATM Claim service not configured' }, { status: 400 });
     }
 
-    // Generate ticket number
-    const today = new Date();
-    const ticketCount = await prisma.ticket.count({
+    // Generate ticket number - use standard format TKT-YYYY-000000
+    const currentYear = new Date().getFullYear();
+    const yearStart = new Date(currentYear, 0, 1);
+    const yearEnd = new Date(currentYear + 1, 0, 1);
+    
+    const yearTicketCount = await prisma.ticket.count({
       where: {
         createdAt: {
-          gte: new Date(today.setHours(0, 0, 0, 0))
+          gte: yearStart,
+          lt: yearEnd
         }
       }
     });
-    const ticketNumber = `CLM-${today.toISOString().slice(0, 10).replace(/-/g, '')}-${String(ticketCount + 1).padStart(4, '0')}`;
+    
+    const ticketNumber = `TKT-${currentYear}-${String(yearTicketCount + 1).padStart(6, '0')}`;
 
     // Create ticket
     const ticket = await prisma.ticket.create({

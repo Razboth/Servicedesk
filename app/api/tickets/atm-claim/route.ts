@@ -15,9 +15,10 @@ export async function POST(request: NextRequest) {
       return createApiErrorResponse('Insufficient permissions to create ATM claim tickets', 403)
     }
 
-    // Get the user who created the API key
+    // Get the user linked to the API key (or the creator if no linked user)
+    const userId = authResult.apiKey!.linkedUserId || authResult.apiKey!.createdById
     const apiKeyUser = await prisma.user.findUnique({
-      where: { id: authResult.apiKey!.createdById },
+      where: { id: userId },
       include: { branch: true }
     })
 
@@ -85,29 +86,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Find the system user for the ATM's branch
-    const systemUsername = `system_${atm.branch.code.toLowerCase()}`
-    const branchSystemUser = await prisma.user.findFirst({
-      where: {
-        username: systemUsername,
-        branch: { id: atm.branch.id }
-      }
-    })
+    // Use the API key linked user directly (no need for system user fallback)
+    const ticketCreator = apiKeyUser
 
-    // Use branch system user if available, otherwise fall back to API key creator
-    const ticketCreator = branchSystemUser || apiKeyUser
-
-    // Generate ticket number
-    const today = new Date()
-    const ticketCount = await prisma.ticket.count({
+    // Generate ticket number - use standard format TKT-YYYY-000000
+    const currentYear = new Date().getFullYear()
+    const yearStart = new Date(currentYear, 0, 1)
+    const yearEnd = new Date(currentYear + 1, 0, 1)
+    
+    const yearTicketCount = await prisma.ticket.count({
       where: {
         createdAt: {
-          gte: new Date(today.setHours(0, 0, 0, 0)),
-          lt: new Date(today.setHours(23, 59, 59, 999))
+          gte: yearStart,
+          lt: yearEnd
         }
       }
     })
-    const ticketNumber = `TKT-${today.toISOString().slice(0, 10).replace(/-/g, '')}-${String(ticketCount + 1).padStart(4, '0')}`
+    
+    const ticketNumber = `TKT-${currentYear}-${String(yearTicketCount + 1).padStart(6, '0')}`
 
     // Auto-populate location and branch fields
     const enrichedBody = {
@@ -173,7 +169,7 @@ ${body.transaction_ref ? `- No. Referensi: ${body.transaction_ref}` : ''}
           categoryId: service.categoryId!,
           priority: service.priority,
           status: initialStatus,
-          createdById: ticketCreator.id, // Use branch system user
+          createdById: ticketCreator.id, // Use API key linked user
           branchId: atm.branchId, // Route to ATM owner branch
           supportGroupId: service.supportGroupId,
           isConfidential: false,
