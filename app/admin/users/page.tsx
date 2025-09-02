@@ -179,7 +179,7 @@ export default function AdminUsersPage() {
       }
       
       const data = await response.json();
-      setBranches(data);
+      setBranches(Array.isArray(data) ? data : data.branches || []);
     } catch (error) {
       console.error('Error fetching branches:', error);
       toast.error('Failed to load branches');
@@ -202,7 +202,7 @@ export default function AdminUsersPage() {
       }
       
       const data = await response.json();
-      setSupportGroups(data);
+      setSupportGroups(Array.isArray(data) ? data : data.supportGroups || []);
     } catch (error) {
       console.error('Error fetching support groups:', error);
       toast.error('Failed to load support groups');

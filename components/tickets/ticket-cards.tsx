@@ -1,12 +1,20 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { toast } from 'sonner'
 import {
   Clock,
@@ -22,7 +30,10 @@ import {
   ChevronRight,
   Tag,
   Layers,
-  UserPlus
+  UserPlus,
+  Search,
+  Filter,
+  X
 } from 'lucide-react'
 import { format, formatDistanceToNow } from 'date-fns'
 
@@ -139,6 +150,10 @@ export function TicketCards({ ticketFilter, onRefresh, showClaimButton = false }
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [claimingTickets, setClaimingTickets] = useState<Set<string>>(new Set())
+  const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [priorityFilter, setPriorityFilter] = useState<string>('all')
+  const [branchFilter, setBranchFilter] = useState<string>('all')
 
   useEffect(() => {
     loadTickets()
@@ -152,7 +167,7 @@ export function TicketCards({ ticketFilter, onRefresh, showClaimButton = false }
       if (ticketFilter) {
         params.append('filter', ticketFilter)
       }
-      params.append('limit', '50')
+      params.append('limit', '100')
       
       const response = await fetch(`/api/tickets?${params}`)
       if (response.ok) {
@@ -164,6 +179,59 @@ export function TicketCards({ ticketFilter, onRefresh, showClaimButton = false }
     } finally {
       setIsLoading(false)
     }
+  }
+
+  // Filter tickets based on search and filters
+  const filteredTickets = useMemo(() => {
+    return tickets.filter(ticket => {
+      // Search filter
+      const searchLower = searchQuery.toLowerCase()
+      const matchesSearch = !searchQuery || 
+        ticket.title.toLowerCase().includes(searchLower) ||
+        ticket.ticketNumber.toLowerCase().includes(searchLower) ||
+        ticket.description?.toLowerCase().includes(searchLower) ||
+        ticket.service.name.toLowerCase().includes(searchLower) ||
+        ticket.service.category.name.toLowerCase().includes(searchLower)
+      
+      // Status filter
+      const matchesStatus = statusFilter === 'all' || ticket.status === statusFilter
+      
+      // Priority filter
+      const matchesPriority = priorityFilter === 'all' || ticket.priority === priorityFilter
+      
+      // Branch filter
+      const matchesBranch = branchFilter === 'all' || ticket.branch?.code === branchFilter
+      
+      return matchesSearch && matchesStatus && matchesPriority && matchesBranch
+    })
+  }, [tickets, searchQuery, statusFilter, priorityFilter, branchFilter])
+
+  // Get unique values for filters
+  const uniqueStatuses = useMemo(() => {
+    const statuses = new Set(tickets.map(t => t.status))
+    return Array.from(statuses).sort()
+  }, [tickets])
+
+  const uniquePriorities = useMemo(() => {
+    const priorities = new Set(tickets.map(t => t.priority))
+    return Array.from(priorities).sort()
+  }, [tickets])
+
+  const uniqueBranches = useMemo(() => {
+    const branches = new Map<string, string>()
+    tickets.forEach(t => {
+      if (t.branch) {
+        branches.set(t.branch.code, `${t.branch.code} - ${t.branch.name}`)
+      }
+    })
+    return Array.from(branches.entries()).sort((a, b) => a[0].localeCompare(b[0]))
+  }, [tickets])
+
+  const clearFilters = () => {
+    setSearchQuery('')
+    setStatusFilter('all')
+    setPriorityFilter('all')
+    setBranchFilter('all')
   }
 
   const handleCardClick = (ticketId: string) => {
@@ -231,7 +299,9 @@ export function TicketCards({ ticketFilter, onRefresh, showClaimButton = false }
     )
   }
 
-  if (tickets.length === 0) {
+  const hasActiveFilters = searchQuery || statusFilter !== 'all' || priorityFilter !== 'all' || branchFilter !== 'all'
+
+  if (tickets.length === 0 && !isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
         <div className="text-gray-400 mb-4">
@@ -250,8 +320,125 @@ export function TicketCards({ ticketFilter, onRefresh, showClaimButton = false }
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-      {tickets.map((ticket) => (
+    <div className="space-y-4">
+      {/* Search and Filter Bar */}
+      <div className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm rounded-lg p-4 shadow-lg space-y-3">
+        {/* Search Input */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            type="text"
+            placeholder="Search tickets by title, number, or description..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 pr-10"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
+        {/* Filters Row */}
+        <div className="flex flex-wrap gap-2">
+          {/* Status Filter */}
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="All Statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              {uniqueStatuses.map(status => (
+                <SelectItem key={status} value={status}>
+                  <div className="flex items-center gap-2">
+                    {getStatusIcon(status)}
+                    <span>{status.replace(/_/g, ' ')}</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Priority Filter */}
+          <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="All Priorities" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Priorities</SelectItem>
+              {uniquePriorities.map(priority => (
+                <SelectItem key={priority} value={priority}>
+                  <Badge className={getPriorityColor(priority)}>
+                    {priority}
+                  </Badge>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Branch Filter */}
+          {uniqueBranches.length > 0 && (
+            <Select value={branchFilter} onValueChange={setBranchFilter}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="All Branches" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Branches</SelectItem>
+                {uniqueBranches.map(([code, label]) => (
+                  <SelectItem key={code} value={code}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          {/* Clear Filters Button */}
+          {hasActiveFilters && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={clearFilters}
+              className="ml-auto"
+            >
+              <X className="h-4 w-4 mr-1" />
+              Clear Filters
+            </Button>
+          )}
+        </div>
+
+        {/* Results Count */}
+        <div className="text-sm text-gray-600 dark:text-gray-400">
+          Showing {filteredTickets.length} of {tickets.length} tickets
+          {hasActiveFilters && ' (filtered)'}
+        </div>
+      </div>
+
+      {/* No Results Message */}
+      {filteredTickets.length === 0 && !isLoading && (
+        <div className="flex flex-col items-center justify-center py-12 bg-white/[0.7] dark:bg-gray-800/[0.7] rounded-lg">
+          <div className="text-gray-400 mb-4">
+            <Search className="h-12 w-12" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+            No tickets match your filters
+          </h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+            Try adjusting your search or filters
+          </p>
+          <Button variant="outline" size="sm" onClick={clearFilters}>
+            Clear Filters
+          </Button>
+        </div>
+      )}
+
+      {/* Tickets Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {filteredTickets.map((ticket) => (
         <Card
           key={ticket.id}
           className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group"
@@ -354,8 +541,9 @@ export function TicketCards({ ticketFilter, onRefresh, showClaimButton = false }
               </Button>
             </div>
           </CardContent>
-        </Card>
-      ))}
+          </Card>
+        ))}
+      </div>
     </div>
   )
 }
