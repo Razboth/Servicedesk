@@ -228,7 +228,8 @@ export default function AdminUsersPage() {
       }
 
       const data = await response.json();
-      setUsers(data.users || data);
+      // Ensure data is always an array
+      setUsers(Array.isArray(data) ? data : (data.users || []));
     } catch (error) {
       console.error('Error fetching users:', error);
       toast.error('Failed to load users');

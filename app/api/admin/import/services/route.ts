@@ -85,6 +85,17 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
+        // Helper function to parse boolean values from various formats
+        const parseBoolean = (value: any): boolean => {
+          if (typeof value === 'boolean') return value;
+          if (typeof value === 'string') {
+            const lowercased = value.toLowerCase().trim();
+            return lowercased === 'true' || lowercased === '1' || lowercased === 'yes';
+          }
+          if (typeof value === 'number') return value === 1;
+          return false;
+        };
+
         // Convert string booleans to actual booleans
         const serviceData = {
           name: row.name?.trim(),
@@ -93,7 +104,10 @@ export async function POST(request: NextRequest) {
           slaHours: row.slaHours ? parseInt(row.slaHours) : 24,
           responseHours: row.responseHours ? parseInt(row.responseHours) : 4,
           resolutionHours: row.resolutionHours ? parseInt(row.resolutionHours) : 24,
-          requiresApproval: row.requiresApproval === 'true',
+          requiresApproval: parseBoolean(row.requiresApproval),
+          isActive: row.isActive !== undefined ? parseBoolean(row.isActive) : true,
+          isConfidential: row.isConfidential !== undefined ? parseBoolean(row.isConfidential) : false,
+          isKasdaService: row.isKasdaService !== undefined ? parseBoolean(row.isKasdaService) : false,
           defaultTitle: row.defaultTitle?.trim() || null,
           defaultItilCategory: row.defaultItilCategory || 'INCIDENT',
           defaultIssueClassification: row.defaultIssueClassification || null,
