@@ -200,3 +200,6 @@ Required environment variables (see `.env.example`):
 - Test changes across different user roles to ensure proper access control
 - Verify SLA calculations when modifying ticket workflows
 - Ensure audit logs are created for sensitive operations
+- always rebuild and restart after every commit
+- always commit every changes also rebuild and restart
+- always commit every changes also rebuild and restart

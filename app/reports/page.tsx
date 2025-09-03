@@ -57,6 +57,27 @@ interface Report {
 
 // Standard pre-built reports
 const standardReports: Report[] = [
+  // Essential Reports - NEW
+  {
+    title: 'All Tickets Master Report',
+    description: 'Comprehensive view of all tickets with advanced filtering and export',
+    href: '/reports/tickets/all-tickets',
+    icon: FileText,
+    type: 'standard',
+    roles: ['TECHNICIAN', 'MANAGER', 'ADMIN'],
+    badge: 'Essential',
+    lastRun: 'Live'
+  },
+  {
+    title: 'Daily Operations Report',
+    description: 'Real-time operational snapshot with critical incidents and technician workload',
+    href: '/reports/operations/daily',
+    icon: Activity,
+    type: 'standard',
+    roles: ['TECHNICIAN', 'MANAGER', 'ADMIN'],
+    badge: 'Daily',
+    lastRun: 'Live'
+  },
   // Technician Reports
   {
     title: 'My Performance Dashboard',
