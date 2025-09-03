@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Mask the API keys for security
-    const sanitizedKeys = apiKeys.map(key => ({
+    const sanitizedKeys = apiKeys.map((key: any) => ({
       id: key.id,
       name: key.name,
       key: maskApiKey(key.key), // Mask the key for display

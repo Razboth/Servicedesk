@@ -64,6 +64,7 @@ export default function BranchATMClaimsPage() {
   const [claims, setClaims] = useState<ATMClaim[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
+  const [claimType, setClaimType] = useState('atm'); // 'atm', 'payment', 'purchase'
   const [searchTerm, setSearchTerm] = useState('');
   const [statistics, setStatistics] = useState<any>({
     total: 0,
@@ -75,12 +76,19 @@ export default function BranchATMClaimsPage() {
       external: { total: 0, pendingVerifications: 0 }
     }
   });
+  
+  // Check if user is Call Center agent (USER or TECHNICIAN role with CALL_CENTER support group)
+  const isCallCenterAgent = (session?.user?.role === 'USER' || session?.user?.role === 'TECHNICIAN') && 
+                            session?.user?.supportGroupCode === 'CALL_CENTER';
 
   const fetchClaims = async () => {
     try {
       const params = new URLSearchParams();
       if (activeTab !== 'all') {
         params.append('source', activeTab);
+      }
+      if (claimType !== 'atm') {
+        params.append('claimType', claimType);
       }
       if (searchTerm) {
         params.append('search', searchTerm);
@@ -104,7 +112,7 @@ export default function BranchATMClaimsPage() {
 
   useEffect(() => {
     fetchClaims();
-  }, [activeTab, searchTerm]);
+  }, [activeTab, claimType, searchTerm]);
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -150,8 +158,19 @@ export default function BranchATMClaimsPage() {
     <div className="container mx-auto py-6">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold">ATM Claims Management</h1>
-          <p className="text-gray-600">Manage and verify ATM claims for your branch</p>
+          <h1 className="text-3xl font-bold">
+            {isCallCenterAgent ? 'Transaction Claims Management' : 
+             claimType === 'payment' ? 'Payment Claims Management' :
+             claimType === 'purchase' ? 'Purchase Claims Management' :
+             'ATM Claims Management'}
+          </h1>
+          <p className="text-gray-600">
+            {isCallCenterAgent 
+              ? 'View and manage all transaction claims across all branches'
+              : claimType === 'payment' ? 'Manage and verify payment claims for your branch'
+              : claimType === 'purchase' ? 'Manage and verify purchase claims for your branch'
+              : 'Manage and verify ATM claims for your branch'}
+          </p>
         </div>
         <Button
           onClick={() => router.push('/branch/atm-claims/create')}
@@ -254,11 +273,20 @@ export default function BranchATMClaimsPage() {
         </Button>
       </div>
 
-      {/* Claims Tabs */}
+      {/* Claim Type Tabs */}
+      <Tabs value={claimType} onValueChange={setClaimType} className="mb-6">
+        <TabsList>
+          <TabsTrigger value="atm">ATM Claims</TabsTrigger>
+          <TabsTrigger value="payment">Payment</TabsTrigger>
+          <TabsTrigger value="purchase">Purchase</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      {/* Source Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="mb-4">
-          <TabsTrigger value="all">All Claims</TabsTrigger>
-          <TabsTrigger value="internal">Internal Claims</TabsTrigger>
+          <TabsTrigger value="all">All</TabsTrigger>
+          <TabsTrigger value="internal">Internal</TabsTrigger>
           <TabsTrigger value="external">From Other Branches</TabsTrigger>
         </TabsList>
 

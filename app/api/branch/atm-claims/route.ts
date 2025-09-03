@@ -22,16 +22,29 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // Check if user is a Call Center technician
-    const isCallCenterAgent = session.user.role === 'TECHNICIAN' && user?.supportGroup?.code === 'CALL_CENTER';
+    // Check if user is a Call Center agent (USER or TECHNICIAN role with CALL_CENTER support group)
+    const isCallCenterAgent = (session.user.role === 'USER' || session.user.role === 'TECHNICIAN') && user?.supportGroup?.code === 'CALL_CENTER';
+    
+    // Check if user is a Transaction Claims Support technician
+    const isTransactionClaimsSupport = session.user.role === 'TECHNICIAN' && user?.supportGroup?.code === 'TRANSACTION_CLAIMS_SUPPORT';
+    
+    // Debug logging
+    console.log('[ATM-CLAIMS API] User access check:', {
+      userId: session.user.id,
+      role: session.user.role,
+      supportGroupCode: user?.supportGroup?.code,
+      isCallCenterAgent,
+      isTransactionClaimsSupport,
+      hasBranch: !!user?.branchId
+    });
 
     // Check if user has access
     if (!['MANAGER', 'ADMIN', 'USER', 'AGENT', 'TECHNICIAN'].includes(session.user.role)) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    // For non-Call Center users, they must have a branch assigned
-    if (!isCallCenterAgent && !user?.branchId && session.user.role !== 'ADMIN') {
+    // For non-Call Center and non-Transaction Claims Support users, they must have a branch assigned
+    if (!isCallCenterAgent && !isTransactionClaimsSupport && !user?.branchId && session.user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'No branch assigned' }, { status: 400 });
     }
 
@@ -39,18 +52,119 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
     const priority = searchParams.get('priority');
     const source = searchParams.get('source'); // 'internal' or 'external'
+    const claimType = searchParams.get('claimType'); // 'atm', 'payment', 'purchase'
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
 
     // Build query based on user's role and branch
-    const where: any = {
-      service: {
-        name: { contains: 'ATM Claim' }
+    const where: any = {};
+    
+    // Call Center and Transaction Claims Support see all transaction-related claims
+    if (isCallCenterAgent || isTransactionClaimsSupport) {
+      // Use category-based filtering instead of name-based
+      const TRANSACTION_CLAIMS_CATEGORY_ID = 'cmekrqi45001qhluspcsta20x';
+      const ATM_SERVICES_CATEGORY_ID = 'cmekrqi3t001ghlusklheksqz';
+      
+      // Filter based on claim type
+      if (claimType === 'payment') {
+        // Show only payment-related claims from Transaction Claims category
+        where.AND = [
+          {
+            OR: [
+              { categoryId: TRANSACTION_CLAIMS_CATEGORY_ID },
+              { service: { tier1CategoryId: TRANSACTION_CLAIMS_CATEGORY_ID } }
+            ]
+          },
+          {
+            OR: [
+              { service: { name: { contains: 'Payment', mode: 'insensitive' } } },
+              { service: { name: { contains: 'Pembayaran', mode: 'insensitive' } } },
+              { title: { contains: 'payment', mode: 'insensitive' } },
+              { title: { contains: 'pembayaran', mode: 'insensitive' } }
+            ]
+          }
+        ];
+      } else if (claimType === 'purchase') {
+        // Show only purchase-related claims from Transaction Claims category
+        where.AND = [
+          {
+            OR: [
+              { categoryId: TRANSACTION_CLAIMS_CATEGORY_ID },
+              { service: { tier1CategoryId: TRANSACTION_CLAIMS_CATEGORY_ID } }
+            ]
+          },
+          {
+            OR: [
+              { service: { name: { contains: 'Purchase', mode: 'insensitive' } } },
+              { service: { name: { contains: 'Pembelian', mode: 'insensitive' } } },
+              { title: { contains: 'purchase', mode: 'insensitive' } },
+              { title: { contains: 'pembelian', mode: 'insensitive' } }
+            ]
+          }
+        ];
+      } else {
+        // Default: show all transaction claims
+        where.OR = [
+          // All tickets in Transaction Claims category
+          { categoryId: TRANSACTION_CLAIMS_CATEGORY_ID },
+          // Also check service's tier1CategoryId
+          { service: { tier1CategoryId: TRANSACTION_CLAIMS_CATEGORY_ID } },
+          // Include ATM Services category
+          { categoryId: ATM_SERVICES_CATEGORY_ID },
+          { service: { tier1CategoryId: ATM_SERVICES_CATEGORY_ID } }
+        ];
       }
-    };
+      console.log('[ATM-CLAIMS API] Call Center/Transaction Claims Support - showing', claimType || 'all', 'claims');
+    } else {
+      // Regular users filter by claim type
+      if (claimType === 'payment') {
+        // Show payment-related claims for the branch
+        const TRANSACTION_CLAIMS_CATEGORY_ID = 'cmekrqi45001qhluspcsta20x';
+        where.AND = [
+          {
+            OR: [
+              { categoryId: TRANSACTION_CLAIMS_CATEGORY_ID },
+              { service: { tier1CategoryId: TRANSACTION_CLAIMS_CATEGORY_ID } }
+            ]
+          },
+          {
+            OR: [
+              { service: { name: { contains: 'Payment', mode: 'insensitive' } } },
+              { service: { name: { contains: 'Pembayaran', mode: 'insensitive' } } },
+              { title: { contains: 'payment', mode: 'insensitive' } },
+              { title: { contains: 'pembayaran', mode: 'insensitive' } }
+            ]
+          }
+        ];
+      } else if (claimType === 'purchase') {
+        // Show purchase-related claims for the branch
+        const TRANSACTION_CLAIMS_CATEGORY_ID = 'cmekrqi45001qhluspcsta20x';
+        where.AND = [
+          {
+            OR: [
+              { categoryId: TRANSACTION_CLAIMS_CATEGORY_ID },
+              { service: { tier1CategoryId: TRANSACTION_CLAIMS_CATEGORY_ID } }
+            ]
+          },
+          {
+            OR: [
+              { service: { name: { contains: 'Purchase', mode: 'insensitive' } } },
+              { service: { name: { contains: 'Pembelian', mode: 'insensitive' } } },
+              { title: { contains: 'purchase', mode: 'insensitive' } },
+              { title: { contains: 'pembelian', mode: 'insensitive' } }
+            ]
+          }
+        ];
+      } else {
+        // Default: show ATM Claims only
+        where.service = {
+          name: { contains: 'ATM Claim' }
+        };
+      }
+    }
 
-    // For non-admin and non-Call Center users, filter by branch
-    if (!isCallCenterAgent && user?.branchId) {
+    // For non-admin, non-Call Center, and non-Transaction Claims Support users, filter by branch
+    if (!isCallCenterAgent && !isTransactionClaimsSupport && user?.branchId) {
       if (source === 'internal') {
         // Claims from own branch
         where.AND = [
@@ -68,7 +182,7 @@ export async function GET(request: NextRequest) {
         where.branchId = user.branchId;
       }
     }
-    // Call Center agents see all ATM claims regardless of branch
+    // Call Center and Transaction Claims Support agents see all ATM claims regardless of branch
 
     if (status) {
       where.status = status;
@@ -83,7 +197,19 @@ export async function GET(request: NextRequest) {
       prisma.ticket.findMany({
         where,
         include: {
-          service: { select: { name: true, requiresApproval: true } },
+          service: { 
+            select: { 
+              name: true, 
+              requiresApproval: true,
+              tier1CategoryId: true,
+              tier1Category: {
+                select: { name: true }
+              },
+              category: {
+                select: { name: true }
+              }
+            } 
+          },
           branch: { select: { name: true, code: true } },
           createdBy: {
             select: {
@@ -123,14 +249,107 @@ export async function GET(request: NextRequest) {
     ]);
 
     // Get overall statistics for the branch (not filtered by tab/source)
-    const baseWhereForStats: any = {
-      service: {
-        name: { contains: 'ATM Claim' }
-      }
-    };
+    const baseWhereForStats: any = {};
     
-    // Only apply branch filter for non-Call Center agents
-    if (!isCallCenterAgent && user?.branchId) {
+    // Apply same service filter as main query for statistics
+    if (isCallCenterAgent || isTransactionClaimsSupport) {
+      // Use category-based filtering for statistics too
+      const TRANSACTION_CLAIMS_CATEGORY_ID = 'cmekrqi45001qhluspcsta20x';
+      const ATM_SERVICES_CATEGORY_ID = 'cmekrqi3t001ghlusklheksqz';
+      
+      // Apply same claim type filter for stats
+      if (claimType === 'payment') {
+        baseWhereForStats.AND = [
+          {
+            OR: [
+              { categoryId: TRANSACTION_CLAIMS_CATEGORY_ID },
+              { service: { tier1CategoryId: TRANSACTION_CLAIMS_CATEGORY_ID } }
+            ]
+          },
+          {
+            OR: [
+              { service: { name: { contains: 'Payment', mode: 'insensitive' } } },
+              { service: { name: { contains: 'Pembayaran', mode: 'insensitive' } } },
+              { title: { contains: 'payment', mode: 'insensitive' } },
+              { title: { contains: 'pembayaran', mode: 'insensitive' } }
+            ]
+          }
+        ];
+      } else if (claimType === 'purchase') {
+        baseWhereForStats.AND = [
+          {
+            OR: [
+              { categoryId: TRANSACTION_CLAIMS_CATEGORY_ID },
+              { service: { tier1CategoryId: TRANSACTION_CLAIMS_CATEGORY_ID } }
+            ]
+          },
+          {
+            OR: [
+              { service: { name: { contains: 'Purchase', mode: 'insensitive' } } },
+              { service: { name: { contains: 'Pembelian', mode: 'insensitive' } } },
+              { title: { contains: 'purchase', mode: 'insensitive' } },
+              { title: { contains: 'pembelian', mode: 'insensitive' } }
+            ]
+          }
+        ];
+      } else {
+        baseWhereForStats.OR = [
+          // All tickets in Transaction Claims category
+          { categoryId: TRANSACTION_CLAIMS_CATEGORY_ID },
+          // Also check service's tier1CategoryId
+          { service: { tier1CategoryId: TRANSACTION_CLAIMS_CATEGORY_ID } },
+          // Include ATM Services category
+          { categoryId: ATM_SERVICES_CATEGORY_ID },
+          { service: { tier1CategoryId: ATM_SERVICES_CATEGORY_ID } }
+        ];
+      }
+    } else {
+      // Regular users stats filter by claim type
+      if (claimType === 'payment') {
+        const TRANSACTION_CLAIMS_CATEGORY_ID = 'cmekrqi45001qhluspcsta20x';
+        baseWhereForStats.AND = [
+          {
+            OR: [
+              { categoryId: TRANSACTION_CLAIMS_CATEGORY_ID },
+              { service: { tier1CategoryId: TRANSACTION_CLAIMS_CATEGORY_ID } }
+            ]
+          },
+          {
+            OR: [
+              { service: { name: { contains: 'Payment', mode: 'insensitive' } } },
+              { service: { name: { contains: 'Pembayaran', mode: 'insensitive' } } },
+              { title: { contains: 'payment', mode: 'insensitive' } },
+              { title: { contains: 'pembayaran', mode: 'insensitive' } }
+            ]
+          }
+        ];
+      } else if (claimType === 'purchase') {
+        const TRANSACTION_CLAIMS_CATEGORY_ID = 'cmekrqi45001qhluspcsta20x';
+        baseWhereForStats.AND = [
+          {
+            OR: [
+              { categoryId: TRANSACTION_CLAIMS_CATEGORY_ID },
+              { service: { tier1CategoryId: TRANSACTION_CLAIMS_CATEGORY_ID } }
+            ]
+          },
+          {
+            OR: [
+              { service: { name: { contains: 'Purchase', mode: 'insensitive' } } },
+              { service: { name: { contains: 'Pembelian', mode: 'insensitive' } } },
+              { title: { contains: 'purchase', mode: 'insensitive' } },
+              { title: { contains: 'pembelian', mode: 'insensitive' } }
+            ]
+          }
+        ];
+      } else {
+        baseWhereForStats.service = {
+          name: { contains: 'ATM Claim' }
+        };
+      }
+    }
+    
+    // Only apply branch filter for non-Call Center and non-Transaction Claims Support agents
+    if (!isCallCenterAgent && !isTransactionClaimsSupport && user?.branchId) {
       baseWhereForStats.branchId = user.branchId;
     }
 
@@ -147,17 +366,17 @@ export async function GET(request: NextRequest) {
       prisma.ticket.count({ where: baseWhereForStats }),
       
       // Internal claims (from same branch)
-      !isCallCenterAgent && user?.branchId ? prisma.ticket.count({
+      !isCallCenterAgent && !isTransactionClaimsSupport && user?.branchId ? prisma.ticket.count({
         where: {
           ...baseWhereForStats,
           createdBy: { branchId: user.branchId }
         }
-      }) : isCallCenterAgent ? prisma.ticket.count({
+      }) : (isCallCenterAgent || isTransactionClaimsSupport) ? prisma.ticket.count({
         where: baseWhereForStats
       }) : 0,
       
       // External claims (from other branches)
-      !isCallCenterAgent && user?.branchId ? prisma.ticket.count({
+      !isCallCenterAgent && !isTransactionClaimsSupport && user?.branchId ? prisma.ticket.count({
         where: {
           ...baseWhereForStats,
           createdBy: { branchId: { not: user.branchId } }

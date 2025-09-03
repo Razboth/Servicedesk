@@ -172,6 +172,7 @@ export default function TicketDetailPage() {
   const [selectedResolutionStatus, setSelectedResolutionStatus] = useState<string>('RESOLVED');
   const [previewAttachment, setPreviewAttachment] = useState<TicketAttachment | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [userSupportGroup, setUserSupportGroup] = useState<{ code?: string; name?: string } | null>(null);
 
   // Helper function to check if file is previewable
   const isPreviewable = (mimeType: string) => {
@@ -220,8 +221,25 @@ export default function TicketDetailPage() {
     if (ticketId) {
       fetchTicket();
       fetchTasks();
+      fetchUserDetails();
     }
   }, [ticketId]);
+
+  const fetchUserDetails = async () => {
+    if (!session?.user?.id) return;
+    
+    try {
+      const response = await fetch('/api/auth/session');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.user?.supportGroup) {
+          setUserSupportGroup(data.user.supportGroup);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching user details:', error);
+    }
+  };
 
   // Poll for approval status changes every 10 seconds if ticket is pending approval
   useEffect(() => {
@@ -402,7 +420,8 @@ export default function TicketDetailPage() {
         },
         body: JSON.stringify({
           content: newComment || 'Attached files',
-          isInternal: false,
+          // Transaction Claims Support group members can only add internal comments
+          isInternal: isTransactionClaimsSupport() ? true : false,
           attachments: uploadedAttachments
         }),
       });
@@ -702,6 +721,11 @@ export default function TicketDetailPage() {
   const canUpdateStatus = () => {
     if (!session?.user?.role || !ticket) return false;
     
+    // Transaction Claims Support group members cannot update status
+    if (session.user.role === 'TECHNICIAN' && userSupportGroup?.code === 'TRANSACTION_CLAIMS_SUPPORT') {
+      return false;
+    }
+    
     // Admin can always update
     if (session.user.role === 'ADMIN') return true;
     
@@ -714,7 +738,27 @@ export default function TicketDetailPage() {
   };
 
   const canModifyTicket = () => {
+    // Transaction Claims Support group members cannot modify tickets
+    if (session?.user?.role === 'TECHNICIAN' && userSupportGroup?.code === 'TRANSACTION_CLAIMS_SUPPORT') {
+      return false;
+    }
     return canUpdateStatus();
+  };
+
+  const canAddComments = () => {
+    if (!session?.user?.role || !ticket) return false;
+    
+    // Transaction Claims Support group members can add internal comments
+    if (session.user.role === 'TECHNICIAN' && userSupportGroup?.code === 'TRANSACTION_CLAIMS_SUPPORT') {
+      return true;
+    }
+    
+    // Other roles with standard comment permissions
+    return true; // Allow comments for all authenticated users
+  };
+
+  const isTransactionClaimsSupport = () => {
+    return session?.user?.role === 'TECHNICIAN' && userSupportGroup?.code === 'TRANSACTION_CLAIMS_SUPPORT';
   };
 
   const canEditBasicInfo = () => {
@@ -764,6 +808,11 @@ export default function TicketDetailPage() {
   const canClaimTicket = () => {
     if (!session?.user?.role || !ticket) return false;
     
+    // Transaction Claims Support group members cannot claim tickets
+    if (session.user.role === 'TECHNICIAN' && userSupportGroup?.code === 'TRANSACTION_CLAIMS_SUPPORT') {
+      return false;
+    }
+    
     // Only technicians can claim tickets
     if (!['TECHNICIAN', 'SECURITY_ANALYST', 'ADMIN'].includes(session.user.role)) return false;
     
@@ -789,6 +838,11 @@ export default function TicketDetailPage() {
 
   const canReleaseTicket = () => {
     if (!session?.user?.role || !ticket) return false;
+    
+    // Transaction Claims Support group members cannot release tickets
+    if (session.user.role === 'TECHNICIAN' && userSupportGroup?.code === 'TRANSACTION_CLAIMS_SUPPORT') {
+      return false;
+    }
     
     // Admin can always release
     if (session.user.role === 'ADMIN') return true;
@@ -887,6 +941,12 @@ export default function TicketDetailPage() {
                   <Badge variant="outline" className="border-orange-300 text-orange-600">
                     <AlertCircle className="h-3 w-3 mr-1" />
                     Unassigned
+                  </Badge>
+                )}
+                {isTransactionClaimsSupport() && (
+                  <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                    <Eye className="h-3 w-3 mr-1" />
+                    Read-Only Access
                   </Badge>
                 )}
               </div>
@@ -1492,8 +1552,16 @@ export default function TicketDetailPage() {
                     )}
                     
                     {/* Add Comment */}
+                    {canAddComments() && (
                     <div className="border-t pt-4">
-                      <Label htmlFor="comment">Add Comment</Label>
+                      <Label htmlFor="comment">
+                        Add Comment
+                        {isTransactionClaimsSupport() && (
+                          <Badge variant="secondary" className="ml-2 text-xs">
+                            Internal Only
+                          </Badge>
+                        )}
+                      </Label>
                       <div className="mt-2">
                         <RichTextEditor
                           content={newComment}
@@ -1582,6 +1650,7 @@ export default function TicketDetailPage() {
                         />
                       </div>
                     </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>

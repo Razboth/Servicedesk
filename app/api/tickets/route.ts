@@ -164,32 +164,38 @@ export async function GET(request: NextRequest) {
       // Check if this is a Call Center technician
       const isCallCenterTech = userWithDetails?.supportGroup?.code === 'CALL_CENTER';
       
+      // Check if this is a Transaction Claims Support technician
+      const isTransactionClaimsSupport = userWithDetails?.supportGroup?.code === 'TRANSACTION_CLAIMS_SUPPORT';
+      
       if (isCallCenterTech) {
-        // Call Center technicians can ONLY see transaction-related claims from all branches
-        // They do NOT see their own non-claim tickets or non-claim tickets assigned to them
-        // ATM Claims are excluded and should be accessed through /branch/atm-claims
-        where.AND = [
-          {
-            // Must be a claim-related ticket - using more specific filters
-            OR: [
-              { service: { name: { contains: 'Claim' } } },
-              { service: { name: { contains: 'claim' } } },
-              { service: { name: { contains: 'Dispute' } } },
-              { service: { name: { contains: 'dispute' } } },
-              // Only include "Transaction" if it also contains "Claim" or "Error"
-              { 
-                AND: [
-                  { service: { name: { contains: 'Transaction' } } },
-                  {
-                    OR: [
-                      { service: { name: { contains: 'Claim' } } },
-                      { service: { name: { contains: 'Error' } } }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
+        // Call Center technicians can see:
+        // 1. Their own created tickets (all types)
+        // 2. ALL tickets in Transaction Claims category
+        const TRANSACTION_CLAIMS_CATEGORY_ID = 'cmekrqi45001qhluspcsta20x';
+        
+        where.OR = [
+          // Their own tickets
+          { createdById: session.user.id },
+          // All tickets in Transaction Claims category
+          { categoryId: TRANSACTION_CLAIMS_CATEGORY_ID },
+          // Also check service's tier1CategoryId
+          { service: { tier1CategoryId: TRANSACTION_CLAIMS_CATEGORY_ID } }
+        ];
+      } else if (isTransactionClaimsSupport) {
+        // Transaction Claims Support group can see ALL transaction-related claims and disputes
+        // Including ATM Claims
+        // They have read-only access with ability to add comments
+        const TRANSACTION_CLAIMS_CATEGORY_ID = 'cmekrqi45001qhluspcsta20x';
+        const ATM_SERVICES_CATEGORY_ID = 'cmekrqi3t001ghlusklheksqz';
+        
+        where.OR = [
+          // All tickets in Transaction Claims category
+          { categoryId: TRANSACTION_CLAIMS_CATEGORY_ID },
+          // Also check service's tier1CategoryId
+          { service: { tier1CategoryId: TRANSACTION_CLAIMS_CATEGORY_ID } },
+          // Include ATM Services category
+          { categoryId: ATM_SERVICES_CATEGORY_ID },
+          { service: { tier1CategoryId: ATM_SERVICES_CATEGORY_ID } }
         ];
       } else {
         // Regular technicians can see:
@@ -266,13 +272,44 @@ export async function GET(request: NextRequest) {
         ];
       }
     } else if (session.user.role === 'USER') {
-      // Branch users (USER role) can see all tickets from their own branch
-      // This includes tickets created by any user in the same branch
-      if (userWithDetails?.branchId) {
-        where.branchId = userWithDetails.branchId;
+      // Check if this is a Call Center user
+      const isCallCenterUser = userWithDetails?.supportGroup?.code === 'CALL_CENTER';
+      
+      // Debug logging for Call Center users
+      if (userWithDetails?.supportGroup?.code) {
+        console.log('[TICKETS API] User support group:', {
+          userId: session.user.id,
+          role: session.user.role,
+          supportGroupCode: userWithDetails.supportGroup.code,
+          supportGroupName: userWithDetails.supportGroup.name,
+          isCallCenterUser
+        });
+      }
+      
+      if (isCallCenterUser) {
+        // Call Center users can see:
+        // 1. Their own created tickets (all types)
+        // 2. ALL tickets in Transaction Claims category (cmekrqi45001qhluspcsta20x)
+        const TRANSACTION_CLAIMS_CATEGORY_ID = 'cmekrqi45001qhluspcsta20x';
+        
+        where.OR = [
+          // Their own tickets
+          { createdById: session.user.id },
+          // All tickets in Transaction Claims category
+          { categoryId: TRANSACTION_CLAIMS_CATEGORY_ID },
+          // Also check service's tier1CategoryId
+          { service: { tier1CategoryId: TRANSACTION_CLAIMS_CATEGORY_ID } }
+        ];
+        console.log('[TICKETS API] Call Center user - applying Transaction Claims category filter');
       } else {
-        // If user has no branch, only show their own tickets
-        where.createdById = session.user.id;
+        // Regular branch users can see all tickets from their own branch
+        // This includes tickets created by any user in the same branch
+        if (userWithDetails?.branchId) {
+          where.branchId = userWithDetails.branchId;
+        } else {
+          // If user has no branch, only show their own tickets
+          where.createdById = session.user.id;
+        }
       }
     }
     // ADMIN sees all tickets (no additional filtering)
@@ -309,34 +346,18 @@ export async function GET(request: NextRequest) {
     // Handle technician workbench filters
     if (filter && ['TECHNICIAN', 'SECURITY_ANALYST'].includes(session.user.role)) {
       // Check if this is a Call Center technician
-      const isCallCenterTech = session.user.role === 'TECHNICIAN' && 
+      const isCallCenterTech = session.user.role === 'TECHNICIAN' &&
                               userWithDetails?.supportGroup?.code === 'CALL_CENTER';
       
+      const isTransactionClaimsSupport = session.user.role === 'TECHNICIAN' &&
+                                        userWithDetails?.supportGroup?.code === 'TRANSACTION_CLAIMS_SUPPORT';
+      
       if (filter === 'my-tickets') {
-        if (isCallCenterTech) {
-          // Call Center: Only show transaction claims assigned to them (excluding ATM Claims)
-          where.AND = [
-            { assignedToId: session.user.id },
-            {
-              OR: [
-                { service: { name: { contains: 'Claim' } } },
-                { service: { name: { contains: 'claim' } } },
-                { service: { name: { contains: 'Dispute' } } },
-                { service: { name: { contains: 'dispute' } } },
-                // Only include "Transaction" if it also contains "Claim" or "Error"
-                { 
-                  AND: [
-                    { service: { name: { contains: 'Transaction' } } },
-                    {
-                      OR: [
-                        { service: { name: { contains: 'Claim' } } },
-                        { service: { name: { contains: 'Error' } } }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            }
+        if (isCallCenterTech || isTransactionClaimsSupport) {
+          // Call Center: Show tickets they created OR assigned to them
+          where.OR = [
+            { createdById: session.user.id },
+            { assignedToId: session.user.id }
           ];
         } else {
           // Regular technicians: Show tickets assigned to or claimed by current user
@@ -345,7 +366,7 @@ export async function GET(request: NextRequest) {
           delete where.OR;
         }
       } else if (filter === 'available-tickets') {
-        if (isCallCenterTech) {
+        if (isCallCenterTech || isTransactionClaimsSupport) {
           // Call Center: Only show unassigned transaction claims (excluding ATM Claims)
           where.AND = [
             { assignedToId: null },
@@ -412,8 +433,8 @@ export async function GET(request: NextRequest) {
         }
         
         // If technician has a support group, also filter by that
-        // BUT skip this for Call Center technicians as they have their own filtering
-        if (userWithDetails?.supportGroupId && !isCallCenterTech) {
+        // BUT skip this for Call Center and Transaction Claims Support technicians as they have their own filtering
+        if (userWithDetails?.supportGroupId && !isCallCenterTech && !isTransactionClaimsSupport) {
           where.service = {
             supportGroupId: userWithDetails.supportGroupId
           };
@@ -537,15 +558,27 @@ export async function GET(request: NextRequest) {
       where.AND = [where.AND];
     }
     
-    where.AND.push({
-      NOT: {
-        service: {
-          name: {
-            contains: 'ATM Claim'
+    // Only exclude ATM Claims for regular users, not for Transaction Claims Support or Call Center
+    const isTransactionClaimsSupportUser = userWithDetails?.supportGroup?.code === 'TRANSACTION_CLAIMS_SUPPORT';
+    const isCallCenterUserForATM = userWithDetails?.supportGroup?.code === 'CALL_CENTER';
+    
+    console.log('[TICKETS API] ATM Claim exclusion check:', {
+      isTransactionClaimsSupportUser,
+      isCallCenterUserForATM,
+      willExcludeATMClaims: !isTransactionClaimsSupportUser && !isCallCenterUserForATM
+    });
+    
+    if (!isTransactionClaimsSupportUser && !isCallCenterUserForATM) {
+      where.AND.push({
+        NOT: {
+          service: {
+            name: {
+              contains: 'ATM Claim'
+            }
           }
         }
-      }
-    });
+      });
+    }
 
     const [tickets, total] = await Promise.all([
       prisma.ticket.findMany({
