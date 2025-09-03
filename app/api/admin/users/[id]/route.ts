@@ -128,6 +128,9 @@ export async function PUT(
     }
 
     // Update user
+    // IMPORTANT: This only updates the user's branch association.
+    // Existing tickets created by this user will remain associated with their original branch.
+    // Tickets store branchId independently and are NOT updated when a user changes branches.
     const updatedUser = await prisma.user.update({
       where: { id },
       data: updateData,

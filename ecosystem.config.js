@@ -4,8 +4,7 @@ module.exports = {
     name: 'bsg-servicedesk',
     
     // Script to start the application with Socket.io support
-    script: 'npm',
-    args: 'run start:https',
+    script: 'server.js',
     
     // Cluster mode for better performance (must use fork for Socket.io)
     instances: 1,
@@ -21,10 +20,10 @@ module.exports = {
     // Environment variables
     env: {
       NODE_ENV: 'production',
-      PORT: 3003,
+      PORT: 3000,
       HOSTNAME: 'localhost',
       USE_HTTPS: 'false',
-      NEXTAUTH_URL: 'http://localhost:3003'
+      NEXTAUTH_URL: 'http://localhost:3000'
     },
     
     // Log configuration

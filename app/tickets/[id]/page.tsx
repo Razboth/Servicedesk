@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/modern-dialog';
 import { ProgressTracker } from '@/components/ui/progress-tracker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Clock, User, MessageSquare, AlertCircle, CheckCircle, CheckCheck, Plus, X, Paperclip, Download, FileText, Eye, Edit, Sparkles, Shield, UserCheck, UserX, Timer, Trash2, Image as ImageIcon, File, MoreVertical } from 'lucide-react';
+import { ArrowLeft, Clock, User, MessageSquare, AlertCircle, CheckCircle, CheckCheck, Plus, X, Paperclip, Download, FileText, Eye, Edit, Sparkles, Shield, UserCheck, UserX, Timer, Trash2, Image as ImageIcon, File, MoreVertical, Building2, Briefcase, UserCircle, Calendar, Hash, MapPin } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { RelatedArticles } from '@/components/knowledge/related-articles';
 import { AttachmentPreview } from '@/components/ui/attachment-preview';
@@ -972,101 +972,6 @@ export default function TicketDetailPage() {
             </div>
           </div>
 
-          {/* Progress Tracker */}
-          <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5" />
-                Ticket Progress
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ProgressTracker 
-                steps={[]} 
-                currentStatus={ticket.status}
-                showTimestamps={true}
-                showUsers={true}
-                variant="vertical"
-                ticketData={{
-                  createdAt: ticket.createdAt,
-                  updatedAt: ticket.updatedAt,
-                  resolvedAt: ticket.resolvedAt,
-                  closedAt: ticket.closedAt,
-                  approvals: ticket.approvals,
-                  createdBy: ticket.createdBy,
-                  assignedTo: ticket.assignedTo,
-                  comments: ticket.comments
-                }}
-              />
-            </CardContent>
-          </Card>
-
-          {/* Approval Status */}
-          {((ticket.approvals && ticket.approvals.length > 0) || ticket.status === 'PENDING_APPROVAL') && (
-            <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5" />
-                  Approval Status
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {ticket.status === 'PENDING_APPROVAL' && (!ticket.approvals || ticket.approvals.length === 0) ? (
-                  <div className="flex items-center gap-3 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <Timer className="h-5 w-5 text-yellow-600" />
-                    <div>
-                      <p className="font-medium text-yellow-800">Waiting for Manager Approval</p>
-                      <p className="text-sm text-yellow-600">Your ticket is pending approval from your branch manager.</p>
-                    </div>
-                  </div>
-                ) : getLatestApproval() ? (
-                  <div className="space-y-4">
-                    {ticket.approvals.map((approval, index) => (
-                      <div key={approval.id} className={`flex items-start gap-3 p-4 rounded-lg border ${
-                        approval.status === 'APPROVED' ? 'bg-green-50 border-green-200' :
-                        approval.status === 'REJECTED' ? 'bg-red-50 border-red-200' :
-                        'bg-yellow-50 border-yellow-200'
-                      }`}>
-                        <div className={`mt-1 ${
-                          approval.status === 'APPROVED' ? 'text-green-600' :
-                          approval.status === 'REJECTED' ? 'text-red-600' :
-                          'text-yellow-600'
-                        }`}>
-                          {getApprovalStatusIcon(approval.status)}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Badge variant={getApprovalStatusBadgeVariant(approval.status)} className="flex items-center gap-1">
-                              {approval.status}
-                            </Badge>
-                            <span className="text-sm text-gray-500">
-                              {formatDistanceToNow(new Date(approval.createdAt), { addSuffix: true })}
-                            </span>
-                          </div>
-                          <div className="space-y-1">
-                            <p className="text-sm font-medium text-gray-900">
-                              {approval.status === 'APPROVED' ? 'Approved' : 
-                               approval.status === 'REJECTED' ? 'Rejected' : 'Reviewed'} by {approval.approver.name}
-                            </p>
-                            <p className="text-xs text-gray-500">{approval.approver.email} • {approval.approver.role}</p>
-                            {approval.reason && (
-                              <div className="mt-2 p-2 bg-gray-50 rounded border">
-                                <p className="text-xs font-medium text-gray-700 mb-1">
-                                  {approval.status === 'REJECTED' ? 'Reason for rejection:' : 'Comments:'}
-                                </p>
-                                <p className="text-sm text-gray-600">{approval.reason}</p>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-              </CardContent>
-            </Card>
-          )}
-
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Main Content */}
             <div className="lg:col-span-2 space-y-6">
@@ -1455,7 +1360,7 @@ export default function TicketDetailPage() {
                             </div>
                             
                             {/* Actions */}
-                            {(session?.user?.id === comment.user.id || session?.user?.role === 'ADMIN') && (
+                            {(session?.user?.email === comment.user.email || session?.user?.role === 'ADMIN') && (
                               <div className="opacity-0 group-hover:opacity-100 transition-opacity">
                                 <Button
                                   variant="ghost"
@@ -1657,24 +1562,26 @@ export default function TicketDetailPage() {
             </div>
 
             {/* Sidebar */}
-            <div className="space-y-6">
-              {/* Actions */}
+            <div className="space-y-4">
+              {/* Actions - Moved to top and beautified */}
               {(canUpdateStatus() || canClaimTicket() || canReleaseTicket()) && (
-                <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
-                  <CardHeader>
-                    <CardTitle>Actions</CardTitle>
+                <Card className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 backdrop-blur-sm border-0 shadow-xl overflow-hidden">
+                  <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 border-b border-gray-200 dark:border-gray-700 py-4">
+                    <CardTitle className="text-base font-semibold text-gray-800 dark:text-gray-100">
+                      Actions
+                    </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="pt-4 pb-3">
                     <div className="space-y-2">
                       {/* Claim/Release Button */}
                       {canClaimTicket() && (
                         <Button
                           onClick={handleClaimTicket}
                           disabled={isUpdatingStatus}
-                          className="w-full flex items-center gap-2 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white shadow-lg"
+                          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-md transition-all duration-200 hover:shadow-lg rounded-lg py-2.5"
                         >
                           <UserCheck className="h-4 w-4" />
-                          Claim Ticket
+                          <span className="font-medium">Claim Ticket</span>
                         </Button>
                       )}
                       {canReleaseTicket() && (
@@ -1682,20 +1589,20 @@ export default function TicketDetailPage() {
                           onClick={handleReleaseTicket}
                           disabled={isUpdatingStatus}
                           variant="outline"
-                          className="w-full flex items-center gap-2 border-red-300 text-red-600 hover:bg-red-50"
+                          className="w-full flex items-center justify-center gap-2 border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20 rounded-lg py-2.5"
                         >
                           <UserX className="h-4 w-4" />
-                          Release Ticket
+                          <span className="font-medium">Release Ticket</span>
                         </Button>
                       )}
                       {ticket.status === 'OPEN' && (
                         <Button
                           onClick={() => updateTicketStatus('IN_PROGRESS')}
                           disabled={isUpdatingStatus}
-                          className="w-full flex items-center gap-2"
+                          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white shadow-md transition-all duration-200 hover:shadow-lg rounded-lg py-2.5"
                         >
                           <AlertCircle className="h-4 w-4" />
-                          Start Work
+                          <span className="font-medium">Start Work</span>
                         </Button>
                       )}
                       {(ticket.status === 'IN_PROGRESS' || ticket.status === 'RESOLVED') && (
@@ -1713,10 +1620,10 @@ export default function TicketDetailPage() {
                         <Button
                           onClick={handleResolveAndClose}
                           disabled={isUpdatingStatus}
-                          className="w-full flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg"
+                          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-md transition-all duration-200 hover:shadow-lg rounded-lg py-2.5"
                         >
                           <CheckCheck className="h-4 w-4" />
-                          Resolve + Close
+                          <span className="font-medium">Resolve + Close</span>
                         </Button>
                       )}
                       {ticket.status === 'PENDING_VENDOR' && ['TECHNICIAN', 'SECURITY_ANALYST'].includes(session?.user?.role) && (
@@ -1755,89 +1662,292 @@ export default function TicketDetailPage() {
                 </Card>
               )}
 
-              {/* Ticket Information */}
-              <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
-                <CardHeader>
-                  <CardTitle>Ticket Information</CardTitle>
+              {/* Ticket Progress & Status - Beautified */}
+              <Card className="bg-gradient-to-br from-white to-purple-50/20 dark:from-gray-800 dark:to-purple-900/10 backdrop-blur-sm border-0 shadow-xl overflow-hidden">
+                <CardHeader className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border-b border-purple-100 dark:border-purple-800 py-3">
+                  <CardTitle className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                      <span className="text-sm font-semibold bg-gradient-to-r from-purple-700 to-indigo-700 dark:from-purple-400 dark:to-indigo-400 bg-clip-text text-transparent">
+                        Ticket Progress & Status
+                      </span>
+                    </div>
+                    <Badge 
+                      variant="secondary" 
+                      className="text-xs bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm"
+                    >
+                      {ticket.status.replace('_', ' ')}
+                    </Badge>
+                  </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div>
-                      <span className="font-medium text-gray-700">Service:</span>
-                      <p className="text-gray-600">{ticket.service.name}</p>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-700">Category:</span>
-                      <p className="text-gray-600">{ticket.service.category.name}</p>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-700">Created by:</span>
-                      <p className="text-gray-600">{ticket.createdBy.name}</p>
-                      <p className="text-sm text-gray-500">{ticket.createdBy.email}</p>
-                      {ticket.createdBy.branch && (
-                        <p className="text-sm text-gray-500">
-                          Branch: {ticket.createdBy.branch.name} ({ticket.createdBy.branch.code})
-                        </p>
-                      )}
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-700">Assigned to:</span>
-                      {ticket.assignedTo ? (
-                        <>
-                          <p className="text-gray-600">{ticket.assignedTo.name}</p>
-                          <p className="text-sm text-gray-500">{ticket.assignedTo.email}</p>
-                        </>
-                      ) : (
-                        <p className="text-gray-500 italic">Unassigned</p>
-                      )}
-                    </div>
-                    {/* Show approval status if required */}
-                    {ticket.service?.requiresApproval && (
-                      <div>
-                        <span className="font-medium text-gray-700">Approval Status:</span>
-                        {(() => {
-                          const approval = getLatestApproval();
-                          if (!approval) {
-                            return <p className="text-yellow-600">Pending Approval</p>;
-                          }
+                <CardContent className="pt-4 pb-3">
+                  {/* Vertical Progress Tracker */}
+                  <div className="mb-3">
+                    <ProgressTracker 
+                      steps={[]} 
+                      currentStatus={ticket.status}
+                      showTimestamps={true}
+                      showUsers={false}
+                      variant="vertical"
+                      className="scale-95 origin-top"
+                      ticketData={{
+                        createdAt: ticket.createdAt,
+                        updatedAt: ticket.updatedAt,
+                        resolvedAt: ticket.resolvedAt,
+                        closedAt: ticket.closedAt,
+                        approvals: ticket.approvals,
+                        createdBy: ticket.createdBy,
+                        assignedTo: ticket.assignedTo,
+                        comments: ticket.comments
+                      }}
+                    />
+                  </div>
+
+                  {/* Approval Status Section - Clean and Simple */}
+                  {((ticket.approvals && ticket.approvals.length > 0) || ticket.status === 'PENDING_APPROVAL' || ticket.service?.requiresApproval) && (
+                    <div className="border-t border-purple-100 dark:border-purple-800/50 pt-3 mt-2">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="p-1 bg-purple-100 dark:bg-purple-900/30 rounded">
+                          <Shield className="h-3 w-3 text-purple-600 dark:text-purple-400" />
+                        </div>
+                        <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Approval Status</span>
+                      </div>
+                      
+                      {(() => {
+                        const latestApproval = getLatestApproval();
+                        
+                        if (latestApproval) {
                           return (
-                            <>
-                              <p className="text-gray-600">
-                                <Badge variant={getApprovalStatusBadgeVariant(approval.status)}>
-                                  {approval.status}
-                                </Badge>
-                              </p>
-                              <p className="text-sm text-gray-500">
-                                by {approval.approver.name}
-                              </p>
-                            </>
+                            <div className="flex items-center gap-2 pl-1">
+                              <div className={`flex-shrink-0 ${
+                                latestApproval.status === 'APPROVED' ? 'text-green-600 dark:text-green-400' :
+                                latestApproval.status === 'REJECTED' ? 'text-red-600 dark:text-red-400' :
+                                'text-yellow-600 dark:text-yellow-400'
+                              }`}>
+                                {getApprovalStatusIcon(latestApproval.status)}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <Badge 
+                                    variant={getApprovalStatusBadgeVariant(latestApproval.status)} 
+                                    className="text-xs"
+                                  >
+                                    {latestApproval.status}
+                                  </Badge>
+                                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                                    {formatDistanceToNow(new Date(latestApproval.createdAt), { addSuffix: true })}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                                  by {latestApproval.approver.name}
+                                </p>
+                              </div>
+                            </div>
                           );
-                        })()}
+                        }
+                        
+                        if (ticket.status === 'PENDING_APPROVAL') {
+                          return (
+                            <div className="flex items-center gap-2 pl-1">
+                              <Timer className="h-4 w-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
+                              <div className="flex items-center gap-2">
+                                <Badge variant="warning" className="text-xs">
+                                  PENDING
+                                </Badge>
+                                <span className="text-xs text-gray-600 dark:text-gray-400">
+                                  Awaiting approval
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        }
+                        
+                        if (ticket.service?.requiresApproval) {
+                          return (
+                            <div className="flex items-center gap-2 pl-1">
+                              <AlertCircle className="h-4 w-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                              <span className="text-xs text-gray-600 dark:text-gray-400">
+                                Approval required for this service
+                              </span>
+                            </div>
+                          );
+                        }
+                        
+                        return null;
+                      })()}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Ticket Information - Enhanced */}
+              <Card className="bg-gradient-to-br from-white to-blue-50/30 dark:from-gray-800 dark:to-gray-900/50 backdrop-blur-sm border-0 shadow-xl overflow-hidden">
+                <CardHeader className="bg-gradient-to-r from-blue-600/10 to-indigo-600/10 dark:from-blue-900/20 dark:to-indigo-900/20 border-b border-blue-100 dark:border-blue-900">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Hash className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    Ticket Information
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <div className="space-y-4">
+                    {/* Ticket Number */}
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                        <Hash className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div className="flex-1">
+                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Ticket Number</span>
+                        <p className="text-sm font-mono text-gray-900 dark:text-gray-100 mt-1">#{ticket.ticketNumber}</p>
+                      </div>
+                    </div>
+
+                    {/* Service */}
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                        <Briefcase className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                      </div>
+                      <div className="flex-1">
+                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Service</span>
+                        <p className="text-sm text-gray-900 dark:text-gray-100 mt-1 font-medium">{ticket.service.name}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Category: {ticket.service.category.name}</p>
+                      </div>
+                    </div>
+
+                    {/* Branch */}
+                    {ticket.createdBy.branch && (
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                          <Building2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+                        </div>
+                        <div className="flex-1">
+                          <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Branch</span>
+                          <p className="text-sm text-gray-900 dark:text-gray-100 mt-1 font-medium">{ticket.createdBy.branch.name}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                              <MapPin className="h-3 w-3 mr-1" />
+                              {ticket.createdBy.branch.code}
+                            </Badge>
+                          </div>
+                        </div>
                       </div>
                     )}
-                    <div>
-                      <span className="font-medium text-gray-700">Created:</span>
-                      <p className="text-gray-600 flex items-center gap-1">
-                        <Clock className="h-4 w-4" />
-                        {formatDistanceToNow(new Date(ticket.createdAt), { addSuffix: true })}
-                      </p>
+
+                    {/* Created By */}
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+                        <UserCircle className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                      </div>
+                      <div className="flex-1">
+                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Created By</span>
+                        <p className="text-sm text-gray-900 dark:text-gray-100 mt-1 font-medium">{ticket.createdBy.name}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{ticket.createdBy.email}</p>
+                        <Badge variant="outline" className="text-xs mt-1">
+                          {ticket.createdBy.role}
+                        </Badge>
+                      </div>
                     </div>
-                    <div>
-                      <span className="font-medium text-gray-700">Last updated:</span>
-                      <p className="text-gray-600 flex items-center gap-1">
-                        <Clock className="h-4 w-4" />
-                        {formatDistanceToNow(new Date(ticket.updatedAt), { addSuffix: true })}
-                      </p>
+
+                    {/* Assigned To */}
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                        <UserCheck className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                      </div>
+                      <div className="flex-1">
+                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Assigned To</span>
+                        {ticket.assignedTo ? (
+                          <>
+                            <p className="text-sm text-gray-900 dark:text-gray-100 mt-1 font-medium">{ticket.assignedTo.name}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{ticket.assignedTo.email}</p>
+                            <Badge variant="outline" className="text-xs mt-1">
+                              {ticket.assignedTo.role}
+                            </Badge>
+                          </>
+                        ) : (
+                          <div className="mt-1">
+                            <Badge variant="outline" className="text-xs border-orange-300 text-orange-600 dark:border-orange-700 dark:text-orange-400">
+                              <AlertCircle className="h-3 w-3 mr-1" />
+                              Unassigned
+                            </Badge>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    {ticket.resolvedAt && (
-                      <div>
-                        <span className="font-medium text-gray-700">Resolved:</span>
-                        <p className="text-gray-600 flex items-center gap-1">
-                          <Clock className="h-4 w-4" />
-                          {formatDistanceToNow(new Date(ticket.resolvedAt), { addSuffix: true })}
-                        </p>
+
+                    {/* Approval Status */}
+                    {ticket.service?.requiresApproval && (
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
+                          <Shield className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                        </div>
+                        <div className="flex-1">
+                          <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Approval Status</span>
+                          {(() => {
+                            const approval = getLatestApproval();
+                            if (!approval || approval.status === 'PENDING') {
+                              return (
+                                <div className="mt-1">
+                                  <Badge variant="warning" className="text-xs bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">
+                                    <Timer className="h-3 w-3 mr-1" />
+                                    Pending Approval
+                                  </Badge>
+                                </div>
+                              );
+                            }
+                            return (
+                              <div className="mt-1 space-y-1">
+                                <Badge variant={getApprovalStatusBadgeVariant(approval.status)} className="text-xs">
+                                  {getApprovalStatusIcon(approval.status)}
+                                  <span className="ml-1">{approval.status}</span>
+                                </Badge>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                  by {approval.approver.name}
+                                </p>
+                              </div>
+                            );
+                          })()}
+                        </div>
                       </div>
                     )}
+
+                    {/* Divider */}
+                    <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                      <div className="space-y-3">
+                        {/* Created Date */}
+                        <div className="flex items-center gap-3">
+                          <Calendar className="h-4 w-4 text-gray-400" />
+                          <div className="flex-1">
+                            <span className="text-xs text-gray-500 dark:text-gray-400">Created</span>
+                            <p className="text-xs text-gray-600 dark:text-gray-300">
+                              {formatDistanceToNow(new Date(ticket.createdAt), { addSuffix: true })}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Last Updated */}
+                        <div className="flex items-center gap-3">
+                          <Clock className="h-4 w-4 text-gray-400" />
+                          <div className="flex-1">
+                            <span className="text-xs text-gray-500 dark:text-gray-400">Last updated</span>
+                            <p className="text-xs text-gray-600 dark:text-gray-300">
+                              {formatDistanceToNow(new Date(ticket.updatedAt), { addSuffix: true })}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Resolved Date */}
+                        {ticket.resolvedAt && (
+                          <div className="flex items-center gap-3">
+                            <CheckCircle className="h-4 w-4 text-green-500" />
+                            <div className="flex-1">
+                              <span className="text-xs text-gray-500 dark:text-gray-400">Resolved</span>
+                              <p className="text-xs text-gray-600 dark:text-gray-300">
+                                {formatDistanceToNow(new Date(ticket.resolvedAt), { addSuffix: true })}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

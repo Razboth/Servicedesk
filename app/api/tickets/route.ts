@@ -167,6 +167,9 @@ export async function GET(request: NextRequest) {
       // Check if this is a Transaction Claims Support technician
       const isTransactionClaimsSupport = userWithDetails?.supportGroup?.code === 'TRANSACTION_CLAIMS_SUPPORT';
       
+      // Check if this is an IT Helpdesk technician
+      const isITHelpdeskTech = userWithDetails?.supportGroup?.code === 'IT_HELPDESK';
+      
       if (isCallCenterTech) {
         // Call Center technicians can see:
         // 1. Their own created tickets (all types)
@@ -197,15 +200,42 @@ export async function GET(request: NextRequest) {
           { categoryId: ATM_SERVICES_CATEGORY_ID },
           { service: { tier1CategoryId: ATM_SERVICES_CATEGORY_ID } }
         ];
+      } else if (isITHelpdeskTech) {
+        // IT Helpdesk technicians can see ALL tickets EXCEPT SOC/Security tickets
+        // They have broad access to provide general IT support
+        // Simply exclude Security Analyst created tickets - simpler approach
+        where.createdBy = {
+          role: { not: 'SECURITY_ANALYST' }
+        };
       } else {
         // Regular technicians can see:
         // 1. Tickets they created or are assigned to
-        // 2. All unassigned tickets (for general /tickets page)
-        // 3. For workbench available-tickets: only approved or no-approval-required tickets
+        // 2. ALL tickets assigned to their support group (if they have one)
+        // 3. All unassigned tickets if they don't have a support group
+        // 4. For workbench available-tickets: only approved or no-approval-required tickets
         const technicianConditions: any[] = [
           { createdById: session.user.id }, // Their own tickets
           { assignedToId: session.user.id }  // Tickets assigned to them
         ];
+
+        // Add support group visibility - see all tickets in their support group
+        if (userWithDetails?.supportGroupId) {
+          // If technician has a support group, they can see all tickets for that group
+          technicianConditions.push({
+            service: {
+              supportGroupId: userWithDetails.supportGroupId
+            }
+          });
+        } else {
+          // If technician has NO support group, they can see ALL unassigned tickets
+          // This ensures they can still work on tickets even without group assignment
+          technicianConditions.push({
+            AND: [
+              { assignedToId: null }, // Unassigned tickets
+              { status: { in: ['OPEN', 'IN_PROGRESS'] } } // Only active tickets
+            ]
+          });
+        }
 
       // Only apply approval filtering for workbench available-tickets filter
       // NOT for general /tickets page
@@ -836,6 +866,10 @@ export async function POST(request: NextRequest) {
     console.log('Final processed field values:', processedFieldValues);
 
     // Get user's branch for the ticket
+    // IMPORTANT: Tickets are created with the user's CURRENT branch at the time of creation.
+    // This branchId is stored permanently with the ticket and will NOT change if the user
+    // later moves to a different branch. The ticket remains associated with the branch
+    // where it was created.
     const userWithBranch = await prisma.user.findUnique({
       where: { id: session.user.id },
       select: { branchId: true }

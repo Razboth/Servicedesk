@@ -42,7 +42,29 @@ export async function GET(
       select: { 
         branchId: true, 
         role: true, 
-        supportGroupId: true
+        supportGroupId: true,
+        supportGroup: {
+          select: { code: true }
+        }
+      }
+    });
+
+    // Also get ticket approval status
+    const ticketWithApproval = await prisma.ticket.findUnique({
+      where: { id: ticketId },
+      select: {
+        service: {
+          select: {
+            requiresApproval: true
+          }
+        },
+        approvals: {
+          select: {
+            status: true
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 1
+        }
       }
     });
 
@@ -55,8 +77,23 @@ export async function GET(
       canAccess = userWithDetails?.branchId === ticket.branchId;
     } else if (session.user.role === 'TECHNICIAN') {
       const isCreatorOrAssignee = ticket.createdById === session.user.id || ticket.assignedToId === session.user.id;
-      const isSupportGroupMatch = !!(userWithDetails?.supportGroupId && ticket.service?.supportGroupId === userWithDetails.supportGroupId);
-      canAccess = isCreatorOrAssignee || isSupportGroupMatch;
+      
+      // IT Helpdesk special case - can see all non-security tickets
+      if (userWithDetails?.supportGroup?.code === 'IT_HELPDESK') {
+        canAccess = true; // IT Helpdesk has broad access
+      } else if (userWithDetails?.supportGroupId && ticket.service?.supportGroupId === userWithDetails.supportGroupId) {
+        // For support group tickets, must be approved or pending approval if approval required
+        if (ticketWithApproval?.service?.requiresApproval) {
+          const latestApproval = ticketWithApproval.approvals?.[0];
+          canAccess = isCreatorOrAssignee || 
+                     latestApproval?.status === 'APPROVED' || 
+                     latestApproval?.status === 'PENDING';
+        } else {
+          canAccess = isCreatorOrAssignee || true; // No approval needed
+        }
+      } else {
+        canAccess = isCreatorOrAssignee;
+      }
     } else if (session.user.role === 'USER') {
       canAccess = ticket.createdById === session.user.id;
     }

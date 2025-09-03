@@ -175,20 +175,30 @@ export async function GET(
           (serviceName.includes('ATM') && serviceName.includes('Claim'));
         
         canAccess = isTransactionClaim;
+      } else if (userWithDetails?.supportGroup?.code === 'IT_HELPDESK') {
+        // IT Helpdesk can see all tickets except those created by Security Analysts
+        canAccess = ticket.createdBy?.role !== 'SECURITY_ANALYST';
       } else {
         // Regular technicians can see:
         // 1. Tickets they created or are assigned to
         const isCreatorOrAssignee = ticket.createdById === session.user.id || ticket.assignedToId === session.user.id;
         
-        // 2. All approved tickets (or tickets that don't require approval)
-        let isApprovedOrNoApprovalNeeded = true;
-        if (ticket.service?.requiresApproval) {
-          // Check if ticket is approved
-          const latestApproval = ticket.approvals?.[0]; // Already ordered by desc
-          isApprovedOrNoApprovalNeeded = latestApproval?.status === 'APPROVED';
+        // 2. Tickets in their support group (if they have one) that are approved or pending approval
+        let canSeeGroupTicket = false;
+        if (userWithDetails?.supportGroupId && ticket.service?.supportGroupId === userWithDetails.supportGroupId) {
+          // For tickets in their support group, check if approved or pending approval
+          if (ticket.service?.requiresApproval) {
+            const latestApproval = ticket.approvals?.[0]; // Already ordered by desc
+            canSeeGroupTicket = latestApproval?.status === 'APPROVED' || 
+                               latestApproval?.status === 'PENDING' ||
+                               ticket.status === 'PENDING_APPROVAL';
+          } else {
+            // No approval needed, can see it
+            canSeeGroupTicket = true;
+          }
         }
         
-        canAccess = isCreatorOrAssignee || isApprovedOrNoApprovalNeeded;
+        canAccess = isCreatorOrAssignee || canSeeGroupTicket;
       }
     } else if (session.user.role === 'SECURITY_ANALYST') {
       // Security Analysts function like technicians
