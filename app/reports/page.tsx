@@ -78,6 +78,37 @@ const standardReports: Report[] = [
     badge: 'Daily',
     lastRun: 'Live'
   },
+  // Service Reports - NEW
+  {
+    title: 'Service Performance Analytics',
+    description: 'Comprehensive service metrics, resolution rates, and performance trends',
+    href: '/reports/services/performance',
+    icon: TrendingUp,
+    type: 'standard',
+    roles: ['MANAGER', 'ADMIN'],
+    badge: 'New',
+    lastRun: 'Live'
+  },
+  {
+    title: 'Service Usage Insights',
+    description: 'Usage patterns, peak times, growth trends, and demand analysis',
+    href: '/reports/services/usage',
+    icon: Users,
+    type: 'standard',
+    roles: ['MANAGER', 'ADMIN'],
+    badge: 'New',
+    lastRun: 'Live'
+  },
+  {
+    title: 'Service SLA Compliance',
+    description: 'SLA breach analysis, compliance rates, and service level monitoring',
+    href: '/reports/services/sla-compliance',
+    icon: Shield,
+    type: 'standard',
+    roles: ['MANAGER', 'ADMIN'],
+    badge: 'New',
+    lastRun: 'Live'
+  },
   // Technician Reports
   {
     title: 'My Performance Dashboard',
