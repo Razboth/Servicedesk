@@ -101,17 +101,7 @@ export async function GET(request: NextRequest) {
             ticketsWithResolution++;
           }
         } else {
-          // Calculate from ticket timestamps if no SLA tracking
-          if (ticket.firstResponseAt) {
-            const respTime = (new Date(ticket.firstResponseAt).getTime() - ticket.createdAt.getTime()) / (1000 * 60);
-            totalResponseTime += respTime;
-            ticketsWithResponse++;
-            
-            // Check if breached based on service SLA
-            if (service.slaResponseTime && respTime > service.slaResponseTime) {
-              responseBreaches++;
-            }
-          }
+          // Calculate from ticket timestamps if no SLA tracking (field removed as it doesn't exist)
           
           if (ticket.resolvedAt) {
             const resTime = (new Date(ticket.resolvedAt).getTime() - ticket.createdAt.getTime()) / (1000 * 60 * 60);

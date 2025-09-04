@@ -259,7 +259,7 @@ export async function POST(request: NextRequest) {
         }
       });
       
-      const ticketNumber = `CLM-${currentYear}-${String(yearTicketCount + 1).padStart(6, '0')}`;
+      const ticketNumber = `TKT-${currentYear}-${String(yearTicketCount + 1).padStart(6, '0')}`;
       
       // Create the ticket
       const newTicket = await tx.ticket.create({

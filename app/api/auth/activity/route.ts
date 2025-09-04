@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
 import { auth } from '@/lib/auth'
+import { getClientIp } from '@/lib/utils/ip-utils'
 
 const prisma = new PrismaClient()
 
@@ -45,9 +46,7 @@ export async function POST(request: NextRequest) {
             timestamp,
             action,
             userAgent: request.headers.get('user-agent'),
-            ipAddress: request.headers.get('x-forwarded-for') || 
-                      request.headers.get('x-real-ip') ||
-                      'unknown'
+            ipAddress: getClientIp(request)
           }
         }
       })

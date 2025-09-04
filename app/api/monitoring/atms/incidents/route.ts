@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { getClientIp } from '@/lib/utils/ip-utils';
 
 // Validation schema for creating ATM incidents
 const createIncidentSchema = z.object({
@@ -48,6 +49,10 @@ export async function GET(request: NextRequest) {
     const session = await auth();
     
     if (!session || !['MANAGER', 'ADMIN', 'TECHNICIAN'].includes(session.user.role)) {
+      // Log unauthorized access attempt
+      const clientIp = getClientIp(request);
+      console.log(`[ATM Incidents] Unauthorized access attempt from IP: ${clientIp}`);
+      
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -237,10 +242,12 @@ export async function POST(request: NextRequest) {
 
         // If still no service, create a basic ATM service
         if (!service) {
-          // Find a support group for ATM issues (preferably technical)
+          // Find a support group for ATM issues - prioritize IT Helpdesk
           const supportGroup = await prisma.supportGroup.findFirst({
             where: {
               OR: [
+                { code: 'IT_HELPDESK' }, // Prioritize IT Helpdesk
+                { name: { contains: 'IT Helpdesk', mode: 'insensitive' } },
                 { name: { contains: 'Technical', mode: 'insensitive' } },
                 { name: { contains: 'Infrastructure', mode: 'insensitive' } },
                 { name: { contains: 'ATM', mode: 'insensitive' } }
@@ -280,16 +287,28 @@ export async function POST(request: NextRequest) {
           });
         }
 
-        // Generate ticket number
-        const ticketCount = await prisma.ticket.count();
-        const ticketNumber = `ATM-${new Date().getFullYear()}-${String(ticketCount + 1).padStart(4, '0')}`;
+        // Generate ticket number using standard format
+        const currentYear = new Date().getFullYear();
+        const yearStart = new Date(currentYear, 0, 1);
+        const yearEnd = new Date(currentYear + 1, 0, 1);
+        
+        const yearTicketCount = await prisma.ticket.count({
+          where: {
+            createdAt: {
+              gte: yearStart,
+              lt: yearEnd
+            }
+          }
+        });
+        
+        const ticketNumber = `TKT-${currentYear}-${String(yearTicketCount + 1).padStart(6, '0')}`;
 
         // Determine priority based on severity
         const priority = validatedData.severity === 'CRITICAL' ? 'CRITICAL' : 
                         validatedData.severity === 'HIGH' ? 'HIGH' : 
                         validatedData.severity === 'MEDIUM' ? 'MEDIUM' : 'LOW';
 
-        // Create the ticket
+        // Create the ticket with proper support group assignment
         const ticket = await prisma.ticket.create({
           data: {
             ticketNumber,
@@ -298,6 +317,7 @@ export async function POST(request: NextRequest) {
             category: validatedData.type === 'MAINTENANCE' ? 'SERVICE_REQUEST' : 
                      validatedData.type === 'SECURITY_BREACH' ? 'INCIDENT' : 'INCIDENT',
             serviceId: service.id,
+            supportGroupId: service.supportGroupId, // Assign to service's support group
             priority,
             status: 'OPEN',
             createdById: session?.user?.id || systemUser!.id, // Use system user if external
@@ -363,6 +383,9 @@ export async function POST(request: NextRequest) {
       }
     });
 
+    // Get client IP address
+    const clientIp = getClientIp(request);
+    
     // Create audit log for incident creation
     if (session?.user?.id) {
       await prisma.auditLog.create({
@@ -376,10 +399,40 @@ export async function POST(request: NextRequest) {
             atmCode: validatedData.atmCode,
             type: validatedData.type,
             severity: validatedData.severity,
-            autoTicketCreated: !!ticketId
+            autoTicketCreated: !!ticketId,
+            sourceIp: clientIp,
+            userAgent: request.headers.get('user-agent') || 'Unknown'
           }
         }
       });
+    } else {
+      // For external API calls without session, still log with system user
+      const systemUserId = systemUser?.id || (await prisma.user.findFirst({
+        where: { email: 'system@banksulutgo.co.id' },
+        select: { id: true }
+      }))?.id;
+      
+      if (systemUserId) {
+        await prisma.auditLog.create({
+          data: {
+            userId: systemUserId,
+            ticketId,
+            action: 'CREATE_ATM_INCIDENT_EXTERNAL',
+            entity: 'ATMIncident',
+            entityId: incident.id,
+            newValues: {
+              atmCode: validatedData.atmCode,
+              type: validatedData.type,
+              severity: validatedData.severity,
+              autoTicketCreated: !!ticketId,
+              sourceIp: clientIp,
+              userAgent: request.headers.get('user-agent') || 'Unknown',
+              externalReferenceId: validatedData.externalReferenceId,
+              note: 'Created via external API'
+            }
+          }
+        });
+      }
     }
 
     return NextResponse.json({

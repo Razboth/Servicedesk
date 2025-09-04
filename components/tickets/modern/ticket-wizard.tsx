@@ -1792,6 +1792,8 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                                   })}
                                   placeholder={field.placeholder || ''}
                                   className="mt-2"
+                                  required={field.isRequired}
+                                  step="any"
                                 />
                               )}
                               {field.type === 'SELECT' && (
@@ -1839,6 +1841,36 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                                   />
                                   <Label>{field.label}</Label>
                                 </div>
+                              )}
+                              {field.type === 'DATE' && (
+                                <Input
+                                  type="date"
+                                  value={formData.fieldValues[field.name] || ''}
+                                  onChange={(e) => setFormData({
+                                    ...formData,
+                                    fieldValues: {
+                                      ...formData.fieldValues,
+                                      [field.name]: e.target.value
+                                    }
+                                  })}
+                                  className="mt-2"
+                                  required={field.isRequired}
+                                />
+                              )}
+                              {field.type === 'DATETIME' && (
+                                <Input
+                                  type="datetime-local"
+                                  value={formData.fieldValues[field.name] || ''}
+                                  onChange={(e) => setFormData({
+                                    ...formData,
+                                    fieldValues: {
+                                      ...formData.fieldValues,
+                                      [field.name]: e.target.value
+                                    }
+                                  })}
+                                  className="mt-2"
+                                  required={field.isRequired}
+                                />
                               )}
                               {field.helpText && (
                                 <p className="text-sm text-gray-500 mt-1">{field.helpText}</p>
@@ -1907,6 +1939,38 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                                   })}
                                   placeholder={template.fieldTemplate.placeholder || ''}
                                   className="mt-2"
+                                  required={template.isRequired}
+                                  step="any"
+                                />
+                              )}
+                              {template.fieldTemplate.type === 'DATE' && (
+                                <Input
+                                  type="date"
+                                  value={formData.fieldValues[template.fieldTemplate.name] || ''}
+                                  onChange={(e) => setFormData({
+                                    ...formData,
+                                    fieldValues: {
+                                      ...formData.fieldValues,
+                                      [template.fieldTemplate.name]: e.target.value
+                                    }
+                                  })}
+                                  className="mt-2"
+                                  required={template.isRequired}
+                                />
+                              )}
+                              {template.fieldTemplate.type === 'DATETIME' && (
+                                <Input
+                                  type="datetime-local"
+                                  value={formData.fieldValues[template.fieldTemplate.name] || ''}
+                                  onChange={(e) => setFormData({
+                                    ...formData,
+                                    fieldValues: {
+                                      ...formData.fieldValues,
+                                      [template.fieldTemplate.name]: e.target.value
+                                    }
+                                  })}
+                                  className="mt-2"
+                                  required={template.isRequired}
                                 />
                               )}
                               {/* Special handling for ATM Code field - render native select */}
@@ -2382,6 +2446,10 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                                 <span className="text-sm text-gray-900 dark:text-white max-w-xs text-right">
                                   {field.type === 'CHECKBOX' 
                                     ? (formData.fieldValues[field.name] === 'true' ? 'Yes' : 'No')
+                                    : field.type === 'DATE' && formData.fieldValues[field.name]
+                                    ? new Date(formData.fieldValues[field.name]).toLocaleDateString()
+                                    : field.type === 'DATETIME' && formData.fieldValues[field.name]
+                                    ? new Date(formData.fieldValues[field.name]).toLocaleString()
                                     : formData.fieldValues[field.name]
                                   }
                                 </span>
@@ -2399,6 +2467,10 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                                 <span className="text-sm text-gray-900 dark:text-white max-w-xs text-right">
                                   {template.fieldTemplate.type === 'CHECKBOX' 
                                     ? (formData.fieldValues[template.fieldTemplate.name] === 'true' ? 'Yes' : 'No')
+                                    : template.fieldTemplate.type === 'DATE' && formData.fieldValues[template.fieldTemplate.name]
+                                    ? new Date(formData.fieldValues[template.fieldTemplate.name]).toLocaleDateString()
+                                    : template.fieldTemplate.type === 'DATETIME' && formData.fieldValues[template.fieldTemplate.name]
+                                    ? new Date(formData.fieldValues[template.fieldTemplate.name]).toLocaleString()
                                     : formData.fieldValues[template.fieldTemplate.name]
                                   }
                                 </span>

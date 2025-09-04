@@ -75,8 +75,8 @@ export function Sidebar() {
   const linkClass = (path: string) => `
     flex items-center ${isCollapsed ? 'px-2 py-3 justify-center' : 'px-3 py-2'} rounded-lg text-sm font-medium transition-all duration-200
     ${isActive(path)
-      ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-400 border-r-2 border-blue-700 dark:border-blue-400'
-      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800'
+      ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sm'
+      : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
     }
     ${isCollapsed ? 'hover:scale-110' : ''}
   `;
@@ -102,14 +102,14 @@ export function Sidebar() {
       
       {/* Sidebar */}
       <div className={`
-        bg-white dark:bg-gray-900 shadow-lg border-r border-gray-200 dark:border-gray-700 transition-all duration-300 h-screen fixed left-0 top-0 z-50 flex flex-col
+        bg-sidebar shadow-lg border-r border-sidebar-border transition-all duration-300 h-screen fixed left-0 top-0 z-50 flex flex-col
         ${isMobile 
           ? `w-64 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}` 
           : `${isCollapsed ? 'w-16' : 'w-64'}`
         }
       `}>
       {/* Header */}
-      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+      <div className="p-4 border-b border-sidebar-border">
         <div className="flex items-center justify-between">
           {(!isCollapsed || isMobile) ? (
             <Link href="/" className="flex items-center space-x-3" onClick={handleLinkClick}>
@@ -119,8 +119,8 @@ export function Sidebar() {
                 className="h-9 w-auto"
               />
               <div className="flex-1">
-                <p className="text-sm font-semibold text-gray-900 dark:text-white">ServiceDesk</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">IT Portal</p>
+                <p className="text-sm font-semibold text-sidebar-foreground">ServiceDesk</p>
+                <p className="text-xs text-sidebar-foreground/70">IT Portal</p>
               </div>
             </Link>
           ) : (
@@ -410,7 +410,7 @@ export function Sidebar() {
                 {(isCollapsed && !isMobile) ? (
                   // Collapsed state - just avatar
                   <div className="relative">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 p-0.5">
+                    <div className="w-8 h-8 rounded-full bg-gray-700 dark:bg-gray-600 p-0.5">
                       <div className="w-full h-full rounded-full overflow-hidden bg-white dark:bg-gray-800 flex items-center justify-center">
                         <span className="text-xs font-medium text-gray-700 dark:text-gray-200">
                           {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
@@ -430,7 +430,7 @@ export function Sidebar() {
                       </div>
                     </div>
                     <div className="relative flex-shrink-0">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 p-0.5">
+                      <div className="w-10 h-10 rounded-full bg-gray-700 dark:bg-gray-600 p-0.5">
                         <div className="w-full h-full rounded-full overflow-hidden bg-white dark:bg-gray-800 flex items-center justify-center">
                           <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
                             {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
@@ -474,7 +474,7 @@ export function Sidebar() {
               {/* Profile header */}
               <div className="p-3 mb-2 bg-gray-50/50 dark:bg-gray-800/50 rounded-lg border border-gray-200/30 dark:border-gray-700/30">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 p-0.5 flex-shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-gray-700 dark:bg-gray-600 p-0.5 flex-shrink-0">
                     <div className="w-full h-full rounded-full overflow-hidden bg-white dark:bg-gray-800 flex items-center justify-center">
                       <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
                         {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
@@ -491,7 +491,7 @@ export function Sidebar() {
                   </div>
                 </div>
                 <div className="flex gap-2 mt-2">
-                  <Badge variant="outline" className="text-xs font-medium rounded-md py-1 px-2 tracking-tight text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-500/10 border-blue-500/20">
+                  <Badge variant="outline" className="text-xs font-medium rounded-md py-1 px-2 tracking-tight text-gray-600 bg-gray-100 dark:text-gray-400 dark:bg-gray-500/10 border-gray-500/20">
                     {session.user?.role}
                   </Badge>
                   {session.user?.branchName && (

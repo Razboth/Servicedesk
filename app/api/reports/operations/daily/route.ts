@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
     const openTickets = await prisma.ticket.findMany({
       where: {
         status: 'OPEN',
-        priority: { in: ['URGENT', 'HIGH'] }
+        priority: { in: ['HIGH', 'CRITICAL', 'EMERGENCY'] }
       },
       include: {
         createdBy: {
@@ -153,7 +153,7 @@ export async function GET(request: NextRequest) {
       email: tech.email,
       openTickets: tech.assignedTickets.filter(t => t.status === 'OPEN').length,
       inProgressTickets: tech.assignedTickets.filter(t => t.status === 'IN_PROGRESS').length,
-      urgentTickets: tech.assignedTickets.filter(t => t.priority === 'URGENT').length,
+      urgentTickets: tech.assignedTickets.filter(t => t.priority === 'CRITICAL').length,
       highTickets: tech.assignedTickets.filter(t => t.priority === 'HIGH').length,
       totalActive: tech.assignedTickets.length
     })).sort((a, b) => b.totalActive - a.totalActive);
@@ -161,7 +161,7 @@ export async function GET(request: NextRequest) {
     // Critical incidents
     const criticalIncidents = await prisma.ticket.findMany({
       where: {
-        priority: 'URGENT',
+        priority: 'CRITICAL',
         status: { in: ['OPEN', 'IN_PROGRESS'] }
       },
       include: {
@@ -270,7 +270,7 @@ export async function GET(request: NextRequest) {
         code: branch.code,
         totalTickets: tickets.length,
         openTickets: tickets.filter(t => t.status === 'OPEN').length,
-        urgentTickets: tickets.filter(t => t.priority === 'URGENT').length
+        urgentTickets: tickets.filter(t => t.priority === 'CRITICAL').length
       };
     }).filter(b => b.totalTickets > 0)
       .sort((a, b) => b.totalTickets - a.totalTickets);
@@ -282,7 +282,7 @@ export async function GET(request: NextRequest) {
       changePercent: yesterdaysCount > 0 
         ? Math.round(((todaysTickets.length - yesterdaysCount) / yesterdaysCount) * 100)
         : 0,
-      openUrgent: openTickets.filter(t => t.priority === 'URGENT').length,
+      openUrgent: openTickets.filter(t => t.priority === 'CRITICAL').length,
       openHigh: openTickets.filter(t => t.priority === 'HIGH').length,
       overdueCount: overdueTickets.length,
       criticalCount: criticalIncidents.length,

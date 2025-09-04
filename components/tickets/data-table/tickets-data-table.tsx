@@ -419,7 +419,7 @@ export function TicketsDataTable({
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                <h2 className="text-2xl font-bold text-gray-900">
                   Support Tickets
                 </h2>
                 <p className="text-gray-600 dark:text-gray-400 mt-1">
@@ -430,7 +430,7 @@ export function TicketsDataTable({
                 {onCreateTicket && (
                   <Button 
                     onClick={onCreateTicket}
-                    className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-lg"
+                    className="bg-gray-900 hover:bg-gray-800 text-white"
                   >
                     <Plus className="mr-2 h-4 w-4" />
                     Create Ticket
@@ -462,7 +462,7 @@ export function TicketsDataTable({
               size="sm"
               onClick={loadTickets}
               disabled={isLoading}
-              className="hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+              className="hover:bg-gray-50 dark:hover:bg-gray-900/20 transition-colors"
             >
               <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
               Refresh

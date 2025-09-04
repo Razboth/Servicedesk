@@ -77,7 +77,13 @@ export async function GET(request: NextRequest) {
             createdAt: true,
             resolvedAt: true,
             closedAt: true,
-            firstResponseAt: true
+            slaTracking: {
+              select: {
+                responseTime: true
+              },
+              take: 1,
+              orderBy: { createdAt: 'desc' }
+            }
           }
         },
         _count: {
@@ -127,10 +133,10 @@ export async function GET(request: NextRequest) {
         }, 0) / resolvedTickets.length / (1000 * 60 * 60) : 0; // in hours
 
       // Calculate response time
-      const respondedTickets = tickets.filter(t => t.firstResponseAt);
+      const respondedTickets = tickets.filter(t => t.slaTracking && t.slaTracking[0]?.responseTime);
       const avgResponseTime = respondedTickets.length > 0 ?
         respondedTickets.reduce((sum, t) => {
-          const respTime = new Date(t.firstResponseAt!).getTime() - new Date(t.createdAt).getTime();
+          const respTime = new Date(t.slaTracking[0].responseTime!).getTime() - new Date(t.createdAt).getTime();
           return sum + respTime;
         }, 0) / respondedTickets.length / (1000 * 60) : 0; // in minutes
 

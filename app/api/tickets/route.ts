@@ -6,6 +6,8 @@ import { trackServiceUsage, updateFavoriteServiceUsage } from '@/lib/services/us
 import { sanitizeSearchInput } from '@/lib/security';
 import { emitTicketCreated } from '@/lib/socket-manager';
 import { createNotification } from '@/lib/notifications';
+import { getClientIp } from '@/lib/utils/ip-utils';
+import { getDeviceInfo, formatDeviceInfo } from '@/lib/utils/device-utils';
 
 // Helper function to determine sort order
 function getSortOrder(sortBy: string, sortOrder: string) {
@@ -106,15 +108,15 @@ export async function GET(request: NextRequest) {
     const where: any = {};
 
     // Apply confidential ticket filtering based on user role
-    if (session.user.role === 'SECURITY_ANALYST') {
-      // Security Analyst filtering will be handled in role-based filtering section below
-      // Skip confidential filtering for security analysts as they have special access
+    if (['SECURITY_ANALYST', 'ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
+      // ADMIN, SUPER_ADMIN, and Security Analysts can always see confidential tickets
+      // Skip confidential filtering for these roles
     } else if (!includeConfidential) {
       // Regular users cannot see confidential tickets
       where.isConfidential = false;
     } else {
       // User explicitly requested confidential tickets - check permissions
-      if (!['ADMIN', 'MANAGER'].includes(session.user.role)) {
+      if (!['MANAGER'].includes(session.user.role)) {
         return NextResponse.json(
           { error: 'Insufficient permissions to access confidential tickets' },
           { status: 403 }
@@ -203,10 +205,25 @@ export async function GET(request: NextRequest) {
       } else if (isITHelpdeskTech) {
         // IT Helpdesk technicians can see ALL tickets EXCEPT SOC/Security tickets
         // They have broad access to provide general IT support
-        // Simply exclude Security Analyst created tickets - simpler approach
-        where.createdBy = {
-          role: { not: 'SECURITY_ANALYST' }
-        };
+        // This includes system-generated tickets from ATM monitoring
+        where.OR = [
+          // All non-security tickets
+          {
+            createdBy: {
+              role: { not: 'SECURITY_ANALYST' }
+            }
+          },
+          // Include system-generated tickets (from monitoring system)
+          {
+            createdBy: {
+              email: 'system@banksulutgo.co.id'
+            }
+          },
+          // Include tickets assigned to IT Helpdesk support group
+          {
+            supportGroupId: userWithDetails?.supportGroupId
+          }
+        ];
       } else {
         // Regular technicians can see:
         // 1. Tickets they created or are assigned to
@@ -225,6 +242,10 @@ export async function GET(request: NextRequest) {
             service: {
               supportGroupId: userWithDetails.supportGroupId
             }
+          });
+          // Also include tickets directly assigned to their support group (for system-generated tickets)
+          technicianConditions.push({
+            supportGroupId: userWithDetails.supportGroupId
           });
         } else {
           // If technician has NO support group, they can see ALL unassigned tickets
@@ -341,8 +362,11 @@ export async function GET(request: NextRequest) {
           where.createdById = session.user.id;
         }
       }
+    } else if (session.user.role === 'ADMIN' || session.user.role === 'SUPER_ADMIN') {
+      // ADMIN and SUPER_ADMIN see all tickets (no additional filtering)
+      // The where clause remains empty or only contains user-specified filters
     }
-    // ADMIN sees all tickets (no additional filtering)
+    // If role is not handled above, default to no access (shouldn't happen with valid roles)
 
     // Apply filters
     if (status && status !== 'all' && status !== 'ALL') {
@@ -364,7 +388,7 @@ export async function GET(request: NextRequest) {
     if (branchId) where.branchId = branchId;
     if (securityClassification) {
       // Only allow security classification filtering for authorized roles
-      if (!['ADMIN', 'SECURITY_ANALYST', 'MANAGER'].includes(session.user.role)) {
+      if (!['ADMIN', 'SUPER_ADMIN', 'SECURITY_ANALYST', 'MANAGER'].includes(session.user.role)) {
         return NextResponse.json(
           { error: 'Insufficient permissions to filter by security classification' },
           { status: 403 }
@@ -695,6 +719,52 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     
+    // Extract device information for troubleshooting
+    const deviceInfo = getDeviceInfo(request);
+    const clientIp = getClientIp(request);
+    const deviceDescription = formatDeviceInfo(deviceInfo);
+    
+    // Log device info for troubleshooting client issues
+    console.log('Ticket creation attempt:', {
+      userId: session.user.id,
+      userEmail: session.user.email,
+      clientIp,
+      device: deviceDescription,
+      browser: `${deviceInfo.browser.name} ${deviceInfo.browser.version}`,
+      os: `${deviceInfo.os.name} ${deviceInfo.os.version}`,
+      deviceType: deviceInfo.device.type,
+      isSupported: deviceInfo.compatibility.isSupported,
+      warnings: deviceInfo.compatibility.warnings
+    });
+    
+    // Check if browser is compatible
+    if (!deviceInfo.compatibility.isSupported) {
+      console.error('Unsupported browser detected:', {
+        user: session.user.email,
+        device: deviceDescription,
+        warnings: deviceInfo.compatibility.warnings
+      });
+      
+      // Still allow ticket creation but log the issue
+      await prisma.auditLog.create({
+        data: {
+          userId: session.user.id,
+          action: 'UNSUPPORTED_BROWSER_TICKET_ATTEMPT',
+          entity: 'Ticket',
+          entityId: 'pre-creation',
+          newValues: {
+            browser: deviceInfo.browser,
+            os: deviceInfo.os,
+            device: deviceInfo.device,
+            warnings: deviceInfo.compatibility.warnings,
+            clientIp
+          },
+          ipAddress: clientIp,
+          userAgent: deviceInfo.userAgent
+        }
+      });
+    }
+    
     // Debug logging for attachments
     console.log('Received ticket data:', {
       ...body,
@@ -998,6 +1068,33 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      // Create audit log with device information
+      await tx.auditLog.create({
+        data: {
+          userId: session.user.id,
+          ticketId: createdTicket.id,
+          action: 'CREATE_TICKET',
+          entity: 'Ticket',
+          entityId: createdTicket.id,
+          newValues: {
+            ticketNumber: createdTicket.ticketNumber,
+            title: createdTicket.title,
+            priority: createdTicket.priority,
+            serviceId: createdTicket.serviceId,
+            device: {
+              browser: `${deviceInfo.browser.name} ${deviceInfo.browser.version}`,
+              os: `${deviceInfo.os.name} ${deviceInfo.os.version}`,
+              deviceType: deviceInfo.device.type,
+              isSupported: deviceInfo.compatibility.isSupported,
+              warnings: deviceInfo.compatibility.warnings
+            },
+            clientIp
+          },
+          ipAddress: clientIp,
+          userAgent: deviceInfo.userAgent
+        }
+      });
+
       return createdTicket;
     });
 
@@ -1122,6 +1219,49 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(ticket, { status: 201 });
   } catch (error) {
+    // Log failed ticket creation with device info for troubleshooting
+    const deviceInfo = getDeviceInfo(request);
+    const clientIp = getClientIp(request);
+    
+    console.error('Ticket creation failed:', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      userId: session?.user?.id,
+      userEmail: session?.user?.email,
+      clientIp,
+      device: formatDeviceInfo(deviceInfo),
+      browser: `${deviceInfo.browser.name} ${deviceInfo.browser.version}`,
+      os: `${deviceInfo.os.name} ${deviceInfo.os.version}`,
+      deviceType: deviceInfo.device.type,
+      isSupported: deviceInfo.compatibility.isSupported,
+      warnings: deviceInfo.compatibility.warnings
+    });
+    
+    // Log to audit for failure tracking
+    if (session?.user?.id) {
+      await prisma.auditLog.create({
+        data: {
+          userId: session.user.id,
+          action: 'CREATE_TICKET_FAILED',
+          entity: 'Ticket',
+          entityId: 'creation-failed',
+          newValues: {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            device: {
+              browser: `${deviceInfo.browser.name} ${deviceInfo.browser.version}`,
+              os: `${deviceInfo.os.name} ${deviceInfo.os.version}`,
+              deviceType: deviceInfo.device.type,
+              isSupported: deviceInfo.compatibility.isSupported,
+              warnings: deviceInfo.compatibility.warnings
+            },
+            clientIp,
+            validationErrors: error instanceof z.ZodError ? error.errors : undefined
+          },
+          ipAddress: clientIp,
+          userAgent: deviceInfo.userAgent
+        }
+      }).catch(err => console.error('Failed to log audit:', err));
+    }
+    
     if (error instanceof z.ZodError) {
       console.error('Validation error details:', error.errors);
       return NextResponse.json(

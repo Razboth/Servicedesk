@@ -56,10 +56,7 @@ export async function GET(request: NextRequest) {
           select: {
             branch: { select: { id: true, name: true, code: true } }
           }
-        },
-        category: { select: { name: true } },
-        subcategory: { select: { name: true } },
-        item: { select: { name: true } }
+        }
       }
     });
 
@@ -74,8 +71,8 @@ export async function GET(request: NextRequest) {
     tickets.forEach(ticket => {
       const serviceId = ticket.serviceId || 'no-service';
       const serviceName = ticket.service?.name || 'No Service';
-      const category = ticket.category?.name || 'Uncategorized';
-      const subcategory = ticket.subcategory?.name || 'No Subcategory';
+      const category = ticket.service?.tier1Category?.name || 'Uncategorized';
+      const subcategory = ticket.service?.tier2Subcategory?.name || 'No Subcategory';
       const branchName = ticket.createdBy.branch?.name || 'Unknown Branch';
       const supportGroup = ticket.service?.supportGroup?.name || 'No Support Group';
       
@@ -123,7 +120,6 @@ export async function GET(request: NextRequest) {
             low: 0,
             medium: 0,
             high: 0,
-            urgent: 0,
             critical: 0
           },
           resolutionTimes: [],
@@ -208,11 +204,7 @@ export async function GET(request: NextRequest) {
         usageData[groupKey].resolutionTimes.push(resolutionTime);
       }
 
-      // Response time tracking
-      if (ticket.firstResponseAt) {
-        const responseTime = (new Date(ticket.firstResponseAt).getTime() - createdDate.getTime()) / (1000 * 60);
-        usageData[groupKey].responseTimes.push(responseTime);
-      }
+      // Response time tracking (removed as field doesn't exist)
     });
 
     // Calculate averages and format data

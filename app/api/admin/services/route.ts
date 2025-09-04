@@ -7,10 +7,10 @@ const createServiceSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   description: z.string().min(1, 'Description is required'),
   helpText: z.string().optional(),
-  categoryId: z.string().min(1, 'Category is required'),
+  categoryId: z.string().optional(), // Made optional since we use 3-tier categories
   subcategoryId: z.string().optional(),
   itemId: z.string().optional(),
-  tier1CategoryId: z.string().optional(),
+  tier1CategoryId: z.string().min(1, 'Tier 1 Category is required'), // Made required
   tier2SubcategoryId: z.string().optional(),
   tier3ItemId: z.string().optional(),
   supportGroupId: z.string().min(1, 'Support group is required'), // Changed to supportGroupId
@@ -168,22 +168,84 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify category exists
-    const category = await prisma.serviceCategory.findUnique({
-      where: { id: validatedData.categoryId }
-    });
+    // Verify tier1Category exists if provided
+    if (validatedData.tier1CategoryId) {
+      const tier1Category = await prisma.category.findUnique({
+        where: { id: validatedData.tier1CategoryId }
+      });
 
-    if (!category) {
-      return NextResponse.json(
-        { error: 'Invalid category' },
-        { status: 400 }
-      );
+      if (!tier1Category) {
+        return NextResponse.json(
+          { error: 'Invalid Tier 1 category' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Verify tier2Subcategory exists if provided
+    if (validatedData.tier2SubcategoryId) {
+      const tier2Subcategory = await prisma.subcategory.findUnique({
+        where: { id: validatedData.tier2SubcategoryId }
+      });
+
+      if (!tier2Subcategory) {
+        return NextResponse.json(
+          { error: 'Invalid Tier 2 subcategory' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Verify tier3Item exists if provided
+    if (validatedData.tier3ItemId) {
+      const tier3Item = await prisma.item.findUnique({
+        where: { id: validatedData.tier3ItemId }
+      });
+
+      if (!tier3Item) {
+        return NextResponse.json(
+          { error: 'Invalid Tier 3 item' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Find or create a default service category if categoryId is not provided
+    let finalCategoryId = validatedData.categoryId;
+    
+    if (!finalCategoryId) {
+      // Try to find a default category
+      const defaultCategory = await prisma.serviceCategory.findFirst({
+        where: {
+          isActive: true,
+          level: 1
+        },
+        orderBy: {
+          createdAt: 'asc'
+        }
+      });
+      
+      if (defaultCategory) {
+        finalCategoryId = defaultCategory.id;
+      } else {
+        // Create a default category if none exists
+        const newDefaultCategory = await prisma.serviceCategory.create({
+          data: {
+            name: 'General',
+            description: 'General service category',
+            level: 1,
+            isActive: true
+          }
+        });
+        finalCategoryId = newDefaultCategory.id;
+      }
     }
 
     // Create the service
     const service = await prisma.service.create({
       data: {
         ...validatedData,
+        categoryId: finalCategoryId,
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date()

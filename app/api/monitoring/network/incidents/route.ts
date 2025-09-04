@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { getClientIp } from '@/lib/utils/ip-utils';
 
 // Validation schema for creating network incidents
 const createIncidentSchema = z.object({
@@ -20,6 +21,10 @@ export async function GET(request: NextRequest) {
     const session = await auth();
     
     if (!session || !['MANAGER', 'ADMIN', 'TECHNICIAN'].includes(session.user.role)) {
+      // Log unauthorized access attempt
+      const clientIp = getClientIp(request);
+      console.log(`[Network Incidents] Unauthorized access attempt from IP: ${clientIp}`);
+      
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -283,9 +288,21 @@ export async function POST(request: NextRequest) {
           });
         }
 
-        // Generate ticket number
-        const ticketCount = await prisma.ticket.count();
-        const ticketNumber = `NET-${new Date().getFullYear()}-${String(ticketCount + 1).padStart(4, '0')}`;
+        // Generate ticket number using standard format
+        const currentYear = new Date().getFullYear();
+        const yearStart = new Date(currentYear, 0, 1);
+        const yearEnd = new Date(currentYear + 1, 0, 1);
+        
+        const yearTicketCount = await prisma.ticket.count({
+          where: {
+            createdAt: {
+              gte: yearStart,
+              lt: yearEnd
+            }
+          }
+        });
+        
+        const ticketNumber = `TKT-${currentYear}-${String(yearTicketCount + 1).padStart(6, '0')}`;
 
         // Create the ticket
         const ticket = await prisma.ticket.create({
@@ -307,6 +324,62 @@ export async function POST(request: NextRequest) {
         ticketId = ticket.id;
       } catch (ticketError) {
         console.error('Failed to create ticket for network incident:', ticketError);
+      }
+    }
+
+    // Get client IP address for audit logging
+    const clientIp = getClientIp(request);
+    
+    // Log the network incident creation with IP
+    if (session?.user?.id) {
+      await prisma.auditLog.create({
+        data: {
+          userId: session.user.id,
+          ticketId,
+          action: 'CREATE_NETWORK_INCIDENT',
+          entity: 'NetworkIncident',
+          entityId: validatedData.entityId,
+          newValues: {
+            entityType: validatedData.entityType,
+            type: validatedData.type,
+            severity: validatedData.severity,
+            autoTicketCreated: !!ticketId,
+            sourceIp: clientIp,
+            userAgent: request.headers.get('user-agent') || 'Unknown'
+          },
+          ipAddress: clientIp,
+          userAgent: request.headers.get('user-agent') || 'unknown'
+        }
+      });
+    } else {
+      // For external API calls without session
+      const systemUserId = (await prisma.user.findFirst({
+        where: { email: 'system@banksulutgo.co.id' },
+        select: { id: true }
+      }))?.id;
+      
+      if (systemUserId) {
+        await prisma.auditLog.create({
+          data: {
+            userId: systemUserId,
+            ticketId,
+            action: 'CREATE_NETWORK_INCIDENT_EXTERNAL',
+            entity: 'NetworkIncident',
+            entityId: validatedData.entityId,
+            newValues: {
+              entityType: validatedData.entityType,
+              type: validatedData.type,
+              severity: validatedData.severity,
+              autoTicketCreated: !!ticketId,
+              sourceIp: clientIp,
+              userAgent: request.headers.get('user-agent') || 'Unknown',
+              externalReferenceId: validatedData.externalReferenceId,
+              note: 'Created via external API'
+            },
+            ipAddress: clientIp,
+            userAgent: request.headers.get('user-agent') || 'unknown'
+          }
+        });
       }
     }
 

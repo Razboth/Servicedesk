@@ -101,7 +101,70 @@ export async function GET(request: NextRequest) {
       orderBy: { name: 'asc' }
     });
 
-    return NextResponse.json({ users });
+    // Fetch last device info for each user from audit logs
+    const usersWithDevice = await Promise.all(
+      users.map(async (user) => {
+        // Get the most recent audit log entry with userAgent for this user
+        const lastDevice = await prisma.auditLog.findFirst({
+          where: {
+            userId: user.id,
+            userAgent: { not: null }
+          },
+          select: {
+            userAgent: true,
+            createdAt: true,
+            ipAddress: true
+          },
+          orderBy: { createdAt: 'desc' }
+        });
+
+        // Get the most recent login attempt for this user
+        const lastLogin = await prisma.loginAttempt.findFirst({
+          where: {
+            email: user.email,
+            userAgent: { not: null }
+          },
+          select: {
+            userAgent: true,
+            attemptedAt: true,
+            ipAddress: true
+          },
+          orderBy: { attemptedAt: 'desc' }
+        });
+
+        // Use the most recent device info from either source
+        let deviceInfo = null;
+        if (lastDevice || lastLogin) {
+          const mostRecent = lastDevice && lastLogin 
+            ? (lastDevice.createdAt > lastLogin.attemptedAt ? lastDevice : lastLogin)
+            : (lastDevice || lastLogin);
+          
+          if (mostRecent?.userAgent) {
+            // Parse basic device info from user agent
+            const ua = mostRecent.userAgent;
+            const browserMatch = ua.match(/(Chrome|Firefox|Safari|Edge|Opera)\/[\d.]+/i);
+            const osMatch = ua.match(/(Windows|Mac|Linux|Android|iOS|iPhone|iPad)/i);
+            const isMobile = /Mobile|Android|iPhone|iPad/i.test(ua);
+            
+            deviceInfo = {
+              browser: browserMatch ? browserMatch[1] : 'Unknown',
+              os: osMatch ? osMatch[1] : 'Unknown',
+              deviceType: isMobile ? 'mobile' : 'desktop',
+              lastSeen: mostRecent.createdAt || mostRecent.attemptedAt,
+              ipAddress: mostRecent.ipAddress,
+              rawUserAgent: ua
+            };
+          }
+        }
+
+        return {
+          ...user,
+          lastDevice: deviceInfo
+        };
+      })
+    );
+
+    return NextResponse.json({ users: usersWithDevice });
   } catch (error) {
     console.error('Error fetching users:', error);
     return NextResponse.json(

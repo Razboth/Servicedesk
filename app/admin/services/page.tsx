@@ -192,6 +192,9 @@ export default function ServicesPage() {
     categoryId: '',
     subcategoryId: '',
     itemId: '',
+    tier1CategoryId: '',
+    tier2SubcategoryId: '',
+    tier3ItemId: '',
     supportGroupId: '',
     priority: 'MEDIUM',
     estimatedHours: 4,
@@ -328,6 +331,9 @@ export default function ServicesPage() {
         categoryId: '',
         subcategoryId: '',
         itemId: '',
+        tier1CategoryId: '',
+        tier2SubcategoryId: '',
+        tier3ItemId: '',
         supportGroupId: defaultSupportGroupId,
         priority: 'MEDIUM',
         estimatedHours: 4,
@@ -453,16 +459,15 @@ export default function ServicesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-      <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-10">
+    <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 p-6">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Service Management</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Service Management</h1>
             <p className="text-gray-600 dark:text-gray-400">Manage service catalog and configurations</p>
           </div>
           <Button 
             onClick={() => setIsNewServiceOpen(true)}
-            className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg"
+            className="bg-gray-900 hover:bg-gray-800 text-white"
           >
             <Plus className="mr-2 h-4 w-4" />
             New Service
@@ -470,7 +475,7 @@ export default function ServicesPage() {
         </div>
 
         {/* Filters */}
-        <Card className="mb-6 bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
+        <Card className="mb-6">
         <CardContent className="p-4">
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div className="md:col-span-1">
@@ -667,7 +672,7 @@ export default function ServicesPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="categoryId">Category</Label>
+                <Label htmlFor="categoryId">Category (Optional)</Label>
                 <Select
                   value={newService.categoryId}
                   onValueChange={(value) => setNewService(prev => ({ ...prev, categoryId: value }))}
@@ -681,6 +686,88 @@ export default function ServicesPage() {
                         {category.name}
                       </SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* 3-Tier Category Selection */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="tier1CategoryId">Tier 1 Category *</Label>
+                <Select
+                  value={newService.tier1CategoryId || ''}
+                  onValueChange={(value) => {
+                    setNewService(prev => ({ 
+                      ...prev, 
+                      tier1CategoryId: value,
+                      tier2SubcategoryId: '',
+                      tier3ItemId: ''
+                    }));
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Tier 1" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tierCategories.map((category: any) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="tier2SubcategoryId">Tier 2 Subcategory</Label>
+                <Select
+                  value={newService.tier2SubcategoryId || ''}
+                  onValueChange={(value) => {
+                    setNewService(prev => ({ 
+                      ...prev, 
+                      tier2SubcategoryId: value,
+                      tier3ItemId: ''
+                    }));
+                  }}
+                  disabled={!newService.tier1CategoryId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Tier 2" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {newService.tier1CategoryId &&
+                      tierCategories
+                        .find(c => c.id === newService.tier1CategoryId)
+                        ?.subcategories?.map((sub: any) => (
+                          <SelectItem key={sub.id} value={sub.id}>
+                            {sub.name}
+                          </SelectItem>
+                        ))
+                    }
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="tier3ItemId">Tier 3 Item</Label>
+                <Select
+                  value={newService.tier3ItemId || ''}
+                  onValueChange={(value) => setNewService(prev => ({ ...prev, tier3ItemId: value }))}
+                  disabled={!newService.tier2SubcategoryId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Tier 3" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {newService.tier2SubcategoryId &&
+                      tierCategories
+                        .find(c => c.id === newService.tier1CategoryId)
+                        ?.subcategories?.find((s: any) => s.id === newService.tier2SubcategoryId)
+                        ?.items?.map((item: any) => (
+                          <SelectItem key={item.id} value={item.id}>
+                            {item.name}
+                          </SelectItem>
+                        ))
+                    }
                   </SelectContent>
                 </Select>
               </div>
@@ -811,7 +898,7 @@ export default function ServicesPage() {
               <Button variant="outline" onClick={() => setIsNewServiceOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleCreateService}>
+              <Button onClick={handleCreateService} className="bg-gray-900 hover:bg-gray-800 text-white">
                 Create Service
               </Button>
             </div>
@@ -1056,7 +1143,7 @@ export default function ServicesPage() {
               <Button variant="outline" onClick={() => setIsEditServiceOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleUpdateService}>
+              <Button onClick={handleUpdateService} className="bg-gray-900 hover:bg-gray-800 text-white">
                 Update Service
               </Button>
             </div>
@@ -1073,7 +1160,6 @@ export default function ServicesPage() {
           onUpdate={() => fetchServices()}
         />
       )}
-      </div>
     </div>
   );
 }

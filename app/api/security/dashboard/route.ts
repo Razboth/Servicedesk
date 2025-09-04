@@ -29,6 +29,9 @@ export async function GET(request: NextRequest) {
       // Security events from audit logs
       securityEvents,
       
+      // API access logs
+      apiAccessLogs,
+      
       // User account statistics
       userStats,
       
@@ -71,9 +74,40 @@ export async function GET(request: NextRequest) {
             { action: 'UNLOCK_USER' },
             { action: 'CREATE_USER' },
             { action: 'UPDATE_USER' },
-            { action: 'DOWNLOAD_FILE' }
+            { action: 'DOWNLOAD_FILE' },
+            { action: 'CREATE_ATM_INCIDENT' },
+            { action: 'CREATE_ATM_INCIDENT_EXTERNAL' }
           ],
           createdAt: { gte: startDate }
+        }
+      }),
+      
+      // API access logs with IP addresses
+      prisma.auditLog.findMany({
+        where: {
+          OR: [
+            { action: 'CREATE_ATM_INCIDENT' },
+            { action: 'CREATE_ATM_INCIDENT_EXTERNAL' },
+            { action: 'API_ACCESS' }
+          ],
+          createdAt: { gte: startDate }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        },
+        take: 20,
+        select: {
+          id: true,
+          action: true,
+          entityId: true,
+          createdAt: true,
+          newValues: true,
+          user: {
+            select: {
+              email: true,
+              name: true
+            }
+          }
         }
       }),
       
@@ -164,6 +198,22 @@ export async function GET(request: NextRequest) {
       ORDER BY DATE(created_at)
     `;
 
+    // Extract IP addresses from API access logs
+    const apiAccessDetails = apiAccessLogs.map(log => ({
+      id: log.id,
+      action: log.action,
+      timestamp: log.createdAt,
+      user: log.user?.email || 'External API',
+      ipAddress: (log.newValues as any)?.sourceIp || (log.newValues as any)?.ipAddress || 'Unknown',
+      userAgent: (log.newValues as any)?.userAgent || 'Unknown',
+      details: {
+        atmCode: (log.newValues as any)?.atmCode,
+        type: (log.newValues as any)?.type,
+        severity: (log.newValues as any)?.severity,
+        externalRef: (log.newValues as any)?.externalReferenceId
+      }
+    }));
+
     // Prepare dashboard response
     const dashboardData = {
       summary: {
@@ -173,7 +223,8 @@ export async function GET(request: NextRequest) {
         accountLockouts,
         lockedAccounts,
         securityEvents,
-        activeUsers
+        activeUsers,
+        apiAccessCount: apiAccessLogs.length
       },
       userStats: userStats.reduce((acc, stat) => {
         acc[stat.role] = stat._count.id;
@@ -189,6 +240,7 @@ export async function GET(request: NextRequest) {
         failureCount: ip._count.id
       })),
       dailyTrends: dailyStats,
+      apiAccessLogs: apiAccessDetails,
       alertLevel: calculateAlertLevel({
         failureRate: parseFloat(failureRate),
         accountLockouts,

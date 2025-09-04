@@ -25,12 +25,17 @@ export async function GET(request: NextRequest) {
         isActive: true
       },
       include: {
-        category: {
+        tier1Category: {
           select: {
             name: true
           }
         },
-        subcategory: {
+        tier2Subcategory: {
+          select: {
+            name: true
+          }
+        },
+        tier3Item: {
           select: {
             name: true
           }
@@ -61,10 +66,13 @@ export async function GET(request: NextRequest) {
       include: {
         service: {
           include: {
-            category: {
+            tier1Category: {
               select: { name: true }
             },
-            subcategory: {
+            tier2Subcategory: {
+              select: { name: true }
+            },
+            tier3Item: {
               select: { name: true }
             }
           }
@@ -95,13 +103,13 @@ export async function GET(request: NextRequest) {
         id: service.id,
         name: service.name,
         description: service.description,
-        category: category?.name || 'Uncategorized',
-        tier2Category: subcategory?.name || 'General',
+        category: service.tier1Category?.name || 'Uncategorized',
+        tier2Category: service.tier2Subcategory?.name || 'General',
         totalTickets: service._count.tickets,
         resolvedTickets: resolvedTickets.length,
         resolutionRate,
         avgResolutionTime: Math.round(avgResolutionTime * 10) / 10,
-        urgentTickets: priorityBreakdown['URGENT'] || 0,
+        urgentTickets: priorityBreakdown['CRITICAL'] || 0,
         highTickets: priorityBreakdown['HIGH'] || 0,
         isActive: service.isActive,
         estimatedHours: service.estimatedHours || 0
@@ -113,7 +121,7 @@ export async function GET(request: NextRequest) {
 
     // Calculate category performance
     const categoryStats = serviceTickets.reduce((acc, ticket) => {
-      const category = ticket.category?.name || 'Uncategorized';
+      const category = ticket.service?.tier1Category?.name || 'Uncategorized';
       if (!acc[category]) {
         acc[category] = {
           totalTickets: 0,

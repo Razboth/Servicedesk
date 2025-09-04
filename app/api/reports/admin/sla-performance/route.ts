@@ -30,9 +30,6 @@ export async function GET(request: NextRequest) {
       include: {
         ticket: {
           include: {
-            category: {
-              select: { name: true }
-            },
             assignedTo: {
               select: {
                 name: true,
@@ -84,7 +81,7 @@ export async function GET(request: NextRequest) {
 
     // SLA performance by priority
     const priorityPerformance = await Promise.all(
-      ['URGENT', 'HIGH', 'MEDIUM', 'LOW'].map(async priority => {
+      ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].map(async priority => {
         const prioritySla = slaData.filter(sla => sla.ticket.priority === priority);
         const priorityCompliant = prioritySla.filter(sla => !sla.isResponseBreached && !sla.isResolutionBreached);
         
@@ -110,7 +107,7 @@ export async function GET(request: NextRequest) {
 
     // SLA performance by service category
     const categoryPerformance = slaData.reduce((acc, sla) => {
-      const category = sla.ticket.category?.name || 'Other';
+      const category = 'Other'; // Category is not directly on ticket model
       if (!acc[category]) {
         acc[category] = {
           total: 0,

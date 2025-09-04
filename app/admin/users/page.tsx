@@ -70,7 +70,11 @@ import {
   Unlock,
   Eye,
   EyeOff,
-  AlertTriangle
+  AlertTriangle,
+  Monitor,
+  Smartphone,
+  FileText,
+  Wrench
 } from 'lucide-react';
 
 interface User {
@@ -102,6 +106,14 @@ interface User {
     createdTickets: number;
     assignedTickets: number;
   };
+  lastDevice?: {
+    browser: string;
+    os: string;
+    deviceType: string;
+    lastSeen: string;
+    ipAddress?: string;
+    rawUserAgent?: string;
+  } | null;
 }
 
 interface UserFormData {
@@ -828,6 +840,7 @@ export default function AdminUsersPage() {
                 <TableHead>Role</TableHead>
                 <TableHead>Assignment</TableHead>
                 <TableHead className="text-center">Tickets</TableHead>
+                <TableHead>Device</TableHead>
                 <TableHead>Security Status</TableHead>
                 <TableHead>Last Activity</TableHead>
                 <TableHead>Actions</TableHead>
@@ -836,13 +849,13 @@ export default function AdminUsersPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8">
+                  <TableCell colSpan={9} className="text-center py-8">
                     Loading users...
                   </TableCell>
                 </TableRow>
               ) : users.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8">
+                  <TableCell colSpan={9} className="text-center py-8">
                     No users found
                   </TableCell>
                 </TableRow>
@@ -895,6 +908,23 @@ export default function AdminUsersPage() {
                         <p>Created: {user._count?.createdTickets || 0}</p>
                         <p>Assigned: {user._count?.assignedTickets || 0}</p>
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      {user.lastDevice ? (
+                        <div className="text-xs space-y-1">
+                          <div className="flex items-center gap-1">
+                            {user.lastDevice.deviceType === 'mobile' ? (
+                              <Smartphone className="h-3 w-3" />
+                            ) : (
+                              <Monitor className="h-3 w-3" />
+                            )}
+                            <span>{user.lastDevice.browser}</span>
+                          </div>
+                          <div className="text-gray-500">{user.lastDevice.os}</div>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 text-xs">No data</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="space-y-1">

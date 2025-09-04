@@ -36,7 +36,13 @@ import {
   AlertTriangle,
   Clock,
   Users,
-  Activity
+  Activity,
+  Monitor,
+  Smartphone,
+  Tablet,
+  AlertCircle,
+  CheckCircle,
+  XCircle
 } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { toast } from 'sonner'
@@ -70,10 +76,33 @@ interface AccountStats {
   activeUsers: number
 }
 
+interface DeviceIssue {
+  id: string
+  userId: string
+  userEmail: string
+  userName: string
+  browser: string
+  os: string
+  deviceType: string
+  issue: string
+  createdAt: string
+}
+
+interface DeviceStats {
+  totalDevices: number
+  unsupportedBrowsers: number
+  mobileUsers: number
+  desktopUsers: number
+  browserDistribution: { name: string; count: number }[]
+  osDistribution: { name: string; count: number }[]
+}
+
 interface AccountData {
   users: User[]
   recentAttempts: LoginAttempt[]
   stats: AccountStats
+  deviceStats?: DeviceStats
+  deviceIssues?: DeviceIssue[]
   pagination: {
     page: number
     limit: number
@@ -89,29 +118,31 @@ export default function SecurityDashboard() {
   const [lockedOnly, setLockedOnly] = useState(true)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
-
-  // Check if user has admin role
-  if (session?.user?.role !== 'ADMIN') {
-    return (
-      <div className="p-6">
-        <Alert>
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
-            Access denied. Super admin privileges required.
-          </AlertDescription>
-        </Alert>
-      </div>
-    )
-  }
+  const [deviceData, setDeviceData] = useState<any>(null)
+  const [showDeviceAnalytics, setShowDeviceAnalytics] = useState(false)
 
   const fetchData = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`/api/admin/accounts?locked=${lockedOnly}`)
-      if (!response.ok) throw new Error('Failed to fetch data')
+      const [accountResponse, deviceResponse] = await Promise.all([
+        fetch(`/api/admin/accounts?locked=${lockedOnly}`),
+        fetch('/api/reports/admin/device-analytics?days=7')
+      ])
       
-      const result = await response.json()
-      setData(result)
+      if (!accountResponse.ok) throw new Error('Failed to fetch data')
+      
+      const accountResult = await accountResponse.json()
+      setData(accountResult)
+      
+      if (deviceResponse.ok) {
+        try {
+          const deviceResult = await deviceResponse.json()
+          setDeviceData(deviceResult)
+        } catch (err) {
+          console.error('Error parsing device data:', err)
+          setDeviceData(null)
+        }
+      }
     } catch (error) {
       console.error('Failed to fetch account data:', error)
       toast.error('Failed to load account data')
@@ -158,6 +189,20 @@ export default function SecurityDashboard() {
     return user.lockedAt && user.loginAttempts >= 5
   }
 
+  // Check if user has admin role (after all hooks)
+  if (session?.user?.role !== 'ADMIN' && session?.user?.role !== 'SUPER_ADMIN') {
+    return (
+      <div className="p-6">
+        <Alert>
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            Access denied. Admin privileges required.
+          </AlertDescription>
+        </Alert>
+      </div>
+    )
+  }
+
   if (loading) {
     return (
       <div className="p-6">
@@ -177,13 +222,23 @@ export default function SecurityDashboard() {
             Monitor and manage user account security
           </p>
         </div>
-        <div className="flex items-center space-x-2">
-          <Switch
-            id="locked-filter"
-            checked={lockedOnly}
-            onCheckedChange={setLockedOnly}
-          />
-          <Label htmlFor="locked-filter">Show locked accounts only</Label>
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="device-analytics"
+              checked={showDeviceAnalytics}
+              onCheckedChange={setShowDeviceAnalytics}
+            />
+            <Label htmlFor="device-analytics">Show Device Analytics</Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="locked-filter"
+              checked={lockedOnly}
+              onCheckedChange={setLockedOnly}
+            />
+            <Label htmlFor="locked-filter">Show locked accounts only</Label>
+          </div>
         </div>
       </div>
 
@@ -367,6 +422,153 @@ export default function SecurityDashboard() {
           )}
         </CardContent>
       </Card>
+
+      {/* Device Analytics Section */}
+      {showDeviceAnalytics && deviceData && (
+        <>
+          {/* Browser Compatibility Issues */}
+          {deviceData.unsupportedBrowsers && deviceData.unsupportedBrowsers.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertCircle className="h-5 w-5 text-red-500" />
+                  Browser Compatibility Issues
+                </CardTitle>
+                <CardDescription>
+                  Users experiencing issues due to unsupported or outdated browsers
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>User</TableHead>
+                        <TableHead>Browser</TableHead>
+                        <TableHead>OS</TableHead>
+                        <TableHead>Device</TableHead>
+                        <TableHead>Issue</TableHead>
+                        <TableHead>Last Attempt</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {deviceData.unsupportedBrowsers && Array.isArray(deviceData.unsupportedBrowsers) && deviceData.unsupportedBrowsers.map((issue: any) => (
+                        <TableRow key={issue.id}>
+                          <TableCell>
+                            <div>
+                              <div className="font-medium">{issue.user?.name || issue.user?.email || 'Unknown'}</div>
+                              <div className="text-sm text-gray-500">{issue.user?.email}</div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="destructive">
+                              {issue.newValues?.browser || 'Unknown'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{issue.newValues?.os || 'Unknown'}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              {issue.newValues?.deviceType === 'mobile' && <Smartphone className="h-4 w-4" />}
+                              {issue.newValues?.deviceType === 'tablet' && <Tablet className="h-4 w-4" />}
+                              {issue.newValues?.deviceType === 'desktop' && <Monitor className="h-4 w-4" />}
+                              <span className="text-sm">{issue.newValues?.deviceType || 'Unknown'}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="max-w-xs">
+                              {issue.newValues?.warnings && Array.isArray(issue.newValues.warnings) && issue.newValues.warnings.map((warning: string, idx: number) => (
+                                <div key={idx} className="text-sm text-red-600">{warning}</div>
+                              ))}
+                            </div>
+                          </TableCell>
+                          <TableCell>{formatDate(issue.createdAt)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Device Statistics */}
+          {deviceData.statistics && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Browser Distribution */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium">Browser Distribution</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {Object.entries(deviceData.statistics.browsers || {}).map(([browser, data]: [string, any]) => (
+                      <div key={browser} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm">{browser}</span>
+                          {data.hasUnsupported && (
+                            <XCircle className="h-3 w-3 text-red-500" title="Has unsupported versions" />
+                          )}
+                        </div>
+                        <Badge variant="secondary">{data.count}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* OS Distribution */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium">Operating Systems</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {Object.entries(deviceData.statistics.operatingSystems || {}).map(([os, count]: [string, any]) => (
+                      <div key={os} className="flex items-center justify-between">
+                        <span className="text-sm">{os}</span>
+                        <Badge variant="secondary">{count}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Device Types */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium">Device Types</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {Object.entries(deviceData.statistics.deviceTypes || {}).map(([type, count]: [string, any]) => (
+                      <div key={type} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {type === 'mobile' && <Smartphone className="h-4 w-4" />}
+                          {type === 'tablet' && <Tablet className="h-4 w-4" />}
+                          {type === 'desktop' && <Monitor className="h-4 w-4" />}
+                          <span className="text-sm capitalize">{type}</span>
+                        </div>
+                        <Badge variant="secondary">{count}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Failed Ticket Creation Attempts */}
+          {deviceData.failedTicketAttempts > 0 && (
+            <Alert>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                <strong>{deviceData.failedTicketAttempts}</strong> failed ticket creation attempts detected in the last 7 days.
+                Check the browser compatibility issues above for potential causes.
+              </AlertDescription>
+            </Alert>
+          )}
+        </>
+      )}
 
       {/* Recent Login Attempts */}
       {data?.recentAttempts && (

@@ -266,7 +266,21 @@ export async function POST(request: NextRequest) {
 
     // Generate ticket number
     const ticketCount = await prisma.ticket.count();
-    const ticketNumber = `SOC${new Date().getFullYear()}${String(ticketCount + 1).padStart(6, '0')}`;
+    // Generate ticket number using standard format
+    const currentYear = new Date().getFullYear();
+    const yearStart = new Date(currentYear, 0, 1);
+    const yearEnd = new Date(currentYear + 1, 0, 1);
+    
+    const yearTicketCount = await prisma.ticket.count({
+      where: {
+        createdAt: {
+          gte: yearStart,
+          lt: yearEnd
+        }
+      }
+    });
+    
+    const ticketNumber = `TKT-${currentYear}-${String(yearTicketCount + 1).padStart(6, '0')}`;
 
     // Process field values - we need to create or find ServiceField entries
     const processedFieldValues = [];

@@ -328,7 +328,21 @@ export async function POST(request: NextRequest) {
 
     // Generate unique ticket number
     const timestamp = Date.now();
-    const ticketNumber = `NET-${timestamp.toString().slice(-8)}-${endpointType.slice(0, 3)}-${endpoint.code}`;
+    // Generate ticket number using standard format
+    const currentYear = new Date().getFullYear();
+    const yearStart = new Date(currentYear, 0, 1);
+    const yearEnd = new Date(currentYear + 1, 0, 1);
+    
+    const yearTicketCount = await prisma.ticket.count({
+      where: {
+        createdAt: {
+          gte: yearStart,
+          lt: yearEnd
+        }
+      }
+    });
+    
+    const ticketNumber = `TKT-${currentYear}-${String(yearTicketCount + 1).padStart(6, '0')}`;
 
     console.log('[CreateTicket] Creating ticket with data:', {
       ticketNumber,

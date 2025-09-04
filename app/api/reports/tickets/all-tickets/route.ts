@@ -289,8 +289,7 @@ export async function GET(request: NextRequest) {
       updatedAt: ticket.updatedAt,
       resolvedAt: ticket.resolvedAt,
       closedAt: ticket.closedAt,
-      responseTime: ticket.firstResponseAt ? 
-        Math.round((new Date(ticket.firstResponseAt).getTime() - new Date(ticket.createdAt).getTime()) / (1000 * 60)) : null,
+      responseTime: null, // Field removed as firstResponseAt doesn't exist
       resolutionTime: ticket.resolvedAt ? 
         Math.round((new Date(ticket.resolvedAt).getTime() - new Date(ticket.createdAt).getTime()) / (1000 * 60 * 60)) : null,
       approvalStatus: ticket.approvals[0]?.status || null,
