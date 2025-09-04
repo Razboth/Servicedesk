@@ -20,6 +20,8 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
     const priority = searchParams.get('priority');
     const categoryId = searchParams.get('categoryId');
+    const subcategoryId = searchParams.get('subcategoryId');
+    const itemId = searchParams.get('itemId');
     const serviceId = searchParams.get('serviceId');
     const technicianId = searchParams.get('technicianId');
     const branchId = searchParams.get('branchId');
@@ -75,11 +77,15 @@ export async function GET(request: NextRequest) {
     if (priority && priority !== 'ALL') {
       whereClause.priority = priority;
     }
+    // Filter by 3-tier categorization directly on tickets
     if (categoryId && categoryId !== 'ALL') {
-      whereClause.service = {
-        ...whereClause.service,
-        categoryId: categoryId
-      };
+      whereClause.categoryId = categoryId;
+    }
+    if (subcategoryId && subcategoryId !== 'ALL') {
+      whereClause.subcategoryId = subcategoryId;
+    }
+    if (itemId && itemId !== 'ALL') {
+      whereClause.itemId = itemId;
     }
     if (serviceId && serviceId !== 'ALL') {
       whereClause.serviceId = serviceId;
@@ -150,12 +156,6 @@ export async function GET(request: NextRequest) {
           select: {
             id: true,
             name: true,
-            category: {
-              select: {
-                id: true,
-                name: true
-              }
-            },
             supportGroup: {
               select: {
                 id: true,
@@ -163,6 +163,25 @@ export async function GET(request: NextRequest) {
                 code: true
               }
             }
+          }
+        },
+        // Include 3-tier categorization
+        category: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        subcategory: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        item: {
+          select: {
+            id: true,
+            name: true
           }
         },
         approvals: {
@@ -206,12 +225,31 @@ export async function GET(request: NextRequest) {
       })
     };
 
-    // Get unique values for filters
+    // Get unique values for filters including 3-tier categories
     const filters = {
-      categories: await prisma.serviceCategory.findMany({
+      categories: await prisma.category.findMany({
+        where: { isActive: true },
         select: { id: true, name: true },
         orderBy: { name: 'asc' }
       }),
+      subcategories: categoryId && categoryId !== 'ALL' ? 
+        await prisma.subcategory.findMany({
+          where: { 
+            isActive: true,
+            categoryId: categoryId
+          },
+          select: { id: true, name: true },
+          orderBy: { name: 'asc' }
+        }) : [],
+      items: subcategoryId && subcategoryId !== 'ALL' ?
+        await prisma.item.findMany({
+          where: {
+            isActive: true,
+            subcategoryId: subcategoryId
+          },
+          select: { id: true, name: true },
+          orderBy: { name: 'asc' }
+        }) : [],
       branches: await prisma.branch.findMany({
         where: { isActive: true },
         select: { id: true, name: true, code: true },
@@ -235,9 +273,12 @@ export async function GET(request: NextRequest) {
       description: ticket.description,
       status: ticket.status,
       priority: ticket.priority,
-      category: ticket.service.category.name,
-      service: ticket.service.name,
-      supportGroup: ticket.service.supportGroup?.name || 'N/A',
+      // 3-tier categorization
+      category: ticket.category?.name || 'Uncategorized',
+      subcategory: ticket.subcategory?.name || '-',
+      item: ticket.item?.name || '-',
+      service: ticket.service?.name || 'N/A',
+      supportGroup: ticket.service?.supportGroup?.name || 'N/A',
       createdBy: ticket.createdBy.name,
       createdByEmail: ticket.createdBy.email,
       branch: ticket.createdBy.branch?.name || 'N/A',
@@ -311,26 +352,31 @@ export async function POST(request: NextRequest) {
         },
         service: {
           select: {
-            name: true,
-            category: { select: { name: true } }
+            name: true
           }
-        }
+        },
+        // Include 3-tier categorization for export
+        category: { select: { name: true } },
+        subcategory: { select: { name: true } },
+        item: { select: { name: true } }
       },
       orderBy: { createdAt: 'desc' }
     });
 
     if (format === 'csv') {
       const csv = [
-        // Headers
-        ['Ticket #', 'Title', 'Status', 'Priority', 'Category', 'Service', 'Created By', 'Branch', 'Assigned To', 'Created Date', 'Resolved Date', 'Resolution Time (hrs)'].join(','),
+        // Headers with 3-tier categorization
+        ['Ticket #', 'Title', 'Status', 'Priority', 'Category', 'Subcategory', 'Item', 'Service', 'Created By', 'Branch', 'Assigned To', 'Created Date', 'Resolved Date', 'Resolution Time (hrs)'].join(','),
         // Data rows
         ...tickets.map(t => [
           t.ticketNumber,
           `"${t.title.replace(/"/g, '""')}"`,
           t.status,
           t.priority,
-          t.service.category.name,
-          t.service.name,
+          t.category?.name || 'Uncategorized',
+          t.subcategory?.name || '-',
+          t.item?.name || '-',
+          t.service?.name || 'N/A',
           t.createdBy.name,
           t.createdBy.branch?.name || 'N/A',
           t.assignedTo?.name || 'Unassigned',

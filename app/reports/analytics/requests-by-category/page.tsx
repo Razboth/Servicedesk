@@ -48,7 +48,22 @@ export default function RequestsByCategoryReport() {
   const fetchData = async () => {
     setLoading(true)
     try {
-      // Simulated data
+      // Fetch real data from API
+      const response = await fetch(`/api/reports/analytics/requests-by-category?timeRange=${timeRange}`)
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch category data')
+      }
+      
+      const data = await response.json()
+      
+      setCategoryData(data.categoryData || [])
+      setTrendData(data.trendData || [])
+      
+      setLoading(false)
+    } catch (error) {
+      console.error('Error fetching category report:', error)
+      // Fallback to mock data if API fails
       const mockCategoryData: CategoryData[] = [
         {
           category: 'Hardware',
@@ -153,9 +168,6 @@ export default function RequestsByCategoryReport() {
 
       setCategoryData(mockCategoryData)
       setTrendData(mockTrendData)
-    } catch (error) {
-      console.error('Failed to fetch category data:', error)
-    } finally {
       setLoading(false)
     }
   }

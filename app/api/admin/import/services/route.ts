@@ -6,8 +6,8 @@ import * as XLSX from 'xlsx';
 
 const ALLOWED_ROLES = ['ADMIN', 'MANAGER'];
 
-// Validation for service data
-function validateServiceData(data: any): string[] {
+// Validation for service data with tier category validation
+async function validateServiceData(data: any): Promise<string[]> {
   const errors: string[] = [];
   
   if (!data.name || data.name.trim() === '') {
@@ -28,6 +28,34 @@ function validateServiceData(data: any): string[] {
   
   if (data.defaultIssueClassification && !['HUMAN_ERROR', 'SYSTEM_ERROR', 'HARDWARE_FAILURE', 'NETWORK_ISSUE', 'SECURITY_INCIDENT', 'DATA_ISSUE', 'PROCESS_GAP', 'EXTERNAL_FACTOR'].includes(data.defaultIssueClassification)) {
     errors.push('defaultIssueClassification must be valid classification');
+  }
+  
+  // Validate tier category IDs if provided
+  if (data.tier1CategoryId && data.tier1CategoryId.trim()) {
+    const category = await prisma.category.findUnique({
+      where: { id: data.tier1CategoryId.trim() }
+    });
+    if (!category) {
+      errors.push(`Invalid tier1CategoryId: ${data.tier1CategoryId} does not exist in categories table`);
+    }
+  }
+  
+  if (data.tier2SubcategoryId && data.tier2SubcategoryId.trim()) {
+    const subcategory = await prisma.subcategory.findUnique({
+      where: { id: data.tier2SubcategoryId.trim() }
+    });
+    if (!subcategory) {
+      errors.push(`Invalid tier2SubcategoryId: ${data.tier2SubcategoryId} does not exist in subcategories table`);
+    }
+  }
+  
+  if (data.tier3ItemId && data.tier3ItemId.trim()) {
+    const item = await prisma.item.findUnique({
+      where: { id: data.tier3ItemId.trim() }
+    });
+    if (!item) {
+      errors.push(`Invalid tier3ItemId: ${data.tier3ItemId} does not exist in items table`);
+    }
   }
   
   return errors;
@@ -78,8 +106,8 @@ export async function POST(request: NextRequest) {
       results.processed++;
       
       try {
-        // Validate row data
-        const validationErrors = validateServiceData(row);
+        // Validate row data including tier category IDs
+        const validationErrors = await validateServiceData(row);
         if (validationErrors.length > 0) {
           results.errors.push(`Row ${i + 1}: ${validationErrors.join(', ')}`);
           continue;
@@ -111,8 +139,10 @@ export async function POST(request: NextRequest) {
           defaultTitle: row.defaultTitle?.trim() || null,
           defaultItilCategory: row.defaultItilCategory || 'INCIDENT',
           defaultIssueClassification: row.defaultIssueClassification || null,
-          // Legacy category ID - will be updated to use proper foreign keys
+          // Legacy category ID
           categoryId: row.categoryId?.trim(),
+          // Only set tier category IDs if they exist and are valid
+          // If invalid, they'll be null and can be auto-assigned later
           tier1CategoryId: row.tier1CategoryId?.trim() || null,
           tier2SubcategoryId: row.tier2SubcategoryId?.trim() || null,
           tier3ItemId: row.tier3ItemId?.trim() || null
