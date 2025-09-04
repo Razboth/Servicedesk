@@ -40,14 +40,14 @@ const ModernDialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-0 border-0 bg-white/[0.95] dark:bg-gray-900/[0.95] backdrop-blur-xl shadow-2xl duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] rounded-2xl overflow-hidden",
+        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-0 border-0 bg-cream-50/[0.95] dark:bg-warm-dark-300/[0.95] backdrop-blur-xl shadow-2xl duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] rounded-2xl overflow-hidden",
         className
       )}
       {...props}
     >
       {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 z-10 rounded-full p-1 opacity-70 bg-white/20 hover:bg-white/30 dark:bg-gray-800/20 dark:hover:bg-gray-800/30 backdrop-blur-sm transition-all hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground hover:scale-105">
-        <X className="h-4 w-4 text-gray-700 dark:text-gray-300" />
+      <DialogPrimitive.Close className="absolute right-4 top-4 z-10 rounded-full p-1 opacity-70 bg-white/20 hover:bg-white/30 dark:bg-warm-dark-200/20 dark:hover:bg-warm-dark-200/30 backdrop-blur-sm transition-all hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-brown-400 focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground hover:scale-105">
+        <X className="h-4 w-4 text-brown-700 dark:text-cream-300" />
         <span className="sr-only">Close</span>
       </DialogPrimitive.Close>
     </DialogPrimitive.Content>
@@ -66,20 +66,20 @@ const ModernDialogHeader = React.forwardRef<
     ref={ref}
     className={cn(
       "relative px-6 py-6 text-center sm:text-left",
-      variant === "gradient" && "bg-gradient-to-r from-blue-500 to-indigo-600 text-white",
-      variant === "default" && "bg-gray-50/80 dark:bg-gray-800/80 backdrop-blur-sm border-b border-gray-200/50 dark:border-gray-700/50",
+      variant === "gradient" && "bg-gradient-to-r from-brown-400 to-brown-600 dark:from-brown-200 dark:to-brown-300 text-white dark:text-brown-950",
+      variant === "default" && "bg-cream-100/80 dark:bg-warm-dark-200/80 backdrop-blur-sm border-b border-cream-500/50 dark:border-warm-dark-100/50",
       className
     )}
     {...props}
   >
     {variant === "gradient" && (
-      <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-indigo-600 opacity-90" />
+      <div className="absolute inset-0 bg-gradient-to-r from-brown-400 to-brown-600 dark:from-brown-200 dark:to-brown-300 opacity-90" />
     )}
     <div className="relative flex items-center gap-3">
       {icon && (
         <div className={cn(
           "flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center",
-          variant === "gradient" ? "bg-white/20" : "bg-blue-100 dark:bg-blue-900/50"
+          variant === "gradient" ? "bg-white/20" : "bg-cream-200 dark:bg-warm-dark-100/50"
         )}>
           {icon}
         </div>
@@ -172,7 +172,7 @@ const ModernProgressSteps = React.forwardRef<
               className={cn(
                 "w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold transition-all duration-300",
                 step.status === "completed" && "bg-green-500 text-white",
-                step.status === "current" && "bg-blue-500 text-white animate-pulse",
+                step.status === "current" && "bg-brown-400 text-white animate-pulse",
                 step.status === "pending" && "bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400"
               )}
             >

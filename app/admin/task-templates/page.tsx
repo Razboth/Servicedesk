@@ -10,7 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, Plus, Edit, Save, X } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
+import { Trash2, Plus, Edit, Save, X, ClipboardList } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Service {
@@ -252,19 +253,18 @@ export default function TaskTemplatesPage() {
   }
 
   return (
-    <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 p-6">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">Task Templates</h1>
-          <p className="text-gray-600 mt-2">
-            Manage task templates for services to standardize work processes
-          </p>
-        </div>
-        <Button onClick={() => setShowNewForm(true)} className="flex items-center gap-2">
-          <Plus className="h-4 w-4" />
-          New Template
-        </Button>
-      </div>
+    <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
+      <PageHeader
+        title="Task Templates"
+        description="Manage task templates for services to standardize work processes"
+        icon={<ClipboardList className="h-6 w-6" />}
+        action={
+          <Button onClick={() => setShowNewForm(true)} className="flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            New Template
+          </Button>
+        }
+      />
 
       {showNewForm && (
         <Card className="mb-6">

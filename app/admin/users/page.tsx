@@ -53,6 +53,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageHeader } from '@/components/ui/page-header';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { 
@@ -509,23 +510,18 @@ export default function AdminUsersPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-      <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-8">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-              <Users className="h-8 w-8 text-blue-600" />
-              User Management
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400">
-              Create, edit, and manage user accounts
-            </p>
-          </div>
-        <ModernDialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+    <div className="min-h-screen bg-cream-100 dark:bg-brown-950">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
+        <PageHeader
+          title="User Management"
+          description="Create, edit, and manage user accounts"
+          icon={<Users className="h-6 w-6" />}
+          action={
+            <ModernDialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
           <DialogTrigger asChild>
             <Button 
               onClick={resetForm}
-              className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg"
+              className="bg-gradient-to-r from-brown-400 to-brown-500 dark:from-brown-200 dark:to-brown-300 text-white dark:text-brown-950 hover:from-brown-500 hover:to-brown-600 dark:hover:from-brown-300 dark:hover:to-brown-400 shadow-md hover:shadow-lg transition-all duration-300"
             >
               <UserPlus className="h-4 w-4 mr-2" />
               Create User
@@ -548,7 +544,7 @@ export default function AdminUsersPage() {
                   value={formData.email}
                   onChange={(e) => setFormData({...formData, email: e.target.value})}
                   placeholder="user@banksulutgo.co.id"
-                  className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm"
+                  className="bg-cream-50 dark:bg-warm-dark-200 backdrop-blur-sm"
                 />
               </div>
               
@@ -559,7 +555,7 @@ export default function AdminUsersPage() {
                   value={formData.name}
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
                   placeholder="Full Name"
-                  className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm"
+                  className="bg-cream-50 dark:bg-warm-dark-200 backdrop-blur-sm"
                 />
               </div>
               
@@ -570,14 +566,14 @@ export default function AdminUsersPage() {
                   value={formData.phone}
                   onChange={(e) => setFormData({...formData, phone: e.target.value})}
                   placeholder="Phone number"
-                  className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm"
+                  className="bg-cream-50 dark:bg-warm-dark-200 backdrop-blur-sm"
                 />
               </div>
               
               <div className="space-y-2">
                 <Label htmlFor="create-role">Role</Label>
                 <Select value={formData.role} onValueChange={(value) => setFormData({...formData, role: value})}>
-                  <SelectTrigger className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
+                  <SelectTrigger className="bg-cream-50 dark:bg-warm-dark-200 backdrop-blur-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -596,7 +592,7 @@ export default function AdminUsersPage() {
               <div className="space-y-2">
                 <Label htmlFor="create-branch">Branch</Label>
                 <Select value={formData.branchId || "none"} onValueChange={(value) => setFormData({...formData, branchId: value === "none" ? "" : value})}>
-                  <SelectTrigger className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
+                  <SelectTrigger className="bg-cream-50 dark:bg-warm-dark-200 backdrop-blur-sm">
                     <SelectValue placeholder="Select branch" />
                   </SelectTrigger>
                   <SelectContent>
@@ -613,7 +609,7 @@ export default function AdminUsersPage() {
               <div className="space-y-2">
                 <Label htmlFor="create-support-group">Support Group</Label>
                 <Select value={formData.supportGroupId || "none"} onValueChange={(value) => setFormData({...formData, supportGroupId: value === "none" ? "" : value})}>
-                  <SelectTrigger className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
+                  <SelectTrigger className="bg-cream-50 dark:bg-warm-dark-200 backdrop-blur-sm">
                     <SelectValue placeholder="Select support group" />
                   </SelectTrigger>
                   <SelectContent>
@@ -635,7 +631,7 @@ export default function AdminUsersPage() {
                   value={formData.password || ''}
                   onChange={(e) => setFormData({...formData, password: e.target.value})}
                   placeholder="Leave empty for default: password123"
-                  className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm"
+                  className="bg-cream-50 dark:bg-warm-dark-200 backdrop-blur-sm"
                 />
               </div>
               
@@ -653,23 +649,24 @@ export default function AdminUsersPage() {
               <Button 
                 variant="outline" 
                 onClick={() => setShowCreateDialog(false)}
-                className="bg-white/50 hover:bg-white/70"
+                className="bg-cream-50 hover:bg-cream-100 dark:bg-warm-dark-200 dark:hover:bg-warm-dark-100"
               >
                 Cancel
               </Button>
               <Button 
                 onClick={handleCreateUser} 
                 disabled={actionLoading}
-                className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg"
+                className="bg-gradient-to-r from-brown-400 to-brown-500 dark:from-brown-200 dark:to-brown-300 text-white dark:text-brown-950 hover:from-brown-500 hover:to-brown-600 dark:hover:from-brown-300 dark:hover:to-brown-400 shadow-md hover:shadow-lg transition-all duration-300"
               >
                 {actionLoading ? 'Creating...' : 'Create User'}
               </Button>
             </ModernDialogFooter>
           </ModernDialogContent>
-        </ModernDialog>
-      </div>
+            </ModernDialog>
+          }
+        />
 
-        <Card className="mb-6 bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
+        <Card className="mb-6 bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Filter className="h-5 w-5" />
@@ -743,7 +740,7 @@ export default function AdminUsersPage() {
         </CardContent>
       </Card>
 
-        <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
+        <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-lg">
           <CardContent className="p-0">
           <ResponsiveTable 
             mobileCardView={
@@ -1162,7 +1159,7 @@ export default function AdminUsersPage() {
             <Button 
               onClick={handleUpdateUser} 
               disabled={actionLoading}
-              className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg"
+              className="bg-gradient-to-r from-brown-400 to-brown-500 dark:from-brown-200 dark:to-brown-300 text-white dark:text-brown-950 hover:from-brown-500 hover:to-brown-600 dark:hover:from-brown-300 dark:hover:to-brown-400 shadow-md hover:shadow-lg transition-all duration-300"
             >
               {actionLoading ? 'Updating...' : 'Update User'}
             </Button>

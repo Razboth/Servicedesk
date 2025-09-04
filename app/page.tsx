@@ -7,7 +7,8 @@ import { redirect } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { CalendarDays, Clock, Users, AlertTriangle, CheckCircle, XCircle, Pause, Play, Shield } from 'lucide-react'
+import { PageHeader } from '@/components/ui/page-header'
+import { CalendarDays, Clock, Users, AlertTriangle, CheckCircle, XCircle, Pause, Play, Shield, LayoutDashboard } from 'lucide-react'
 // Simple SVG icons as components
 const TicketIcon = ({ className }: { className?: string }) => (
   <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -114,10 +115,10 @@ export default function Dashboard() {
 
   if (status === 'loading' || isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-cream-100 dark:bg-brown-950 flex items-center justify-center">
         <div className="flex items-center gap-3">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600 dark:border-amber-400"></div>
-          <span className="text-amber-700 dark:text-amber-400">Loading...</span>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brown-400 dark:border-brown-200"></div>
+          <span className="text-brown-700 dark:text-cream-200">Loading...</span>
         </div>
       </div>
     )
@@ -128,116 +129,105 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
-      {/* Decorative background elements - warm colors */}
+    <div className="min-h-screen bg-cream-100 dark:bg-brown-950">
+      {/* Decorative background elements - subtle warm */}
       <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-gradient-to-r from-amber-300 to-orange-300 dark:from-amber-900/20 dark:to-orange-900/20 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-3xl opacity-20 animate-blob"></div>
-        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-r from-yellow-300 to-amber-300 dark:from-yellow-900/20 dark:to-amber-900/20 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-orange-300 to-red-300 dark:from-orange-900/20 dark:to-red-900/20 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
+        <div className="absolute -top-40 -right-40 w-96 h-96 bg-gradient-to-r from-cream-400/20 to-brown-400/20 dark:from-warm-dark-100/20 dark:to-brown-700/20 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-3xl opacity-20 animate-blob"></div>
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-r from-cream-300/20 to-cream-400/20 dark:from-warm-dark-200/20 dark:to-warm-dark-100/20 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-brown-300/20 to-brown-400/20 dark:from-brown-700/20 dark:to-brown-600/20 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
       </div>
 
       {/* Main Content */}
-      <main className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-6">
+      <main className="w-full px-4 sm:px-6 lg:px-8 py-6">
         {/* Header Section */}
-        <div className="mb-8">
-          <Card className="bg-gradient-to-r from-amber-50/90 to-orange-50/90 dark:bg-gray-900/70 backdrop-blur-xl border-amber-200/30 dark:border-gray-700/30 shadow-xl">
-            <CardHeader className="pb-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-3xl font-bold bg-gradient-to-r from-amber-700 to-orange-600 dark:from-amber-400 dark:to-orange-400 bg-clip-text text-transparent">
-                    Dashboard
-                  </h1>
-                  <p className="text-amber-800 dark:text-gray-400 mt-2">
-                    Monitor and manage IT services across all Bank SulutGo branches
-                  </p>
-                </div>
-                <div className="hidden sm:flex items-center gap-4">
-                  <Badge variant="outline" className="px-3 py-1 text-xs font-medium border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400">
-                    <Clock className="w-3 h-3 mr-1" />
-                    Live Data
-                  </Badge>
-                </div>
-              </div>
-            </CardHeader>
-          </Card>
-        </div>
+        <PageHeader
+          title="Dashboard"
+          description="Monitor and manage IT services across all Bank SulutGo branches"
+          icon={<LayoutDashboard className="h-6 w-6" />}
+          action={
+            <Badge variant="outline" className="px-3 py-1 text-xs font-medium border-brown-400 dark:border-brown-600 text-brown-700 dark:text-brown-200">
+              <Clock className="w-3 h-3 mr-1" />
+              Live Data
+            </Badge>
+          }
+        />
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
-          <Card className="bg-gradient-to-br from-white/80 to-amber-50/50 dark:bg-gray-900/70 backdrop-blur-xl border-amber-100/20 dark:border-gray-700/30 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
+          <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Tickets</CardTitle>
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500/10 to-blue-600/10 dark:from-blue-400/10 dark:to-blue-500/10 rounded-lg flex items-center justify-center">
-                <TicketIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <CardTitle className="text-sm font-medium text-brown-600 dark:text-cream-300">Total Tickets</CardTitle>
+              <div className="w-8 h-8 bg-gradient-to-br from-brown-400/10 to-brown-500/10 dark:from-brown-200/10 dark:to-brown-300/10 rounded-lg flex items-center justify-center">
+                <TicketIcon className="h-4 w-4 text-brown-500 dark:text-brown-200" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalTickets.toLocaleString()}</div>
-              <p className="text-xs text-gray-500 dark:text-gray-500">All time</p>
+              <div className="text-2xl font-bold text-brown-900 dark:text-cream-200">{stats.totalTickets.toLocaleString()}</div>
+              <p className="text-xs text-brown-600 dark:text-cream-400">All time</p>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-white/80 to-amber-50/50 dark:bg-gray-900/70 backdrop-blur-xl border-amber-100/20 dark:border-gray-700/30 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
+          <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Open Tickets</CardTitle>
-              <div className="w-8 h-8 bg-gradient-to-br from-orange-500/10 to-orange-600/10 dark:from-orange-400/10 dark:to-orange-500/10 rounded-lg flex items-center justify-center">
-                <ExclamationTriangleIcon className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+              <CardTitle className="text-sm font-medium text-brown-600 dark:text-cream-300">Open Tickets</CardTitle>
+              <div className="w-8 h-8 bg-gradient-to-br from-brown-300/20 to-brown-400/20 dark:from-brown-300/20 dark:to-brown-200/20 rounded-lg flex items-center justify-center">
+                <ExclamationTriangleIcon className="h-4 w-4 text-brown-400 dark:text-brown-300" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{stats.openTickets}</div>
-              <p className="text-xs text-gray-500 dark:text-gray-500">Requires attention</p>
+              <div className="text-2xl font-bold text-brown-400 dark:text-brown-300">{stats.openTickets}</div>
+              <p className="text-xs text-brown-600 dark:text-cream-400">Requires attention</p>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-white/80 to-amber-50/50 dark:bg-gray-900/70 backdrop-blur-xl border-amber-100/20 dark:border-gray-700/30 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
+          <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Resolved</CardTitle>
+              <CardTitle className="text-sm font-medium text-brown-600 dark:text-cream-300">Resolved</CardTitle>
               <div className="w-8 h-8 bg-gradient-to-br from-green-500/10 to-green-600/10 dark:from-green-400/10 dark:to-green-500/10 rounded-lg flex items-center justify-center">
                 <CheckCircleIcon className="h-4 w-4 text-green-600 dark:text-green-400" />
               </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.resolvedTickets.toLocaleString()}</div>
-              <p className="text-xs text-gray-500 dark:text-gray-500">This month</p>
+              <p className="text-xs text-brown-600 dark:text-cream-400">This month</p>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-white/80 to-amber-50/50 dark:bg-gray-900/70 backdrop-blur-xl border-amber-100/20 dark:border-gray-700/30 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
+          <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Avg Resolution</CardTitle>
-              <div className="w-8 h-8 bg-gradient-to-br from-purple-500/10 to-purple-600/10 dark:from-purple-400/10 dark:to-purple-500/10 rounded-lg flex items-center justify-center">
-                <ClockIcon className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              <CardTitle className="text-sm font-medium text-brown-600 dark:text-cream-300">Avg Resolution</CardTitle>
+              <div className="w-8 h-8 bg-gradient-to-br from-brown-500/10 to-brown-600/10 dark:from-brown-100/10 dark:to-brown-200/10 rounded-lg flex items-center justify-center">
+                <ClockIcon className="h-4 w-4 text-brown-600 dark:text-brown-100" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.avgResolutionTime}</div>
+              <div className="text-2xl font-bold text-brown-900 dark:text-cream-200">{stats.avgResolutionTime}</div>
               <p className="text-xs text-gray-500 dark:text-gray-500">Last 30 days</p>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-white/80 to-amber-50/50 dark:bg-gray-900/70 backdrop-blur-xl border-amber-100/20 dark:border-gray-700/30 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
+          <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">SLA Compliance</CardTitle>
-              <div className="w-8 h-8 bg-gradient-to-br from-indigo-500/10 to-indigo-600/10 dark:from-indigo-400/10 dark:to-indigo-500/10 rounded-lg flex items-center justify-center">
-                <ChartBarIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+              <CardTitle className="text-sm font-medium text-brown-600 dark:text-cream-300">SLA Compliance</CardTitle>
+              <div className="w-8 h-8 bg-gradient-to-br from-brown-700/10 to-brown-800/10 dark:from-warm-dark-100/20 dark:to-warm-dark-200/20 rounded-lg flex items-center justify-center">
+                <ChartBarIcon className="h-4 w-4 text-brown-700 dark:text-cream-300" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{stats.slaCompliance}%</div>
-              <p className="text-xs text-gray-500 dark:text-gray-500">This month</p>
+              <div className="text-2xl font-bold text-brown-700 dark:text-cream-300">{stats.slaCompliance}%</div>
+              <p className="text-xs text-brown-600 dark:text-cream-400">This month</p>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-white/80 to-amber-50/50 dark:bg-gray-900/70 backdrop-blur-xl border-amber-100/20 dark:border-gray-700/30 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
+          <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Active Users</CardTitle>
-              <div className="w-8 h-8 bg-gradient-to-br from-teal-500/10 to-teal-600/10 dark:from-teal-400/10 dark:to-teal-500/10 rounded-lg flex items-center justify-center">
-                <UserGroupIcon className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+              <CardTitle className="text-sm font-medium text-brown-600 dark:text-cream-300">Active Users</CardTitle>
+              <div className="w-8 h-8 bg-gradient-to-br from-brown-400/10 to-brown-500/10 dark:from-brown-100/10 dark:to-brown-200/10 rounded-lg flex items-center justify-center">
+                <UserGroupIcon className="h-4 w-4 text-brown-500 dark:text-brown-200" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.activeUsers}</div>
+              <div className="text-2xl font-bold text-brown-900 dark:text-cream-200">{stats.activeUsers}</div>
               <p className="text-xs text-gray-500 dark:text-gray-500">Online now</p>
             </CardContent>
           </Card>
@@ -247,18 +237,18 @@ export default function Dashboard() {
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          <Card className="bg-gradient-to-br from-white/80 to-amber-50/50 dark:bg-gray-900/70 backdrop-blur-xl border-amber-100/20 dark:border-gray-700/30 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 cursor-pointer group">
+          <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 cursor-pointer group">
             <CardHeader>
-              <CardTitle className="text-lg text-amber-900 dark:text-white group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
+              <CardTitle className="text-lg text-brown-900 dark:text-cream-200 group-hover:text-brown-400 dark:group-hover:text-brown-300 transition-colors">
                 Create New Ticket
               </CardTitle>
-              <CardDescription className="text-amber-700 dark:text-gray-400">
+              <CardDescription className="text-brown-600 dark:text-cream-400">
                 Report an incident or request service
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Button 
-                className="w-full bg-gradient-to-r from-amber-600 to-orange-600 dark:from-amber-500 dark:to-orange-500 text-white hover:from-amber-700 hover:to-orange-700 dark:hover:from-amber-600 dark:hover:to-orange-600 shadow-lg transition-all duration-300"
+                className="w-full bg-gradient-to-r from-brown-400 to-brown-500 dark:from-brown-200 dark:to-brown-300 text-white dark:text-brown-950 hover:from-brown-500 hover:to-brown-600 dark:hover:from-brown-300 dark:hover:to-brown-400 shadow-md hover:shadow-lg transition-all duration-300"
                 onClick={() => router.push('/tickets')}
               >
                 Create Ticket
@@ -268,21 +258,21 @@ export default function Dashboard() {
 
           {/* SOC Parser Card - Only visible for Security Analysts */}
           {(session.user.role === 'SECURITY_ANALYST' || session.user.supportGroupCode === 'SECURITY_OPS') && (
-            <Card className="bg-gradient-to-br from-red-50/80 to-orange-50/50 dark:bg-gray-900/70 backdrop-blur-xl border-red-200/30 dark:border-red-800/20 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 cursor-pointer group">
+            <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 cursor-pointer group">
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg text-gray-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
+                  <CardTitle className="text-lg text-brown-900 dark:text-cream-200 group-hover:text-brown-700 dark:group-hover:text-brown-400 transition-colors">
                     SOC Parser
                   </CardTitle>
-                  <Shield className="h-5 w-5 text-red-600 dark:text-red-400" />
+                  <Shield className="h-5 w-5 text-brown-700 dark:text-brown-400" />
                 </div>
-                <CardDescription className="text-gray-600 dark:text-gray-400">
+                <CardDescription className="text-brown-600 dark:text-cream-400">
                   Parse security alerts and create SOC tickets
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <Button 
-                  className="w-full bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white shadow-lg transition-all duration-300"
+                  className="w-full bg-gradient-to-r from-brown-700 to-brown-800 hover:from-brown-800 hover:to-brown-900 text-white shadow-lg transition-all duration-300"
                   onClick={() => router.push('/security/soc-parser')}
                 >
                   Open SOC Parser

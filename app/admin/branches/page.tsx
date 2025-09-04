@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageHeader } from '@/components/ui/page-header';
 import { toast } from 'sonner';
 import { 
   Building2, 
@@ -177,22 +178,20 @@ export default function BranchesPage() {
   };
 
   return (
-    <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-8">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Building2 className="h-8 w-8" />
-            Branch Management
-          </h1>
-          <p className="text-gray-600 mt-1">Manage bank branches and their details</p>
-        </div>
-        <Link href="/admin/branches/new">
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Branch
-          </Button>
-        </Link>
-      </div>
+    <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
+      <PageHeader
+        title="Branch Management"
+        description="Manage bank branches and their details"
+        icon={<Building2 className="h-6 w-6" />}
+        action={
+          <Link href="/admin/branches/new">
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Branch
+            </Button>
+          </Link>
+        }
+      />
 
       <Card className="mb-6">
         <CardHeader>

@@ -203,3 +203,4 @@ Required environment variables (see `.env.example`):
 - always rebuild and restart after every commit
 - always commit every changes also rebuild and restart
 - always commit every changes also rebuild and restart
+- the default theme get from https://tweakcn.com/themes/cmf4zd6yp000004ib53oeciwk

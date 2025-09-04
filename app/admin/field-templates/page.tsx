@@ -15,7 +15,8 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
-import { Plus, Pencil, Trash2, Search, Filter, Copy, FileDown, FileUp } from 'lucide-react'
+import { PageHeader } from '@/components/ui/page-header'
+import { Plus, Pencil, Trash2, Search, Filter, Copy, FileDown, FileUp, FileText } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 
 const FIELD_TYPES = [
@@ -523,27 +524,28 @@ export default function FieldTemplatesPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Field Templates</h1>
-          <p className="text-muted-foreground">Create and manage reusable field templates for services</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm">
-            <FileUp className="h-4 w-4 mr-2" />
-            Import
-          </Button>
-          <Button variant="outline" size="sm">
-            <FileDown className="h-4 w-4 mr-2" />
-            Export
-          </Button>
-          <Button onClick={handleCreate}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Template
-          </Button>
-        </div>
-      </div>
+    <div className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      <PageHeader
+        title="Field Templates"
+        description="Create and manage reusable field templates for services"
+        icon={<FileText className="h-6 w-6" />}
+        action={
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm">
+                <FileUp className="h-4 w-4 mr-2" />
+                Import
+              </Button>
+              <Button variant="outline" size="sm">
+                <FileDown className="h-4 w-4 mr-2" />
+                Export
+              </Button>
+              <Button onClick={handleCreate}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Template
+              </Button>
+            </div>
+          }
+        />
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>

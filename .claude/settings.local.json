@@ -15,7 +15,21 @@
       "Bash(ls:*)",
       "Bash(npx tsx:*)",
       "Bash(npm run build:*)",
-      "Read(/C:\\Project\\Service-Desk\\Servicedesk\\app\\api\\reports\\admin\\service-catalog/**)"
+      "Read(/C:\\Project\\Service-Desk\\Servicedesk\\app\\api\\reports\\admin\\service-catalog/**)",
+      "Read(/C:\\Project\\Service-Desk\\Servicedesk\\app/**)",
+      "Read(/C:\\Project\\Service-Desk\\Servicedesk\\app\\admin\\users/**)",
+      "Read(/C:\\Project\\Service-Desk\\Servicedesk\\components\\ui/**)",
+      "Read(/C:\\Project\\Service-Desk\\Servicedesk\\app/**)",
+      "Read(/C:\\Project\\Service-Desk\\Servicedesk\\components\\navigation/**)",
+      "Read(/C:\\Project\\Service-Desk\\Servicedesk\\components\\navigation/**)",
+      "Read(/C:\\Users\\razaan.botutihe\\Pictures\\Screenshots/**)",
+      "Read(/C:\\Users\\razaan.botutihe\\Pictures\\Screenshots/**)",
+      "Read(/C:\\Project\\Service-Desk\\Servicedesk\\app/**)",
+      "Read(/C:\\Project\\Service-Desk\\Servicedesk\\app\\admin\\task-templates/**)",
+      "Read(/C:\\Project\\Service-Desk\\Servicedesk\\app\\admin\\task-templates/**)",
+      "Read(/C:\\Project\\Service-Desk\\Servicedesk\\app\\admin\\field-templates/**)",
+      "Read(/C:\\Project\\Service-Desk\\Servicedesk\\app\\admin\\field-templates/**)",
+      "Read(/C:\\Project\\Service-Desk\\Servicedesk\\app/**)"
     ],
     "deny": [],
     "additionalDirectories": [

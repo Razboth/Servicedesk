@@ -415,7 +415,7 @@ export function TicketsDataTable({
     <div className="w-full space-y-6">
       {/* Modern Header with gradient background */}
       {!hideHeader && (
-        <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
+        <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-lg">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -430,7 +430,7 @@ export function TicketsDataTable({
                 {onCreateTicket && (
                   <Button 
                     onClick={onCreateTicket}
-                    className="bg-gray-900 hover:bg-gray-800 text-white"
+                    className="bg-gradient-to-r from-brown-400 to-brown-500 dark:from-brown-200 dark:to-brown-300 text-white dark:text-brown-950 hover:from-brown-500 hover:to-brown-600 dark:hover:from-brown-300 dark:hover:to-brown-400"
                   >
                     <Plus className="mr-2 h-4 w-4" />
                     Create Ticket
@@ -443,7 +443,7 @@ export function TicketsDataTable({
       )}
 
       {/* Real-time connection status with modern styling */}
-      <Card className="bg-white/[0.5] dark:bg-gray-800/[0.5] backdrop-blur-sm border-0 shadow-md">
+      <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-md">
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -462,7 +462,7 @@ export function TicketsDataTable({
               size="sm"
               onClick={loadTickets}
               disabled={isLoading}
-              className="hover:bg-gray-50 dark:hover:bg-gray-900/20 transition-colors"
+              className="hover:bg-cream-100 dark:hover:bg-warm-dark-200/50 transition-colors"
             >
               <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
               Refresh

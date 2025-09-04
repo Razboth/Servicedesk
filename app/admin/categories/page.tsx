@@ -42,7 +42,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
+import { Plus, Edit, Trash2, Eye, EyeOff, FolderTree } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ServiceCategory {
@@ -266,17 +267,13 @@ export default function AdminCategoriesPage() {
   }
 
   return (
-    <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-6">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Service Categories Management</CardTitle>
-              <CardDescription>
-                Manage the hierarchical service categories used for organizing services
-              </CardDescription>
-            </div>
-            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+    <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
+      <PageHeader
+        title="Service Categories Management"
+        description="Manage the hierarchical service categories used for organizing services"
+        icon={<FolderTree className="h-6 w-6" />}
+        action={
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="mr-2 h-4 w-4" />
@@ -363,7 +360,12 @@ export default function AdminCategoriesPage() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
-          </div>
+        }
+      />
+      
+      <Card className="mt-6">
+        <CardHeader className="pb-3">
+          <CardTitle>Categories List</CardTitle>
         </CardHeader>
         <CardContent>
           {/* Filters */}

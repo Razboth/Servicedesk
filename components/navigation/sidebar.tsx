@@ -410,7 +410,7 @@ export function Sidebar() {
                 {(isCollapsed && !isMobile) ? (
                   // Collapsed state - just avatar
                   <div className="relative">
-                    <div className="w-8 h-8 rounded-full bg-gray-700 dark:bg-gray-600 p-0.5">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-600 to-orange-600 dark:from-amber-700 dark:to-orange-700 p-0.5">
                       <div className="w-full h-full rounded-full overflow-hidden bg-white dark:bg-gray-800 flex items-center justify-center">
                         <span className="text-xs font-medium text-gray-700 dark:text-gray-200">
                           {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
@@ -430,7 +430,7 @@ export function Sidebar() {
                       </div>
                     </div>
                     <div className="relative flex-shrink-0">
-                      <div className="w-10 h-10 rounded-full bg-gray-700 dark:bg-gray-600 p-0.5">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-600 to-orange-600 dark:from-amber-700 dark:to-orange-700 p-0.5">
                         <div className="w-full h-full rounded-full overflow-hidden bg-white dark:bg-gray-800 flex items-center justify-center">
                           <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
                             {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
@@ -474,7 +474,7 @@ export function Sidebar() {
               {/* Profile header */}
               <div className="p-3 mb-2 bg-gray-50/50 dark:bg-gray-800/50 rounded-lg border border-gray-200/30 dark:border-gray-700/30">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gray-700 dark:bg-gray-600 p-0.5 flex-shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-600 to-orange-600 dark:from-amber-700 dark:to-orange-700 p-0.5 flex-shrink-0">
                     <div className="w-full h-full rounded-full overflow-hidden bg-white dark:bg-gray-800 flex items-center justify-center">
                       <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
                         {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
@@ -598,7 +598,7 @@ export function Sidebar() {
       {/* Version Footer - Below Profile */}
       <div className={`p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50 ${isCollapsed && !isMobile ? 'hidden' : ''}`}>
         <div className="text-center">
-          <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+          <p className="text-xs text-brown-600 dark:text-cream-400 font-medium">
             {getVersionString()}
           </p>
           <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">

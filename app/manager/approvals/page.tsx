@@ -419,8 +419,11 @@ export default function ManagerApprovalsPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Approval Dashboard</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">Review and approve pending ticket requests</p>
+          <h1 className="text-3xl font-bold flex items-center gap-2 text-brown-900 dark:text-cream-200">
+            <Shield className="h-8 w-8 text-brown-600 dark:text-cream-300" />
+            Approval Dashboard
+          </h1>
+          <p className="text-brown-600 dark:text-cream-300 mt-1">Review and approve pending ticket requests</p>
         </div>
         <div className="flex items-center space-x-2">
           <Badge variant="outline" className="text-sm">

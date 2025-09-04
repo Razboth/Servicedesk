@@ -410,13 +410,16 @@ export default function TechnicianWorkbench() {
       <main className="w-full py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Technician Workbench</h1>
-            <p className="mt-2 text-gray-600 dark:text-gray-400">Manage and process your assigned tickets</p>
+            <h1 className="text-3xl font-bold flex items-center gap-2 text-brown-900 dark:text-cream-200">
+              <Wrench className="h-8 w-8 text-brown-600 dark:text-cream-300" />
+              Technician Workbench
+            </h1>
+            <p className="mt-2 text-brown-600 dark:text-cream-300">Manage and process your assigned tickets</p>
           </div>
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+            <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-lg hover:shadow-xl transition-all duration-300">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Assigned Tickets</CardTitle>
                 <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/50 rounded-lg flex items-center justify-center">
@@ -429,7 +432,7 @@ export default function TechnicianWorkbench() {
               </CardContent>
             </Card>
             
-            <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+            <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-lg hover:shadow-xl transition-all duration-300">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Available Tickets</CardTitle>
                 <div className="w-8 h-8 bg-orange-100 dark:bg-orange-900/50 rounded-lg flex items-center justify-center">
@@ -442,7 +445,7 @@ export default function TechnicianWorkbench() {
               </CardContent>
             </Card>
             
-            <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+            <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-lg hover:shadow-xl transition-all duration-300">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Resolved Today</CardTitle>
                 <div className="w-8 h-8 bg-green-100 dark:bg-green-900/50 rounded-lg flex items-center justify-center">
@@ -455,7 +458,7 @@ export default function TechnicianWorkbench() {
               </CardContent>
             </Card>
             
-            <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+            <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-lg hover:shadow-xl transition-all duration-300">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Avg Resolution</CardTitle>
                 <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900/50 rounded-lg flex items-center justify-center">

@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageHeader } from '@/components/ui/page-header';
 import { 
   Plus, 
   Edit, 
@@ -308,21 +309,22 @@ export default function AdminTierCategoriesPage() {
   }
 
   return (
-    <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-6">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>3-Tier Categories Management</CardTitle>
-              <CardDescription>
-                Manage the hierarchical structure: Categories → Subcategories → Items
-              </CardDescription>
-            </div>
-            <Button onClick={() => openCreateDialog('category')}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Category
-            </Button>
-          </div>
+    <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
+      <PageHeader
+        title="3-Tier Categories Management"
+        description="Manage the hierarchical structure: Categories → Subcategories → Items"
+        icon={<Layers className="h-6 w-6" />}
+        action={
+          <Button onClick={() => openCreateDialog('category')}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Category
+          </Button>
+        }
+      />
+      
+      <Card className="mt-6">
+        <CardHeader className="pb-3">
+          <CardTitle>Categories Hierarchy</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">

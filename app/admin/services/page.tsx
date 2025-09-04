@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { PageHeader } from '@/components/ui/page-header';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { 
   ModernDialog, 
@@ -459,20 +460,21 @@ export default function ServicesPage() {
   }
 
   return (
-    <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 p-6">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Service Management</h1>
-            <p className="text-gray-600 dark:text-gray-400">Manage service catalog and configurations</p>
-          </div>
-          <Button 
-            onClick={() => setIsNewServiceOpen(true)}
-            className="bg-gray-900 hover:bg-gray-800 text-white"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            New Service
-          </Button>
-        </div>
+    <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
+        <PageHeader
+          title="Service Management"
+          description="Manage service catalog and configurations"
+          icon={<Settings className="h-6 w-6" />}
+          action={
+            <Button 
+              onClick={() => setIsNewServiceOpen(true)}
+              className="bg-gray-900 hover:bg-gray-800 text-white"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              New Service
+            </Button>
+          }
+        />
 
         {/* Filters */}
         <Card className="mb-6">

@@ -887,10 +887,10 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
     const colorMap: { [key: string]: string } = {
       'Hardware': 'from-blue-500 to-blue-600',
       'Software': 'from-green-500 to-green-600',
-      'Network': 'from-purple-500 to-purple-600',
+      'Network': 'from-amber-500 to-amber-600',
       'Security': 'from-red-500 to-red-600',
       'Access': 'from-yellow-500 to-yellow-600',
-      'Email': 'from-indigo-500 to-indigo-600',
+      'Email': 'from-amber-600 to-amber-700',
       'Facilities': 'from-gray-500 to-gray-600',
       'Other': 'from-teal-500 to-teal-600'
     }
@@ -1094,11 +1094,11 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden">
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-6 text-white">
+        <div className="bg-gradient-to-r from-amber-600 to-orange-600 dark:from-amber-700 dark:to-orange-700 p-6 text-white">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-bold">Create New Ticket</h2>
-              <p className="text-blue-100 mt-1">Enhanced ticket creation experience</p>
+              <p className="text-amber-100 mt-1">Enhanced ticket creation experience</p>
             </div>
             <Button
               variant="ghost"
@@ -1116,8 +1116,8 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
               <div key={step.number} className="flex items-center">
                 <div className={`flex items-center justify-center w-8 h-8 rounded-full border-2 transition-all ${
                   step.number <= currentStep
-                    ? 'border-white bg-white text-blue-600'
-                    : 'border-blue-300 text-blue-300'
+                    ? 'border-white bg-white text-amber-700'
+                    : 'border-amber-300 text-amber-300'
                 }`}>
                   {step.number < currentStep ? (
                     <Check className="h-4 w-4" />
@@ -1127,10 +1127,10 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                 </div>
                 <div className="ml-3 hidden md:block">
                   <p className="text-sm font-medium text-white">{step.title}</p>
-                  <p className="text-xs text-blue-100">{step.description}</p>
+                  <p className="text-xs text-amber-100">{step.description}</p>
                 </div>
                 {index < steps.length - 1 && (
-                  <div className="w-8 h-px bg-blue-300 mx-4 hidden md:block" />
+                  <div className="w-8 h-px bg-amber-300 mx-4 hidden md:block" />
                 )}
               </div>
             ))}
@@ -1152,8 +1152,8 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                 </div>
 
                 {/* Global Service Search */}
-                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
-                  <h4 className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-3 flex items-center">
+                <div className="bg-amber-50/50 dark:bg-amber-900/20 p-4 rounded-lg border border-amber-200/50 dark:border-amber-800/50">
+                  <h4 className="text-sm font-medium text-amber-900 dark:text-amber-100 mb-3 flex items-center">
                     <Search className="h-4 w-4 mr-1" />
                     Search All Services
                   </h4>
@@ -1168,7 +1168,7 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                           setGlobalSearchTerm('')
                         }
                       }}
-                      className="pl-10 bg-white dark:bg-gray-800 border-blue-300 dark:border-blue-600 focus:ring-blue-500"
+                      className="pl-10 bg-white dark:bg-gray-800 border-amber-300/50 dark:border-amber-600/50 focus:ring-amber-500"
                     />
                     {globalSearchTerm && (
                       <button
@@ -1185,12 +1185,12 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                     <div className="mt-4">
                       {isSearchingGlobal ? (
                         <div className="text-center py-4">
-                          <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-blue-500" />
+                          <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-amber-500" />
                           <p className="text-sm text-gray-600 dark:text-gray-400">Searching all services...</p>
                         </div>
                       ) : globalSearchResults.length > 0 ? (
                         <div>
-                          <p className="text-sm text-blue-800 dark:text-blue-200 mb-3">
+                          <p className="text-sm text-amber-800 dark:text-amber-200 mb-3">
                             Found {globalSearchResults.length} service{globalSearchResults.length !== 1 ? 's' : ''}:
                           </p>
                           <div className="grid gap-2 max-h-60 overflow-y-auto">
@@ -1466,8 +1466,8 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                   {/* Show message if no smart suggestions available */}
                   {favoriteServices.length === 0 && recentServices.length === 0 && popularServices.branch.length === 0 && 
                    popularServices.trending.length === 0 && (
-                    <div className="text-center py-6 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                      <Zap className="h-8 w-8 text-blue-500 mx-auto mb-2" />
+                    <div className="text-center py-6 bg-amber-50/50 dark:bg-amber-900/20 rounded-lg border border-amber-200/50 dark:border-amber-800/50">
+                      <Zap className="h-8 w-8 text-amber-500 mx-auto mb-2" />
                       <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-1">
                         Welcome to Smart Service Discovery
                       </h4>
@@ -1632,7 +1632,7 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                         key={service.id}
                         className={`cursor-pointer transition-all hover:shadow-md border ${
                           selectedService?.id === service.id
-                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/[0.2]'
+                            ? 'border-amber-500 bg-amber-50/50 dark:bg-amber-900/20'
                             : 'border-gray-200 dark:border-gray-700'
                         }`}
                         onClick={() => setSelectedService(service)}
@@ -2355,8 +2355,8 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                               >
                                 <div className="flex items-center space-x-3">
                                   <div className="flex-shrink-0">
-                                    <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                                      <Upload className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                    <div className="w-8 h-8 bg-amber-100 dark:bg-amber-900 rounded-lg flex items-center justify-center">
+                                      <Upload className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                                     </div>
                                   </div>
                                   <div className="flex-1 min-w-0">

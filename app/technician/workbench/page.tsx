@@ -52,7 +52,7 @@ export default function TechnicianWorkbenchPage() {
           {
             label: 'My Tickets',
             count: data.stats?.assigned || 0,
-            color: 'bg-blue-500',
+            color: 'bg-amber-500',
             icon: <User className="h-4 w-4 text-white" />,
             trend: undefined
           },
@@ -89,14 +89,14 @@ export default function TechnicianWorkbenchPage() {
 
   if (!session) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+      <div className="min-h-screen flex items-center justify-center bg-cream-100 dark:bg-brown-950">
         <Card className="w-full max-w-md mx-4">
           <CardContent className="p-8 text-center">
-            <div className="w-16 h-16 mx-auto mb-4 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
-              <Sparkles className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+            <div className="w-16 h-16 mx-auto mb-4 bg-cream-400 dark:bg-warm-dark-100 rounded-full flex items-center justify-center">
+              <Sparkles className="w-8 h-8 text-brown-400 dark:text-brown-200" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Access Required</h2>
-            <p className="text-gray-600 dark:text-gray-400">Please sign in to access the technician workbench.</p>
+            <h2 className="text-2xl font-bold text-brown-900 dark:text-cream-200 mb-2">Access Required</h2>
+            <p className="text-brown-600 dark:text-cream-300">Please sign in to access the technician workbench.</p>
           </CardContent>
         </Card>
       </div>
@@ -106,7 +106,7 @@ export default function TechnicianWorkbenchPage() {
   // Check if user is a technician or security analyst
   if (!session?.user?.role || !['TECHNICIAN', 'SECURITY_ANALYST'].includes(session.user.role)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+      <div className="min-h-screen flex items-center justify-center bg-cream-100 dark:bg-brown-950">
         <Card className="w-full max-w-md mx-4">
           <CardContent className="p-8 text-center">
             <div className="w-16 h-16 mx-auto mb-4 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center">
@@ -121,24 +121,24 @@ export default function TechnicianWorkbenchPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <div className="min-h-screen bg-cream-100 dark:bg-brown-950">
       {/* Decorative background elements */}
       <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-gradient-to-r from-blue-400 to-indigo-400 dark:from-blue-800 dark:to-indigo-800 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-3xl opacity-20 animate-blob"></div>
-        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-r from-purple-400 to-pink-400 dark:from-purple-800 dark:to-pink-800 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-cyan-400 to-teal-400 dark:from-cyan-800 dark:to-teal-800 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
+        <div className="absolute -top-40 -right-40 w-96 h-96 bg-gradient-to-r from-cream-400/20 to-brown-400/20 dark:from-warm-dark-100/20 dark:to-brown-700/20 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-3xl opacity-20 animate-blob"></div>
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-r from-cream-300/20 to-cream-400/20 dark:from-warm-dark-200/20 dark:to-warm-dark-100/20 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-brown-300/20 to-brown-400/20 dark:from-brown-700/20 dark:to-brown-600/20 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
       </div>
 
       <div className="w-full pl-3 pr-6 sm:pl-4 sm:pr-8 lg:pl-6 lg:pr-10 py-4">
         <div className="space-y-4">
           {/* Header */}
-          <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
+          <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-lg">
             <CardContent className="p-6">
               <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                <h1 className="text-2xl font-bold text-brown-900 dark:text-cream-200">
                   Technician Workbench
                 </h1>
-                <p className="text-gray-600 dark:text-gray-400 mt-1">
+                <p className="text-brown-600 dark:text-cream-300 mt-1">
                   Manage and process your assigned tickets
                 </p>
               </div>
@@ -152,15 +152,15 @@ export default function TechnicianWorkbenchPage() {
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{stat.label}</p>
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{stat.count}</p>
+                      <p className="text-sm font-medium text-brown-600 dark:text-cream-300">{stat.label}</p>
+                      <p className="text-2xl font-bold text-brown-900 dark:text-cream-200">{stat.count}</p>
                     </div>
                     <div className={`w-10 h-10 ${stat.color} rounded-lg flex items-center justify-center shadow-lg`}>
                       {stat.icon}
                     </div>
                   </div>
                   <div className="mt-2">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                    <p className="text-xs text-brown-600 dark:text-cream-400">
                       {stat.label === 'My Tickets' && 'Currently assigned to you'}
                       {stat.label === 'Available' && 'Unassigned tickets'}
                       {stat.label === 'In Progress' && 'Active work items'}
@@ -173,7 +173,7 @@ export default function TechnicianWorkbenchPage() {
           </div>
 
           {/* Tabs with Data Tables/Cards */}
-          <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
+          <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-lg">
             <CardContent className="p-6">
               <Tabs defaultValue="my-tickets" className="w-full">
                 <div className="flex items-center justify-between mb-6">

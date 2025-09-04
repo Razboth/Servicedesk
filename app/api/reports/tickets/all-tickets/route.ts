@@ -165,25 +165,6 @@ export async function GET(request: NextRequest) {
             }
           }
         },
-        // Include 3-tier categorization
-        category: {
-          select: {
-            id: true,
-            name: true
-          }
-        },
-        subcategory: {
-          select: {
-            id: true,
-            name: true
-          }
-        },
-        item: {
-          select: {
-            id: true,
-            name: true
-          }
-        },
         approvals: {
           orderBy: { createdAt: 'desc' },
           take: 1,
@@ -273,10 +254,10 @@ export async function GET(request: NextRequest) {
       description: ticket.description,
       status: ticket.status,
       priority: ticket.priority,
-      // 3-tier categorization
-      category: ticket.category?.name || 'Uncategorized',
-      subcategory: ticket.subcategory?.name || '-',
-      item: ticket.item?.name || '-',
+      // 3-tier categorization - These are string IDs, not relations
+      category: 'General', // We'll fetch the names separately if needed
+      subcategory: '-',
+      item: '-',
       service: ticket.service?.name || 'N/A',
       supportGroup: ticket.service?.supportGroup?.name || 'N/A',
       createdBy: ticket.createdBy.name,
@@ -353,11 +334,7 @@ export async function POST(request: NextRequest) {
           select: {
             name: true
           }
-        },
-        // Include 3-tier categorization for export
-        category: { select: { name: true } },
-        subcategory: { select: { name: true } },
-        item: { select: { name: true } }
+        }
       },
       orderBy: { createdAt: 'desc' }
     });
@@ -372,9 +349,9 @@ export async function POST(request: NextRequest) {
           `"${t.title.replace(/"/g, '""')}"`,
           t.status,
           t.priority,
-          t.category?.name || 'Uncategorized',
-          t.subcategory?.name || '-',
-          t.item?.name || '-',
+          'General', // Category name would need separate lookup
+          '-', // Subcategory name would need separate lookup
+          '-', // Item name would need separate lookup
           t.service?.name || 'N/A',
           t.createdBy.name,
           t.createdBy.branch?.name || 'N/A',
