@@ -192,18 +192,14 @@ export async function GET(request: NextRequest) {
         }
       },
       include: {
-        service: {
-          include: {
-            tier1Category: {
-              select: { name: true }
-            }
-          }
+        category: {
+          select: { name: true }
         }
       }
     });
 
     const categoryStats = ticketsByCategory.reduce((acc, ticket) => {
-      const categoryName = ticket.service.tier1Category?.name || 'Uncategorized';
+      const categoryName = ticket.category?.name || 'Uncategorized';
       acc[categoryName] = (acc[categoryName] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);

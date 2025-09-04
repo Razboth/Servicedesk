@@ -175,19 +175,15 @@ export async function GET(request: NextRequest) {
         }
       },
       include: {
-        service: {
-          include: {
-            tier1Category: {
-              select: { name: true }
-            }
-          }
+        category: {
+          select: { name: true }
         }
       }
     });
 
     // Analyze service categories
     const categoryStats = servicePerformance.reduce((acc, ticket) => {
-      const category = ticket.service.tier1Category?.name || 'Other';
+      const category = ticket.category?.name || 'Other';
       if (!acc[category]) {
         acc[category] = {
           total: 0,

@@ -30,12 +30,8 @@ export async function GET(request: NextRequest) {
       include: {
         ticket: {
           include: {
-            service: {
-              include: {
-                tier1Category: {
-                  select: { name: true }
-                }
-              }
+            category: {
+              select: { name: true }
             },
             assignedTo: {
               select: {
@@ -114,7 +110,7 @@ export async function GET(request: NextRequest) {
 
     // SLA performance by service category
     const categoryPerformance = slaData.reduce((acc, sla) => {
-      const category = sla.ticket.service.tier1Category?.name || 'Other';
+      const category = sla.ticket.category?.name || 'Other';
       if (!acc[category]) {
         acc[category] = {
           total: 0,

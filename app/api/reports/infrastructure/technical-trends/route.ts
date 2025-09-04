@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
         },
         ...(category && {
           service: {
-            tier1Category: {
+            category: {
               name: {
                 contains: category,
                 mode: 'insensitive'
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
           })),
           {
             service: {
-              tier1Category: {
+              category: {
                 name: {
                   in: ['IT Infrastructure', 'Hardware Support', 'Software Support', 'Network Services']
                 }
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
         service: {
           select: {
             name: true,
-            tier1Category: {
+            category: {
               select: { name: true }
             }
           }

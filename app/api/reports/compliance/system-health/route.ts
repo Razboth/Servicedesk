@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
           })),
           {
             service: {
-              tier1Category: {
+              category: {
                 name: {
                   in: ['IT Infrastructure', 'System Administration', 'Database Management']
                 }
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
         service: {
           select: {
             name: true,
-            tier1Category: {
+            category: {
               select: { name: true }
             }
           }

@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
             service: {
               select: {
                 name: true,
-                tier1Category: {
+                category: {
                   select: { name: true }
                 }
               }

@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
         service: {
           select: {
             name: true,
-            tier1Category: {
+            category: {
               select: { name: true }
             }
           }
@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
         };
       }
       acc[cause].count++;
-      acc[cause].categories.add(ticket.service.tier1Category?.name || 'Other');
+      acc[cause].categories.add(ticket.category?.name || 'Other');
       return acc;
     }, {} as Record<string, { count: number; classification: string | null; categories: Set<string> }>);
 
@@ -163,7 +163,7 @@ export async function GET(request: NextRequest) {
         service: {
           select: {
             name: true,
-            tier1Category: {
+            category: {
               select: { name: true }
             }
           }
@@ -179,7 +179,7 @@ export async function GET(request: NextRequest) {
       if (!acc[key]) {
         acc[key] = {
           service: ticket.service.name,
-          category: ticket.service.tier1Category?.name || 'Other',
+          category: ticket.category?.name || 'Other',
           classification: ticket.issueClassification,
           count: 0,
           lastOccurrence: ticket.createdAt

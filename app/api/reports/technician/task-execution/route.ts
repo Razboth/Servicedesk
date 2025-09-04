@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
             service: {
               select: {
                 name: true,
-                tier1Category: {
+                category: {
                   select: { name: true }
                 }
               }
@@ -166,7 +166,7 @@ export async function GET(request: NextRequest) {
 
     // Analyze tasks by service category
     const tasksByCategory = completedTasks.reduce((acc, task) => {
-      const category = task.ticket.service.tier1Category?.name || 'Other';
+      const category = task.ticket.category?.name || 'Other';
       acc[category] = (acc[category] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
@@ -257,7 +257,7 @@ export async function GET(request: NextRequest) {
         estimatedMinutes: task.taskTemplateItem.estimatedMinutes,
         actualMinutes: task.actualMinutes,
         variance: task.actualMinutes! - task.taskTemplateItem.estimatedMinutes!,
-        category: task.ticket.service.tier1Category?.name || 'Other'
+        category: task.ticket.category?.name || 'Other'
       }))
       .sort((a, b) => b.variance - a.variance)
       .slice(0, 5);

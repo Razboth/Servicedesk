@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
         service: {
           select: {
             name: true,
-            tier1Category: {
+            category: {
               select: { name: true }
             }
           }
@@ -131,7 +131,7 @@ export async function GET(request: NextRequest) {
     // Service quality metrics
     const serviceQuality = tickets.reduce((acc, ticket) => {
       const serviceName = ticket.service?.name || 'General Service';
-      const category = ticket.service?.tier1Category?.name || 'General';
+      const category = ticket.category?.name || 'General';
       
       if (!acc[category]) {
         acc[category] = {

@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
             service: {
               select: {
                 name: true,
-                tier1Category: {
+                category: {
                   select: { name: true }
                 }
               }
@@ -186,7 +186,7 @@ export async function GET(request: NextRequest) {
 
     // Analyze by service category
     const byCategoryStats = approvals.reduce((acc, approval) => {
-      const category = approval.ticket?.service.tier1Category?.name || 'Other';
+      const category = approval.ticket?.category?.name || 'Other';
       if (!acc[category]) {
         acc[category] = {
           total: 0,

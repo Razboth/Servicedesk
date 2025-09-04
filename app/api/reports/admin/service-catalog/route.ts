@@ -25,12 +25,12 @@ export async function GET(request: NextRequest) {
         isActive: true
       },
       include: {
-        tier1Category: {
+        category: {
           select: {
             name: true
           }
         },
-        tier2Subcategory: {
+        subcategory: {
           select: {
             name: true
           }
@@ -61,10 +61,10 @@ export async function GET(request: NextRequest) {
       include: {
         service: {
           include: {
-            tier1Category: {
+            category: {
               select: { name: true }
             },
-            tier2Subcategory: {
+            subcategory: {
               select: { name: true }
             }
           }
@@ -95,8 +95,8 @@ export async function GET(request: NextRequest) {
         id: service.id,
         name: service.name,
         description: service.description,
-        tier1Category: service.tier1Category?.name || 'Uncategorized',
-        tier2Category: service.tier2Subcategory?.name || 'General',
+        category: category?.name || 'Uncategorized',
+        tier2Category: subcategory?.name || 'General',
         totalTickets: service._count.tickets,
         resolvedTickets: resolvedTickets.length,
         resolutionRate,
@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
 
     // Calculate category performance
     const categoryStats = serviceTickets.reduce((acc, ticket) => {
-      const category = ticket.service.tier1Category?.name || 'Uncategorized';
+      const category = ticket.category?.name || 'Uncategorized';
       if (!acc[category]) {
         acc[category] = {
           totalTickets: 0,
