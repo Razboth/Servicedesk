@@ -62,7 +62,11 @@ export default function SimpleCreateTicketPage() {
       const response = await fetch('/api/branches')
       if (response.ok) {
         const data = await response.json()
-        setBranches(data.branches || [])
+        // API returns array directly, not wrapped in { branches: [...] }
+        setBranches(Array.isArray(data) ? data : [])
+        console.log('Loaded branches:', Array.isArray(data) ? data.length : 0)
+      } else {
+        console.error('Failed to fetch branches:', response.status)
       }
     } catch (error) {
       console.error('Failed to fetch branches:', error)

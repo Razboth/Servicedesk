@@ -69,7 +69,8 @@ export function TicketList({ onCreateTicket, onViewTicket }: TicketListProps) {
       const response = await fetch('/api/branches');
       if (response.ok) {
         const data = await response.json();
-        setBranches(data);
+        // API returns array directly, not wrapped in { branches: [...] }
+        setBranches(Array.isArray(data) ? data : []);
       }
     } catch (error) {
       console.error('Error loading branches:', error);

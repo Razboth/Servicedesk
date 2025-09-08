@@ -85,7 +85,8 @@ export default function CreateUserPage() {
       const response = await fetch('/api/branches');
       if (!response.ok) throw new Error('Failed to fetch branches');
       const data = await response.json();
-      setBranches(data);
+      // API returns array directly, not wrapped in { branches: [...] }
+      setBranches(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error fetching branches:', error);
       toast.error('Failed to load branches');

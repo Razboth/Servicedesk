@@ -61,10 +61,12 @@ export function TicketsDataTable({
       const response = await fetch('/api/branches')
       if (response.ok) {
         const data = await response.json()
-        const options = data.branches?.map((branch: any) => ({
+        // API returns array directly, not wrapped in { branches: [...] }
+        const branches = Array.isArray(data) ? data : []
+        const options = branches.map((branch: any) => ({
           value: branch.code,
           label: `${branch.code} - ${branch.name}`
-        })) || []
+        }))
         setBranchOptions(options)
         console.log('Loaded branches:', options.length)
       } else {
