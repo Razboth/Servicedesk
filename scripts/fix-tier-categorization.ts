@@ -283,15 +283,15 @@ async function fixTierCategorization() {
         where: {
           serviceId: service.id,
           OR: [
-            { tier1CategoryId: null },
-            { tier2SubcategoryId: null },
-            { tier3ItemId: null }
+            { categoryId: null },
+            { subcategoryId: null },
+            { itemId: null }
           ]
         },
         data: {
-          tier1CategoryId: service.tier1CategoryId,
-          tier2SubcategoryId: service.tier2SubcategoryId,
-          tier3ItemId: service.tier3ItemId
+          categoryId: service.tier1CategoryId,
+          subcategoryId: service.tier2SubcategoryId,
+          itemId: service.tier3ItemId
         }
       });
       ticketsUpdated += result.count;

@@ -920,7 +920,7 @@ export default function TicketDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <div className="min-h-screen bg-cream-100 dark:bg-brown-950">
       <main className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-6">
         <div className="space-y-6">
           {/* Header */}
@@ -944,7 +944,7 @@ export default function TicketDetailPage() {
                   </Badge>
                 )}
                 {isTransactionClaimsSupport() && (
-                  <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                  <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
                     <Eye className="h-3 w-3 mr-1" />
                     Read-Only Access
                   </Badge>
@@ -957,7 +957,7 @@ export default function TicketDetailPage() {
                 <Button
                   onClick={handleClaimTicket}
                   disabled={isUpdatingStatus}
-                  className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white shadow-lg"
+                  className="flex items-center gap-2 bg-gradient-to-r from-brown-400 to-brown-500 dark:from-brown-200 dark:to-brown-300 text-white dark:text-brown-950 hover:from-brown-500 hover:to-brown-600 dark:hover:from-brown-300 dark:hover:to-brown-400 shadow-md hover:shadow-lg transition-all duration-300"
                 >
                   <UserCheck className="h-4 w-4" />
                   Claim Ticket
@@ -976,7 +976,7 @@ export default function TicketDetailPage() {
             {/* Main Content */}
             <div className="lg:col-span-2 space-y-6">
               {/* Ticket Details */}
-              <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
+              <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-lg">
                 <CardHeader>
                   <CardTitle>Description</CardTitle>
                 </CardHeader>
@@ -987,7 +987,7 @@ export default function TicketDetailPage() {
 
               {/* Custom Fields - Enhanced Display */}
               {ticket.fieldValues.length > 0 && (
-                <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
+                <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-lg">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Sparkles className="h-5 w-5 text-blue-500" />
@@ -1018,7 +1018,7 @@ export default function TicketDetailPage() {
                             case 'FILE':
                               if (!value) return <span className="text-gray-400 italic">No file attached</span>;
                               return (
-                                <div className="inline-flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                                <div className="inline-flex items-center gap-2 p-2 bg-cream-50 dark:bg-warm-dark-200 rounded-lg">
                                   <FileText className="h-4 w-4 text-blue-500" />
                                   <span className="text-sm font-medium">{value}</span>
                                   <Button
@@ -1104,14 +1104,14 @@ export default function TicketDetailPage() {
                               
                             case 'NUMBER':
                               return (
-                                <span className="font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
+                                <span className="font-mono bg-cream-100 dark:bg-warm-dark-200 px-2 py-1 rounded">
                                   {value || '0'}
                                 </span>
                               );
                               
                             case 'TEXTAREA':
                               return (
-                                <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                                <div className="mt-2 p-3 bg-cream-50 dark:bg-warm-dark-200 rounded-lg">
                                   <p className="text-sm whitespace-pre-wrap">{value || '-'}</p>
                                 </div>
                               );
@@ -1168,7 +1168,7 @@ export default function TicketDetailPage() {
 
               {/* Attachments */}
               {ticket.attachments && ticket.attachments.length > 0 && (
-                <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
+                <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-lg">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Paperclip className="h-5 w-5" />
@@ -1232,7 +1232,7 @@ export default function TicketDetailPage() {
 
               {/* Tasks */}
               {tasks.length > 0 && (
-                <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
+                <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-lg">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <CheckCircle className="h-5 w-5" />
@@ -1311,8 +1311,8 @@ export default function TicketDetailPage() {
               )}
 
               {/* Comments */}
-              <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
-                <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-900">
+              <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-lg">
+                <CardHeader className="bg-gradient-to-r from-cream-100 to-cream-200 dark:from-warm-dark-400 dark:to-warm-dark-500">
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <MessageSquare className="h-5 w-5 text-blue-600" />
                     <span>Discussion</span>
@@ -1331,12 +1331,12 @@ export default function TicketDetailPage() {
                       </div>
                     ) : (
                       ticket.comments.map((comment) => (
-                        <div key={comment.id} className="group relative bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow">
+                        <div key={comment.id} className="group relative bg-cream-50 dark:bg-warm-dark-200 rounded-lg shadow-sm border border-cream-300 dark:border-warm-dark-100 p-4 hover:shadow-md transition-shadow">
                           {/* Comment Header */}
                           <div className="flex items-start justify-between mb-3">
                             <div className="flex items-center gap-3">
                               {/* User Avatar */}
-                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-semibold">
+                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brown-400 to-brown-500 dark:from-brown-200 dark:to-brown-300 flex items-center justify-center text-white dark:text-brown-950 font-semibold">
                                 {comment.user.name?.charAt(0).toUpperCase()}
                               </div>
                               <div>
@@ -1380,7 +1380,7 @@ export default function TicketDetailPage() {
                             
                             {/* Attachments */}
                             {comment.attachments && comment.attachments.length > 0 && (
-                              <div className="mt-4 p-4 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                              <div className="mt-4 p-4 bg-gradient-to-r from-cream-50 to-cream-100 dark:from-warm-dark-300 dark:to-warm-dark-200 rounded-lg border border-cream-300 dark:border-warm-dark-100">
                                 <div className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
                                   <Paperclip className="h-4 w-4" />
                                   Attached Files ({comment.attachments.length})
@@ -1395,7 +1395,7 @@ export default function TicketDetailPage() {
                                     return (
                                       <div
                                         key={attachment.id}
-                                        className="flex items-center gap-3 p-3 bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-600 hover:shadow-md transition-all"
+                                        className="flex items-center gap-3 p-3 bg-cream-50 dark:bg-warm-dark-300 rounded-lg shadow-sm border border-cream-300 dark:border-warm-dark-200 hover:shadow-md transition-all"
                                       >
                                         <div className={`p-2.5 rounded-lg ${
                                           isImage ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' : 
@@ -1480,11 +1480,11 @@ export default function TicketDetailPage() {
                       
                       {/* File attachments */}
                       {commentAttachments.length > 0 && (
-                        <div className="mt-3 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                        <div className="mt-3 p-2 bg-cream-50 dark:bg-warm-dark-200 rounded-lg">
                           <div className="text-sm font-medium mb-2">Attachments:</div>
                           <div className="space-y-1">
                             {commentAttachments.map((file, index) => (
-                              <div key={index} className="flex items-center justify-between p-2 bg-white dark:bg-gray-700 rounded">
+                              <div key={index} className="flex items-center justify-between p-2 bg-white dark:bg-warm-dark-100 rounded">
                                 <div className="flex items-center gap-2">
                                   <FileText className="h-4 w-4 text-gray-500" />
                                   <span className="text-sm">{file.name}</span>
@@ -1507,7 +1507,7 @@ export default function TicketDetailPage() {
                       
                       {/* Upload Progress Bar */}
                       {isUploading && (
-                        <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
                               {uploadProgress < 90 ? 'Uploading files...' : 'Posting comment...'}
@@ -1516,9 +1516,9 @@ export default function TicketDetailPage() {
                               {uploadProgress}%
                             </span>
                           </div>
-                          <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2 overflow-hidden">
+                          <div className="w-full bg-amber-200 dark:bg-amber-800 rounded-full h-2 overflow-hidden">
                             <div 
-                              className="bg-blue-600 dark:bg-blue-400 h-full rounded-full transition-all duration-300 ease-out"
+                              className="bg-amber-600 dark:bg-amber-400 h-full rounded-full transition-all duration-300 ease-out"
                               style={{ width: `${uploadProgress}%` }}
                             />
                           </div>
@@ -1565,8 +1565,8 @@ export default function TicketDetailPage() {
             <div className="space-y-4">
               {/* Actions - Moved to top and beautified */}
               {(canUpdateStatus() || canClaimTicket() || canReleaseTicket()) && (
-                <Card className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 backdrop-blur-sm border-0 shadow-xl overflow-hidden">
-                  <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 border-b border-gray-200 dark:border-gray-700 py-4">
+                <Card className="bg-gradient-to-br from-cream-50 to-cream-100 dark:from-warm-dark-300 dark:to-warm-dark-400 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-xl overflow-hidden">
+                  <CardHeader className="bg-gradient-to-r from-cream-100 to-cream-200 dark:from-warm-dark-400 dark:to-warm-dark-500 border-b border-cream-300 dark:border-warm-dark-200 py-4">
                     <CardTitle className="text-base font-semibold text-gray-800 dark:text-gray-100">
                       Actions
                     </CardTitle>
@@ -1578,7 +1578,7 @@ export default function TicketDetailPage() {
                         <Button
                           onClick={handleClaimTicket}
                           disabled={isUpdatingStatus}
-                          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-md transition-all duration-200 hover:shadow-lg rounded-lg py-2.5"
+                          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-brown-400 to-brown-500 dark:from-brown-200 dark:to-brown-300 text-white dark:text-brown-950 hover:from-brown-500 hover:to-brown-600 dark:hover:from-brown-300 dark:hover:to-brown-400 shadow-md transition-all duration-200 hover:shadow-lg rounded-lg py-2.5"
                         >
                           <UserCheck className="h-4 w-4" />
                           <span className="font-medium">Claim Ticket</span>
@@ -1599,7 +1599,7 @@ export default function TicketDetailPage() {
                         <Button
                           onClick={() => updateTicketStatus('IN_PROGRESS')}
                           disabled={isUpdatingStatus}
-                          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white shadow-md transition-all duration-200 hover:shadow-lg rounded-lg py-2.5"
+                          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 dark:from-amber-400 dark:to-amber-500 text-white dark:text-brown-950 hover:from-amber-600 hover:to-amber-700 dark:hover:from-amber-500 dark:hover:to-amber-600 shadow-md transition-all duration-200 hover:shadow-lg rounded-lg py-2.5"
                         >
                           <AlertCircle className="h-4 w-4" />
                           <span className="font-medium">Start Work</span>
@@ -1620,7 +1620,7 @@ export default function TicketDetailPage() {
                         <Button
                           onClick={handleResolveAndClose}
                           disabled={isUpdatingStatus}
-                          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-md transition-all duration-200 hover:shadow-lg rounded-lg py-2.5"
+                          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-green-600 to-green-700 dark:from-green-500 dark:to-green-600 text-white hover:from-green-700 hover:to-green-800 dark:hover:from-green-600 dark:hover:to-green-700 shadow-md transition-all duration-200 hover:shadow-lg rounded-lg py-2.5"
                         >
                           <CheckCheck className="h-4 w-4" />
                           <span className="font-medium">Resolve + Close</span>
@@ -1631,7 +1631,7 @@ export default function TicketDetailPage() {
                           <Button
                             onClick={() => updateTicketStatus('IN_PROGRESS')}
                             disabled={isUpdatingStatus}
-                            className="w-full flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+                            className="w-full flex items-center gap-2 bg-brown-600 hover:bg-brown-700 dark:bg-brown-400 dark:hover:bg-brown-500 text-white dark:text-brown-950"
                           >
                             <AlertCircle className="h-4 w-4" />
                             Resume Work
@@ -1663,12 +1663,12 @@ export default function TicketDetailPage() {
               )}
 
               {/* Ticket Progress & Status - Beautified */}
-              <Card className="bg-gradient-to-br from-white to-purple-50/20 dark:from-gray-800 dark:to-purple-900/10 backdrop-blur-sm border-0 shadow-xl overflow-hidden">
-                <CardHeader className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border-b border-purple-100 dark:border-purple-800 py-3">
+              <Card className="bg-gradient-to-br from-cream-50 to-amber-50/20 dark:from-warm-dark-300 dark:to-amber-900/10 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-xl overflow-hidden">
+                <CardHeader className="bg-gradient-to-r from-amber-50 to-cream-100 dark:from-amber-900/20 dark:to-warm-dark-400 border-b border-amber-200 dark:border-amber-800 py-3">
                   <CardTitle className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Sparkles className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                      <span className="text-sm font-semibold bg-gradient-to-r from-purple-700 to-indigo-700 dark:from-purple-400 dark:to-indigo-400 bg-clip-text text-transparent">
+                      <span className="text-sm font-semibold bg-gradient-to-r from-amber-700 to-brown-700 dark:from-amber-400 dark:to-brown-400 bg-clip-text text-transparent">
                         Ticket Progress & Status
                       </span>
                     </div>
@@ -1707,7 +1707,7 @@ export default function TicketDetailPage() {
                   {((ticket.approvals && ticket.approvals.length > 0) || ticket.status === 'PENDING_APPROVAL' || ticket.service?.requiresApproval) && (
                     <div className="border-t border-purple-100 dark:border-purple-800/50 pt-3 mt-2">
                       <div className="flex items-center gap-2 mb-2">
-                        <div className="p-1 bg-purple-100 dark:bg-purple-900/30 rounded">
+                        <div className="p-1 bg-amber-100 dark:bg-amber-900/30 rounded">
                           <Shield className="h-3 w-3 text-purple-600 dark:text-purple-400" />
                         </div>
                         <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Approval Status</span>
@@ -1781,8 +1781,8 @@ export default function TicketDetailPage() {
               </Card>
 
               {/* Ticket Information - Enhanced */}
-              <Card className="bg-gradient-to-br from-white to-blue-50/30 dark:from-gray-800 dark:to-gray-900/50 backdrop-blur-sm border-0 shadow-xl overflow-hidden">
-                <CardHeader className="bg-gradient-to-r from-blue-600/10 to-indigo-600/10 dark:from-blue-900/20 dark:to-indigo-900/20 border-b border-blue-100 dark:border-blue-900">
+              <Card className="bg-gradient-to-br from-cream-50 to-amber-50/30 dark:from-warm-dark-300 dark:to-warm-dark-400 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-xl overflow-hidden">
+                <CardHeader className="bg-gradient-to-r from-amber-600/10 to-brown-600/10 dark:from-amber-900/20 dark:to-brown-900/20 border-b border-amber-200 dark:border-amber-900">
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <Hash className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                     Ticket Information
@@ -1792,7 +1792,7 @@ export default function TicketDetailPage() {
                   <div className="space-y-4">
                     {/* Ticket Number */}
                     <div className="flex items-start gap-3">
-                      <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                      <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
                         <Hash className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                       </div>
                       <div className="flex-1">
@@ -1803,7 +1803,7 @@ export default function TicketDetailPage() {
 
                     {/* Service */}
                     <div className="flex items-start gap-3">
-                      <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                      <div className="p-2 bg-brown-100 dark:bg-brown-900/30 rounded-lg">
                         <Briefcase className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                       </div>
                       <div className="flex-1">
@@ -1834,7 +1834,7 @@ export default function TicketDetailPage() {
 
                     {/* Created By */}
                     <div className="flex items-start gap-3">
-                      <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+                      <div className="p-2 bg-brown-100 dark:bg-brown-900/30 rounded-lg">
                         <UserCircle className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
                       </div>
                       <div className="flex-1">
@@ -1981,7 +1981,7 @@ export default function TicketDetailPage() {
               <div className="space-y-2">
                 <Label htmlFor="status-select" className="text-sm font-medium">New Status</Label>
                 <Select value={selectedResolutionStatus} onValueChange={setSelectedResolutionStatus}>
-                  <SelectTrigger id="status-select" className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
+                  <SelectTrigger id="status-select" className="bg-cream-50 dark:bg-warm-dark-200 backdrop-blur-sm">
                     <SelectValue placeholder="Select new status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -2005,7 +2005,7 @@ export default function TicketDetailPage() {
                   value={resolutionComment}
                   onChange={(e) => setResolutionComment(e.target.value)}
                   placeholder="Add a comment about this status change..."
-                  className="min-h-[100px] resize-none bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm"
+                  className="min-h-[100px] resize-none bg-cream-50 dark:bg-warm-dark-200 backdrop-blur-sm"
                 />
               </div>
             </div>
@@ -2015,14 +2015,14 @@ export default function TicketDetailPage() {
               variant="outline"
               onClick={handleModalClose}
               disabled={isSubmittingResolution}
-              className="bg-white/50 hover:bg-white/70"
+              className="bg-cream-50 hover:bg-cream-100 dark:bg-warm-dark-200 dark:hover:bg-warm-dark-100"
             >
               Cancel
             </Button>
             <Button
               onClick={handleResolutionSubmit}
               disabled={isSubmittingResolution}
-              className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg"
+              className="bg-gradient-to-r from-brown-400 to-brown-500 dark:from-brown-200 dark:to-brown-300 text-white dark:text-brown-950 hover:from-brown-500 hover:to-brown-600 dark:hover:from-brown-300 dark:hover:to-brown-400 shadow-md hover:shadow-lg transition-all duration-300"
             >
               {isSubmittingResolution ? 'Processing...' : 'Update Status'}
             </Button>

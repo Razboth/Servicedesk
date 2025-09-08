@@ -21,31 +21,28 @@ export async function GET(request: NextRequest) {
     const isBranchRole = ['MANAGER', 'USER'].includes(session.user.role);
     const branchId = user?.branchId;
 
-    // Build where clause for recent tickets
-    let recentTicketsWhere: any = {};
+    // Build where clause for ticket statistics based on role
+    let ticketStatsWhere: any = {};
     if (isBranchRole && branchId) {
       // Managers and Users see tickets from their branch only
-      recentTicketsWhere = {
-        AND: [
-          { branchId: branchId },
-          {
-            createdBy: {
-              branchId: branchId
-            }
-          }
-        ]
-      };
+      ticketStatsWhere = { branchId: branchId };
     }
     // Technicians and Admins see all tickets (no additional filtering)
+
+    // Build where clause for recent tickets (same as stats)
+    const recentTicketsWhere = ticketStatsWhere;
 
     // Get ticket statistics
     const [totalTickets, openTickets, resolvedTickets, recentTickets] = await Promise.all([
       // Total tickets count
-      prisma.ticket.count(),
+      prisma.ticket.count({
+        where: ticketStatsWhere
+      }),
       
       // Open tickets count
       prisma.ticket.count({
         where: {
+          ...ticketStatsWhere,
           status: {
             in: ['OPEN', 'IN_PROGRESS']
           }
@@ -55,6 +52,7 @@ export async function GET(request: NextRequest) {
       // Resolved tickets count
       prisma.ticket.count({
         where: {
+          ...ticketStatsWhere,
           status: {
             in: ['RESOLVED', 'CLOSED']
           }
@@ -93,6 +91,7 @@ export async function GET(request: NextRequest) {
     // Calculate average resolution time (simplified - using hours)
     const resolvedTicketsWithTime = await prisma.ticket.findMany({
       where: {
+        ...ticketStatsWhere,
         status: {
           in: ['RESOLVED', 'CLOSED']
         },

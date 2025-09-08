@@ -440,6 +440,7 @@ async function seedSOC() {
 
       await prisma.user.create({
         data: {
+          username: 'soc.analyst',
           email: 'soc.analyst@banksulutgo.co.id',
           name: 'SOC Analyst',
           password: hashedPassword,

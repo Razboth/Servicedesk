@@ -61,9 +61,47 @@ const certificatesExist = () => {
     const keyPath = path.join(certsDir, 'localhost-key.pem');
     return fs.existsSync(certPath) && fs.existsSync(keyPath);
 };
+// Function to initialize Prisma
+const initializePrisma = async () => {
+    try {
+        // Import Prisma client
+        const { PrismaClient } = require('@prisma/client');
+        const prisma = new PrismaClient({
+            log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+        });
+        
+        // Test connection with retry
+        let retries = 5;
+        while (retries > 0) {
+            try {
+                await prisma.$connect();
+                console.log('✅ Prisma client connected successfully');
+                
+                // Store in global for reuse
+                global.prisma = prisma;
+                return prisma;
+            } catch (error) {
+                retries--;
+                if (retries === 0) {
+                    console.error('❌ Failed to connect Prisma after all retries:', error);
+                    throw error;
+                }
+                console.warn(`⚠️ Prisma connection failed, retrying... (${retries} retries left)`);
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+        }
+    } catch (error) {
+        console.error('❌ Failed to initialize Prisma:', error);
+        throw error;
+    }
+};
+
 // Function to start the server
 const startServer = async () => {
     try {
+        // Initialize Prisma first
+        await initializePrisma();
+        
         await app.prepare();
         let server;
         if (useHttps && certificatesExist()) {
