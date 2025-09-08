@@ -395,28 +395,8 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    // Auto-assign to available security analyst if possible
-    const availableAnalyst = await prisma.user.findFirst({
-      where: {
-        role: 'SECURITY_ANALYST',
-        isActive: true,
-        supportGroupId: socService.supportGroupId,
-        id: { not: userId } // Don't assign to self
-      },
-      orderBy: {
-        lastActivity: 'desc' // Get most recently active
-      }
-    });
-
-    if (availableAnalyst) {
-      await prisma.ticket.update({
-        where: { id: ticket.id },
-        data: { 
-          assignedToId: availableAnalyst.id,
-          status: 'IN_PROGRESS'
-        }
-      });
-    }
+    // Leave ticket unassigned - creator can assign it themselves or it stays unassigned
+    // No auto-assignment to other analysts
 
     // Create audit log
     await prisma.auditLog.create({
@@ -444,11 +424,7 @@ export async function POST(request: NextRequest) {
         title: ticket.title,
         status: ticket.status,
         priority: ticket.priority,
-        assignedTo: availableAnalyst ? {
-          id: availableAnalyst.id,
-          name: availableAnalyst.name,
-          email: availableAnalyst.email
-        } : null,
+        assignedTo: null, // Ticket is unassigned
         createdAt: ticket.createdAt,
         url: `/tickets/${ticket.id}`
       },
