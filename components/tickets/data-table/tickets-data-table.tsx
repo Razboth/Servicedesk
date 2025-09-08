@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { DataTable } from './data-table'
-import { getColumns, type Ticket } from './columns'
+import { getColumns, type Ticket, type TicketWithMeta } from './columns'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -45,9 +45,11 @@ export function TicketsDataTable({
 }: TicketsDataTableProps) {
   const { data: session } = useSession()
   const router = useRouter()
-  const [tickets, setTickets] = useState<Ticket[]>([])
+  const [tickets, setTickets] = useState<TicketWithMeta[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null)
+  const [previousTicketIds, setPreviousTicketIds] = useState<Set<string>>(new Set())
   const [branchOptions, setBranchOptions] = useState<{ value: string; label: string }[]>([])
   const [categoryOptions, setCategoryOptions] = useState<{ value: string; label: string }[]>([])
   const [serviceOptions, setServiceOptions] = useState<{ value: string; label: string }[]>([])
@@ -166,10 +168,66 @@ export function TicketsDataTable({
     }
   }
 
+  // Smart merge function to preserve existing tickets and highlight new ones
+  const mergeTicketsSmartly = (existing: TicketWithMeta[], incoming: Ticket[]): TicketWithMeta[] => {
+    const now = Date.now()
+    const existingMap = new Map(existing.map(t => [t.id, t]))
+    
+    const merged = incoming.map(ticket => {
+      const existingTicket = existingMap.get(ticket.id)
+      
+      // If ticket already exists, preserve its metadata but update the data
+      if (existingTicket) {
+        return {
+          ...ticket,
+          isNew: existingTicket.isNew,
+          highlightedUntil: existingTicket.highlightedUntil
+        }
+      }
+      
+      // New ticket - mark it as new and set highlight duration
+      const isActuallyNew = !previousTicketIds.has(ticket.id)
+      return {
+        ...ticket,
+        isNew: isActuallyNew,
+        highlightedUntil: isActuallyNew ? now + 5000 : undefined // Highlight for 5 seconds
+      }
+    })
+    
+    // Sort to put newest tickets at the top
+    return merged.sort((a, b) => {
+      // New tickets first
+      if (a.isNew && !b.isNew) return -1
+      if (!a.isNew && b.isNew) return 1
+      // Then by created date
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    })
+  }
+
+  // Clear expired highlights
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now()
+      setTickets(prev => prev.map(ticket => {
+        if (ticket.highlightedUntil && ticket.highlightedUntil < now) {
+          return { ...ticket, isNew: false, highlightedUntil: undefined }
+        }
+        return ticket
+      }))
+    }, 1000) // Check every second
+    
+    return () => clearInterval(interval)
+  }, [])
+
   // Load tickets from API
-  const loadTickets = async () => {
+  const loadTickets = async (isInitial = false) => {
     try {
-      setIsLoading(true)
+      // Only show loading spinner on initial load
+      if (isInitial) {
+        setIsLoading(true)
+      } else {
+        setIsRefreshing(true)
+      }
       
       const params = new URLSearchParams()
       
@@ -196,7 +254,28 @@ export function TicketsDataTable({
       if (response.ok) {
         const data = await response.json()
         const loadedTickets = data.tickets || []
-        setTickets(loadedTickets)
+        
+        // Smart merge to preserve existing tickets and highlight new ones
+        if (!isInitial && tickets.length > 0) {
+          const mergedTickets = mergeTicketsSmartly(tickets, loadedTickets)
+          setTickets(mergedTickets)
+          
+          // Show toast for new tickets
+          const newTicketCount = mergedTickets.filter(t => t.isNew).length
+          if (newTicketCount > 0) {
+            toast.success(`${newTicketCount} new ticket${newTicketCount > 1 ? 's' : ''} added`)
+          }
+        } else {
+          // Initial load - just set tickets without highlights
+          const ticketsWithMeta: TicketWithMeta[] = loadedTickets.map((t: Ticket) => ({
+            ...t,
+            isNew: false
+          }))
+          setTickets(ticketsWithMeta)
+        }
+        
+        // Update previous ticket IDs for next refresh
+        setPreviousTicketIds(new Set(loadedTickets.map((t: Ticket) => t.id)))
         setLastRefreshTime(new Date())
         
         // Extract filter options from loaded tickets as fallback
@@ -211,6 +290,7 @@ export function TicketsDataTable({
       toast.error('Failed to load tickets')
     } finally {
       setIsLoading(false)
+      setIsRefreshing(false)
     }
   }
   
@@ -292,9 +372,9 @@ export function TicketsDataTable({
       session?.user?.role && 
       ['TECHNICIAN', 'SECURITY_ANALYST', 'ADMIN', 'MANAGER', 'USER'].includes(session.user.role)
 
-    if (shouldRefresh) {
+    if (shouldRefresh && !isLoading) {
       console.log('🔄 Real-time update received, refreshing tickets...')
-      loadTickets()
+      loadTickets(false) // Not initial load
     }
   }, [session])
 
@@ -303,7 +383,7 @@ export function TicketsDataTable({
 
   // Initial load
   useEffect(() => {
-    loadTickets()
+    loadTickets(true) // Initial load
     loadBranches()
     loadCategories()
     loadServices()
@@ -346,7 +426,7 @@ export function TicketsDataTable({
           if (successful > 0) {
             toast.success(`Successfully claimed ${successful} ticket${successful > 1 ? 's' : ''}`)
             // Reload tickets to reflect the changes
-            loadTickets()
+            loadTickets(false)
           }
           
           if (failed > 0) {
@@ -390,7 +470,7 @@ export function TicketsDataTable({
       if (response.ok) {
         toast.success('Ticket claimed successfully')
         // Reload tickets to reflect the change
-        loadTickets()
+        loadTickets(false)
       } else {
         const error = await response.json()
         toast.error(error.error || 'Failed to claim ticket')

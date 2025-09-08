@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import * as React from 'react';
 import * as CheckboxPrimitive from '@radix-ui/react-checkbox';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
-import { Check, X } from 'lucide-react';
+import { Check, X, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // Inline Checkbox component

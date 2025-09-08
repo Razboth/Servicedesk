@@ -69,6 +69,11 @@ interface Ticket {
   }
 }
 
+type TicketWithMeta = Ticket & {
+  isNew?: boolean
+  highlightedUntil?: number
+}
+
 interface TicketCardsProps {
   ticketFilter?: 'my-tickets' | 'available-tickets'
   onRefresh?: () => void
@@ -147,21 +152,84 @@ const getPriorityColor = (priority: string) => {
 export function TicketCards({ ticketFilter, onRefresh, showClaimButton = false }: TicketCardsProps) {
   const router = useRouter()
   const { data: session } = useSession()
-  const [tickets, setTickets] = useState<Ticket[]>([])
+  const [tickets, setTickets] = useState<TicketWithMeta[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [previousTicketIds, setPreviousTicketIds] = useState<Set<string>>(new Set())
   const [claimingTickets, setClaimingTickets] = useState<Set<string>>(new Set())
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [priorityFilter, setPriorityFilter] = useState<string>('all')
   const [branchFilter, setBranchFilter] = useState<string>('all')
 
+  // Smart merge function for cards
+  const mergeTicketsSmartly = (existing: TicketWithMeta[], incoming: Ticket[]): TicketWithMeta[] => {
+    const now = Date.now()
+    const existingMap = new Map(existing.map(t => [t.id, t]))
+    
+    const merged = incoming.map(ticket => {
+      const existingTicket = existingMap.get(ticket.id)
+      
+      if (existingTicket) {
+        return {
+          ...ticket,
+          isNew: existingTicket.isNew,
+          highlightedUntil: existingTicket.highlightedUntil
+        }
+      }
+      
+      const isActuallyNew = !previousTicketIds.has(ticket.id)
+      return {
+        ...ticket,
+        isNew: isActuallyNew,
+        highlightedUntil: isActuallyNew ? now + 5000 : undefined
+      }
+    })
+    
+    return merged.sort((a, b) => {
+      if (a.isNew && !b.isNew) return -1
+      if (!a.isNew && b.isNew) return 1
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    })
+  }
+
+  // Clear expired highlights
   useEffect(() => {
-    loadTickets()
+    const interval = setInterval(() => {
+      const now = Date.now()
+      setTickets(prev => prev.map(ticket => {
+        if (ticket.highlightedUntil && ticket.highlightedUntil < now) {
+          return { ...ticket, isNew: false, highlightedUntil: undefined }
+        }
+        return ticket
+      }))
+    }, 1000)
+    
+    return () => clearInterval(interval)
+  }, [])
+
+  useEffect(() => {
+    loadTickets(true)
   }, [ticketFilter])
 
-  const loadTickets = async () => {
+  // Auto-refresh
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!isLoading) {
+        loadTickets(false)
+      }
+    }, 30000) // Refresh every 30 seconds
+    
+    return () => clearInterval(interval)
+  }, [isLoading])
+
+  const loadTickets = async (isInitial = false) => {
     try {
-      setIsLoading(true)
+      if (isInitial) {
+        setIsLoading(true)
+      } else {
+        setIsRefreshing(true)
+      }
       
       const params = new URLSearchParams()
       if (ticketFilter) {
@@ -172,12 +240,31 @@ export function TicketCards({ ticketFilter, onRefresh, showClaimButton = false }
       const response = await fetch(`/api/tickets?${params}`)
       if (response.ok) {
         const data = await response.json()
-        setTickets(data.tickets || [])
+        const loadedTickets = data.tickets || []
+        
+        if (!isInitial && tickets.length > 0) {
+          const mergedTickets = mergeTicketsSmartly(tickets, loadedTickets)
+          setTickets(mergedTickets)
+          
+          const newTicketCount = mergedTickets.filter(t => t.isNew).length
+          if (newTicketCount > 0) {
+            toast.success(`${newTicketCount} new ticket${newTicketCount > 1 ? 's' : ''} added`)
+          }
+        } else {
+          const ticketsWithMeta: TicketWithMeta[] = loadedTickets.map((t: Ticket) => ({
+            ...t,
+            isNew: false
+          }))
+          setTickets(ticketsWithMeta)
+        }
+        
+        setPreviousTicketIds(new Set(loadedTickets.map((t: Ticket) => t.id)))
       }
     } catch (error) {
       console.error('Error loading tickets:', error)
     } finally {
       setIsLoading(false)
+      setIsRefreshing(false)
     }
   }
 
@@ -441,14 +528,23 @@ export function TicketCards({ ticketFilter, onRefresh, showClaimButton = false }
         {filteredTickets.map((ticket) => (
         <Card
           key={ticket.id}
-          className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group"
+          className={`bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group ${
+            ticket.isNew ? 'new-ticket-highlight' : ''
+          }`}
           onClick={() => handleCardClick(ticket.id)}
         >
           <CardHeader className="pb-3">
             <div className="flex items-start justify-between mb-2">
-              <Badge variant="outline" className="text-xs">
-                #{ticket.ticketNumber}
-              </Badge>
+              <div className="flex items-center gap-2">
+                {ticket.isNew && (
+                  <Badge className="bg-amber-500 text-white text-xs px-1.5 py-0 new-ticket-badge">
+                    NEW
+                  </Badge>
+                )}
+                <Badge variant="outline" className="text-xs">
+                  #{ticket.ticketNumber}
+                </Badge>
+              </div>
               <Badge className={`${getPriorityColor(ticket.priority)} text-xs`}>
                 {ticket.priority}
               </Badge>

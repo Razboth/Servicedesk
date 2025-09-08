@@ -29,7 +29,9 @@
       "Read(/C:\\Project\\Service-Desk\\Servicedesk\\app\\admin\\task-templates/**)",
       "Read(/C:\\Project\\Service-Desk\\Servicedesk\\app\\admin\\field-templates/**)",
       "Read(/C:\\Project\\Service-Desk\\Servicedesk\\app\\admin\\field-templates/**)",
-      "Read(/C:\\Project\\Service-Desk\\Servicedesk\\app/**)"
+      "Read(/C:\\Project\\Service-Desk\\Servicedesk\\app/**)",
+      "Read(/C:\\Project\\Service-Desk\\Servicedesk\\components\\tickets\\data-table/**)",
+      "Read(/C:\\Project\\Service-Desk\\Servicedesk\\components\\tickets\\data-table/**)"
     ],
     "deny": [],
     "additionalDirectories": [

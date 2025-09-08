@@ -148,6 +148,53 @@
   .animation-delay-4000 {
     animation-delay: 4s;
   }
+
+  /* New ticket highlight animation */
+  @keyframes newTicketHighlight {
+    0% {
+      background-color: rgb(251 191 36 / 0.25); /* amber-400/25 */
+      transform: scale(1.01);
+    }
+    50% {
+      background-color: rgb(251 191 36 / 0.15); /* amber-400/15 */
+      transform: scale(1);
+    }
+    100% {
+      background-color: transparent;
+      transform: scale(1);
+    }
+  }
+
+  .new-ticket-highlight {
+    animation: newTicketHighlight 5s ease-out forwards;
+    position: relative;
+    transition: all 0.3s ease;
+  }
+
+  .new-ticket-badge {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.7;
+    }
+  }
+
+  /* Smooth data table transitions */
+  .ticket-row-enter {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  .ticket-row-enter-active {
+    opacity: 1;
+    transform: translateY(0);
+    transition: all 0.3s ease-out;
+  }
 }
 
 @layer base {
