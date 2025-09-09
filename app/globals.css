@@ -149,51 +149,122 @@
     animation-delay: 4s;
   }
 
-  /* New ticket highlight animation */
+  /* Enhanced new ticket animations with brown theme */
   @keyframes newTicketHighlight {
     0% {
-      background-color: rgb(251 191 36 / 0.25); /* amber-400/25 */
-      transform: scale(1.01);
+      background: linear-gradient(90deg, 
+        rgba(146, 64, 14, 0.15) 0%, 
+        rgba(217, 119, 6, 0.1) 50%, 
+        rgba(146, 64, 14, 0.15) 100%);
+      transform: translateY(-5px) scale(1.01);
+      box-shadow: 0 4px 20px rgba(146, 64, 14, 0.2);
     }
-    50% {
-      background-color: rgb(251 191 36 / 0.15); /* amber-400/15 */
-      transform: scale(1);
+    20% {
+      background: linear-gradient(90deg, 
+        rgba(217, 119, 6, 0.12) 0%, 
+        rgba(254, 243, 199, 0.15) 50%, 
+        rgba(217, 119, 6, 0.12) 100%);
+      transform: translateY(0) scale(1);
     }
     100% {
       background-color: transparent;
-      transform: scale(1);
+      transform: translateY(0) scale(1);
+      box-shadow: none;
+    }
+  }
+
+  @keyframes slideInGlow {
+    0% {
+      opacity: 0;
+      transform: translateY(-20px);
+      filter: blur(2px);
+    }
+    50% {
+      opacity: 1;
+      transform: translateY(0);
+      filter: blur(0);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
     }
   }
 
   .new-ticket-highlight {
-    animation: newTicketHighlight 5s ease-out forwards;
+    animation: newTicketHighlight 10s ease-out forwards,
+               slideInGlow 0.5s ease-out;
     position: relative;
     transition: all 0.3s ease;
+    border-radius: 0.375rem;
   }
 
   .new-ticket-badge {
     animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    background: linear-gradient(135deg, #d97706 0%, #92400e 100%);
+    box-shadow: 0 2px 8px rgba(217, 119, 6, 0.4);
   }
 
   @keyframes pulse {
     0%, 100% {
       opacity: 1;
+      transform: scale(1);
     }
     50% {
-      opacity: 0.7;
+      opacity: 0.85;
+      transform: scale(1.05);
     }
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: -100% 0;
+    }
+    100% {
+      background-position: 100% 0;
+    }
+  }
+
+  .new-ticket-shimmer {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(254, 243, 199, 0.3) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
   }
 
   /* Smooth data table transitions */
   .ticket-row-enter {
     opacity: 0;
-    transform: translateY(-10px);
+    transform: translateY(-15px) scale(0.98);
   }
 
   .ticket-row-enter-active {
     opacity: 1;
-    transform: translateY(0);
-    transition: all 0.3s ease-out;
+    transform: translateY(0) scale(1);
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  /* New items counter badge */
+  .new-items-counter {
+    position: fixed;
+    top: 100px;
+    right: 20px;
+    z-index: 40;
+    animation: slideInRight 0.3s ease-out;
+  }
+
+  @keyframes slideInRight {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
   }
 }
 

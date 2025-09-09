@@ -15,7 +15,10 @@ import {
   Filter,
   Download,
   Wifi,
-  WifiOff
+  WifiOff,
+  Bell,
+  X,
+  ArrowUp
 } from 'lucide-react'
 import { useTicketListUpdates } from '@/hooks/use-socket'
 import { SocketStatus } from '@/components/ui/socket-status'
@@ -54,6 +57,8 @@ export function TicketsDataTable({
   const [categoryOptions, setCategoryOptions] = useState<{ value: string; label: string }[]>([])
   const [serviceOptions, setServiceOptions] = useState<{ value: string; label: string }[]>([])
   const [technicianOptions, setTechnicianOptions] = useState<{ value: string; label: string }[]>([])
+  const [newItemsCount, setNewItemsCount] = useState(0)
+  const [showNewItemsNotification, setShowNewItemsNotification] = useState(false)
 
   // Load branches for filter
   const loadBranches = async () => {
@@ -174,16 +179,32 @@ export function TicketsDataTable({
   const mergeTicketsSmartly = (existing: TicketWithMeta[], incoming: Ticket[]): TicketWithMeta[] => {
     const now = Date.now()
     const existingMap = new Map(existing.map(t => [t.id, t]))
+    const incomingIds = new Set(incoming.map(t => t.id))
+    
+    // Keep track of tickets that were removed (e.g., status changed to exclude them)
+    const removedTickets = existing.filter(t => !incomingIds.has(t.id))
     
     const merged = incoming.map(ticket => {
       const existingTicket = existingMap.get(ticket.id)
       
       // If ticket already exists, preserve its metadata but update the data
       if (existingTicket) {
+        // Check if ticket data has actually changed (e.g., status, assignment)
+        const hasChanged = JSON.stringify({
+          status: existingTicket.status,
+          assignedTo: existingTicket.assignedTo,
+          priority: existingTicket.priority
+        }) !== JSON.stringify({
+          status: ticket.status,
+          assignedTo: ticket.assignedTo,
+          priority: ticket.priority
+        })
+        
         return {
           ...ticket,
-          isNew: existingTicket.isNew,
-          highlightedUntil: existingTicket.highlightedUntil
+          isNew: existingTicket.isNew && (existingTicket.highlightedUntil ? existingTicket.highlightedUntil > now : false),
+          highlightedUntil: existingTicket.highlightedUntil,
+          hasChanged // Add flag for changed tickets
         }
       }
       
@@ -192,11 +213,12 @@ export function TicketsDataTable({
       return {
         ...ticket,
         isNew: isActuallyNew,
-        highlightedUntil: isActuallyNew ? now + 5000 : undefined // Highlight for 5 seconds
+        highlightedUntil: isActuallyNew ? now + 10000 : undefined, // Highlight for 10 seconds
+        hasChanged: false
       }
     })
     
-    // Sort to put newest tickets at the top
+    // Sort to put newest tickets at the top, maintaining stable sort for others
     return merged.sort((a, b) => {
       // New tickets first
       if (a.isNew && !b.isNew) return -1
@@ -262,10 +284,18 @@ export function TicketsDataTable({
           const mergedTickets = mergeTicketsSmartly(tickets, loadedTickets)
           setTickets(mergedTickets)
           
-          // Show toast for new tickets
+          // Show toast and update counter for new tickets
           const newTicketCount = mergedTickets.filter(t => t.isNew).length
           if (newTicketCount > 0) {
+            setNewItemsCount(prev => prev + newTicketCount)
+            setShowNewItemsNotification(true)
             toast.success(`${newTicketCount} new ticket${newTicketCount > 1 ? 's' : ''} added`)
+            
+            // Auto-hide notification after 15 seconds
+            setTimeout(() => {
+              setShowNewItemsNotification(false)
+              setNewItemsCount(0)
+            }, 15000)
           }
         } else {
           // Initial load - just set tickets without highlights
@@ -493,8 +523,48 @@ export function TicketsDataTable({
     [showClaimButton, ticketFilter]
   )
 
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   return (
-    <div className="w-full space-y-6">
+    <div className="w-full space-y-6 relative">
+      {/* New Items Counter Badge */}
+      {showNewItemsNotification && newItemsCount > 0 && (
+        <div className="new-items-counter">
+          <Card className="bg-gradient-to-r from-brown-400 to-brown-500 dark:from-brown-200 dark:to-brown-300 border-brown-600 dark:border-brown-400 shadow-xl">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <Bell className="h-5 w-5 text-white dark:text-brown-950 animate-pulse" />
+                  <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full animate-ping" />
+                </div>
+                <div className="text-white dark:text-brown-950">
+                  <p className="text-sm font-semibold">
+                    {newItemsCount} new ticket{newItemsCount > 1 ? 's' : ''}
+                  </p>
+                  <button 
+                    onClick={scrollToTop}
+                    className="text-xs hover:underline flex items-center gap-1 mt-0.5"
+                  >
+                    <ArrowUp className="h-3 w-3" />
+                    View at top
+                  </button>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowNewItemsNotification(false)
+                    setNewItemsCount(0)
+                  }}
+                  className="ml-2 p-1 hover:bg-white/20 rounded transition-colors"
+                >
+                  <X className="h-4 w-4 text-white dark:text-brown-950" />
+                </button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
       {/* Modern Header with gradient background */}
       {!hideHeader && (
         <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-lg">

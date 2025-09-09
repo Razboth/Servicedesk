@@ -72,6 +72,7 @@ export type Ticket = {
 export type TicketWithMeta = Ticket & {
   isNew?: boolean
   highlightedUntil?: number
+  hasChanged?: boolean
 }
 
 const getStatusIcon = (status: string) => {
@@ -189,10 +190,11 @@ export const getColumns = (options?: {
     cell: ({ row }) => {
       const ticket = row.original
       const isNew = ticket.isNew
+      const hasChanged = ticket.hasChanged
       return (
-        <div className={`flex items-center gap-1 ${isNew ? 'new-ticket-highlight rounded-md px-2 py-1 -mx-2 -my-1' : ''}`}>
+        <div className={`flex items-center gap-1 ${isNew ? 'new-ticket-highlight rounded-md px-2 py-1 -mx-2 -my-1' : hasChanged ? 'new-ticket-shimmer rounded-md px-2 py-1 -mx-2 -my-1' : ''}`}>
           {isNew && (
-            <Badge className="bg-amber-500 text-white text-xs px-1.5 py-0 new-ticket-badge">
+            <Badge className="bg-gradient-to-r from-brown-500 to-brown-600 text-white text-xs px-1.5 py-0 new-ticket-badge">
               NEW
             </Badge>
           )}
