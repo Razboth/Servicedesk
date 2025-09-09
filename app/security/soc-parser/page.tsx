@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Shield, AlertTriangle, FileText, Loader2, Edit, CheckCircle, Bug } from 'lucide-react';
+import { Shield, AlertTriangle, FileText, Loader2, Edit, CheckCircle } from 'lucide-react';
 
 interface ParsedField {
   fieldName: string;
@@ -37,19 +37,6 @@ export default function SOCParserPage() {
   const [parsedData, setParsedData] = useState<ParsedData | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const [showAntivirusDialog, setShowAntivirusDialog] = useState(false);
-  const [antivirusData, setAntivirusData] = useState({
-    detectionDate: new Date().toISOString().split('T')[0],
-    endpoint: '',
-    username: '',
-    ipAddress: '',
-    threatType: '',
-    severity: 'Medium',
-    actionTaken: 'Blocked',
-    actionOther: '',
-    preliminaryAnalysis: '',
-    followupActions: ''
-  });
 
   // Check authorization
   if (status === 'loading') {
@@ -165,94 +152,6 @@ export default function SOCParserPage() {
     });
   };
 
-  const handleCreateAntivirusAlert = async () => {
-    // Validate required fields
-    if (!antivirusData.endpoint || !antivirusData.username || !antivirusData.ipAddress || 
-        !antivirusData.threatType || !antivirusData.preliminaryAnalysis || !antivirusData.followupActions) {
-      setError('Please fill in all required fields');
-      return;
-    }
-
-    setIsCreating(true);
-    setError('');
-
-    try {
-      // Get the Antivirus Alert service
-      const serviceResponse = await fetch('/api/services');
-      const services = await serviceResponse.json();
-      const antivirusService = services.find((s: any) => s.name === 'Antivirus Alert');
-
-      if (!antivirusService) {
-        throw new Error('Antivirus Alert service not found. Please contact administrator.');
-      }
-
-      // Prepare the ticket data
-      const ticketData = {
-        title: `Antivirus Alert - ${antivirusData.threatType}`,
-        description: `Antivirus detection on ${antivirusData.endpoint}\n\nThreat: ${antivirusData.threatType}\nSeverity: ${antivirusData.severity}\nUser: ${antivirusData.username}\nIP: ${antivirusData.ipAddress}\n\nPreliminary Analysis:\n${antivirusData.preliminaryAnalysis}\n\nFollow-up Actions:\n${antivirusData.followupActions}`,
-        serviceId: antivirusService.id,
-        priority: antivirusData.severity === 'Critical' ? 'CRITICAL' : 
-                  antivirusData.severity === 'High' ? 'HIGH' :
-                  antivirusData.severity === 'Medium' ? 'MEDIUM' : 'LOW',
-        category: 'INCIDENT',
-        fieldValues: {
-          av_detection_date: antivirusData.detectionDate,
-          av_endpoint_hostname: antivirusData.endpoint,
-          av_username: antivirusData.username,
-          av_ip_address: antivirusData.ipAddress,
-          av_threat_type: antivirusData.threatType,
-          av_severity: antivirusData.severity,
-          av_action_taken: antivirusData.actionTaken,
-          av_action_other: antivirusData.actionOther,
-          av_preliminary_analysis: antivirusData.preliminaryAnalysis,
-          av_followup_actions: antivirusData.followupActions
-        }
-      };
-
-      const response = await fetch('/api/tickets', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(ticketData)
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to create antivirus alert ticket');
-      }
-
-      setResult(data);
-      setShowAntivirusDialog(false);
-      
-      // Reset form
-      setAntivirusData({
-        detectionDate: new Date().toISOString().split('T')[0],
-        endpoint: '',
-        username: '',
-        ipAddress: '',
-        threatType: '',
-        severity: 'Medium',
-        actionTaken: 'Blocked',
-        actionOther: '',
-        preliminaryAnalysis: '',
-        followupActions: ''
-      });
-
-      // Redirect to the created ticket after 3 seconds
-      if (data.ticket?.id) {
-        setTimeout(() => {
-          router.push(`/tickets/${data.ticket.id}`);
-        }, 3000);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setIsCreating(false);
-    }
-  };
-
   const getFieldLabel = (fieldName: string): string => {
     const labels: { [key: string]: string } = {
       'soc_date_time': 'Date & Time',
@@ -340,58 +239,30 @@ SOC Team`;
         </p>
       </div>
 
-      {/* Action Cards Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        {/* SOC Parser Card */}
-        <Card className="border-2 hover:shadow-lg transition-shadow">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Shield className="h-5 w-5 text-red-600" />
-              <CardTitle>SOC Notification Parser</CardTitle>
-            </div>
-            <CardDescription>
-              Parse SOC email notifications and automatically create security incident tickets
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-gray-600 mb-4">
-              Use this tool to quickly convert SOC notification emails into structured tickets with all required fields.
-            </p>
-            <Button 
-              className="w-full bg-red-600 hover:bg-red-700"
-              onClick={() => document.getElementById('soc-textarea')?.focus()}
-            >
-              <Edit className="mr-2 h-4 w-4" />
-              Parse SOC Notification
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Antivirus Alert Card */}
-        <Card className="border-2 hover:shadow-lg transition-shadow">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Bug className="h-5 w-5 text-purple-600" />
-              <CardTitle>Antivirus Alert</CardTitle>
-            </div>
-            <CardDescription>
-              Create tickets for antivirus/endpoint protection alerts
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-gray-600 mb-4">
-              Report Kaspersky or other antivirus detections with detailed threat information and remediation steps.
-            </p>
-            <Button 
-              className="w-full bg-purple-600 hover:bg-purple-700"
-              onClick={() => setShowAntivirusDialog(true)}
-            >
-              <Bug className="mr-2 h-4 w-4" />
-              Create Antivirus Alert
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      {/* SOC Parser Card */}
+      <Card className="border-2 hover:shadow-lg transition-shadow mb-6">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Shield className="h-5 w-5 text-red-600" />
+            <CardTitle>SOC Notification Parser</CardTitle>
+          </div>
+          <CardDescription>
+            Parse SOC email notifications and automatically create security incident tickets
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-gray-600 mb-4">
+            Use this tool to quickly convert SOC notification emails into structured tickets with all required fields.
+          </p>
+          <Button 
+            className="w-full bg-red-600 hover:bg-red-700"
+            onClick={() => document.getElementById('soc-textarea')?.focus()}
+          >
+            <Edit className="mr-2 h-4 w-4" />
+            Parse SOC Notification
+          </Button>
+        </CardContent>
+      </Card>
 
       <Card className="mb-6">
         <CardHeader>

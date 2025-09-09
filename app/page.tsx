@@ -258,27 +258,51 @@ export default function Dashboard() {
 
           {/* SOC Parser Card - Only visible for Security Analysts */}
           {(session.user.role === 'SECURITY_ANALYST' || session.user.supportGroupCode === 'SECURITY_OPS') && (
-            <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 cursor-pointer group">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg text-brown-900 dark:text-cream-200 group-hover:text-brown-700 dark:group-hover:text-brown-400 transition-colors">
-                    SOC Parser
-                  </CardTitle>
-                  <Shield className="h-5 w-5 text-brown-700 dark:text-brown-400" />
-                </div>
-                <CardDescription className="text-brown-600 dark:text-cream-400">
-                  Parse security alerts and create SOC tickets
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button 
-                  className="w-full bg-gradient-to-r from-brown-700 to-brown-800 hover:from-brown-800 hover:to-brown-900 text-white shadow-lg transition-all duration-300"
-                  onClick={() => router.push('/security/soc-parser')}
-                >
-                  Open SOC Parser
-                </Button>
-              </CardContent>
-            </Card>
+            <>
+              <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 cursor-pointer group">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg text-brown-900 dark:text-cream-200 group-hover:text-brown-700 dark:group-hover:text-brown-400 transition-colors">
+                      SOC Parser
+                    </CardTitle>
+                    <Shield className="h-5 w-5 text-brown-700 dark:text-brown-400" />
+                  </div>
+                  <CardDescription className="text-brown-600 dark:text-cream-400">
+                    Parse security alerts and create SOC tickets
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button 
+                    className="w-full bg-gradient-to-r from-brown-700 to-brown-800 hover:from-brown-800 hover:to-brown-900 text-white shadow-lg transition-all duration-300"
+                    onClick={() => router.push('/security/soc-parser')}
+                  >
+                    Open SOC Parser
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 cursor-pointer group">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg text-brown-900 dark:text-cream-200 group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
+                      Antivirus Alert
+                    </CardTitle>
+                    <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                  </div>
+                  <CardDescription className="text-brown-600 dark:text-cream-400">
+                    Report antivirus detections and security incidents
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button 
+                    className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg transition-all duration-300"
+                    onClick={() => router.push('/security/antivirus-alert')}
+                  >
+                    Report Antivirus Alert
+                  </Button>
+                </CardContent>
+              </Card>
+            </>
           )}
         </div>
       </main>
