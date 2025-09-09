@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Shield, AlertTriangle, FileText, Loader2, Edit, CheckCircle } from 'lucide-react';
+import { Shield, AlertTriangle, FileText, Loader2, Edit, CheckCircle, Bug } from 'lucide-react';
 
 interface ParsedField {
   fieldName: string;
@@ -37,6 +37,19 @@ export default function SOCParserPage() {
   const [parsedData, setParsedData] = useState<ParsedData | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [showAntivirusDialog, setShowAntivirusDialog] = useState(false);
+  const [antivirusData, setAntivirusData] = useState({
+    detectionDate: new Date().toISOString().split('T')[0],
+    endpoint: '',
+    username: '',
+    ipAddress: '',
+    threatType: '',
+    severity: 'Medium',
+    actionTaken: 'Blocked',
+    actionOther: '',
+    preliminaryAnalysis: '',
+    followupActions: ''
+  });
 
   // Check authorization
   if (status === 'loading') {
@@ -152,6 +165,94 @@ export default function SOCParserPage() {
     });
   };
 
+  const handleCreateAntivirusAlert = async () => {
+    // Validate required fields
+    if (!antivirusData.endpoint || !antivirusData.username || !antivirusData.ipAddress || 
+        !antivirusData.threatType || !antivirusData.preliminaryAnalysis || !antivirusData.followupActions) {
+      setError('Please fill in all required fields');
+      return;
+    }
+
+    setIsCreating(true);
+    setError('');
+
+    try {
+      // Get the Antivirus Alert service
+      const serviceResponse = await fetch('/api/services');
+      const services = await serviceResponse.json();
+      const antivirusService = services.find((s: any) => s.name === 'Antivirus Alert');
+
+      if (!antivirusService) {
+        throw new Error('Antivirus Alert service not found. Please contact administrator.');
+      }
+
+      // Prepare the ticket data
+      const ticketData = {
+        title: `Antivirus Alert - ${antivirusData.threatType}`,
+        description: `Antivirus detection on ${antivirusData.endpoint}\n\nThreat: ${antivirusData.threatType}\nSeverity: ${antivirusData.severity}\nUser: ${antivirusData.username}\nIP: ${antivirusData.ipAddress}\n\nPreliminary Analysis:\n${antivirusData.preliminaryAnalysis}\n\nFollow-up Actions:\n${antivirusData.followupActions}`,
+        serviceId: antivirusService.id,
+        priority: antivirusData.severity === 'Critical' ? 'CRITICAL' : 
+                  antivirusData.severity === 'High' ? 'HIGH' :
+                  antivirusData.severity === 'Medium' ? 'MEDIUM' : 'LOW',
+        category: 'INCIDENT',
+        fieldValues: {
+          av_detection_date: antivirusData.detectionDate,
+          av_endpoint_hostname: antivirusData.endpoint,
+          av_username: antivirusData.username,
+          av_ip_address: antivirusData.ipAddress,
+          av_threat_type: antivirusData.threatType,
+          av_severity: antivirusData.severity,
+          av_action_taken: antivirusData.actionTaken,
+          av_action_other: antivirusData.actionOther,
+          av_preliminary_analysis: antivirusData.preliminaryAnalysis,
+          av_followup_actions: antivirusData.followupActions
+        }
+      };
+
+      const response = await fetch('/api/tickets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(ticketData)
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create antivirus alert ticket');
+      }
+
+      setResult(data);
+      setShowAntivirusDialog(false);
+      
+      // Reset form
+      setAntivirusData({
+        detectionDate: new Date().toISOString().split('T')[0],
+        endpoint: '',
+        username: '',
+        ipAddress: '',
+        threatType: '',
+        severity: 'Medium',
+        actionTaken: 'Blocked',
+        actionOther: '',
+        preliminaryAnalysis: '',
+        followupActions: ''
+      });
+
+      // Redirect to the created ticket after 3 seconds
+      if (data.ticket?.id) {
+        setTimeout(() => {
+          router.push(`/tickets/${data.ticket.id}`);
+        }, 3000);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   const getFieldLabel = (fieldName: string): string => {
     const labels: { [key: string]: string } = {
       'soc_date_time': 'Date & Time',
@@ -239,6 +340,59 @@ SOC Team`;
         </p>
       </div>
 
+      {/* Action Cards Row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        {/* SOC Parser Card */}
+        <Card className="border-2 hover:shadow-lg transition-shadow">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-red-600" />
+              <CardTitle>SOC Notification Parser</CardTitle>
+            </div>
+            <CardDescription>
+              Parse SOC email notifications and automatically create security incident tickets
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-gray-600 mb-4">
+              Use this tool to quickly convert SOC notification emails into structured tickets with all required fields.
+            </p>
+            <Button 
+              className="w-full bg-red-600 hover:bg-red-700"
+              onClick={() => document.getElementById('soc-textarea')?.focus()}
+            >
+              <Edit className="mr-2 h-4 w-4" />
+              Parse SOC Notification
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Antivirus Alert Card */}
+        <Card className="border-2 hover:shadow-lg transition-shadow">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Bug className="h-5 w-5 text-purple-600" />
+              <CardTitle>Antivirus Alert</CardTitle>
+            </div>
+            <CardDescription>
+              Create tickets for antivirus/endpoint protection alerts
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-gray-600 mb-4">
+              Report Kaspersky or other antivirus detections with detailed threat information and remediation steps.
+            </p>
+            <Button 
+              className="w-full bg-purple-600 hover:bg-purple-700"
+              onClick={() => setShowAntivirusDialog(true)}
+            >
+              <Bug className="mr-2 h-4 w-4" />
+              Create Antivirus Alert
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
       <Card className="mb-6">
         <CardHeader>
           <CardTitle>Parse SOC Notification</CardTitle>
@@ -249,6 +403,7 @@ SOC Team`;
         <CardContent className="space-y-4">
           <div>
             <Textarea
+              id="soc-textarea"
               placeholder="Paste SOC notification text here..."
               value={socText}
               onChange={(e) => setSocText(e.target.value)}
@@ -431,6 +586,185 @@ SOC Team`;
                 <>
                   <CheckCircle className="mr-2 h-4 w-4" />
                   Create Ticket
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Antivirus Alert Dialog */}
+      <Dialog open={showAntivirusDialog} onOpenChange={setShowAntivirusDialog}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Bug className="h-5 w-5 text-purple-600" />
+              Create Antivirus Alert Ticket
+            </DialogTitle>
+            <DialogDescription>
+              Fill in the details of the antivirus detection to create a security incident ticket.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {/* Detection Date */}
+            <div>
+              <Label htmlFor="av-date">Detection Date *</Label>
+              <Input
+                id="av-date"
+                type="date"
+                value={antivirusData.detectionDate}
+                onChange={(e) => setAntivirusData({...antivirusData, detectionDate: e.target.value})}
+                required
+              />
+            </div>
+
+            {/* Endpoint/Hostname */}
+            <div>
+              <Label htmlFor="av-endpoint">Endpoint / Hostname *</Label>
+              <Input
+                id="av-endpoint"
+                placeholder="e.g., DESKTOP-ABC123 or server01.banksulutgo.co.id"
+                value={antivirusData.endpoint}
+                onChange={(e) => setAntivirusData({...antivirusData, endpoint: e.target.value})}
+                required
+              />
+            </div>
+
+            {/* Username */}
+            <div>
+              <Label htmlFor="av-username">Username *</Label>
+              <Input
+                id="av-username"
+                placeholder="e.g., john.doe or domain\\username"
+                value={antivirusData.username}
+                onChange={(e) => setAntivirusData({...antivirusData, username: e.target.value})}
+                required
+              />
+            </div>
+
+            {/* IP Address */}
+            <div>
+              <Label htmlFor="av-ip">IP Address *</Label>
+              <Input
+                id="av-ip"
+                placeholder="e.g., 192.168.1.100"
+                value={antivirusData.ipAddress}
+                onChange={(e) => setAntivirusData({...antivirusData, ipAddress: e.target.value})}
+                pattern="^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
+                required
+              />
+            </div>
+
+            {/* Threat Type */}
+            <div>
+              <Label htmlFor="av-threat">Threat/Malware Type *</Label>
+              <Input
+                id="av-threat"
+                placeholder="e.g., Trojan.Win32.Generic, Ransomware, Adware"
+                value={antivirusData.threatType}
+                onChange={(e) => setAntivirusData({...antivirusData, threatType: e.target.value})}
+                required
+              />
+            </div>
+
+            {/* Severity */}
+            <div>
+              <Label htmlFor="av-severity">Severity *</Label>
+              <Select 
+                value={antivirusData.severity}
+                onValueChange={(value) => setAntivirusData({...antivirusData, severity: value})}
+              >
+                <SelectTrigger id="av-severity">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Low">Low</SelectItem>
+                  <SelectItem value="Medium">Medium</SelectItem>
+                  <SelectItem value="High">High</SelectItem>
+                  <SelectItem value="Critical">Critical</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Action Taken */}
+            <div>
+              <Label htmlFor="av-action">Automatic Action by Kaspersky *</Label>
+              <Select 
+                value={antivirusData.actionTaken}
+                onValueChange={(value) => setAntivirusData({...antivirusData, actionTaken: value})}
+              >
+                <SelectTrigger id="av-action">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Blocked">Blocked</SelectItem>
+                  <SelectItem value="Quarantined">Quarantined</SelectItem>
+                  <SelectItem value="Deleted">Deleted</SelectItem>
+                  <SelectItem value="No Action Taken">No Action Taken</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Other Action (conditional) */}
+            {antivirusData.actionTaken === 'Other' && (
+              <div>
+                <Label htmlFor="av-action-other">Specify Other Action</Label>
+                <Input
+                  id="av-action-other"
+                  placeholder="Describe the action taken"
+                  value={antivirusData.actionOther}
+                  onChange={(e) => setAntivirusData({...antivirusData, actionOther: e.target.value})}
+                />
+              </div>
+            )}
+
+            {/* Preliminary Analysis */}
+            <div>
+              <Label htmlFor="av-analysis">Preliminary Analysis *</Label>
+              <Textarea
+                id="av-analysis"
+                placeholder="Provide initial analysis of the threat detection..."
+                value={antivirusData.preliminaryAnalysis}
+                onChange={(e) => setAntivirusData({...antivirusData, preliminaryAnalysis: e.target.value})}
+                className="min-h-[100px]"
+                required
+              />
+            </div>
+
+            {/* Follow-up Actions */}
+            <div>
+              <Label htmlFor="av-followup">Required Follow-up Actions *</Label>
+              <Textarea
+                id="av-followup"
+                placeholder="List required follow-up actions..."
+                value={antivirusData.followupActions}
+                onChange={(e) => setAntivirusData({...antivirusData, followupActions: e.target.value})}
+                className="min-h-[100px]"
+                required
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAntivirusDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              className="bg-purple-600 hover:bg-purple-700"
+              onClick={handleCreateAntivirusAlert}
+              disabled={isCreating}
+            >
+              {isCreating ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Create Alert Ticket
                 </>
               )}
             </Button>
