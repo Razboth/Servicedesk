@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
+import { PageHeader } from '@/components/ui/page-header'
 import { 
   Shield, 
   Lock, 
@@ -214,15 +215,12 @@ export default function SecurityDashboard() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Security Dashboard</h1>
-          <p className="text-muted-foreground">
-            Monitor and manage user account security
-          </p>
-        </div>
-        <div className="flex items-center space-x-4">
+    <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
+      <PageHeader
+        title="Security Dashboard"
+        description="Monitor and manage user account security"
+        icon={<Shield className="h-6 w-6" />}
+        action={
           <div className="flex items-center space-x-2">
             <Switch
               id="device-analytics"
@@ -231,16 +229,18 @@ export default function SecurityDashboard() {
             />
             <Label htmlFor="device-analytics">Show Device Analytics</Label>
           </div>
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="locked-filter"
-              checked={lockedOnly}
-              onCheckedChange={setLockedOnly}
-            />
-            <Label htmlFor="locked-filter">Show locked accounts only</Label>
-          </div>
+        }
+      />
+      
+      <div className="space-y-6">
+        <div className="flex items-center space-x-2">
+          <Switch
+            id="locked-filter"
+            checked={lockedOnly}
+            onCheckedChange={setLockedOnly}
+          />
+          <Label htmlFor="locked-filter">Show locked accounts only</Label>
         </div>
-      </div>
 
       {/* Stats Cards */}
       {data?.stats && (
@@ -618,6 +618,7 @@ export default function SecurityDashboard() {
           </CardContent>
         </Card>
       )}
+      </div>
     </div>
   )
 }

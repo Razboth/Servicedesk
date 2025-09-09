@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
+import { PageHeader } from '@/components/ui/page-header'
 import { 
   Plus,
   Search,
@@ -534,25 +535,23 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="container mx-auto py-6 max-w-7xl">
-      {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-3xl font-bold">Reports Center</h1>
-            <p className="text-muted-foreground mt-1">
-              Access standard reports or create your own custom analytics
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <Link href="/reports/builder">
-              <Button size="lg" className="gap-2">
-                <Plus className="h-5 w-5" />
-                Create Custom Report
-              </Button>
-            </Link>
-          </div>
-        </div>
+    <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
+      <PageHeader
+        title="Reports Center"
+        description="Access standard reports or create your own custom analytics"
+        icon={<BarChart3 className="h-6 w-6" />}
+        action={
+          <Link href="/reports/builder">
+            <Button 
+              size="default" 
+              className="bg-gradient-to-r from-brown-400 to-brown-500 dark:from-brown-200 dark:to-brown-300 text-white dark:text-brown-950 hover:from-brown-500 hover:to-brown-600 dark:hover:from-brown-300 dark:hover:to-brown-400"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Create Custom Report
+            </Button>
+          </Link>
+        }
+      />
 
         {/* Quick Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
@@ -612,7 +611,6 @@ export default function ReportsPage() {
             className="pl-10"
           />
         </div>
-      </div>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">

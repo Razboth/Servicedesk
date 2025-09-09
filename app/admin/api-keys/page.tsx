@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { PageHeader } from '@/components/ui/page-header';
 import { Key, Copy, Trash2, Edit, Plus, AlertCircle, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -197,28 +198,33 @@ export default function ApiKeysPage() {
   }
 
   return (
-    <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">API Key Management</h1>
-        <p className="text-gray-600">Manage API keys for external integrations</p>
-      </div>
+    <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
+      <PageHeader
+        title="API Key Management"
+        description="Manage API keys for external integrations"
+        icon={<Key className="h-6 w-6" />}
+        action={
+          <Button 
+            onClick={() => setShowCreateDialog(true)}
+            className="bg-gradient-to-r from-brown-400 to-brown-500 dark:from-brown-200 dark:to-brown-300 text-white dark:text-brown-950 hover:from-brown-500 hover:to-brown-600 dark:hover:from-brown-300 dark:hover:to-brown-400"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Create API Key
+          </Button>
+        }
+      />
 
       <Card className="mb-6">
         <CardHeader>
-          <div className="flex justify-between items-center">
-            <div>
-              <CardTitle>API Keys</CardTitle>
-              <CardDescription>
-                Create and manage API keys for SOC integration and other external tools
-              </CardDescription>
-            </div>
-            <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create API Key
-                </Button>
-              </DialogTrigger>
+          <div>
+            <CardTitle>API Keys</CardTitle>
+            <CardDescription>
+              Create and manage API keys for SOC integration and other external tools
+            </CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Create New API Key</DialogTitle>
@@ -326,9 +332,6 @@ export default function ApiKeysPage() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
-          </div>
-        </CardHeader>
-        <CardContent>
           <Table>
             <TableHeader>
               <TableRow>

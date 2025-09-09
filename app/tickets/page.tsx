@@ -6,6 +6,9 @@ import { useSearchParams } from 'next/navigation'
 import { TicketsDataTable } from '@/components/tickets/data-table/tickets-data-table'
 import { TicketWizard } from '@/components/tickets/modern/ticket-wizard'
 import { Card, CardContent } from '@/components/ui/card'
+import { PageHeader } from '@/components/ui/page-header'
+import { Button } from '@/components/ui/button'
+import { Plus, TicketIcon } from 'lucide-react'
 
 function TicketsPageContent() {
   const { data: session } = useSession()
@@ -32,10 +35,26 @@ function TicketsPageContent() {
   }
 
   return (
-    <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 p-6">
+    <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
+      <PageHeader
+        title="Support Tickets"
+        description="Manage and track support tickets across all branches"
+        icon={<TicketIcon className="h-6 w-6" />}
+        action={
+          <Button 
+            onClick={handleCreateTicket}
+            className="bg-gradient-to-r from-brown-400 to-brown-500 dark:from-brown-200 dark:to-brown-300 text-white dark:text-brown-950 hover:from-brown-500 hover:to-brown-600 dark:hover:from-brown-300 dark:hover:to-brown-400"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Create Ticket
+          </Button>
+        }
+      />
+      
       <TicketsDataTable 
         onCreateTicket={handleCreateTicket}
         initialFilters={initialFilters}
+        hideHeader={true}
       />
       
       {showWizard && (

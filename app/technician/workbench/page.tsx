@@ -10,6 +10,7 @@ import { TicketsDataTable } from '@/components/tickets/data-table/tickets-data-t
 import { TicketCards } from '@/components/tickets/ticket-cards'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { PageHeader } from '@/components/ui/page-header'
 import { 
   Sparkles,
   User,
@@ -129,21 +130,20 @@ export default function TechnicianWorkbenchPage() {
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-brown-300/20 to-brown-400/20 dark:from-brown-700/20 dark:to-brown-600/20 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
       </div>
 
-      <div className="w-full pl-3 pr-6 sm:pl-4 sm:pr-8 lg:pl-6 lg:pr-10 py-4">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
+        <PageHeader
+          title="Technician Workbench"
+          description="Manage and process your assigned tickets"
+          icon={<ClipboardList className="h-6 w-6" />}
+          action={
+            <Badge variant="outline" className="px-3 py-1 text-xs font-medium border-brown-400 dark:border-brown-600 text-brown-700 dark:text-brown-200">
+              <Clock className="w-3 h-3 mr-1" />
+              Live Updates
+            </Badge>
+          }
+        />
+        
         <div className="space-y-4">
-          {/* Header */}
-          <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-lg">
-            <CardContent className="p-6">
-              <div>
-                <h1 className="text-2xl font-bold text-brown-900 dark:text-cream-200">
-                  Technician Workbench
-                </h1>
-                <p className="text-brown-600 dark:text-cream-300 mt-1">
-                  Manage and process your assigned tickets
-                </p>
-              </div>
-            </CardContent>
-          </Card>
 
           {/* Stats Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
