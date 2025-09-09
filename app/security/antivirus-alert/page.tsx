@@ -128,38 +128,94 @@ export default function AntivirusAlertPage() {
 
     setIsLoading(true)
     try {
+      // Prepare field values in the correct format
+      const fieldValues = []
+      
+      // Map form data to service field IDs
+      if (antivirusService.fields && antivirusService.fields.length > 0) {
+        for (const field of antivirusService.fields) {
+          let value = ''
+          switch (field.name) {
+            case 'av_detection_date':
+              value = formData.detectionDate
+              break
+            case 'av_endpoint_hostname':
+              value = formData.endpoint
+              break
+            case 'av_username':
+              value = formData.username
+              break
+            case 'av_ip_address':
+              value = formData.ipAddress
+              break
+            case 'av_threat_type':
+              value = formData.threatType
+              break
+            case 'av_severity':
+              value = formData.severity
+              break
+            case 'av_action_taken':
+              value = formData.actionTaken
+              break
+            case 'av_action_other':
+              value = formData.actionOther || ''
+              break
+            case 'av_preliminary_analysis':
+              value = formData.preliminaryAnalysis
+              break
+            case 'av_followup_actions':
+              value = formData.followupActions
+              break
+          }
+          
+          if (value) {
+            fieldValues.push({
+              fieldId: field.id,
+              value: value
+            })
+          }
+        }
+      }
+      
       const ticketData = {
         title: `Antivirus Alert - ${formData.threatType}`,
         description: `Detection Date: ${formData.detectionDate}\nEndpoint: ${formData.endpoint}\nUsername: ${formData.username}\nIP Address: ${formData.ipAddress}\nThreat Type: ${formData.threatType}\nSeverity: ${formData.severity}\nAction Taken: ${formData.actionTaken}${formData.actionTaken === 'Other' ? ` (${formData.actionOther})` : ''}\n\nPreliminary Analysis:\n${formData.preliminaryAnalysis}\n\nRequired Follow-up Actions:\n${formData.followupActions}`,
         serviceId: antivirusService.id,
         priority: formData.severity === 'Critical' ? 'URGENT' : formData.severity === 'High' ? 'HIGH' : formData.severity === 'Medium' ? 'MEDIUM' : 'LOW',
-        fieldValues: {
-          av_detection_date: formData.detectionDate,
-          av_endpoint_hostname: formData.endpoint,
-          av_username: formData.username,
-          av_ip_address: formData.ipAddress,
-          av_threat_type: formData.threatType,
-          av_severity: formData.severity,
-          av_action_taken: formData.actionTaken,
-          av_action_other: formData.actionOther || '',
-          av_preliminary_analysis: formData.preliminaryAnalysis,
-          av_followup_actions: formData.followupActions
-        }
+        fieldValues: fieldValues
       }
 
+      console.log('Creating ticket with data:', ticketData)
+      
       const response = await fetch('/api/tickets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(ticketData)
       })
 
-      const result = await response.json()
+      // Check if response has content before parsing
+      const contentType = response.headers.get('content-type')
+      let result = null
       
-      if (response.ok) {
+      if (contentType && contentType.includes('application/json')) {
+        const text = await response.text()
+        if (text) {
+          try {
+            result = JSON.parse(text)
+          } catch (parseError) {
+            console.error('Failed to parse response:', text)
+            throw new Error('Invalid server response')
+          }
+        }
+      }
+      
+      if (response.ok && result) {
         toast.success('Antivirus alert ticket created successfully!')
-        router.push(`/tickets/${result.id}`)
+        router.push(`/tickets/${result.id || result.ticket?.id}`)
+      } else if (!response.ok) {
+        throw new Error(result?.error || `Server error: ${response.status}`)
       } else {
-        throw new Error(result.error || 'Failed to create ticket')
+        throw new Error('No response from server')
       }
     } catch (error: any) {
       console.error('Error creating ticket:', error)
