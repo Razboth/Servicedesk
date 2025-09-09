@@ -53,15 +53,21 @@ export default function AntivirusAlertPage() {
 
   const fetchAntivirusService = async () => {
     try {
-      const response = await fetch('/api/services?name=Antivirus Alert')
+      const response = await fetch('/api/services?search=Antivirus%20Alert')
       if (response.ok) {
         const data = await response.json()
-        const service = data.services?.find((s: any) => s.name === 'Antivirus Alert')
+        // API returns array directly, not wrapped in object
+        const services = Array.isArray(data) ? data : (data.services || [])
+        const service = services.find((s: any) => s.name === 'Antivirus Alert')
         if (service) {
           setAntivirusService(service)
+          console.log('Antivirus service loaded:', service)
         } else {
-          toast.error('Antivirus Alert service not found. Please run the seed script.')
+          console.error('Antivirus Alert service not found in response:', services)
+          toast.error('Antivirus Alert service not found. Please run: node scripts/seed-antivirus-service.js')
         }
+      } else {
+        console.error('Failed to fetch services:', response.status)
       }
     } catch (error) {
       console.error('Error fetching service:', error)
