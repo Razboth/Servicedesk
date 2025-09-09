@@ -966,9 +966,74 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
     }
   }
 
+  // Helper function to check if all required fields are filled
+  const areAllRequiredFieldsFilled = () => {
+    if (!selectedService || !formData.title || !formData.description) {
+      return false
+    }
+    
+    // Check service fields
+    if (selectedService.fields && selectedService.fields.length > 0) {
+      for (const field of selectedService.fields) {
+        if (field.isRequired) {
+          const fieldValue = formData.fieldValues[field.name]
+          if (!fieldValue || (typeof fieldValue === 'string' && fieldValue.trim() === '')) {
+            return false
+          }
+        }
+      }
+    }
+    
+    // Check field templates
+    if (selectedService.fieldTemplates && selectedService.fieldTemplates.length > 0) {
+      for (const template of selectedService.fieldTemplates) {
+        if (template.isRequired || template.fieldTemplate?.isRequired) {
+          const fieldValue = formData.fieldValues[template.fieldTemplate.name]
+          if (!fieldValue || (typeof fieldValue === 'string' && fieldValue.trim() === '')) {
+            return false
+          }
+        }
+      }
+    }
+    
+    return true
+  }
+
   const handleSubmit = async () => {
     if (!selectedService || !formData.title || !formData.description) {
       toast.error('Please fill in all required fields')
+      return
+    }
+
+    // Validate required custom fields
+    const missingRequiredFields: string[] = []
+    
+    // Check service fields
+    if (selectedService.fields && selectedService.fields.length > 0) {
+      for (const field of selectedService.fields) {
+        if (field.isRequired) {
+          const fieldValue = formData.fieldValues[field.name]
+          if (!fieldValue || (typeof fieldValue === 'string' && fieldValue.trim() === '')) {
+            missingRequiredFields.push(field.label || field.name)
+          }
+        }
+      }
+    }
+    
+    // Check field templates
+    if (selectedService.fieldTemplates && selectedService.fieldTemplates.length > 0) {
+      for (const template of selectedService.fieldTemplates) {
+        if (template.isRequired || template.fieldTemplate?.isRequired) {
+          const fieldValue = formData.fieldValues[template.fieldTemplate.name]
+          if (!fieldValue || (typeof fieldValue === 'string' && fieldValue.trim() === '')) {
+            missingRequiredFields.push(template.fieldTemplate.label || template.fieldTemplate.name)
+          }
+        }
+      }
+    }
+    
+    if (missingRequiredFields.length > 0) {
+      toast.error(`Please fill in required fields: ${missingRequiredFields.join(', ')}`)
       return
     }
 
@@ -2582,7 +2647,7 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
             ) : (
               <Button
                 onClick={handleSubmit}
-                disabled={isLoading || !formData.title || !formData.description}
+                disabled={isLoading || !areAllRequiredFieldsFilled()}
                 className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-600"
               >
                 {isLoading ? (
