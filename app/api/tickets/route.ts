@@ -947,7 +947,8 @@ export async function POST(request: NextRequest) {
 
     // Check for ATM claim auto-routing
     let targetBranchId = userWithBranch?.branchId;
-    let assignedToId: string | null = null;
+    // Auto-assign ticket to the creator by default
+    let assignedToId: string | null = session.user.id;
     let autoRoutingComment: string | null = null;
 
     // Check if this is an ATM claim service (Penarikan Tunai Internal)
@@ -1032,7 +1033,7 @@ export async function POST(request: NextRequest) {
         status: initialStatus,
         createdById: session.user.id,
         branchId: targetBranchId, // Use target branch (either user's or ATM owner's)
-        assignedToId: assignedToId, // Auto-assign to branch manager if different branch
+        assignedToId: assignedToId, // Auto-assign to creator (or branch manager for ATM claims)
         // Security fields (using processed values for Security Analysts)
         isConfidential: isConfidential,
         securityClassification: securityClassification,
