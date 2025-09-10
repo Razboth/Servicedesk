@@ -1,7 +1,7 @@
 // ManageEngine Migration API Routes
 
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/app/api/auth/[...nextauth]/auth'
+import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { ManageEngineClient } from './client'
 import { DataMapper } from './mapper'
