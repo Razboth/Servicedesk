@@ -80,24 +80,37 @@ const req = client.request(options, (res) => {
       
       if (json.response_status) {
         console.log('\n=================================');
-        if (json.response_status.status_code === 2000) {
+        // ManageEngine returns response_status as an array
+        const statusObj = Array.isArray(json.response_status) ? json.response_status[0] : json.response_status;
+        
+        if (statusObj && statusObj.status_code === 2000) {
           console.log('✅ CONNECTION SUCCESSFUL!');
           console.log('=================================');
-          console.log('Status:', json.response_status.status);
+          console.log('Status:', statusObj.status);
           
           if (json.list_info) {
-            console.log('Total Tickets:', json.list_info.row_count);
+            console.log('Total Tickets Found:', json.list_info.row_count);
+            console.log('Has More Pages:', json.list_info.has_more_rows ? 'Yes' : 'No');
           }
           
-          console.log('\nYou can now use this API key in the migration dashboard.');
+          if (json.requests && json.requests.length > 0) {
+            console.log('\nSample Ticket:');
+            console.log('  ID:', json.requests[0].id);
+            console.log('  Subject:', json.requests[0].subject);
+            console.log('  Status:', json.requests[0].status?.name);
+          }
+          
+          console.log('\n✅ You can now use this API key in the migration dashboard.');
+          console.log('   URL: https://127.0.0.1:8081');
+          console.log('   API Key:', config.apiKey);
         } else {
           console.log('❌ CONNECTION FAILED');
           console.log('=================================');
-          console.log('Error Code:', json.response_status.status_code);
-          console.log('Error:', json.response_status.status);
+          console.log('Error Code:', statusObj?.status_code);
+          console.log('Error:', statusObj?.status);
           
-          if (json.response_status.messages && json.response_status.messages.length > 0) {
-            console.log('Message:', json.response_status.messages[0].message);
+          if (statusObj?.messages && statusObj.messages.length > 0) {
+            console.log('Message:', statusObj.messages[0].message);
           }
           
           console.log('\nPossible issues:');
