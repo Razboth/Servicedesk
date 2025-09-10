@@ -811,9 +811,9 @@ export async function POST(request: NextRequest) {
     // Determine initial status based on service approval requirement and user role
     let initialStatus: 'OPEN' | 'PENDING_APPROVAL' = 'OPEN';
     if (serviceToCheck?.requiresApproval) {
-      // Manager-created tickets are auto-approved, so status is OPEN
+      // Manager and Technician created tickets are auto-approved, so status is OPEN
       // Others need approval, so status starts as PENDING_APPROVAL
-      initialStatus = (session.user.role === 'MANAGER') ? 'OPEN' : 'PENDING_APPROVAL';
+      initialStatus = (['MANAGER', 'TECHNICIAN'].includes(session.user.role)) ? 'OPEN' : 'PENDING_APPROVAL';
     }
 
     // Handle file attachments
@@ -947,7 +947,8 @@ export async function POST(request: NextRequest) {
 
     // Check for ATM claim auto-routing
     let targetBranchId = userWithBranch?.branchId;
-    let assignedToId: string | null = null;
+    // Auto-assign ticket to the creator only if they are a technician
+    let assignedToId: string | null = session.user.role === 'TECHNICIAN' ? session.user.id : null;
     let autoRoutingComment: string | null = null;
 
     // Check if this is an ATM claim service (Penarikan Tunai Internal)
@@ -1032,7 +1033,7 @@ export async function POST(request: NextRequest) {
         status: initialStatus,
         createdById: session.user.id,
         branchId: targetBranchId, // Use target branch (either user's or ATM owner's)
-        assignedToId: assignedToId, // Auto-assign to branch manager if different branch
+        assignedToId: assignedToId, // Auto-assign to technician creator (or branch manager for ATM claims)
         // Security fields (using processed values for Security Analysts)
         isConfidential: isConfidential,
         securityClassification: securityClassification,
@@ -1105,14 +1106,18 @@ export async function POST(request: NextRequest) {
     });
 
     if (serviceDetails?.requiresApproval) {
-      // Check if creator is a manager - auto-approve their own tickets
-      if (session.user.role === 'MANAGER') {
+      // Check if creator is a manager or technician - auto-approve their tickets
+      if (['MANAGER', 'TECHNICIAN'].includes(session.user.role)) {
+        const approvalReason = session.user.role === 'MANAGER' 
+          ? 'Auto-approved: Manager-created ticket'
+          : 'Auto-approved: Technician-created ticket';
+          
         await prisma.ticketApproval.create({
           data: {
             ticketId: ticket.id,
             approverId: session.user.id,
             status: 'APPROVED',
-            reason: 'Auto-approved: Manager-created ticket'
+            reason: approvalReason
           }
         });
         
