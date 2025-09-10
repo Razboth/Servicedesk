@@ -811,9 +811,9 @@ export async function POST(request: NextRequest) {
     // Determine initial status based on service approval requirement and user role
     let initialStatus: 'OPEN' | 'PENDING_APPROVAL' = 'OPEN';
     if (serviceToCheck?.requiresApproval) {
-      // Manager-created tickets are auto-approved, so status is OPEN
+      // Manager and Technician created tickets are auto-approved, so status is OPEN
       // Others need approval, so status starts as PENDING_APPROVAL
-      initialStatus = (session.user.role === 'MANAGER') ? 'OPEN' : 'PENDING_APPROVAL';
+      initialStatus = (['MANAGER', 'TECHNICIAN'].includes(session.user.role)) ? 'OPEN' : 'PENDING_APPROVAL';
     }
 
     // Handle file attachments
@@ -1105,14 +1105,18 @@ export async function POST(request: NextRequest) {
     });
 
     if (serviceDetails?.requiresApproval) {
-      // Check if creator is a manager - auto-approve their own tickets
-      if (session.user.role === 'MANAGER') {
+      // Check if creator is a manager or technician - auto-approve their tickets
+      if (['MANAGER', 'TECHNICIAN'].includes(session.user.role)) {
+        const approvalReason = session.user.role === 'MANAGER' 
+          ? 'Auto-approved: Manager-created ticket'
+          : 'Auto-approved: Technician-created ticket';
+          
         await prisma.ticketApproval.create({
           data: {
             ticketId: ticket.id,
             approverId: session.user.id,
             status: 'APPROVED',
-            reason: 'Auto-approved: Manager-created ticket'
+            reason: approvalReason
           }
         });
         
