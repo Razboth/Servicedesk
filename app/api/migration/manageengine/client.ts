@@ -77,8 +77,13 @@ export class ManageEngineClient {
       const data = await response.json()
       
       // Check for API-level errors
-      if (data.response_status && data.response_status.status_code !== 2000) {
-        const errorMsg = data.response_status.messages?.[0]?.message || 'Unknown API error'
+      // ManageEngine returns response_status as an array
+      const statusObj = Array.isArray(data.response_status) 
+        ? data.response_status[0] 
+        : data.response_status
+        
+      if (statusObj && statusObj.status_code !== 2000) {
+        const errorMsg = statusObj.messages?.[0]?.message || 'Unknown API error'
         throw new Error(`ManageEngine API error: ${errorMsg}`)
       }
       
@@ -114,7 +119,11 @@ export class ManageEngineClient {
       )
       
       console.log('Connection test response:', response.response_status)
-      return response.response_status.status_code === 2000
+      // ManageEngine returns response_status as an array
+      const statusObj = Array.isArray(response.response_status) 
+        ? response.response_status[0] 
+        : response.response_status
+      return statusObj?.status_code === 2000
     } catch (error: any) {
       console.error('Connection test failed:', {
         message: error.message,

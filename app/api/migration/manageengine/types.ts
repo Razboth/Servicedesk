@@ -98,7 +98,14 @@ export interface ManageEngineListResponse<T> {
   requests?: T[]
   notes?: T[]
   attachments?: T[]
-  response_status: {
+  response_status: Array<{
+    status_code: number
+    status: string
+    messages?: Array<{
+      message: string
+      type: string
+    }>
+  }> | {
     status_code: number
     status: string
     messages?: Array<{
@@ -117,7 +124,14 @@ export interface ManageEngineSingleResponse<T> {
   request?: T
   note?: T
   attachment?: T
-  response_status: {
+  response_status: Array<{
+    status_code: number
+    status: string
+    messages?: Array<{
+      message: string
+      type: string
+    }>
+  }> | {
     status_code: number
     status: string
     messages?: Array<{
