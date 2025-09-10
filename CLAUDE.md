@@ -204,3 +204,4 @@ Required environment variables (see `.env.example`):
 - always commit every changes also rebuild and restart
 - always commit every changes also rebuild and restart
 - the default theme get from https://tweakcn.com/themes/cmf4zd6yp000004ib53oeciwk
+- Manage Engine Service Desk Plus API Documentation on https://127.0.0.1:8081/SetUpWizard.do?forwardTo=apidoc
