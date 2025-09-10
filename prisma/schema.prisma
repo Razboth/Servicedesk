@@ -362,6 +362,17 @@ model Ticket {
   atmClaimVerification ATMClaimVerification?
   branchAssignments    BranchAssignment[]
   branchCommunications BranchCommunication[]
+  
+  // Migration fields for legacy systems
+  isLegacy         Boolean   @default(false)
+  legacySystem     String?   // e.g., "MANAGEENGINE"
+  legacyTicketId   String?   // Original ticket ID from source system
+  legacyData       Json?     // Store unmapped/additional data
+  importedAt       DateTime?
+  importBatchId    String?
+  
+  // Relations
+  migrationBatch   MigrationBatch? @relation(fields: [importBatchId], references: [id])
 
   @@map("tickets")
 }
@@ -1549,4 +1560,34 @@ enum CommunicationType {
   REQUEST
   RESPONSE
   ESCALATION
+}
+
+// Migration batch tracking
+model MigrationBatch {
+  id             String   @id @default(cuid())
+  source         String   // e.g., "MANAGEENGINE"
+  status         MigrationStatus @default(PENDING)
+  totalCount     Int      @default(0)
+  importedCount  Int      @default(0)
+  errorCount     Int      @default(0)
+  startedAt      DateTime?
+  completedAt    DateTime?
+  metadata       Json?    // Store configuration, mappings, etc.
+  errorLog       Json?    // Store error details
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  // Relations
+  tickets        Ticket[]
+  
+  @@map("migration_batches")
+}
+
+// Enum for migration status
+enum MigrationStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  CANCELLED
 }
