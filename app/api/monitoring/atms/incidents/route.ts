@@ -218,73 +218,31 @@ export async function POST(request: NextRequest) {
         // Get the 3-tier category mapping for this incident type
         const mapping = ATM_INCIDENT_MAPPING[validatedData.type];
         
-        // Find the corresponding service or create a generic ATM service
+        // Find the ATM Monitoring Alert service specifically
         service = await prisma.service.findFirst({
           where: {
-            name: { contains: 'ATM', mode: 'insensitive' },
+            name: 'ATM Monitoring Alert',
             isActive: true
           }
         });
 
-        // If no ATM service exists, find a generic infrastructure service
+        // If the specific service doesn't exist, try to find any ATM-related service
         if (!service) {
           service = await prisma.service.findFirst({
             where: {
-              OR: [
-                { name: { contains: 'Infrastructure', mode: 'insensitive' } },
-                { name: { contains: 'Hardware', mode: 'insensitive' } },
-                { name: { contains: 'System', mode: 'insensitive' } }
-              ],
+              name: { contains: 'ATM', mode: 'insensitive' },
               isActive: true
             }
           });
         }
 
-        // If still no service, create a basic ATM service
+        // If still no service found, log error and return
         if (!service) {
-          // Find a support group for ATM issues - prioritize IT Helpdesk
-          const supportGroup = await prisma.supportGroup.findFirst({
-            where: {
-              OR: [
-                { code: 'IT_HELPDESK' }, // Prioritize IT Helpdesk
-                { name: { contains: 'IT Helpdesk', mode: 'insensitive' } },
-                { name: { contains: 'Technical', mode: 'insensitive' } },
-                { name: { contains: 'Infrastructure', mode: 'insensitive' } },
-                { name: { contains: 'ATM', mode: 'insensitive' } }
-              ],
-              isActive: true
-            }
-          });
-
-          // Get or create service category for ATM
-          let serviceCategory = await prisma.serviceCategory.findFirst({
-            where: { name: { contains: 'Infrastructure', mode: 'insensitive' } }
-          });
-
-          if (!serviceCategory) {
-            serviceCategory = await prisma.serviceCategory.create({
-              data: {
-                name: 'Infrastructure',
-                description: 'Infrastructure-related services',
-                level: 1
-              }
-            });
-          }
-
-          service = await prisma.service.create({
-            data: {
-              name: 'ATM Monitoring Alert',
-              description: 'Automated ATM incident from monitoring system',
-              categoryId: serviceCategory.id,
-              supportGroupId: supportGroup?.id,
-              priority: validatedData.severity === 'CRITICAL' ? 'CRITICAL' : 
-                       validatedData.severity === 'HIGH' ? 'HIGH' : 'MEDIUM',
-              slaHours: validatedData.severity === 'CRITICAL' ? 2 : 
-                       validatedData.severity === 'HIGH' ? 4 : 24,
-              requiresApproval: false, // Auto-approved for monitoring alerts
-              defaultItilCategory: 'INCIDENT'
-            }
-          });
+          console.error('❌ ATM Monitoring Alert service not found. Please run: node prisma/seeds/seed-atm-monitoring.js');
+          return NextResponse.json(
+            { error: 'ATM Monitoring Alert service not configured. Please contact administrator.' },
+            { status: 500 }
+          );
         }
 
         // Generate ticket number using standard format
@@ -303,10 +261,12 @@ export async function POST(request: NextRequest) {
         
         const ticketNumber = `TKT-${currentYear}-${String(yearTicketCount + 1).padStart(6, '0')}`;
 
-        // Determine priority based on severity
+        // Determine priority based on severity (use service default if available)
         const priority = validatedData.severity === 'CRITICAL' ? 'CRITICAL' : 
                         validatedData.severity === 'HIGH' ? 'HIGH' : 
-                        validatedData.severity === 'MEDIUM' ? 'MEDIUM' : 'LOW';
+                        validatedData.severity === 'MEDIUM' ? 'MEDIUM' : 
+                        validatedData.severity === 'LOW' ? 'LOW' :
+                        service.priority || 'MEDIUM';
 
         // Create the ticket with proper support group assignment
         const ticket = await prisma.ticket.create({
