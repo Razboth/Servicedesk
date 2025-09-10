@@ -97,6 +97,8 @@ export class ManageEngineClient {
   // Test connection to ManageEngine
   async testConnection(): Promise<boolean> {
     try {
+      console.log(`Testing connection to ${this.config.baseUrl}...`)
+      
       // Try to fetch a small number of requests to test the connection
       const response = await this.makeRequest<ManageEngineListResponse<ManageEngineRequest>>(
         'requests',
@@ -111,9 +113,14 @@ export class ManageEngineClient {
         }
       )
       
+      console.log('Connection test response:', response.response_status)
       return response.response_status.status_code === 2000
-    } catch (error) {
-      console.error('Connection test failed:', error)
+    } catch (error: any) {
+      console.error('Connection test failed:', {
+        message: error.message,
+        baseUrl: this.config.baseUrl,
+        apiKeyProvided: !!this.config.apiKey
+      })
       return false
     }
   }

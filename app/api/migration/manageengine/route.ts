@@ -21,9 +21,9 @@ export async function GET(request: NextRequest) {
     if (action === 'test-connection') {
       // Get configuration from environment or request
       const config: ManageEngineConfig = {
-        baseUrl: process.env.MANAGEENGINE_URL || 'https://127.0.0.1:8081',
-        apiKey: process.env.MANAGEENGINE_API_KEY || searchParams.get('apiKey') || '',
-        technician: process.env.MANAGEENGINE_TECHNICIAN || searchParams.get('technician') || '',
+        baseUrl: searchParams.get('baseUrl') || process.env.MANAGEENGINE_URL || 'https://127.0.0.1:8081',
+        apiKey: searchParams.get('apiKey') || process.env.MANAGEENGINE_API_KEY || '',
+        technician: searchParams.get('technician') || process.env.MANAGEENGINE_TECHNICIAN || '',
         skipSSLVerification: true // For self-signed certificates
       }
 
@@ -33,32 +33,53 @@ export async function GET(request: NextRequest) {
         }, { status: 400 })
       }
 
-      const client = new ManageEngineClient(config)
-      const connected = await client.testConnection()
+      try {
+        const client = new ManageEngineClient(config)
+        const connected = await client.testConnection()
 
-      if (connected) {
-        // Get some statistics
-        const totalCount = await client.getTotalRequestCount()
-        
-        return NextResponse.json({
-          success: true,
-          message: 'Successfully connected to ManageEngine ServiceDesk Plus',
-          statistics: {
-            totalTickets: totalCount
-          }
-        })
-      } else {
+        if (connected) {
+          // Get some statistics
+          const totalCount = await client.getTotalRequestCount()
+          
+          return NextResponse.json({
+            success: true,
+            message: 'Successfully connected to ManageEngine ServiceDesk Plus',
+            statistics: {
+              totalTickets: totalCount
+            },
+            config: {
+              baseUrl: config.baseUrl,
+              hasApiKey: !!config.apiKey
+            }
+          })
+        } else {
+          return NextResponse.json({
+            success: false,
+            message: 'Failed to connect to ManageEngine ServiceDesk Plus. Please check your API key and URL.',
+            config: {
+              baseUrl: config.baseUrl,
+              hasApiKey: !!config.apiKey
+            }
+          }, { status: 500 })
+        }
+      } catch (error: any) {
+        console.error('Connection test error:', error)
         return NextResponse.json({
           success: false,
-          message: 'Failed to connect to ManageEngine ServiceDesk Plus'
+          message: error.message || 'Failed to connect to ManageEngine ServiceDesk Plus',
+          error: error.toString(),
+          config: {
+            baseUrl: config.baseUrl,
+            hasApiKey: !!config.apiKey
+          }
         }, { status: 500 })
       }
     } else if (action === 'preview') {
       // Preview tickets that will be imported
       const config: ManageEngineConfig = {
-        baseUrl: process.env.MANAGEENGINE_URL || 'https://127.0.0.1:8081',
-        apiKey: process.env.MANAGEENGINE_API_KEY || searchParams.get('apiKey') || '',
-        technician: process.env.MANAGEENGINE_TECHNICIAN || searchParams.get('technician') || '',
+        baseUrl: searchParams.get('baseUrl') || process.env.MANAGEENGINE_URL || 'https://127.0.0.1:8081',
+        apiKey: searchParams.get('apiKey') || process.env.MANAGEENGINE_API_KEY || '',
+        technician: searchParams.get('technician') || process.env.MANAGEENGINE_TECHNICIAN || '',
         skipSSLVerification: true
       }
 
