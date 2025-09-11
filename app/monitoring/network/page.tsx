@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { 
   Wifi, 
   WifiOff, 
@@ -20,8 +21,8 @@ import {
   Timer,
   Activity,
   MapPin,
-  Play,
-  Pause
+  Eye,
+  X
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -46,159 +47,207 @@ interface NetworkEndpoint {
 
 export default function NetworkOverviewPage() {
   const { data: session } = useSession();
-  const [endpoints, setEndpoints] = useState<NetworkEndpoint[]>([]);
-  const [filteredEndpoints, setFilteredEndpoints] = useState<NetworkEndpoint[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [branchData, setBranchData] = useState<NetworkEndpoint[]>([]);
+  const [atmData, setAtmData] = useState<NetworkEndpoint[]>([]);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [typeFilter, setTypeFilter] = useState('ALL');
+  const [branchFilter, setBranchFilter] = useState('ALL');
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
-  const [monitoringStatus, setMonitoringStatus] = useState<'running' | 'stopped' | 'unknown'>('unknown');
+  const [selectedIncident, setSelectedIncident] = useState<any>(null);
+  const [isIncidentModalOpen, setIsIncidentModalOpen] = useState(false);
+  const [isCreatingTicket, setIsCreatingTicket] = useState(false);
 
-  // Fetch real network data from API
-  const fetchNetworkData = async (): Promise<NetworkEndpoint[]> => {
-    const response = await fetch('/api/monitoring/network/status');
+  // Create ticket from incident
+  const createTicketFromIncident = async (incidentId: string) => {
+    if (!incidentId) {
+      toast.error('Invalid incident ID');
+      console.error('createTicketFromIncident: Invalid incident ID');
+      return;
+    }
+
+    console.log('Creating ticket from incident:', incidentId);
+    setIsCreatingTicket(true);
+    
+    try {
+      const response = await fetch(`/api/incidents/${incidentId}/create-ticket`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      console.log('API Response status:', response.status);
+      
+      const data = await response.json();
+      console.log('API Response data:', data);
+
+      if (!response.ok) {
+        if (data.ticketId && data.ticketNumber) {
+          toast.error(`Ticket already exists: ${data.ticketNumber}`);
+          console.error('Ticket already exists:', data.ticketNumber);
+        } else {
+          toast.error(data.error || 'Failed to create ticket');
+          console.error('API Error:', data.error || 'Failed to create ticket');
+        }
+        return;
+      }
+
+      toast.success(`Ticket created successfully: ${data.ticket.ticketNumber}`);
+      console.log('✅ Ticket created successfully:', data.ticket);
+      
+      // Close the modal
+      setIsIncidentModalOpen(false);
+      setSelectedIncident(null);
+
+      // Refresh data to update incident status
+      await loadData('manual');
+      
+    } catch (error) {
+      console.error('❌ Error creating ticket:', error);
+      toast.error('Network error: Failed to create ticket from incident');
+    } finally {
+      setIsCreatingTicket(false);
+    }
+  };
+
+  // Fetch network data - all data for admins, user's branch for others
+  const fetchNetworkData = async () => {
+    const params = new URLSearchParams();
+    // Only set branchId for non-admin users
+    if (session?.user?.branchId && session?.user?.role !== 'ADMIN') {
+      params.set('branchId', session.user.branchId);
+    }
+    
+    const response = await fetch(`/api/monitoring/network/status?${params}`);
     if (!response.ok) {
       throw new Error('Failed to fetch network data');
     }
     
     const data = await response.json();
-    const endpoints: NetworkEndpoint[] = [];
     
-    // Transform branch data
-    data.branches.forEach((branch: any) => {
-      endpoints.push({
-        id: branch.id,
-        type: 'BRANCH' as const,
-        name: branch.name,
-        code: branch.code,
-        ipAddress: branch.ipAddress,
-        status: branch.status,
-        responseTime: branch.responseTime,
-        lastChecked: branch.lastChecked,
-        location: branch.city,
-        city: branch.city,
-        backupIpAddress: branch.backupIpAddress,
-        packetLoss: branch.packetLoss,
-        hasActiveIncident: branch.hasActiveIncident,
-        activeIncident: branch.activeIncident,
-        branchName: branch.name
-      });
-    });
+    // Set branch data (single branch for users, all branches for admins)
+    const branches = data.branches?.map((branch: any) => ({
+      id: branch.id,
+      type: 'BRANCH' as const,
+      name: branch.name,
+      code: branch.code,
+      ipAddress: branch.ipAddress,
+      status: branch.status,
+      responseTime: branch.responseTime,
+      lastChecked: branch.lastChecked,
+      location: branch.city,
+      city: branch.city,
+      backupIpAddress: branch.backupIpAddress,
+      packetLoss: branch.packetLoss,
+      hasActiveIncident: branch.hasActiveIncident,
+      activeIncident: branch.activeIncident,
+      branchName: branch.name
+    })) || [];
     
-    // Transform ATM data
-    data.atms.forEach((atm: any) => {
-      endpoints.push({
-        id: atm.id,
-        type: 'ATM' as const,
-        name: atm.name,
-        code: atm.code,
-        ipAddress: atm.ipAddress,
-        status: atm.status,
-        responseTime: atm.responseTime,
-        lastChecked: atm.lastChecked,
-        location: atm.location,
-        branch: atm.branch,
-        packetLoss: atm.packetLoss,
-        hasActiveIncident: atm.hasActiveIncident,
-        activeIncident: atm.activeIncident,
-        branchName: atm.branch?.name
-      });
-    });
+    setBranchData(branches);
     
-    return endpoints;
+    // Set ATM data (ATMs for user's branch or all ATMs for admins)
+    const atms = data.atms?.map((atm: any) => ({
+      id: atm.id,
+      type: 'ATM' as const,
+      name: atm.name,
+      code: atm.code,
+      ipAddress: atm.ipAddress,
+      status: atm.status,
+      responseTime: atm.responseTime,
+      lastChecked: atm.lastChecked,
+      location: atm.location,
+      branch: atm.branch,
+      packetLoss: atm.packetLoss,
+      hasActiveIncident: atm.hasActiveIncident,
+      activeIncident: atm.activeIncident,
+      branchName: atm.branch?.name
+    })) || [];
+    
+    setAtmData(atms);
   };
 
-  const loadData = async () => {
-    setIsLoading(true);
+  const loadData = async (refreshType: 'initial' | 'manual' | 'auto' = 'initial') => {
+    if (refreshType === 'manual') {
+      setIsRefreshing(true);
+    } else if (refreshType === 'auto') {
+      setIsAutoRefreshing(true);
+    } else if (refreshType === 'initial') {
+      setIsInitialLoading(true);
+    }
+    
     try {
-      const data = await fetchNetworkData();
-      setEndpoints(data);
-      setFilteredEndpoints(data);
+      await fetchNetworkData();
       setLastUpdate(new Date());
     } catch (error) {
       console.error('Failed to load network data:', error);
-      toast.error('Failed to load network data');
+      if (refreshType !== 'auto') { // Don't show error toast for auto-refresh
+        toast.error('Failed to load network data');
+      }
     } finally {
-      setIsLoading(false);
+      setIsInitialLoading(false);
+      setIsRefreshing(false);
+      setIsAutoRefreshing(false);
     }
   };
 
   useEffect(() => {
-    loadData();
-    checkMonitoringStatus();
-    // Auto refresh every 30 seconds
-    const interval = setInterval(loadData, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const checkMonitoringStatus = async () => {
-    try {
-      const response = await fetch('/api/monitoring/control');
-      if (response.ok) {
-        const data = await response.json();
-        setMonitoringStatus(data.status === 'running' ? 'running' : 'stopped');
-      }
-    } catch (error) {
-      console.error('Failed to check monitoring status:', error);
+    if (session?.user) {
+      loadData('initial');
+      // Auto refresh every 30 seconds
+      const interval = setInterval(() => loadData('auto'), 30000);
+      return () => clearInterval(interval);
     }
-  };
+  }, [session?.user]);
 
-  const toggleMonitoring = async () => {
-    try {
-      const action = monitoringStatus === 'running' ? 'stop' : 'start';
-      const response = await fetch('/api/monitoring/control', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action })
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setMonitoringStatus(data.status === 'running' ? 'running' : 'stopped');
-        toast.success(data.message);
-      } else {
-        const error = await response.json();
-        toast.error(error.error || 'Failed to toggle monitoring');
-      }
-    } catch (error) {
-      console.error('Failed to toggle monitoring:', error);
-      toast.error('Failed to toggle monitoring');
-    }
-  };
+  // Filter branches based on search and status
+  const filteredBranches = branchData.filter(branch => {
+    const matchesSearch = !searchTerm || 
+      branch.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      branch.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      branch.ipAddress.includes(searchTerm);
+    
+    const matchesStatus = statusFilter === 'ALL' || branch.status === statusFilter;
+    const matchesBranch = branchFilter === 'ALL' || branch.id === branchFilter;
+    
+    return matchesSearch && matchesStatus && matchesBranch;
+  });
 
-  useEffect(() => {
-    let filtered = endpoints;
+  // Filter ATMs based on search, status, and branch
+  const filteredAtms = atmData.filter(atm => {
+    const matchesSearch = !searchTerm || 
+      atm.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      atm.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      atm.ipAddress.includes(searchTerm) ||
+      (atm.branchName && atm.branchName.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    const matchesStatus = statusFilter === 'ALL' || atm.status === statusFilter;
+    const matchesBranch = branchFilter === 'ALL' || atm.branch?.name === branchFilter;
+    
+    return matchesSearch && matchesStatus && matchesBranch;
+  });
 
-    if (searchTerm) {
-      filtered = filtered.filter(endpoint =>
-        endpoint.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        endpoint.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        endpoint.ipAddress.includes(searchTerm)
-      );
-    }
-
-    if (statusFilter !== 'ALL') {
-      filtered = filtered.filter(endpoint => endpoint.status === statusFilter);
-    }
-
-    if (typeFilter !== 'ALL') {
-      filtered = filtered.filter(endpoint => endpoint.type === typeFilter);
-    }
-
-    setFilteredEndpoints(filtered);
-  }, [endpoints, searchTerm, statusFilter, typeFilter]);
-
+  // Calculate stats for all endpoints (branches + ATMs)
+  const allEndpoints = [...branchData, ...atmData].filter(Boolean) as NetworkEndpoint[];
+  
+  // Get unique branch names for filter dropdown
+  const uniqueBranches = [...new Set([
+    ...branchData.map(b => b.name),
+    ...atmData.map(a => a.branchName).filter(Boolean)
+  ])].sort();
   const stats = {
-    total: endpoints.length,
-    online: endpoints.filter(e => e.status === 'ONLINE').length,
-    offline: endpoints.filter(e => e.status === 'OFFLINE').length,
-    slow: endpoints.filter(e => e.status === 'SLOW').length,
+    total: allEndpoints.length,
+    online: allEndpoints.filter(e => e.status === 'ONLINE').length,
+    offline: allEndpoints.filter(e => e.status === 'OFFLINE').length,
+    slow: allEndpoints.filter(e => e.status === 'SLOW').length,
     avgResponseTime: Math.round(
-      endpoints
+      allEndpoints
         .filter(e => e.responseTime)
         .reduce((acc, e) => acc + (e.responseTime || 0), 0) /
-      endpoints.filter(e => e.responseTime).length || 0
+      allEndpoints.filter(e => e.responseTime).length || 0
     )
   };
 
@@ -240,19 +289,109 @@ export default function NetworkOverviewPage() {
     }
   };
 
+  // Helper function to render network endpoint card
+  const renderEndpointCard = (endpoint: NetworkEndpoint) => (
+    <Card key={endpoint.id} className="relative">
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center gap-2">
+            {endpoint.type === 'BRANCH' ? (
+              <Building2 className="h-4 w-4 text-blue-600" />
+            ) : (
+              <Server className="h-4 w-4 text-purple-600" />
+            )}
+            <Badge variant="secondary" className="text-xs">
+              {endpoint.type}
+            </Badge>
+          </div>
+          {getStatusIcon(endpoint.status)}
+        </div>
+        
+        <h3 className="font-semibold text-sm mb-1 line-clamp-2">
+          {endpoint.name}
+        </h3>
+        <p className="text-xs text-muted-foreground mb-2">
+          {endpoint.code} • {endpoint.ipAddress}
+        </p>
+        
+        {endpoint.location && (
+          <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
+            <MapPin className="h-3 w-3" />
+            {endpoint.location}
+          </div>
+        )}
+        
+        <div className="flex items-center justify-between">
+          <Badge
+            variant="outline"
+            className={`text-xs ${getStatusColor(endpoint.status)}`}
+          >
+            {endpoint.status}
+          </Badge>
+          {endpoint.responseTime && (
+            <span className="text-xs text-muted-foreground">
+              {endpoint.responseTime}ms
+            </span>
+          )}
+        </div>
+        
+        <p className="text-xs text-muted-foreground mt-2">
+          Checked: {endpoint.lastChecked ? new Date(endpoint.lastChecked).toLocaleTimeString() : 'Never'}
+        </p>
+        {endpoint.hasActiveIncident && endpoint.activeIncident && (
+          <div className="mt-2 flex items-center justify-between">
+            <div className="text-xs font-medium flex items-center gap-1">
+              <AlertTriangle className="h-3 w-3 text-red-600" />
+              <span className="text-red-600">Active Incident</span>
+              {endpoint.activeIncident.ticketId && (
+                <Badge variant="secondary" className="text-xs ml-1">
+                  Ticket Created
+                </Badge>
+              )}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-6 px-2 text-xs"
+              onClick={() => {
+                setSelectedIncident(endpoint.activeIncident);
+                setIsIncidentModalOpen(true);
+              }}
+            >
+              <Eye className="h-3 w-3 mr-1" />
+              View
+            </Button>
+          </div>
+        )}
+        {endpoint.packetLoss !== undefined && endpoint.packetLoss > 0 && (
+          <div className="text-xs text-muted-foreground">
+            Packet Loss: {endpoint.packetLoss}%
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-          Network Overview
-          {session?.user?.role !== 'ADMIN' && session?.user?.branchName && (
+          Network Monitoring
+          {session?.user?.role === 'ADMIN' ? (
+            <Badge variant="outline" className="text-sm font-normal">
+              All Branches
+            </Badge>
+          ) : session?.user?.branchName && (
             <Badge variant="outline" className="text-sm font-normal">
               {session.user.branchName}
             </Badge>
           )}
         </h1>
         <p className="text-muted-foreground">
-          Real-time network monitoring dashboard for all branches and ATMs
+          {session?.user?.role === 'ADMIN' 
+            ? 'Real-time network monitoring for all branches and ATMs'
+            : 'Real-time network monitoring for your branch and ATMs'
+          }
         </p>
       </div>
 
@@ -324,56 +463,136 @@ export default function NetworkOverviewPage() {
         </Card>
       </div>
 
-      {/* Filters and Controls */}
+      {/* Branch Network Status */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Network Status</CardTitle>
             <div className="flex items-center gap-2">
-              {session?.user?.role === 'ADMIN' && (
-                <Button
-                  variant={monitoringStatus === 'running' ? 'destructive' : 'default'}
-                  size="sm"
-                  onClick={toggleMonitoring}
-                  disabled={monitoringStatus === 'unknown'}
-                >
-                  {monitoringStatus === 'running' ? (
-                    <>
-                      <Pause className="h-4 w-4 mr-2" />
-                      Stop Monitoring
-                    </>
-                  ) : (
-                    <>
-                      <Play className="h-4 w-4 mr-2" />
-                      Start Monitoring
-                    </>
-                  )}
-                </Button>
-              )}
+              <Building2 className="h-5 w-5 text-blue-600" />
+              <CardTitle>
+                {session?.user?.role === 'ADMIN' ? 'Branch Networks' : 'Branch Network'}
+              </CardTitle>
+              <Badge variant="outline" className="text-sm">
+                {branchData.length} {branchData.length === 1 ? 'Branch' : 'Branches'}
+              </Badge>
+            </div>
+            <div className="flex items-center gap-2">
               {lastUpdate && (
-                <span className="text-sm text-muted-foreground">
-                  Last updated: {lastUpdate.toLocaleTimeString()}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">
+                    Last updated: {lastUpdate.toLocaleTimeString()}
+                  </span>
+                  {isRefreshing && (
+                    <div className="flex items-center gap-1 text-xs text-blue-600">
+                      <RefreshCw className="h-3 w-3 animate-spin" />
+                      Updating...
+                    </div>
+                  )}
+                </div>
               )}
               <Button
                 variant="outline"
                 size="sm"
-                onClick={loadData}
-                disabled={isLoading}
+                onClick={() => loadData('manual')}
+                disabled={isRefreshing}
               >
-                <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
                 Refresh
               </Button>
             </div>
           </div>
         </CardHeader>
         <CardContent>
+          {/* Branch Filters - only show for admins with multiple branches */}
+          {session?.user?.role === 'ADMIN' && uniqueBranches.length > 1 && (
+            <div className="flex flex-col md:flex-row gap-4 mb-6">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search branches by name, code, or IP address..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All Status</SelectItem>
+                  <SelectItem value="ONLINE">Online</SelectItem>
+                  <SelectItem value="OFFLINE">Offline</SelectItem>
+                  <SelectItem value="SLOW">Slow</SelectItem>
+                  <SelectItem value="ERROR">Error</SelectItem>
+                  <SelectItem value="STALE">Stale</SelectItem>
+                  <SelectItem value="UNKNOWN">Unknown</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={branchFilter} onValueChange={setBranchFilter}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Filter by branch" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All Branches</SelectItem>
+                  {uniqueBranches.map((branchName) => (
+                    <SelectItem key={branchName} value={branchName}>
+                      {branchName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {isInitialLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : filteredBranches.length > 0 ? (
+            <div className={`grid gap-4 ${session?.user?.role === 'ADMIN' ? 'md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'max-w-sm'}`}>
+              {filteredBranches.map(renderEndpointCard)}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <Building2 className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p>
+                {searchTerm || statusFilter !== 'ALL' || branchFilter !== 'ALL'
+                  ? 'No branches found matching your criteria'
+                  : 'No branch data available'
+                }
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ATM Network Status */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Server className="h-5 w-5 text-purple-600" />
+              <CardTitle>ATM Networks</CardTitle>
+              <Badge variant="outline" className="text-sm">
+                {atmData.length} ATMs
+              </Badge>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {/* ATM Filters */}
           <div className="flex flex-col md:flex-row gap-4 mb-6">
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search by name, code, or IP address..."
+                  placeholder={session?.user?.role === 'ADMIN' 
+                    ? "Search ATMs by name, code, IP address, or branch..."
+                    : "Search ATMs by name, code, or IP address..."
+                  }
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -394,97 +613,190 @@ export default function NetworkOverviewPage() {
                 <SelectItem value="UNKNOWN">Unknown</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All Types</SelectItem>
-                <SelectItem value="BRANCH">Branches</SelectItem>
-                <SelectItem value="ATM">ATMs</SelectItem>
-              </SelectContent>
-            </Select>
+            {session?.user?.role === 'ADMIN' && uniqueBranches.length > 1 && (
+              <Select value={branchFilter} onValueChange={setBranchFilter}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Filter by branch" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All Branches</SelectItem>
+                  {uniqueBranches.map((branchName) => (
+                    <SelectItem key={branchName} value={branchName}>
+                      {branchName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
-          {/* Network Grid */}
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+          {/* ATM Grid */}
+          {isInitialLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : filteredAtms.length > 0 ? (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {filteredAtms.map(renderEndpointCard)}
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {filteredEndpoints.map((endpoint) => (
-                <Card key={endpoint.id} className="relative">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        {endpoint.type === 'BRANCH' ? (
-                          <Building2 className="h-4 w-4 text-blue-600" />
-                        ) : (
-                          <Server className="h-4 w-4 text-purple-600" />
-                        )}
-                        <Badge variant="secondary" className="text-xs">
-                          {endpoint.type}
-                        </Badge>
-                      </div>
-                      {getStatusIcon(endpoint.status)}
-                    </div>
-                    
-                    <h3 className="font-semibold text-sm mb-1 line-clamp-2">
-                      {endpoint.name}
-                    </h3>
-                    <p className="text-xs text-muted-foreground mb-2">
-                      {endpoint.code} • {endpoint.ipAddress}
-                    </p>
-                    
-                    {endpoint.location && (
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
-                        <MapPin className="h-3 w-3" />
-                        {endpoint.location}
-                      </div>
-                    )}
-                    
-                    <div className="flex items-center justify-between">
-                      <Badge
-                        variant="outline"
-                        className={`text-xs ${getStatusColor(endpoint.status)}`}
-                      >
-                        {endpoint.status}
-                      </Badge>
-                      {endpoint.responseTime && (
-                        <span className="text-xs text-muted-foreground">
-                          {endpoint.responseTime}ms
-                        </span>
-                      )}
-                    </div>
-                    
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Checked: {endpoint.lastChecked ? new Date(endpoint.lastChecked).toLocaleTimeString() : 'Never'}
-                    </p>
-                    {endpoint.hasActiveIncident && (
-                      <div className="mt-2 text-xs text-red-600 font-medium">
-                        ⚠️ Active Incident
-                      </div>
-                    )}
-                    {endpoint.packetLoss !== undefined && endpoint.packetLoss > 0 && (
-                      <div className="text-xs text-muted-foreground">
-                        Packet Loss: {endpoint.packetLoss}%
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-
-          {filteredEndpoints.length === 0 && !isLoading && (
-            <div className="text-center py-12 text-muted-foreground">
-              <WifiOff className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No network endpoints found matching your criteria</p>
+            <div className="text-center py-8 text-muted-foreground">
+              <Server className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p>
+                {searchTerm || statusFilter !== 'ALL' 
+                  ? 'No ATMs found matching your criteria' 
+                  : 'No ATMs configured for this branch'
+                }
+              </p>
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Incident Details Modal */}
+      <Dialog open={isIncidentModalOpen} onOpenChange={setIsIncidentModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              Network Incident Details
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedIncident && (
+            <div className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Incident ID</label>
+                  <p className="text-sm font-mono bg-muted px-2 py-1 rounded">
+                    {selectedIncident.id}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Type</label>
+                  <p className="text-sm">
+                    {selectedIncident.type?.replace(/_/g, ' ') || 'Network Issue'}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Severity</label>
+                  <Badge 
+                    variant={selectedIncident.severity === 'HIGH' ? 'destructive' : 
+                            selectedIncident.severity === 'MEDIUM' ? 'default' : 'secondary'}
+                    className="text-xs"
+                  >
+                    {selectedIncident.severity || 'UNKNOWN'}
+                  </Badge>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Status</label>
+                  <Badge 
+                    variant={selectedIncident.status === 'OPEN' ? 'destructive' : 'secondary'}
+                    className="text-xs"
+                  >
+                    {selectedIncident.status || 'OPEN'}
+                  </Badge>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Detected At</label>
+                  <p className="text-sm">
+                    {selectedIncident.detectedAt 
+                      ? new Date(selectedIncident.detectedAt).toLocaleString()
+                      : 'Unknown'
+                    }
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Created At</label>
+                  <p className="text-sm">
+                    {selectedIncident.createdAt 
+                      ? new Date(selectedIncident.createdAt).toLocaleString()
+                      : 'Unknown'
+                    }
+                  </p>
+                </div>
+              </div>
+              
+              {selectedIncident.description && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Description</label>
+                  <p className="text-sm bg-muted p-3 rounded mt-1">
+                    {selectedIncident.description}
+                  </p>
+                </div>
+              )}
+
+              {selectedIncident.resolvedAt && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Resolved At</label>
+                  <p className="text-sm text-green-600">
+                    {new Date(selectedIncident.resolvedAt).toLocaleString()}
+                  </p>
+                </div>
+              )}
+
+              {selectedIncident.ticketId && (
+                <div className="border-t pt-4">
+                  <label className="text-sm font-medium text-muted-foreground">Associated Ticket</label>
+                  <div className="bg-blue-50 border border-blue-200 rounded p-3 mt-1">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-blue-900">
+                          Ticket Created
+                        </p>
+                        <p className="text-xs text-blue-700">
+                          A support ticket has been created for this incident
+                        </p>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => window.open(`/tickets/${selectedIncident.ticketId}`, '_blank')}
+                      >
+                        View Ticket
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-4 border-t">
+                <Button variant="outline" onClick={() => setIsIncidentModalOpen(false)}>
+                  <X className="h-4 w-4 mr-2" />
+                  Close
+                </Button>
+                {selectedIncident.status === 'OPEN' && !selectedIncident.ticketId && (
+                  <Button 
+                    variant="default"
+                    disabled={isCreatingTicket}
+                    onClick={() => createTicketFromIncident(selectedIncident.id)}
+                  >
+                    {isCreatingTicket ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      'Create Ticket'
+                    )}
+                  </Button>
+                )}
+                {selectedIncident.ticketId && (
+                  <Button 
+                    variant="outline"
+                    onClick={() => {
+                      // Navigate to ticket (if we want to implement this)
+                      window.open(`/tickets/${selectedIncident.ticketId}`, '_blank');
+                    }}
+                  >
+                    View Ticket
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

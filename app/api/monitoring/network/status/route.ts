@@ -13,20 +13,23 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get user's branch if not admin or technician
-    let branchId: string | undefined;
-    if (session.user.role !== 'ADMIN' && session.user.role !== 'TECHNICIAN') {
+    // Get query parameters
+    const { searchParams } = new URL(request.url);
+    const entityType = searchParams.get('type'); // 'BRANCH', 'ATM', or null for both
+    const defaultLimit = session.user.role === 'ADMIN' ? '500' : '50'; // Higher limit for admins
+    const limit = parseInt(searchParams.get('limit') || defaultLimit);
+    
+    // Get branchId from query params or user's branch
+    let branchId: string | undefined = searchParams.get('branchId') || undefined;
+    
+    // If no branchId in query and user is not admin, use their branch (admins see all)
+    if (!branchId && session.user.role !== 'ADMIN') {
       const user = await prisma.user.findUnique({
         where: { id: session.user.id },
         select: { branchId: true }
       });
       branchId = user?.branchId || undefined;
     }
-
-    // Get query parameters
-    const { searchParams } = new URL(request.url);
-    const entityType = searchParams.get('type'); // 'BRANCH', 'ATM', or null for both
-    const limit = parseInt(searchParams.get('limit') || '50');
 
     // Build where clause for branches
     const branchWhere: any = {

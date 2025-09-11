@@ -1,9 +1,6 @@
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import { spawn } from 'child_process';
 import { prisma } from '@/lib/prisma';
 import { NetworkStatus, NetworkMedia } from '@prisma/client';
-
-const execAsync = promisify(exec);
 
 interface PingResult {
   success: boolean;
@@ -56,11 +53,17 @@ export async function pingHost(ipAddress: string, networkMedia?: NetworkMedia | 
     
     // Use platform-specific ping command
     const isWindows = process.platform === 'win32';
-    const pingCommand = isWindows
-      ? `ping -n ${config.count} -w ${config.timeout} ${ipAddress}`
-      : `ping -c ${config.count} -W ${Math.floor(config.timeout / 1000)} ${ipAddress}`;
+    
+    const pingArgs = isWindows
+      ? ['-n', config.count.toString(), '-w', config.timeout.toString(), ipAddress]
+      : ['-c', config.count.toString(), '-W', Math.floor(config.timeout / 1000).toString(), ipAddress];
 
-    const { stdout, stderr } = await execAsync(pingCommand);
+    const pingCommand = isWindows ? 'ping' : 'ping';
+
+    // Use spawn with windowsHide to prevent CMD windows from appearing
+    const spawnOptions = isWindows ? { windowsHide: true } : {};
+    
+    const { stdout, stderr } = await spawnAsync(pingCommand, pingArgs, spawnOptions);
     
     if (stderr && !stdout) {
       throw new Error(stderr);
@@ -76,6 +79,36 @@ export async function pingHost(ipAddress: string, networkMedia?: NetworkMedia | 
       errorMessage: error instanceof Error ? error.message : 'Unknown error occurred'
     };
   }
+}
+
+// Helper function to promisify spawn
+function spawnAsync(command: string, args: string[], options: any = {}): Promise<{ stdout: string; stderr: string }> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, options);
+    
+    let stdout = '';
+    let stderr = '';
+    
+    child.stdout?.on('data', (data) => {
+      stdout += data.toString();
+    });
+    
+    child.stderr?.on('data', (data) => {
+      stderr += data.toString();
+    });
+    
+    child.on('close', (code) => {
+      if (code === 0 || stdout.length > 0) {
+        resolve({ stdout, stderr });
+      } else {
+        reject(new Error(`Process exited with code ${code}: ${stderr}`));
+      }
+    });
+    
+    child.on('error', (error) => {
+      reject(error);
+    });
+  });
 }
 
 function parsePingOutput(output: string, isWindows: boolean): PingResult {
