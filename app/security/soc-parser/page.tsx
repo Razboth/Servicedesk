@@ -37,6 +37,7 @@ export default function SOCParserPage() {
   const [parsedData, setParsedData] = useState<ParsedData | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [showAntivirusDialog, setShowAntivirusDialog] = useState(false);
 
   // Check authorization
   if (status === 'loading') {
