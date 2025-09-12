@@ -7,7 +7,15 @@ export async function GET(request: Request) {
   try {
     const session = await auth();
     
-    if (!session || !['SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(session.user.role)) {
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Allow admin roles and TECH_SUPPORT group members
+    const isAdmin = ['SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(session.user.role);
+    const isTechSupport = session.user.supportGroupCode === 'TECH_SUPPORT';
+    
+    if (!isAdmin && !isTechSupport) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -99,7 +107,15 @@ export async function POST(request: Request) {
   try {
     const session = await auth();
     
-    if (!session || !['SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(session.user.role)) {
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Allow admin roles and TECH_SUPPORT group members
+    const isAdmin = ['SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(session.user.role);
+    const isTechSupport = session.user.supportGroupCode === 'TECH_SUPPORT';
+    
+    if (!isAdmin && !isTechSupport) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

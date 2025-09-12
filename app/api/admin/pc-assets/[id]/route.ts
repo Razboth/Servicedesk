@@ -71,7 +71,15 @@ export async function PUT(
   try {
     const session = await auth();
     
-    if (!session || !['SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(session.user.role)) {
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Allow admin roles and TECH_SUPPORT group members
+    const isAdmin = ['SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(session.user.role);
+    const isTechSupport = session.user.supportGroupCode === 'TECH_SUPPORT';
+    
+    if (!isAdmin && !isTechSupport) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -189,7 +197,12 @@ export async function DELETE(
   try {
     const session = await auth();
     
-    if (!session || !['SUPER_ADMIN', 'ADMIN'].includes(session.user.role)) {
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Allow only super admin and admin for deletion
+    if (!['SUPER_ADMIN', 'ADMIN'].includes(session.user.role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

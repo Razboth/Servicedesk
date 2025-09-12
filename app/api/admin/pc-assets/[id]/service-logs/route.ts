@@ -68,7 +68,15 @@ export async function POST(
   try {
     const session = await auth();
     
-    if (!session || !['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'TECHNICIAN'].includes(session.user.role)) {
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Allow admin roles, technicians, and TECH_SUPPORT group members
+    const isAuthorized = ['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'TECHNICIAN'].includes(session.user.role) || 
+                         session.user.supportGroupCode === 'TECH_SUPPORT';
+    
+    if (!isAuthorized) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
