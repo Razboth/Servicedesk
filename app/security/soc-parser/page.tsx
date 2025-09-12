@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Shield, AlertTriangle, FileText, Loader2, Edit, CheckCircle } from 'lucide-react';
+import { Shield, AlertTriangle, FileText, Loader2, Edit, CheckCircle, Bug } from 'lucide-react';
 
 interface ParsedField {
   fieldName: string;
@@ -26,6 +26,22 @@ interface ParsedData {
   securityClassification: string;
 }
 
+interface AntivirusData {
+  detectionDate: string;
+  endpoint: string;
+  username: string;
+  ipAddress: string;
+  virusName: string;
+  filePath: string;
+  action: string;
+  actionTaken?: string;
+  actionOther?: string;
+  severity: string;
+  description: string;
+  preliminaryAnalysis?: string;
+  followupActions?: string;
+}
+
 export default function SOCParserPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -38,6 +54,21 @@ export default function SOCParserPage() {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [showAntivirusDialog, setShowAntivirusDialog] = useState(false);
+  const [antivirusData, setAntivirusData] = useState<AntivirusData>({
+    detectionDate: new Date().toISOString().slice(0, 16),
+    endpoint: '',
+    username: '',
+    ipAddress: '',
+    virusName: '',
+    filePath: '',
+    action: 'Quarantined',
+    actionTaken: 'Quarantined',
+    actionOther: '',
+    severity: 'High',
+    description: '',
+    preliminaryAnalysis: '',
+    followupActions: ''
+  });
 
   // Check authorization
   if (status === 'loading') {
@@ -135,6 +166,106 @@ export default function SOCParserPage() {
           router.push(`/tickets/${data.ticket.id}`);
         }, 3000);
       }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleCreateAntivirusAlert = async () => {
+    if (!antivirusData.endpoint || !antivirusData.username || !antivirusData.virusName) {
+      setError('Please fill in all required fields');
+      return;
+    }
+
+    setIsCreating(true);
+    setError('');
+
+    try {
+      // Find the Antivirus Alert service
+      const servicesResponse = await fetch('/api/services?search=Antivirus%20Alert');
+      const servicesData = await servicesResponse.json();
+      
+      if (!servicesData.services || servicesData.services.length === 0) {
+        throw new Error('Antivirus Alert service not found. Please contact administrator.');
+      }
+
+      const antivirusService = servicesData.services[0];
+
+      // Create the ticket
+      const ticketData = {
+        serviceId: antivirusService.id,
+        title: `Antivirus Alert: ${antivirusData.virusName} on ${antivirusData.endpoint}`,
+        description: `Virus Detection Alert
+        
+Computer Name: ${antivirusData.endpoint}
+User: ${antivirusData.username}
+IP Address: ${antivirusData.ipAddress}
+Virus: ${antivirusData.virusName}
+File: ${antivirusData.filePath}
+Action Taken: ${antivirusData.actionTaken}
+${antivirusData.actionTaken === 'Other' ? `Other Action: ${antivirusData.actionOther}` : ''}
+
+Preliminary Analysis:
+${antivirusData.preliminaryAnalysis}
+
+Required Follow-up Actions:
+${antivirusData.followupActions}`,
+        priority: antivirusData.severity === 'Critical' ? 'URGENT' : 
+                  antivirusData.severity === 'High' ? 'HIGH' : 
+                  antivirusData.severity === 'Medium' ? 'MEDIUM' : 'LOW',
+        customFields: {
+          'Computer Name': antivirusData.endpoint,
+          'User Name': antivirusData.username,
+          'Virus Name': antivirusData.virusName,
+          'File Path': antivirusData.filePath,
+          'Detection Time': antivirusData.detectionDate,
+          'Action Taken': antivirusData.actionTaken,
+          'Severity': antivirusData.severity,
+          'Additional Info': antivirusData.preliminaryAnalysis
+        }
+      };
+
+      const response = await fetch('/api/tickets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(ticketData)
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create ticket');
+      }
+
+      // Success - show result and redirect
+      setResult(data);
+      setShowAntivirusDialog(false);
+      
+      // Reset form
+      setAntivirusData({
+        detectionDate: new Date().toISOString().slice(0, 16),
+        endpoint: '',
+        username: '',
+        ipAddress: '',
+        virusName: '',
+        filePath: '',
+        action: 'Quarantined',
+        actionTaken: 'Quarantined',
+        actionOther: '',
+        severity: 'High',
+        description: '',
+        preliminaryAnalysis: '',
+        followupActions: ''
+      });
+
+      // Redirect to ticket after a short delay
+      setTimeout(() => {
+        router.push(`/tickets/${data.ticket.id}`);
+      }, 2000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
