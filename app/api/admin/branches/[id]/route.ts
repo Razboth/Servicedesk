@@ -10,7 +10,12 @@ const updateBranchSchema = z.object({
   address: z.string().optional(),
   city: z.string().optional(),
   province: z.string().optional(),
-  isActive: z.boolean().optional()
+  isActive: z.boolean().optional(),
+  ipAddress: z.string().optional(),
+  backupIpAddress: z.string().optional(),
+  monitoringEnabled: z.boolean().optional(),
+  networkMedia: z.enum(['VSAT', 'M2M', 'FO']).nullable().optional(),
+  networkVendor: z.string().optional()
 });
 
 // GET /api/admin/branches/[id] - Get single branch details

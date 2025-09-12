@@ -28,6 +28,13 @@ import {
 } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { toast } from 'sonner';
 import { 
   Building2, 
@@ -36,7 +43,10 @@ import {
   Ticket, 
   CreditCard,
   User,
-  Mail
+  Mail,
+  Network,
+  Wifi,
+  Globe
 } from 'lucide-react';
 
 const formSchema = z.object({
@@ -45,6 +55,11 @@ const formSchema = z.object({
   address: z.string().optional(),
   city: z.string().optional(),
   province: z.string().optional(),
+  ipAddress: z.string().optional(),
+  backupIpAddress: z.string().optional(),
+  monitoringEnabled: z.boolean().default(false),
+  networkMedia: z.enum(['VSAT', 'M2M', 'FO']).optional().nullable(),
+  networkVendor: z.string().optional(),
   isActive: z.boolean().default(true)
 });
 
@@ -57,6 +72,11 @@ interface Branch {
   address?: string;
   city?: string;
   province?: string;
+  ipAddress?: string;
+  backupIpAddress?: string;
+  monitoringEnabled: boolean;
+  networkMedia?: 'VSAT' | 'M2M' | 'FO' | null;
+  networkVendor?: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -96,6 +116,11 @@ export default function EditBranchPage() {
       address: '',
       city: '',
       province: '',
+      ipAddress: '',
+      backupIpAddress: '',
+      monitoringEnabled: false,
+      networkMedia: null,
+      networkVendor: '',
       isActive: true
     }
   });
@@ -119,6 +144,11 @@ export default function EditBranchPage() {
         address: data.address || '',
         city: data.city || '',
         province: data.province || '',
+        ipAddress: data.ipAddress || '',
+        backupIpAddress: data.backupIpAddress || '',
+        monitoringEnabled: data.monitoringEnabled || false,
+        networkMedia: data.networkMedia || null,
+        networkVendor: data.networkVendor || '',
         isActive: data.isActive
       });
     } catch (error) {
@@ -226,6 +256,7 @@ export default function EditBranchPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="mb-4">
           <TabsTrigger value="details">Branch Details</TabsTrigger>
+          <TabsTrigger value="network">Network Settings</TabsTrigger>
           <TabsTrigger value="users">Users ({branch._count.users})</TabsTrigger>
           <TabsTrigger value="atms">ATMs ({branch._count.atms})</TabsTrigger>
         </TabsList>
@@ -350,6 +381,180 @@ export default function EditBranchPage() {
                 </Link>
                 <Button type="submit" disabled={loading}>
                   {loading ? 'Updating...' : 'Update Branch'}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </TabsContent>
+
+        <TabsContent value="network">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Network className="h-5 w-5" />
+                    Network Configuration
+                  </CardTitle>
+                  <CardDescription>
+                    Configure network monitoring and connectivity settings for this branch
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="monitoringEnabled"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 bg-muted/50">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base flex items-center gap-2">
+                            <Wifi className="h-4 w-4" />
+                            Network Monitoring
+                          </FormLabel>
+                          <FormDescription>
+                            Enable real-time network monitoring for this branch
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="ipAddress"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2">
+                            <Globe className="h-4 w-4" />
+                            Primary IP Address
+                          </FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field} 
+                              placeholder="e.g., 192.168.1.1"
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Main IP address for network monitoring
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="backupIpAddress"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Backup IP Address</FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field} 
+                              placeholder="e.g., 192.168.1.2"
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Fallback IP address if primary fails
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="networkMedia"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Network Media Type</FormLabel>
+                          <Select 
+                            onValueChange={field.onChange} 
+                            value={field.value || undefined}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select network media" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="VSAT">VSAT</SelectItem>
+                              <SelectItem value="M2M">M2M</SelectItem>
+                              <SelectItem value="FO">Fiber Optic (FO)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormDescription>
+                            Type of network connection
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="networkVendor"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Network Vendor</FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field} 
+                              placeholder="e.g., Telkom, Indosat"
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Network service provider
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {branch.monitoringEnabled && (
+                    <div className="rounded-lg border p-4 bg-muted/30">
+                      <h4 className="text-sm font-medium mb-2">Monitoring Status</h4>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="text-muted-foreground">Primary IP:</span>
+                          <p className="font-mono">{branch.ipAddress || 'Not configured'}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Backup IP:</span>
+                          <p className="font-mono">{branch.backupIpAddress || 'Not configured'}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Media Type:</span>
+                          <p>{branch.networkMedia || 'Not specified'}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Vendor:</span>
+                          <p>{branch.networkVendor || 'Not specified'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <div className="flex justify-end gap-4">
+                <Link href="/admin/branches">
+                  <Button type="button" variant="outline">
+                    Cancel
+                  </Button>
+                </Link>
+                <Button type="submit" disabled={loading}>
+                  {loading ? 'Updating...' : 'Update Network Settings'}
                 </Button>
               </div>
             </form>
