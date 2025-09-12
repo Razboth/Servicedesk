@@ -3,6 +3,7 @@
 import { useSession } from 'next-auth/react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Bot } from 'lucide-react';
 
 export default function AutoTicketsPage() {
   const { data: session } = useSession();
@@ -10,7 +11,8 @@ export default function AutoTicketsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+        <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
+          <Bot className="h-8 w-8" />
           Auto-Generated Tickets
           {!['ADMIN', 'SUPER_ADMIN', 'MANAGER'].includes(session?.user?.role || '') && session?.user?.branchName && (
             <Badge variant="outline" className="text-sm font-normal">

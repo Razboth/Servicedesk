@@ -72,16 +72,38 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Get all tickets with 3-tier categorization
+    // Get all tickets with service and category relationships
     const tickets = await prisma.ticket.findMany({
       where: whereClause,
       select: {
         id: true,
         status: true,
         priority: true,
+        serviceId: true,
         categoryId: true,
         subcategoryId: true,
         itemId: true,
+        createdAt: true,
+        resolvedAt: true,
+        actualHours: true,
+        service: {
+          select: {
+            name: true,
+            category: {
+              select: { id: true, name: true }
+            },
+            tier1Category: {
+              select: { id: true, name: true }
+            },
+            tier2Subcategory: {
+              select: { id: true, name: true, category: { select: { name: true } } }
+            },
+            tier3Item: {
+              select: { id: true, name: true, subcategory: { select: { name: true, category: { select: { name: true } } } } }
+            }
+          }
+        },
+        // Direct category relationships (fallback)
         category: {
           select: { id: true, name: true }
         },
@@ -90,10 +112,7 @@ export async function GET(request: NextRequest) {
         },
         item: {
           select: { id: true, name: true }
-        },
-        createdAt: true,
-        resolvedAt: true,
-        actualHours: true
+        }
       }
     });
 
@@ -111,10 +130,37 @@ export async function GET(request: NextRequest) {
     const categoryMap = new Map<string, any>();
     
     for (const ticket of tickets) {
-      const categoryId = ticket.categoryId || 'uncategorized';
-      const categoryName = ticket.category?.name || 'Uncategorized';
-      const subcategoryName = ticket.subcategory?.name || 'No Subcategory';
-      const itemName = ticket.item?.name || 'No Item';
+      // Prioritize service categories, fall back to direct category relationships
+      let categoryId: string;
+      let categoryName: string;
+      let subcategoryName: string;
+      let itemName: string;
+
+      if (ticket.service?.category) {
+        // Use ServiceCategory system
+        categoryId = ticket.service.category.id;
+        categoryName = ticket.service.category.name;
+        subcategoryName = 'Service: ' + ticket.service.name;
+        itemName = 'N/A';
+      } else if (ticket.service?.tier1Category) {
+        // Use 3-tier system through service
+        categoryId = ticket.service.tier1Category.id;
+        categoryName = ticket.service.tier1Category.name;
+        subcategoryName = ticket.service.tier2Subcategory?.name || 'No Subcategory';
+        itemName = ticket.service.tier3Item?.name || 'No Item';
+      } else if (ticket.category) {
+        // Fall back to direct category relationships  
+        categoryId = ticket.categoryId || 'direct';
+        categoryName = ticket.category.name;
+        subcategoryName = ticket.subcategory?.name || 'No Subcategory';
+        itemName = ticket.item?.name || 'No Item';
+      } else {
+        // Default fallback
+        categoryId = 'uncategorized';
+        categoryName = 'Uncategorized';
+        subcategoryName = ticket.service?.name || 'Unknown Service';
+        itemName = 'N/A';
+      }
       
       if (!categoryMap.has(categoryId)) {
         categoryMap.set(categoryId, {
@@ -147,8 +193,8 @@ export async function GET(request: NextRequest) {
         categoryData.priorities[ticket.priority]++;
       }
       
-      // Track subcategories
-      const subcategoryId = ticket.subcategoryId || 'none';
+      // Track subcategories using dynamic IDs
+      const subcategoryId = ticket.service?.name || subcategoryName || 'none';
       if (!categoryData.subcategories.has(subcategoryId)) {
         categoryData.subcategories.set(subcategoryId, {
           name: subcategoryName,
@@ -169,8 +215,8 @@ export async function GET(request: NextRequest) {
         subcategoryData.resolvedCount++;
       }
       
-      // Track items
-      const itemId = ticket.itemId || 'none';
+      // Track items using service name or item name
+      const itemId = ticket.service?.name || itemName || 'none';
       if (!subcategoryData.items.has(itemId)) {
         subcategoryData.items.set(itemId, {
           name: itemName,
@@ -184,18 +230,43 @@ export async function GET(request: NextRequest) {
     const prevStartDate = subMonths(startDate, 3);
     const prevEndDate = startDate;
     
-    const prevTickets = await prisma.ticket.groupBy({
-      by: ['categoryId'],
+    // Get previous period tickets with proper service category grouping
+    const prevPeriodTickets = await prisma.ticket.findMany({
       where: {
         createdAt: {
           gte: prevStartDate,
           lt: prevEndDate
         }
       },
-      _count: true
+      select: {
+        id: true,
+        categoryId: true,
+        service: {
+          select: {
+            category: { select: { id: true } },
+            tier1Category: { select: { id: true } }
+          }
+        },
+        category: { select: { id: true } }
+      }
     });
-    
-    const prevCounts = new Map(prevTickets.map(t => [t.categoryId || 'uncategorized', t._count]));
+
+    // Build previous counts using same logic as current tickets
+    const prevCounts = new Map<string, number>();
+    for (const ticket of prevPeriodTickets) {
+      let categoryId: string;
+      if (ticket.service?.category) {
+        categoryId = ticket.service.category.id;
+      } else if (ticket.service?.tier1Category) {
+        categoryId = ticket.service.tier1Category.id;
+      } else if (ticket.category) {
+        categoryId = ticket.categoryId || 'direct';
+      } else {
+        categoryId = 'uncategorized';
+      }
+      
+      prevCounts.set(categoryId, (prevCounts.get(categoryId) || 0) + 1);
+    }
 
     // Format response data
     const categoryColors = [
@@ -245,15 +316,24 @@ export async function GET(request: NextRequest) {
       const monthEnd = endOfMonth(subMonths(now, i));
       const monthName = monthStart.toLocaleDateString('en', { month: 'short' });
       
-      const monthTickets = await prisma.ticket.groupBy({
-        by: ['categoryId'],
+      const monthTickets = await prisma.ticket.findMany({
         where: {
           createdAt: {
             gte: monthStart,
             lte: monthEnd
           }
         },
-        _count: true
+        select: {
+          id: true,
+          categoryId: true,
+          service: {
+            select: {
+              category: { select: { id: true } },
+              tier1Category: { select: { id: true } }
+            }
+          },
+          category: { select: { id: true } }
+        }
       });
       
       const monthData: any = { month: monthName };
@@ -263,11 +343,28 @@ export async function GET(request: NextRequest) {
         monthData[cat.category] = 0;
       });
       
+      // Count tickets by category using same logic
+      const monthCounts = new Map<string, number>();
+      for (const ticket of monthTickets) {
+        let categoryId: string;
+        if (ticket.service?.category) {
+          categoryId = ticket.service.category.id;
+        } else if (ticket.service?.tier1Category) {
+          categoryId = ticket.service.tier1Category.id;
+        } else if (ticket.category) {
+          categoryId = ticket.categoryId || 'direct';
+        } else {
+          categoryId = 'uncategorized';
+        }
+        
+        monthCounts.set(categoryId, (monthCounts.get(categoryId) || 0) + 1);
+      }
+      
       // Fill in actual counts
-      monthTickets.forEach(t => {
-        const category = categoryMap.get(t.categoryId || 'uncategorized');
+      monthCounts.forEach((count, catId) => {
+        const category = categoryMap.get(catId);
         if (category) {
-          monthData[category.category] = t._count;
+          monthData[category.category] = count;
         }
       });
       

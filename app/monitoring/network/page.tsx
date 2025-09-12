@@ -113,12 +113,18 @@ export default function NetworkOverviewPage() {
     }
   };
 
-  // Fetch network data - all data for admins, user's branch for others
+  // Fetch network data - all data for admins/managers, user's branch for others
   const fetchNetworkData = async () => {
     const params = new URLSearchParams();
-    // Only set branchId for non-admin users
-    if (session?.user?.branchId && !['ADMIN', 'SUPER_ADMIN', 'MANAGER'].includes(session?.user?.role || '')) {
+    // Only set branchId for non-admin/manager users (i.e., TECHNICIAN, AGENT, USER)
+    const userRole = session?.user?.role || '';
+    const isAdminOrManager = ['ADMIN', 'SUPER_ADMIN', 'MANAGER'].includes(userRole);
+    
+    if (session?.user?.branchId && !isAdminOrManager) {
       params.set('branchId', session.user.branchId);
+      console.log(`Restricting ${userRole} to branch: ${session.user.branchId}`);
+    } else {
+      console.log(`Allowing ${userRole} to see all branches and ATMs`);
     }
     
     const response = await fetch(`/api/monitoring/network/status?${params}`);
@@ -375,7 +381,8 @@ export default function NetworkOverviewPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+        <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
+          <Activity className="h-8 w-8" />
           Network Monitoring
           {['ADMIN', 'SUPER_ADMIN', 'MANAGER'].includes(session?.user?.role || '') ? (
             <Badge variant="outline" className="text-sm font-normal">

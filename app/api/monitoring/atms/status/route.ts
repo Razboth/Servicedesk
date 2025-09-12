@@ -136,8 +136,12 @@ export async function GET(request: NextRequest) {
       }
 
       // Simulate cash and paper levels (in real system, this would come from ATM monitoring)
-      let cashLevel = Math.floor(Math.random() * 80) + 20; // Random 20-100
-      let paperLevel = Math.floor(Math.random() * 80) + 20; // Random 20-100
+      // Use ATM ID as seed to generate consistent values that don't change on refresh
+      const atmSeed = atm.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      const cashSeed = (atmSeed * 31 + 17) % 80; // Deterministic value 0-79
+      const paperSeed = (atmSeed * 37 + 23) % 80; // Different deterministic value 0-79
+      let cashLevel = cashSeed + 20; // Range 20-99
+      let paperLevel = paperSeed + 20; // Range 20-99
 
       // Simulate low resource warnings
       if (cashLevel < 30 || paperLevel < 30) {

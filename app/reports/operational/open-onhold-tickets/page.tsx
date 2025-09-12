@@ -35,90 +35,28 @@ export default function OpenOnHoldTicketsReport() {
   const fetchData = async () => {
     setLoading(true)
     try {
-      // Simulated data for open and on-hold tickets
-      const mockData: OpenTicket[] = [
-        {
-          id: '1',
-          ticketNumber: 'TKT-2024-001234',
-          title: 'Network connectivity issue at main branch',
-          status: 'OPEN',
-          priority: 'HIGH',
-          category: 'Network',
-          assignedTo: 'John Doe',
-          branch: 'Cabang Manado',
-          createdAt: '2024-12-15T08:00:00Z',
-          daysOpen: 38,
-          lastUpdated: '2024-12-20T14:30:00Z'
-        },
-        {
-          id: '2',
-          ticketNumber: 'TKT-2024-001456',
-          title: 'Printer malfunction in customer service area',
-          status: 'ON_HOLD',
-          priority: 'MEDIUM',
-          category: 'Hardware',
-          assignedTo: 'Jane Smith',
-          branch: 'Cabang Bitung',
-          createdAt: '2024-12-10T09:15:00Z',
-          daysOpen: 43,
-          lastUpdated: '2024-12-18T11:00:00Z',
-          holdReason: 'Waiting for spare parts'
-        },
-        {
-          id: '3',
-          ticketNumber: 'TKT-2024-001789',
-          title: 'Software license renewal required',
-          status: 'OPEN',
-          priority: 'LOW',
-          category: 'Software',
-          branch: 'Cabang Tomohon',
-          createdAt: '2024-12-20T14:00:00Z',
-          daysOpen: 33,
-          lastUpdated: '2024-12-21T10:00:00Z'
-        },
-        {
-          id: '4',
-          ticketNumber: 'TKT-2024-001890',
-          title: 'Database backup failure',
-          status: 'OPEN',
-          priority: 'URGENT',
-          category: 'Database',
-          assignedTo: 'Mike Johnson',
-          branch: 'Cabang Kotamobagu',
-          createdAt: '2024-12-18T07:00:00Z',
-          daysOpen: 35,
-          lastUpdated: '2024-12-22T16:00:00Z'
-        },
-        {
-          id: '5',
-          ticketNumber: 'TKT-2024-001923',
-          title: 'Access card system not responding',
-          status: 'ON_HOLD',
-          priority: 'HIGH',
-          category: 'Security',
-          assignedTo: 'Sarah Wilson',
-          branch: 'Cabang Airmadidi',
-          createdAt: '2024-12-05T11:30:00Z',
-          daysOpen: 48,
-          lastUpdated: '2024-12-15T13:45:00Z',
-          holdReason: 'Vendor support required'
-        },
-        {
-          id: '6',
-          ticketNumber: 'TKT-2024-001945',
-          title: 'Email server performance degradation',
-          status: 'OPEN',
-          priority: 'HIGH',
-          category: 'Infrastructure',
-          assignedTo: 'Tom Brown',
-          branch: 'Cabang Tondano',
-          createdAt: '2024-12-22T08:30:00Z',
-          daysOpen: 31,
-          lastUpdated: '2024-12-23T09:15:00Z'
-        }
-      ]
+      const response = await fetch('/api/reports/operational/open-onhold-tickets')
+      if (!response.ok) {
+        throw new Error('Failed to fetch open/on-hold tickets data')
+      }
       
-      setData(mockData)
+      const result = await response.json()
+      const tickets: OpenTicket[] = result.tickets.map((ticket: any) => ({
+        id: ticket.id,
+        ticketNumber: ticket.ticketNumber,
+        title: ticket.title,
+        status: ticket.status,
+        priority: ticket.priority,
+        category: ticket.category,
+        assignedTo: ticket.assignedTo,
+        branch: ticket.branch,
+        createdAt: ticket.createdAt,
+        daysOpen: ticket.daysOpen,
+        lastUpdated: ticket.lastUpdated,
+        holdReason: ticket.holdReason
+      }))
+      
+      setData(tickets)
     } catch (error) {
       console.error('Failed to fetch open/on-hold tickets:', error)
     } finally {

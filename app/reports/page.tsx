@@ -340,6 +340,7 @@ export default function ReportsPage() {
   const [favorites, setFavorites] = useState<Report[]>([])
   const [scheduled, setScheduled] = useState<Report[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [dashboardStats, setDashboardStats] = useState<any>(null)
 
   useEffect(() => {
     if (session) {
@@ -350,6 +351,13 @@ export default function ReportsPage() {
   const loadReports = async () => {
     try {
       setIsLoading(true)
+      
+      // Load dashboard statistics
+      const statsResponse = await fetch('/api/reports/dashboard')
+      if (statsResponse.ok) {
+        const stats = await statsResponse.json()
+        setDashboardStats(stats)
+      }
       
       // Load custom reports
       const customResponse = await fetch('/api/reports/custom')
@@ -553,27 +561,62 @@ export default function ReportsPage() {
         }
       />
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        {/* Quick Stats - Ticket Analytics Overview */}
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-6">
+          {isLoading && !dashboardStats ? (
+            // Loading skeleton
+            Array.from({ length: 6 }).map((_, i) => (
+              <Card key={i} className="border-gray-200/20 bg-gradient-to-br from-gray-100/5 to-transparent">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="h-8 w-16 bg-gray-200 animate-pulse rounded mb-2"></div>
+                      <div className="h-3 w-20 bg-gray-200 animate-pulse rounded"></div>
+                    </div>
+                    <div className="h-8 w-8 bg-gray-200 animate-pulse rounded"></div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          ) : (
+            // Actual data
+            <>
           <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-2xl font-bold">{tabCounts.all}</p>
-                  <p className="text-xs text-muted-foreground">Total Reports</p>
+                  <p className="text-2xl font-bold">
+                    {dashboardStats?.overview?.totalTickets || 0}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Total Tickets</p>
                 </div>
                 <FileText className="h-8 w-8 text-primary/20" />
               </div>
             </CardContent>
           </Card>
-          <Card className="border-purple-500/20 bg-gradient-to-br from-purple-500/5 to-transparent">
+          <Card className="border-red-500/20 bg-gradient-to-br from-red-500/5 to-transparent">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-2xl font-bold">{tabCounts.custom}</p>
-                  <p className="text-xs text-muted-foreground">Custom Reports</p>
+                  <p className="text-2xl font-bold">
+                    {dashboardStats?.overview?.openTickets || 0}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Open Tickets</p>
                 </div>
-                <Zap className="h-8 w-8 text-purple-500/20" />
+                <AlertTriangle className="h-8 w-8 text-red-500/20" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-blue-500/20 bg-gradient-to-br from-blue-500/5 to-transparent">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-2xl font-bold">
+                    {dashboardStats?.overview?.inProgressTickets || 0}
+                  </p>
+                  <p className="text-xs text-muted-foreground">In Progress</p>
+                </div>
+                <Activity className="h-8 w-8 text-blue-500/20" />
               </div>
             </CardContent>
           </Card>
@@ -581,10 +624,77 @@ export default function ReportsPage() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
+                  <p className="text-2xl font-bold">
+                    {dashboardStats?.overview?.resolvedTickets || 0}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Resolved</p>
+                </div>
+                <CheckCircle className="h-8 w-8 text-green-500/20" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-amber-500/20 bg-gradient-to-br from-amber-500/5 to-transparent">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xl font-bold">
+                    {dashboardStats?.performance?.avgResolutionTime || '0.0 hours'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Avg Resolution</p>
+                </div>
+                <Clock className="h-8 w-8 text-amber-500/20" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-purple-500/20 bg-gradient-to-br from-purple-500/5 to-transparent">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-2xl font-bold">
+                    {dashboardStats?.performance?.slaCompliance || 0}%
+                  </p>
+                  <p className="text-xs text-muted-foreground">SLA Compliance</p>
+                </div>
+                <Target className="h-8 w-8 text-purple-500/20" />
+              </div>
+            </CardContent>
+          </Card>
+            </>
+          )}
+        </div>
+
+        {/* Report Collections Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <Card className="border-slate-500/20 bg-gradient-to-br from-slate-500/5 to-transparent">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-2xl font-bold">{tabCounts.all}</p>
+                  <p className="text-xs text-muted-foreground">Available Reports</p>
+                </div>
+                <BarChart3 className="h-8 w-8 text-slate-500/20" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-indigo-500/20 bg-gradient-to-br from-indigo-500/5 to-transparent">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-2xl font-bold">{tabCounts.custom}</p>
+                  <p className="text-xs text-muted-foreground">Custom Reports</p>
+                </div>
+                <Zap className="h-8 w-8 text-indigo-500/20" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-emerald-500/20 bg-gradient-to-br from-emerald-500/5 to-transparent">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
                   <p className="text-2xl font-bold">{tabCounts.scheduled}</p>
                   <p className="text-xs text-muted-foreground">Scheduled</p>
                 </div>
-                <Calendar className="h-8 w-8 text-green-500/20" />
+                <Calendar className="h-8 w-8 text-emerald-500/20" />
               </div>
             </CardContent>
           </Card>

@@ -4,12 +4,14 @@ import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { emitTicketUpdated, emitTicketStatusChanged, emitTicketAssigned } from '@/lib/socket-manager';
 import { createTicketNotifications, createNotification } from '@/lib/notifications';
+import { PriorityValidator, type PriorityValidationContext } from '@/lib/priority-validation';
 
 // Validation schema for updating tickets
 const updateTicketSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   description: z.string().min(1).optional(),
-  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).optional(),
+  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT', 'CRITICAL']).optional(),
+  justification: z.string().optional(),
   status: z.enum(['OPEN', 'PENDING', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'IN_PROGRESS', 'PENDING_VENDOR', 'RESOLVED', 'CLOSED', 'CANCELLED']).optional(),
   assignedToId: z.string().nullable().optional(),
   issueClassification: z.enum(['INCIDENT', 'SERVICE_REQUEST', 'CHANGE_REQUEST', 'PROBLEM']).optional(),
@@ -591,8 +593,66 @@ export async function PUT(
       }
     }
 
+    // Priority validation if priority is being updated
+    let finalUpdateData = { ...validatedData };
+    const priorityWarnings: string[] = [];
+
+    if (validatedData.priority && validatedData.priority !== existingTicket.priority) {
+      // Initialize priority validator
+      const priorityValidator = new PriorityValidator(prisma);
+
+      // Get additional ticket context for validation
+      const fullTicketContext = await prisma.ticket.findUnique({
+        where: { id },
+        include: {
+          service: true,
+          createdBy: { include: { branch: true } }
+        }
+      });
+
+      if (fullTicketContext) {
+        // Validate priority with context
+        const priorityValidationContext: PriorityValidationContext = {
+          userId: session.user.id,
+          userRole: session.user.role || 'USER',
+          serviceId: fullTicketContext.serviceId,
+          branchId: fullTicketContext.createdBy?.branchId || userWithDetails?.branchId || undefined,
+          description: fullTicketContext.description,
+          justification: validatedData.justification
+        };
+
+        const priorityValidation = await priorityValidator.validatePriority(
+          validatedData.priority,
+          priorityValidationContext
+        );
+
+        // Handle priority validation results
+        if (!priorityValidation.isValid) {
+          // Priority validation failed - use suggested priority or return error
+          if (priorityValidation.suggestedPriority) {
+            finalUpdateData.priority = priorityValidation.suggestedPriority;
+            priorityWarnings.push(
+              `Priority downgraded from ${validatedData.priority} to ${priorityValidation.suggestedPriority}: ${priorityValidation.errors.join(', ')}`
+            );
+          } else {
+            // No suggestion available, return error
+            return NextResponse.json({
+              error: 'Priority validation failed',
+              details: priorityValidation.errors,
+              requiresJustification: priorityValidation.requiresJustification
+            }, { status: 400 });
+          }
+        }
+
+        // Add any priority warnings
+        if (priorityValidation.warnings.length > 0) {
+          priorityWarnings.push(...priorityValidation.warnings);
+        }
+      }
+    }
+
     // Prepare update data
-    const updateData: any = { ...validatedData };
+    const updateData: any = finalUpdateData;
     
     // Set resolution timestamp when status changes to RESOLVED
     if (validatedData.status === 'RESOLVED' && existingTicket.status !== 'RESOLVED') {
@@ -635,6 +695,31 @@ export async function PUT(
         validatedData.assignedToId,
         session.user.id
       );
+    }
+    
+    // Create audit log for update with priority validation info
+    if (Object.keys(updateData).length > 0) {
+      await prisma.auditLog.create({
+        data: {
+          userId: session.user.id,
+          action: 'UPDATE_TICKET',
+          entity: 'Ticket',
+          entityId: id,
+          oldValues: { 
+            priority: existingTicket.priority,
+            // Add other changed fields as needed
+          },
+          newValues: {
+            ...updateData,
+            priorityValidation: validatedData.priority ? {
+              originalPriority: validatedData.priority,
+              finalPriority: updateData.priority,
+              warnings: priorityWarnings,
+              validationApplied: validatedData.priority !== updateData.priority
+            } : undefined
+          }
+        }
+      });
     }
     
     // Emit general update event

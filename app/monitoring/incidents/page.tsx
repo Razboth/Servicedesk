@@ -206,7 +206,8 @@ export default function NetworkIncidentsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+        <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
+          <AlertTriangle className="h-8 w-8" />
           Network Incidents
           {!['ADMIN', 'SUPER_ADMIN', 'MANAGER'].includes(session?.user?.role || '') && session?.user?.branchName && (
             <Badge variant="outline" className="text-sm font-normal">

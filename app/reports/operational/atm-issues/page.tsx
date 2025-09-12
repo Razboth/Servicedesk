@@ -37,70 +37,41 @@ export default function ATMIssuesReport() {
   const fetchData = async () => {
     setLoading(true)
     try {
-      // Simulated data for ATM issues
-      const mockData: ATMIssue[] = [
-        {
-          id: '1',
-          ticketNumber: 'TKT-2025-000101',
-          atmTerminal: 'ATM001',
-          branchName: 'Cabang Manado',
-          issueType: 'Cash Dispenser Error',
-          status: 'RESOLVED',
-          priority: 'HIGH',
-          createdAt: '2025-08-20T08:00:00Z',
-          resolvedAt: '2025-08-20T10:30:00Z',
-          resolutionTime: 2.5
-        },
-        {
-          id: '2',
-          ticketNumber: 'TKT-2025-000102',
-          atmTerminal: 'ATM002',
-          branchName: 'Cabang Bitung',
-          issueType: 'Card Reader Malfunction',
-          status: 'OPEN',
-          priority: 'URGENT',
-          createdAt: '2025-08-21T09:15:00Z'
-        },
-        {
-          id: '3',
-          ticketNumber: 'TKT-2025-000103',
-          atmTerminal: 'ATM003',
-          branchName: 'Cabang Tomohon',
-          issueType: 'Network Connectivity',
-          status: 'IN_PROGRESS',
-          priority: 'MEDIUM',
-          createdAt: '2025-08-21T14:00:00Z'
-        },
-        {
-          id: '4',
-          ticketNumber: 'TKT-2025-000104',
-          atmTerminal: 'ATM004',
-          branchName: 'Cabang Kotamobagu',
-          issueType: 'Out of Cash',
-          status: 'RESOLVED',
-          priority: 'HIGH',
-          createdAt: '2025-08-22T07:00:00Z',
-          resolvedAt: '2025-08-22T09:00:00Z',
-          resolutionTime: 2.0
-        },
-        {
-          id: '5',
-          ticketNumber: 'TKT-2025-000105',
-          atmTerminal: 'ATM005',
-          branchName: 'Cabang Airmadidi',
-          issueType: 'Screen Display Issue',
-          status: 'OPEN',
-          priority: 'LOW',
-          createdAt: '2025-08-22T11:30:00Z'
-        }
-      ]
+      const response = await fetch('/api/reports/operational/atm-issues')
+      if (!response.ok) {
+        throw new Error('Failed to fetch ATM issues data')
+      }
       
-      setData(mockData)
+      const result = await response.json()
+      
+      // Transform recent tickets data to match the interface
+      const issues: ATMIssue[] = result.recentTickets.map((ticket: any) => ({
+        id: ticket.id,
+        ticketNumber: ticket.ticketNumber,
+        atmTerminal: extractATMTerminal(ticket.title) || 'Unknown',
+        branchName: ticket.branch,
+        issueType: ticket.issueCategory,
+        status: ticket.status,
+        priority: ticket.priority,
+        createdAt: ticket.createdAt,
+        resolvedAt: ticket.resolvedAt,
+        resolutionTime: ticket.resolvedAt ? 
+          Math.round((new Date(ticket.resolvedAt).getTime() - new Date(ticket.createdAt).getTime()) / (1000 * 60 * 60) * 10) / 10 
+          : undefined
+      }))
+      
+      setData(issues)
     } catch (error) {
       console.error('Failed to fetch ATM issues data:', error)
     } finally {
       setLoading(false)
     }
+  }
+
+  // Helper function to extract ATM terminal from ticket title
+  const extractATMTerminal = (title: string) => {
+    const atmMatch = title.match(/ATM\s*(\w+)/i)
+    return atmMatch ? `ATM${atmMatch[1]}` : null
   }
 
   const getStatusIcon = (status: string) => {

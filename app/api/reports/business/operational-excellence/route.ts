@@ -137,7 +137,7 @@ export async function GET(request: NextRequest) {
 
     // Efficiency metrics by service category
     const efficiencyByCategory = tickets.reduce((acc, ticket) => {
-      const category = ticket.service?.tier1Category?.name || 'General';
+      const category = ticket.service?.category?.name || 'General';
       if (!acc[category]) {
         acc[category] = {
           total: 0,

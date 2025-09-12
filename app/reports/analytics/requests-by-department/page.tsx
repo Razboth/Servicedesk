@@ -54,111 +54,47 @@ export default function RequestsByDepartmentReport() {
   const fetchData = async () => {
     setLoading(true)
     try {
-      // Simulated department data
-      const mockDepartmentData: DepartmentData[] = [
-        {
-          id: '1',
-          name: 'IT Operations',
-          totalTickets: 456,
-          openTickets: 67,
-          resolvedTickets: 312,
-          avgResolutionTime: 4.2,
-          slaCompliance: 92,
-          employees: 45,
-          ticketsPerEmployee: 10.1,
-          priority: { urgent: 23, high: 89, medium: 198, low: 146 },
-          satisfaction: 4.3,
-          trend: 15.3,
-          color: '#3b82f6'
+      // Fetch real data from API
+      const response = await fetch('/api/reports/analytics/requests-by-department');
+      if (!response.ok) throw new Error('Failed to fetch data');
+      
+      const data = await response.json();
+      
+      // Transform API data to component format
+      const colors = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444', '#14b8a6', '#84cc16', '#ec4899'];
+      
+      const transformedDepartmentData: DepartmentData[] = data.departments.map((dept: any, index: number) => ({
+        id: dept.department || `dept-${index}`,
+        name: dept.department,
+        totalTickets: dept.ticketsCreated + dept.ticketsAssigned,
+        openTickets: dept.ticketsOpen || 0,
+        resolvedTickets: dept.ticketsResolved,
+        avgResolutionTime: dept.avgResolutionHours,
+        slaCompliance: dept.slaComplianceRate,
+        employees: dept.userCount,
+        ticketsPerEmployee: dept.requestsPerUser,
+        priority: {
+          urgent: dept.priorityDistribution?.URGENT || 0,
+          high: dept.priorityDistribution?.HIGH || 0,
+          medium: dept.priorityDistribution?.MEDIUM || 0,
+          low: dept.priorityDistribution?.LOW || 0
         },
-        {
-          id: '2',
-          name: 'Customer Service',
-          totalTickets: 789,
-          openTickets: 123,
-          resolvedTickets: 567,
-          avgResolutionTime: 2.1,
-          slaCompliance: 95,
-          employees: 78,
-          ticketsPerEmployee: 10.1,
-          priority: { urgent: 45, high: 156, medium: 345, low: 243 },
-          satisfaction: 4.6,
-          trend: 8.7,
-          color: '#10b981'
-        },
-        {
-          id: '3',
-          name: 'Banking Operations',
-          totalTickets: 567,
-          openTickets: 89,
-          resolvedTickets: 423,
-          avgResolutionTime: 3.5,
-          slaCompliance: 88,
-          employees: 62,
-          ticketsPerEmployee: 9.1,
-          priority: { urgent: 34, high: 112, medium: 256, low: 165 },
-          satisfaction: 4.1,
-          trend: -2.3,
-          color: '#8b5cf6'
-        },
-        {
-          id: '4',
-          name: 'Administration',
-          totalTickets: 234,
-          openTickets: 34,
-          resolvedTickets: 178,
-          avgResolutionTime: 5.8,
-          slaCompliance: 85,
-          employees: 28,
-          ticketsPerEmployee: 8.4,
-          priority: { urgent: 8, high: 42, medium: 98, low: 86 },
-          satisfaction: 3.9,
-          trend: 12.1,
-          color: '#f59e0b'
-        },
-        {
-          id: '5',
-          name: 'Human Resources',
-          totalTickets: 156,
-          openTickets: 23,
-          resolvedTickets: 112,
-          avgResolutionTime: 6.2,
-          slaCompliance: 82,
-          employees: 18,
-          ticketsPerEmployee: 8.7,
-          priority: { urgent: 5, high: 28, medium: 67, low: 56 },
-          satisfaction: 4.0,
-          trend: 5.6,
-          color: '#ef4444'
-        },
-        {
-          id: '6',
-          name: 'Finance',
-          totalTickets: 189,
-          openTickets: 28,
-          resolvedTickets: 145,
-          avgResolutionTime: 4.8,
-          slaCompliance: 90,
-          employees: 22,
-          ticketsPerEmployee: 8.6,
-          priority: { urgent: 12, high: 38, medium: 78, low: 61 },
-          satisfaction: 4.2,
-          trend: -1.2,
-          color: '#06b6d4'
-        }
-      ]
+        satisfaction: 85 + Math.random() * 15, // Simulated for now
+        trend: dept.weeklyCreated > dept.recentCreated / 4 ? 
+               ((dept.weeklyCreated - dept.recentCreated / 4) / (dept.recentCreated / 4)) * 100 : 0,
+        color: colors[index % colors.length]
+      }));
 
-      // Simulated service distribution by department
+      // Transform service data - simplified for now
       const mockServiceData: ServiceByDepartment[] = [
-        { service: 'Hardware', IT: 145, Operations: 78, CustomerService: 45, Banking: 89, Administration: 34, HR: 12 },
-        { service: 'Software', IT: 178, Operations: 56, CustomerService: 123, Banking: 98, Administration: 45, HR: 28 },
-        { service: 'Network', IT: 89, Operations: 34, CustomerService: 28, Banking: 45, Administration: 23, HR: 8 },
-        { service: 'Access', IT: 44, Operations: 89, CustomerService: 234, Banking: 178, Administration: 78, HR: 67 },
-        { service: 'Email', IT: 56, Operations: 45, CustomerService: 189, Banking: 67, Administration: 34, HR: 28 },
-        { service: 'Database', IT: 78, Operations: 23, CustomerService: 12, Banking: 34, Administration: 12, HR: 5 }
-      ]
+        { service: 'IT Support', IT: 245, Operations: 67, CustomerService: 34, Banking: 89, Administration: 23, HR: 12 },
+        { service: 'Equipment', IT: 89, Operations: 156, CustomerService: 45, Banking: 23, Administration: 67, HR: 34 },
+        { service: 'Software', IT: 178, Operations: 34, CustomerService: 89, Banking: 12, Administration: 45, HR: 23 },
+        { service: 'Network', IT: 134, Operations: 45, CustomerService: 23, Banking: 67, Administration: 12, HR: 34 },
+        { service: 'Security', IT: 67, Operations: 23, CustomerService: 12, Banking: 156, Administration: 89, HR: 45 }
+      ];
 
-      setDepartmentData(mockDepartmentData)
+      setDepartmentData(transformedDepartmentData)
       setServiceData(mockServiceData)
     } catch (error) {
       console.error('Failed to fetch department data:', error)
@@ -170,7 +106,7 @@ export default function RequestsByDepartmentReport() {
   const totalTickets = departmentData.reduce((sum, d) => sum + d.totalTickets, 0)
   const totalEmployees = departmentData.reduce((sum, d) => sum + d.employees, 0)
   const avgSLA = departmentData.reduce((sum, d) => sum + d.slaCompliance, 0) / departmentData.length || 0
-  const avgSatisfaction = departmentData.reduce((sum, d) => sum + d.satisfaction, 0) / departmentData.length || 0
+  const avgResolution = departmentData.reduce((sum, d) => sum + d.avgResolutionTime, 0) / departmentData.length || 0
 
   const pieData = departmentData.map(d => ({
     name: d.name,
@@ -178,289 +114,189 @@ export default function RequestsByDepartmentReport() {
     color: d.color
   }))
 
-  const radialData = departmentData.map(d => ({
+  const priorityData = departmentData.map(d => ({
     name: d.name,
-    sla: d.slaCompliance,
-    fill: d.color
-  }))
-
-  const treemapData = departmentData.map(d => ({
-    name: d.name,
-    size: d.totalTickets,
-    fill: d.color,
-    children: [
-      { name: 'Urgent', size: d.priority.urgent, fill: '#dc2626' },
-      { name: 'High', size: d.priority.high, fill: '#ea580c' },
-      { name: 'Medium', size: d.priority.medium, fill: '#f59e0b' },
-      { name: 'Low', size: d.priority.low, fill: '#84cc16' }
-    ]
+    urgent: d.priority.urgent,
+    high: d.priority.high,
+    medium: d.priority.medium,
+    low: d.priority.low,
+    total: d.totalTickets
   }))
 
   const exportToCSV = () => {
-    const headers = ['Department', 'Total Tickets', 'Open', 'Resolved', 'Avg Resolution (hrs)', 'SLA (%)', 'Employees', 'Tickets/Employee', 'Satisfaction', 'Trend']
+    const headers = ['Department', 'Total Tickets', 'Open', 'Resolved', 'Avg Resolution (hrs)', 'SLA Compliance (%)', 'Employees', 'Tickets/Employee', 'Trend']
     const rows = departmentData.map(d => [
       d.name,
       d.totalTickets.toString(),
       d.openTickets.toString(),
       d.resolvedTickets.toString(),
       d.avgResolutionTime.toFixed(1),
-      d.slaCompliance.toString(),
+      d.slaCompliance.toFixed(1),
       d.employees.toString(),
       d.ticketsPerEmployee.toFixed(1),
-      d.satisfaction.toFixed(1),
-      `${d.trend > 0 ? '+' : ''}${d.trend.toFixed(1)}%`
+      d.trend.toFixed(1) + '%'
     ])
-    
-    const csv = [headers, ...rows].map(row => row.join(',')).join('\n')
-    const blob = new Blob([csv], { type: 'text/csv' })
+
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(cell => `"${cell}"`).join(','))
+      .join('\n')
+
+    const blob = new Blob([csvContent], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `requests-by-department-${format(new Date(), 'yyyy-MM-dd')}.csv`
-    a.click()
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `department-report-${format(new Date(), 'yyyy-MM-dd')}.csv`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
   }
 
-  const getPerformanceColor = (value: number) => {
-    if (value >= 90) return 'text-green-600'
-    if (value >= 80) return 'text-yellow-600'
-    return 'text-red-600'
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    )
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
+    <div className="p-6 space-y-6">
+      <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-bold">Requests by Department</h1>
-          <p className="text-muted-foreground mt-2">
-            Analysis of ticket distribution and performance across organizational departments
-          </p>
+          <h1 className="text-3xl font-bold text-gray-900">Requests by Department</h1>
+          <p className="text-gray-600 mt-2">Analyze ticket distribution and performance across organizational departments</p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={fetchData} variant="outline">
-            <RefreshCw className="h-4 w-4 mr-2" />
+          <Button onClick={fetchData} variant="outline" size="sm">
+            <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
           </Button>
-          <Button onClick={exportToCSV}>
-            <FileDown className="h-4 w-4 mr-2" />
-            Export
+          <Button onClick={exportToCSV} variant="outline" size="sm">
+            <FileDown className="w-4 h-4 mr-2" />
+            Export CSV
           </Button>
         </div>
       </div>
 
       {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Analysis Parameters</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium mb-2 block">Time Range</label>
-              <Select value={timeRange} onValueChange={setTimeRange}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="week">Last Week</SelectItem>
-                  <SelectItem value="month">Last Month</SelectItem>
-                  <SelectItem value="quarter">Last Quarter</SelectItem>
-                  <SelectItem value="year">Last Year</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-2 block">Metric Focus</label>
-              <Select value={metric} onValueChange={setMetric}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="volume">Ticket Volume</SelectItem>
-                  <SelectItem value="efficiency">Efficiency</SelectItem>
-                  <SelectItem value="satisfaction">Satisfaction</SelectItem>
-                  <SelectItem value="productivity">Productivity</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex gap-4">
+        <Select value={timeRange} onValueChange={setTimeRange}>
+          <SelectTrigger className="w-48">
+            <SelectValue placeholder="Select time range" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="week">Last Week</SelectItem>
+            <SelectItem value="month">Last Month</SelectItem>
+            <SelectItem value="quarter">Last Quarter</SelectItem>
+            <SelectItem value="year">Last Year</SelectItem>
+          </SelectContent>
+        </Select>
 
-      {/* Summary Statistics */}
-      <div className="grid grid-cols-4 gap-4">
+        <Select value={metric} onValueChange={setMetric}>
+          <SelectTrigger className="w-48">
+            <SelectValue placeholder="Select metric" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="volume">Ticket Volume</SelectItem>
+            <SelectItem value="efficiency">Efficiency</SelectItem>
+            <SelectItem value="satisfaction">Satisfaction</SelectItem>
+            <SelectItem value="workload">Workload</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Building2 className="h-4 w-4" />
-              Total Departments
-            </CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Departments</CardTitle>
+            <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{departmentData.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">Active departments</p>
+            <p className="text-xs text-muted-foreground">Active departments</p>
           </CardContent>
         </Card>
+
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Total Employees
-            </CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Employees</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{totalEmployees}</div>
-            <p className="text-xs text-muted-foreground mt-1">Across all departments</p>
+            <div className="text-2xl font-bold">{totalEmployees}</div>
+            <p className="text-xs text-muted-foreground">Across all departments</p>
           </CardContent>
         </Card>
+
         <Card>
-          <CardHeader className="pb-3">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Avg Resolution Time</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{avgResolution.toFixed(1)}h</div>
+            <p className="text-xs text-muted-foreground">Overall average</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Avg SLA Compliance</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${getPerformanceColor(avgSLA)}`}>
-              {avgSLA.toFixed(1)}%
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">Department average</p>
+            <div className="text-2xl font-bold">{avgSLA.toFixed(1)}%</div>
+            <p className="text-xs text-muted-foreground">Department average</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Avg Satisfaction</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-600">
-              {avgSatisfaction.toFixed(1)}/5.0
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">Overall rating</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Department Cards */}
-      <div className="grid grid-cols-3 gap-4">
-        {departmentData.map((dept) => (
-          <Card key={dept.id}>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span className="text-lg">{dept.name}</span>
-                <div className="flex items-center gap-2">
-                  {dept.trend > 0 ? (
-                    <TrendingUp className="h-4 w-4 text-green-500" />
-                  ) : (
-                    <TrendingUp className="h-4 w-4 text-red-500 rotate-180" />
-                  )}
-                  <span className={dept.trend > 0 ? 'text-green-600 text-sm' : 'text-red-600 text-sm'}>
-                    {dept.trend > 0 ? '+' : ''}{dept.trend.toFixed(1)}%
-                  </span>
-                </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-3xl font-bold" style={{ color: dept.color }}>
-                  {dept.totalTickets}
-                </span>
-                <Badge variant="outline">
-                  {dept.employees} employees
-                </Badge>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Open:</span>
-                  <span className="ml-2 font-medium">{dept.openTickets}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Resolved:</span>
-                  <span className="ml-2 font-medium">{dept.resolvedTickets}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Avg Resolution:</span>
-                  <span className="ml-2 font-medium">{dept.avgResolutionTime}h</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Per Employee:</span>
-                  <span className="ml-2 font-medium">{dept.ticketsPerEmployee.toFixed(1)}</span>
-                </div>
-              </div>
-
-              <div className="pt-2 border-t">
-                <div className="flex justify-between items-center">
-                  <div className="text-sm">
-                    <span className="text-muted-foreground">SLA:</span>
-                    <span className={`ml-2 font-medium ${getPerformanceColor(dept.slaCompliance)}`}>
-                      {dept.slaCompliance}%
-                    </span>
-                  </div>
-                  <div className="text-sm">
-                    <span className="text-muted-foreground">Satisfaction:</span>
-                    <span className="ml-2 font-medium">⭐ {dept.satisfaction.toFixed(1)}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-4 gap-1 text-xs">
-                <div className="text-center">
-                  <div className="font-medium text-red-600">{dept.priority.urgent}</div>
-                  <div className="text-muted-foreground">Urgent</div>
-                </div>
-                <div className="text-center">
-                  <div className="font-medium text-orange-600">{dept.priority.high}</div>
-                  <div className="text-muted-foreground">High</div>
-                </div>
-                <div className="text-center">
-                  <div className="font-medium text-yellow-600">{dept.priority.medium}</div>
-                  <div className="text-muted-foreground">Medium</div>
-                </div>
-                <div className="text-center">
-                  <div className="font-medium text-green-600">{dept.priority.low}</div>
-                  <div className="text-muted-foreground">Low</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-2 gap-6">
-        {/* Bar Chart - Department Comparison */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Ticket Volume by Department */}
         <Card>
           <CardHeader>
-            <CardTitle>Department Ticket Volume</CardTitle>
-            <CardDescription>Comparison of ticket volumes and statuses</CardDescription>
+            <CardTitle>Ticket Volume by Department</CardTitle>
+            <CardDescription>Total tickets handled by each department</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={350}>
+            <ResponsiveContainer width="100%" height={400}>
               <BarChart data={departmentData}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
+                <XAxis 
+                  dataKey="name" 
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
+                  fontSize={12}
+                />
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Bar dataKey="openTickets" fill="#fbbf24" name="Open" />
+                <Bar dataKey="openTickets" fill="#ef4444" name="Open" />
                 <Bar dataKey="resolvedTickets" fill="#10b981" name="Resolved" />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        {/* Pie Chart - Distribution */}
+        {/* Department Workload Distribution */}
         <Card>
           <CardHeader>
-            <CardTitle>Department Distribution</CardTitle>
-            <CardDescription>Proportion of tickets by department</CardDescription>
+            <CardTitle>Department Workload Distribution</CardTitle>
+            <CardDescription>Proportion of total tickets by department</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={350}>
+            <ResponsiveContainer width="100%" height={400}>
               <PieChart>
                 <Pie
                   data={pieData}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={(entry) => `${entry.name}: ${((entry.value / totalTickets) * 100).toFixed(1)}%`}
+                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                   outerRadius={120}
                   fill="#8884d8"
                   dataKey="value"
@@ -476,47 +312,122 @@ export default function RequestsByDepartmentReport() {
         </Card>
       </div>
 
-      {/* Service Distribution by Department */}
+      {/* Priority Distribution */}
       <Card>
         <CardHeader>
-          <CardTitle>Service Request Distribution</CardTitle>
-          <CardDescription>Types of services requested by each department</CardDescription>
+          <CardTitle>Priority Distribution by Department</CardTitle>
+          <CardDescription>Breakdown of ticket priorities across departments</CardDescription>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={400}>
-            <BarChart data={serviceData}>
+            <BarChart data={priorityData}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="service" />
+              <XAxis 
+                dataKey="name" 
+                angle={-45}
+                textAnchor="end"
+                height={80}
+                fontSize={12}
+              />
               <YAxis />
               <Tooltip />
               <Legend />
-              <Bar dataKey="IT" fill="#3b82f6" />
-              <Bar dataKey="CustomerService" fill="#10b981" />
-              <Bar dataKey="Banking" fill="#8b5cf6" />
-              <Bar dataKey="Administration" fill="#f59e0b" />
-              <Bar dataKey="HR" fill="#ef4444" />
+              <Bar dataKey="urgent" stackId="a" fill="#991b1b" name="Urgent" />
+              <Bar dataKey="high" stackId="a" fill="#ef4444" name="High" />
+              <Bar dataKey="medium" stackId="a" fill="#f59e0b" name="Medium" />
+              <Bar dataKey="low" stackId="a" fill="#10b981" name="Low" />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
       </Card>
 
-      {/* SLA Compliance Radial Chart */}
+      {/* Department Performance Table */}
       <Card>
         <CardHeader>
-          <CardTitle>SLA Compliance by Department</CardTitle>
-          <CardDescription>Radial view of SLA performance metrics</CardDescription>
+          <CardTitle className="flex items-center gap-2">
+            <Building2 className="h-5 w-5" />
+            Department Performance Details
+          </CardTitle>
+          <CardDescription>
+            Comprehensive performance metrics for each department
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={350}>
-            <RadialBarChart cx="50%" cy="50%" innerRadius="10%" outerRadius="90%" data={radialData}>
-              <RadialBar dataKey="sla" cornerRadius={10} fill="#8884d8">
-                {radialData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.fill} />
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left p-4 font-medium">Department</th>
+                  <th className="text-center p-4 font-medium">Total Tickets</th>
+                  <th className="text-center p-4 font-medium">Open</th>
+                  <th className="text-center p-4 font-medium">Resolved</th>
+                  <th className="text-center p-4 font-medium">Avg Resolution</th>
+                  <th className="text-center p-4 font-medium">SLA Compliance</th>
+                  <th className="text-center p-4 font-medium">Employees</th>
+                  <th className="text-center p-4 font-medium">Tickets/Employee</th>
+                  <th className="text-center p-4 font-medium">Trend</th>
+                </tr>
+              </thead>
+              <tbody>
+                {departmentData.map((dept, index) => (
+                  <tr key={dept.id} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
+                    <td className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div 
+                          className="w-4 h-4 rounded-full"
+                          style={{ backgroundColor: dept.color }}
+                        />
+                        <div>
+                          <div className="font-medium">{dept.name}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="text-center p-4 font-medium">{dept.totalTickets}</td>
+                    <td className="text-center p-4">{dept.openTickets}</td>
+                    <td className="text-center p-4">{dept.resolvedTickets}</td>
+                    <td className="text-center p-4">{dept.avgResolutionTime.toFixed(1)}h</td>
+                    <td className="text-center p-4">{dept.slaCompliance.toFixed(1)}%</td>
+                    <td className="text-center p-4">{dept.employees}</td>
+                    <td className="text-center p-4">{dept.ticketsPerEmployee.toFixed(1)}</td>
+                    <td className="text-center p-4">
+                      <div className={`flex items-center justify-center gap-1 ${
+                        dept.trend >= 0 ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        <TrendingUp className={`w-4 h-4 ${dept.trend < 0 ? 'rotate-180' : ''}`} />
+                        <span className="text-sm font-medium">
+                          {dept.trend >= 0 ? '+' : ''}{dept.trend.toFixed(1)}%
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
                 ))}
-              </RadialBar>
-              <Legend />
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Service Distribution Across Departments */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Service Distribution Across Departments</CardTitle>
+          <CardDescription>How different service types are distributed across departments</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={400}>
+            <BarChart data={serviceData} layout="horizontal">
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis type="number" />
+              <YAxis dataKey="service" type="category" width={100} />
               <Tooltip />
-            </RadialBarChart>
+              <Legend />
+              <Bar dataKey="IT" fill="#3b82f6" name="IT" />
+              <Bar dataKey="Operations" fill="#10b981" name="Operations" />
+              <Bar dataKey="CustomerService" fill="#f59e0b" name="Customer Service" />
+              <Bar dataKey="Banking" fill="#ef4444" name="Banking" />
+              <Bar dataKey="Administration" fill="#8b5cf6" name="Administration" />
+              <Bar dataKey="HR" fill="#14b8a6" name="HR" />
+            </BarChart>
           </ResponsiveContainer>
         </CardContent>
       </Card>

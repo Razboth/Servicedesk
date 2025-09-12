@@ -8,6 +8,7 @@ import { emitTicketCreated } from '@/lib/socket-manager';
 import { createNotification } from '@/lib/notifications';
 import { getClientIp } from '@/lib/utils/ip-utils';
 import { getDeviceInfo, formatDeviceInfo } from '@/lib/utils/device-utils';
+import { PriorityValidator, type PriorityValidationContext } from '@/lib/priority-validation';
 
 // Helper function to determine sort order
 function getSortOrder(sortBy: string, sortOrder: string) {
@@ -40,7 +41,8 @@ const createTicketSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200),
   description: z.string().min(1, 'Description is required'),
   serviceId: z.string().min(1, 'Service is required'),
-  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).default('MEDIUM'),
+  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT', 'CRITICAL']).default('MEDIUM'),
+  justification: z.string().optional(),
   category: z.enum(['INCIDENT', 'SERVICE_REQUEST', 'CHANGE_REQUEST', 'EVENT_REQUEST']).default('INCIDENT'),
   issueClassification: z.enum([
     'HUMAN_ERROR', 'SYSTEM_ERROR', 'HARDWARE_FAILURE', 'NETWORK_ISSUE',
@@ -778,6 +780,56 @@ export async function POST(request: NextRequest) {
     
     const validatedData = createTicketSchema.parse(body);
 
+    // Initialize priority validator
+    const priorityValidator = new PriorityValidator(prisma);
+    
+    // Get user's branch information for priority validation
+    const userForPriorityValidation = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      include: { branch: true }
+    });
+
+    // Validate priority with context
+    const priorityValidationContext: PriorityValidationContext = {
+      userId: session.user.id,
+      userRole: session.user.role || 'USER',
+      serviceId: validatedData.serviceId,
+      branchId: userForPriorityValidation?.branchId || undefined,
+      description: validatedData.description,
+      justification: validatedData.justification
+    };
+
+    const priorityValidation = await priorityValidator.validatePriority(
+      validatedData.priority,
+      priorityValidationContext
+    );
+
+    // Handle priority validation results
+    let finalPriority = validatedData.priority;
+    const priorityWarnings: string[] = [];
+
+    if (!priorityValidation.isValid) {
+      // Priority validation failed - use suggested priority or default
+      if (priorityValidation.suggestedPriority) {
+        finalPriority = priorityValidation.suggestedPriority;
+        priorityWarnings.push(
+          `Priority downgraded from ${validatedData.priority} to ${finalPriority}: ${priorityValidation.errors.join(', ')}`
+        );
+      } else {
+        // No suggestion available, return error
+        return NextResponse.json({
+          error: 'Priority validation failed',
+          details: priorityValidation.errors,
+          requiresJustification: priorityValidation.requiresJustification
+        }, { status: 400 });
+      }
+    }
+
+    // Add any priority warnings to be logged
+    if (priorityValidation.warnings.length > 0) {
+      priorityWarnings.push(...priorityValidation.warnings);
+    }
+
     // Auto-mark tickets as confidential for Security Analysts
     let isConfidential = validatedData.isConfidential;
     let securityClassification = validatedData.securityClassification;
@@ -1029,7 +1081,7 @@ export async function POST(request: NextRequest) {
         categoryId: validatedData.categoryId,
         subcategoryId: validatedData.subcategoryId,
         itemId: validatedData.itemId,
-        priority: validatedData.priority,
+        priority: finalPriority,
         status: initialStatus,
         createdById: session.user.id,
         branchId: targetBranchId, // Use target branch (either user's or ATM owner's)
@@ -1081,6 +1133,14 @@ export async function POST(request: NextRequest) {
             ticketNumber: createdTicket.ticketNumber,
             title: createdTicket.title,
             priority: createdTicket.priority,
+            originalPriority: validatedData.priority,
+            priorityValidation: {
+              finalPriority: finalPriority,
+              originalPriority: validatedData.priority,
+              isValid: priorityValidation.isValid,
+              warnings: priorityWarnings,
+              requiresJustification: priorityValidation.requiresJustification
+            },
             serviceId: createdTicket.serviceId,
             device: {
               browser: `${deviceInfo.browser.name} ${deviceInfo.browser.version}`,
