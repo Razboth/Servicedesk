@@ -59,6 +59,10 @@ model User {
   createdTickets         Ticket[]               @relation("TicketCreator")
   favoriteCategories     UserFavoriteCategory[]
   favoriteServices       UserFavoriteService[]
+  assignedPCAssets       PCAsset[]              @relation("AssignedPCAssets")
+  createdPCAssets        PCAsset[]              @relation("CreatedPCAssets")
+  pcServiceLogs          PCServiceLog[]
+  hardeningChecklists    HardeningChecklist[]
   branch                 Branch?                @relation(fields: [branchId], references: [id])
   supportGroup           SupportGroup?          @relation(fields: [supportGroupId], references: [id])
 
@@ -128,6 +132,7 @@ model Branch {
   serviceUsage           ServiceUsage[]
   tickets                Ticket[]
   users                  User[]
+  pcAssets               PCAsset[]
 
   @@map("branches")
 }
@@ -308,6 +313,7 @@ model Ticket {
   fieldValues            TicketFieldValue[]
   knowledgeArticles      TicketKnowledge[]
   tasks                  TicketTask[]
+  pcServiceLogs          PCServiceLog[]
   assignedTo             User?                 @relation("TicketAssignee", fields: [assignedToId], references: [id])
   branch                 Branch?               @relation(fields: [branchId], references: [id])
   createdBy              User                  @relation("TicketCreator", fields: [createdById], references: [id])
@@ -1464,4 +1470,234 @@ enum MigrationStatus {
   COMPLETED
   FAILED
   CANCELLED
+}
+
+// PC Asset Management Enums
+enum OSLicenseType {
+  OEM
+  FPP
+  OLP
+  VOLUME
+  OPEN_SOURCE
+  TRIAL
+  OTHER
+}
+
+enum OfficeLicenseType {
+  OEM
+  FPP
+  OLP
+  VOLUME
+  SUBSCRIPTION
+  OPEN_SOURCE
+  OTHER
+}
+
+enum OfficeProductType {
+  OFFICE_365
+  OFFICE_2021_LTSC
+  OFFICE_2019
+  OFFICE_2016
+  LIBRE_OFFICE
+  OPEN_OFFICE
+  WPS_OFFICE
+  OTHER
+}
+
+enum PCServiceType {
+  HARDENING
+  MAINTENANCE
+  REPAIR
+  UPGRADE
+  INSTALLATION
+  AUDIT
+  DECOMMISSION
+}
+
+enum HardeningCategory {
+  USER_ACCOUNTS
+  NETWORK_SECURITY
+  SYSTEM_UPDATES
+  FIREWALL
+  ANTIVIRUS
+  ACCESS_CONTROL
+  DATA_ENCRYPTION
+  AUDIT_LOGGING
+  APPLICATION_CONTROL
+  OTHER
+}
+
+// PC Asset Management Models
+model PCAsset {
+  id                    String            @id @default(cuid())
+  pcName                String            @unique
+  brand                 String
+  model                 String?
+  serialNumber          String?
+  
+  // Hardware specifications
+  processor             String
+  ram                   String            // e.g., "16GB DDR4"
+  storageDevices        Json              // Array of {type: "SSD/HDD", size: "512GB", brand: "Samsung"}
+  macAddress            String?
+  ipAddress             String?
+  
+  // Location and assignment
+  branchId              String
+  assignedToId          String?
+  
+  // Purchase information
+  purchaseDate          DateTime?
+  purchaseOrderNumber   String?
+  warrantyExpiry        DateTime?
+  assetTag              String?           @unique
+  
+  // Operating System
+  osName                String            // e.g., "Windows 11 Pro"
+  osVersion             String?           // e.g., "22H2"
+  osLicenseType         OSLicenseType
+  osSerialNumber        String?
+  
+  // Office Suite
+  officeProduct         String?           // e.g., "Microsoft Office Professional Plus 2021"
+  officeVersion         String?           // e.g., "2021"
+  officeProductType     OfficeProductType?
+  officeLicenseType     OfficeLicenseType?
+  officeSerialNumber    String?
+  
+  // Security
+  antivirusName         String?
+  antivirusVersion      String?
+  antivirusLicenseExpiry DateTime?
+  lastHardeningDate     DateTime?
+  hardeningCompliant    Boolean           @default(false)
+  
+  // Metadata
+  isActive              Boolean           @default(true)
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  createdById           String
+  lastAuditDate         DateTime?
+  notes                 String?
+  
+  // Relations
+  branch                Branch            @relation(fields: [branchId], references: [id])
+  assignedTo            User?             @relation("AssignedPCAssets", fields: [assignedToId], references: [id])
+  createdBy             User              @relation("CreatedPCAssets", fields: [createdById], references: [id])
+  serviceLogs           PCServiceLog[]
+  hardeningChecklists   HardeningChecklist[]
+  
+  @@index([branchId])
+  @@index([assignedToId])
+  @@index([isActive])
+  @@index([antivirusLicenseExpiry])
+  @@index([warrantyExpiry])
+  @@map("pc_assets")
+}
+
+model PCServiceLog {
+  id                    String            @id @default(cuid())
+  pcAssetId             String
+  ticketId              String?
+  serviceType           PCServiceType
+  performedById         String
+  performedAt           DateTime          @default(now())
+  
+  // Service details
+  description           String
+  findings              String?
+  recommendations       String?
+  beforeStatus          Json?             // Snapshot of PC status before service
+  afterStatus           Json?             // Snapshot of PC status after service
+  attachments           Json?             // Array of file paths/URLs
+  
+  // Relations
+  pcAsset               PCAsset           @relation(fields: [pcAssetId], references: [id], onDelete: Cascade)
+  ticket                Ticket?           @relation(fields: [ticketId], references: [id])
+  performedBy           User              @relation(fields: [performedById], references: [id])
+  hardeningChecklist    HardeningChecklist?
+  
+  @@index([pcAssetId, performedAt])
+  @@index([ticketId])
+  @@index([serviceType])
+  @@map("pc_service_logs")
+}
+
+model HardeningTemplate {
+  id                    String            @id @default(cuid())
+  name                  String            @unique
+  description           String?
+  osType                String            // e.g., "Windows 11", "Ubuntu 22.04"
+  version               String            @default("1.0")
+  isActive              Boolean           @default(true)
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  
+  // Relations
+  checklistItems        HardeningChecklistItem[]
+  hardeningChecklists   HardeningChecklist[]
+  
+  @@map("hardening_templates")
+}
+
+model HardeningChecklistItem {
+  id                    String            @id @default(cuid())
+  templateId            String
+  category              HardeningCategory
+  itemCode              String            // e.g., "UA-001" for User Account item 001
+  title                 String
+  description           String?
+  isRequired            Boolean           @default(true)
+  order                 Int               @default(0)
+  verificationSteps     String?           // How to verify this item is compliant
+  remediationSteps      String?           // How to fix if non-compliant
+  
+  // Relations
+  template              HardeningTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  checklistResults      HardeningChecklistResult[]
+  
+  @@unique([templateId, itemCode])
+  @@index([templateId, category])
+  @@map("hardening_checklist_items")
+}
+
+model HardeningChecklist {
+  id                    String            @id @default(cuid())
+  pcAssetId             String
+  templateId            String
+  serviceLogId          String?           @unique
+  performedById         String
+  startedAt             DateTime          @default(now())
+  completedAt           DateTime?
+  complianceScore       Float?            // Percentage of compliant items
+  status                String            @default("IN_PROGRESS") // IN_PROGRESS, COMPLETED, CANCELLED
+  notes                 String?
+  
+  // Relations
+  pcAsset               PCAsset           @relation(fields: [pcAssetId], references: [id], onDelete: Cascade)
+  template              HardeningTemplate @relation(fields: [templateId], references: [id])
+  serviceLog            PCServiceLog?     @relation(fields: [serviceLogId], references: [id])
+  performedBy           User              @relation(fields: [performedById], references: [id])
+  checklistResults      HardeningChecklistResult[]
+  
+  @@index([pcAssetId, startedAt])
+  @@index([status])
+  @@map("hardening_checklists")
+}
+
+model HardeningChecklistResult {
+  id                    String            @id @default(cuid())
+  checklistId           String
+  checklistItemId       String
+  isCompliant           Boolean
+  notes                 String?
+  evidence              Json?             // Screenshots or other evidence
+  checkedAt             DateTime          @default(now())
+  
+  // Relations
+  checklist             HardeningChecklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  checklistItem         HardeningChecklistItem @relation(fields: [checklistItemId], references: [id])
+  
+  @@unique([checklistId, checklistItemId])
+  @@map("hardening_checklist_results")
 }
