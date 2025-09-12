@@ -187,6 +187,86 @@ Required environment variables (see `.env.example`):
    - Rate limiting and IP restrictions can be applied
    - Keys can be revoked and have expiration dates
 
+## Legacy Import System
+
+### ManageEngine ServiceDesk Plus Integration
+- **Scripts Location**: `scripts/import-manageengine-tickets.js` and `scripts/reimport-legacy-comments.js`
+- **API Documentation**: Available at https://127.0.0.1:8081/SetUpWizard.do?forwardTo=apidoc
+- **Import Workflow**: Main import script handles tickets, users, and comments with comprehensive branch mapping
+- **Branch Mapping**: 250+ branch mappings from creator names to branch codes (e.g., "Cabang Utama" → "001")
+- **Comment Import**: Separate endpoint `/api/v3/requests/{ticket_number}/notes` with known API Error 4000 issues
+- **Rate Limiting**: ManageEngine API has 100 requests per call limit, requires pagination
+- **Rollback Capability**: ImportLog model tracks all imports for potential rollback operations
+
+### Legacy Import Commands
+```bash
+# Main import with all options
+node scripts/import-manageengine-tickets.js --url=https://127.0.0.1:8081 --api-key=YOUR_KEY --import-comments --verbose
+
+# Reimport comments for existing tickets
+node scripts/reimport-legacy-comments.js --api-key=YOUR_KEY --batch-size=10
+
+# Check branch mappings
+node scripts/check-all-branches.js
+
+# Generate complete branch mapping
+node scripts/generate-complete-branch-mapping.js
+```
+
+### Known Import Issues
+- **Comment Import**: API Error 4000 occurs consistently when accessing notes endpoint
+- **Batch Processing**: Use small batch sizes (10-50) to avoid rate limiting
+- **SSL Issues**: Use `--insecure` flag for self-signed certificates
+- **Branch Mapping**: Ensure all 80+ active branches are mapped correctly
+
+## Production Deployment
+
+### PM2 Configuration
+- **Main App**: `npm run pm2:start` (runs on port 3000)
+- **Monitoring Service**: `npm run pm2:monitoring:start` (separate process)
+- **Full Setup**: `npm run pm2:setup` (builds and starts)
+- **HTTPS**: Configured via `ecosystem.config.js` with certificate management
+
+### SSL/HTTPS Setup
+- **Certificate Generation**: `npm run cert:generate`
+- **Development HTTPS**: `npm run dev:https`
+- **Production HTTPS**: `npm run start:https`
+- **Port Configuration**: Avoids port 443 conflicts with Apache
+
+### Monitoring System
+- **Network Monitoring**: Separate PM2 service for ATM and branch monitoring
+- **Ping Monitoring**: Scheduled ping checks for network entities
+- **Alert Management**: Integration with incident tracking system
+- **Monitoring Commands**: start/stop/status operations available
+
+## Scripts Directory Overview
+
+### Database Management
+- `fix-user-branches.js` - Repair user-branch relationships
+- `check-*.js` - Various data validation scripts
+- `seed-*.js` - Database seeding for specific domains
+
+### Migration & Import
+- `import-manageengine-tickets.js` - Main legacy import script
+- `reimport-legacy-comments.js` - Comment-specific import
+- `rollback-migration.js` - Undo import operations
+- `test-manageengine-connection.js` - API connectivity testing
+
+### Monitoring & Networks
+- `enable-monitoring.ts` - Setup monitoring infrastructure
+- `start-monitoring.ts` - Control monitoring services
+- `seed-network-*.ts` - Network entity and template seeding
+
+### API & Security
+- `generate-*-api-key.ts` - API key generation for different services
+- `security-check.ts` - Security validation
+- `create-api-key.ts` - General API key management
+
+### Categorization & Reports
+- `fix-*-categorization.ts` - Service and ticket categorization fixes
+- `verify-*.ts` - Data validation and verification
+- `check-reports.ts` - Report system validation
+
 ## Development Guidelines
 
 - Always run `npm run type-check` and `npm run lint` before committing

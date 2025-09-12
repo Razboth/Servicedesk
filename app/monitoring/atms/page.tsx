@@ -249,14 +249,14 @@ export default function ATMMonitoringDashboard() {
               <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
                 <Server className="h-8 w-8" />
                 ATM Monitoring Dashboard
-                {session?.user?.role !== 'ADMIN' && session?.user?.branchName && (
+                {!['ADMIN', 'SUPER_ADMIN', 'MANAGER'].includes(session?.user?.role || '') && session?.user?.branchName && (
                   <Badge variant="outline" className="text-sm font-normal">
                     {session.user.branchName}
                   </Badge>
                 )}
               </h1>
               <p className="mt-2 text-gray-600">
-                {session?.user?.role === 'ADMIN' 
+                {['ADMIN', 'SUPER_ADMIN', 'MANAGER'].includes(session?.user?.role || '') 
                   ? 'Real-time monitoring of ATM network status and performance across all branches'
                   : `Real-time monitoring of ATM network status and performance for ${session?.user?.branchName || 'your branch'}`
                 }
@@ -368,7 +368,7 @@ export default function ATMMonitoringDashboard() {
                   <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
                 </SelectContent>
               </Select>
-              {session?.user?.role === 'ADMIN' && branches.length > 0 && (
+              {['ADMIN', 'SUPER_ADMIN', 'MANAGER'].includes(session?.user?.role || '') && branches.length > 0 && (
                 <Select value={branchFilter} onValueChange={setBranchFilter}>
                   <SelectTrigger className="w-[200px]">
                     <SelectValue placeholder="All Branches" />

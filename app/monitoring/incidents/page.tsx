@@ -208,14 +208,14 @@ export default function NetworkIncidentsPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
           Network Incidents
-          {session?.user?.role !== 'ADMIN' && session?.user?.branchName && (
+          {!['ADMIN', 'SUPER_ADMIN', 'MANAGER'].includes(session?.user?.role || '') && session?.user?.branchName && (
             <Badge variant="outline" className="text-sm font-normal">
               {session.user.branchName}
             </Badge>
           )}
         </h1>
         <p className="text-muted-foreground">
-          {session?.user?.role === 'ADMIN' 
+          {['ADMIN', 'SUPER_ADMIN', 'MANAGER'].includes(session?.user?.role || '') 
             ? 'Track and manage network-related incidents and outages across all branches'
             : `Track and manage network-related incidents and outages for ${session?.user?.branchName || 'your branch'}`
           }

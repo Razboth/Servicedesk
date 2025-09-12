@@ -226,7 +226,7 @@ export default function BranchNetworkPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
           Branch Network Monitoring
-          {session?.user?.role !== 'ADMIN' && session?.user?.branchName && (
+          {!['ADMIN', 'SUPER_ADMIN', 'MANAGER'].includes(session?.user?.role || '') && session?.user?.branchName && (
             <Badge variant="outline" className="text-sm font-normal">
               {session.user.branchName}
             </Badge>

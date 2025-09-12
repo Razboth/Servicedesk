@@ -1262,7 +1262,7 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                             {globalSearchResults.map((service) => (
                               <Card 
                                 key={service.id}
-                                className="cursor-pointer transition-all hover:shadow-md border-blue-300 hover:border-blue-500 bg-white dark:bg-gray-800"
+                                className="cursor-pointer transition-all hover:shadow-md border-emerald-300 hover:border-emerald-500 bg-white dark:bg-gray-800"
                                 onClick={() => selectServiceDirectly(service)}
                               >
                                 <CardContent className="p-3">
@@ -1271,7 +1271,7 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                                       <p className="font-medium text-gray-900 dark:text-white text-sm truncate">
                                         {service.name}
                                       </p>
-                                      <p className="text-xs text-blue-600 dark:text-blue-400 truncate">
+                                      <p className="text-xs text-emerald-600 dark:text-emerald-400 truncate">
                                         {service.category.name} → {service.name}
                                       </p>
                                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
@@ -1288,7 +1288,7 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                                         )}
                                       </div>
                                     </div>
-                                    <Zap className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                                    <Zap className="h-4 w-4 text-emerald-500 flex-shrink-0" />
                                   </div>
                                 </CardContent>
                               </Card>
@@ -1381,7 +1381,7 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                   {recentServices.length > 0 && (
                     <div>
                       <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center">
-                        <Clock className="h-4 w-4 mr-1 text-blue-500" />
+                        <Clock className="h-4 w-4 mr-1 text-emerald-500" />
                         Recently Used
                         <span className="text-xs text-gray-500 ml-2">(Complete history - select to use)</span>
                       </h4>
@@ -1389,7 +1389,7 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                         const service = recentServices.find((s: any) => s.id === serviceId);
                         if (service) selectServiceDirectly(service);
                       }}>
-                        <SelectTrigger className="w-full bg-white dark:bg-gray-800 border-blue-200 hover:border-blue-400">
+                        <SelectTrigger className="w-full bg-white dark:bg-gray-800 border-emerald-200 hover:border-emerald-400">
                           <SelectValue placeholder="Select from recently used services..." />
                         </SelectTrigger>
                         <SelectContent className="max-h-60">
@@ -1564,7 +1564,7 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                       key={category.id}
                       className={`cursor-pointer transition-all hover:shadow-lg border-2 ${
                         selectedCategory?.id === category.id
-                          ? 'border-blue-500 shadow-lg'
+                          ? 'border-emerald-500 shadow-lg'
                           : 'border-gray-200 dark:border-gray-700'
                       }`}
                       onClick={() => {
@@ -1655,7 +1655,7 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                 <div className="grid gap-3">
                   {isLoadingServices ? (
                     <div className="text-center py-8">
-                      <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                      <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
                       <p className="text-gray-600 dark:text-gray-400">
                         {serviceSearchTerm ? 'Searching services...' : 'Loading services...'}
                       </p>
@@ -1762,7 +1762,7 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
 
                 <div className="space-y-6">
                   {/* Basic Information */}
-                  <Card className="border-blue-200 dark:border-blue-800">
+                  <Card className="border-emerald-200 dark:border-emerald-800">
                     <CardHeader>
                       <CardTitle className="text-base">Basic Information</CardTitle>
                     </CardHeader>
@@ -2228,7 +2228,7 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                     <AccordionItem value="classification" className="border rounded-lg bg-white dark:bg-gray-800/50">
                       <AccordionTrigger className="px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-t-lg">
                         <div className="flex items-center gap-2">
-                          <Tag className="w-4 h-4 text-blue-600" />
+                          <Tag className="w-4 h-4 text-emerald-600" />
                           <span className="text-base font-medium">Classification</span>
                         </div>
                       </AccordionTrigger>
@@ -2465,7 +2465,7 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                   </p>
                 </div>
 
-                <Card className="border-2 border-blue-200 dark:border-blue-800">
+                <Card className="border-2 border-emerald-200 dark:border-emerald-800">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Eye className="h-5 w-5" />
@@ -2597,7 +2597,7 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                     
                     <div className="flex items-center gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                       <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-blue-500" />
+                        <Clock className="h-4 w-4 text-emerald-500" />
                         <span className="text-sm">SLA: {selectedService?.slaHours || selectedService?.estimatedHours}h</span>
                       </div>
                       {selectedService?.requiresApproval && (

@@ -234,7 +234,8 @@ const authOptions = {
             supportGroupId: userWithSupportGroup?.supportGroupId,
             supportGroupCode: userWithSupportGroup?.supportGroup?.code,
             mustChangePassword: user.mustChangePassword,
-            isFirstLogin: user.isFirstLogin
+            isFirstLogin: user.isFirstLogin,
+            avatar: user.avatar
           }
         } catch (error) {
           if (error instanceof Error && error.message === 'ACCOUNT_LOCKED') {
@@ -250,7 +251,7 @@ const authOptions = {
     strategy: 'jwt' as const
   },
   callbacks: {
-    async jwt({ token, user }: any) {
+    async jwt({ token, user, trigger, session }: any) {
       if (user) {
         token.id = user.id;
         token.sub = user.id; // Ensure sub is set for session
@@ -261,7 +262,14 @@ const authOptions = {
         token.supportGroupCode = user.supportGroupCode;
         token.mustChangePassword = user.mustChangePassword;
         token.isFirstLogin = user.isFirstLogin;
+        token.avatar = user.avatar;
       }
+      
+      // Handle session updates (when update() is called)
+      if (trigger === 'update' && session?.avatar) {
+        token.avatar = session.avatar;
+      }
+      
       return token;
     },
     async session({ session, token }: any) {
@@ -274,6 +282,7 @@ const authOptions = {
         session.user.supportGroupCode = token.supportGroupCode as string | null;
         session.user.mustChangePassword = token.mustChangePassword as boolean;
         session.user.isFirstLogin = token.isFirstLogin as boolean;
+        session.user.avatar = token.avatar as string | null;
       }
       return session;
     }

@@ -42,6 +42,11 @@ node scripts/import-manageengine-tickets.js \
   --api-key YOUR_API_KEY \
   --batch-size 100 \
   --verbose
+
+# Import with self-signed SSL certificate (insecure)
+node scripts/import-manageengine-tickets.js \
+  --api-key YOUR_API_KEY \
+  --insecure
 ```
 
 #### Options:
@@ -58,6 +63,7 @@ node scripts/import-manageengine-tickets.js \
 - `--date-from YYYY-MM-DD` - Import tickets created after date
 - `--date-to YYYY-MM-DD` - Import tickets created before date
 - `--verbose` - Show detailed progress
+- `--insecure` - Disable SSL certificate verification (for self-signed certificates)
 
 ### 2. check-migration-status.js
 
@@ -188,6 +194,9 @@ node scripts/rollback-migration.js --batch-id BATCH_ID
 - Verify API key is correct
 - Check ManageEngine is accessible at the URL
 - Ensure API is enabled in ManageEngine
+- **SSL Certificate Issues**: If you get "Hostname/IP does not match certificate" errors:
+  - Use `--insecure` flag for self-signed certificates (development only)
+  - For production, obtain a proper SSL certificate for your ManageEngine instance
 
 ### Import Failures
 - Check migration status for specific errors
@@ -198,6 +207,13 @@ node scripts/rollback-migration.js --batch-id BATCH_ID
 - Reduce batch size if timeouts occur
 - Import in date ranges for large datasets
 - Check database performance
+
+### Rate Limiting Issues
+- **"Maximum access limit exceeded"**: ManageEngine has rate limiting protection
+  - Wait 10-15 minutes before retrying
+  - Use smaller `--limit` values for testing
+  - The script includes automatic delays between API calls
+  - For large imports, run during off-peak hours
 
 ## Data Mapping
 

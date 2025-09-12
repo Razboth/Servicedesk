@@ -26,6 +26,7 @@ import { ArrowLeft, Clock, User, MessageSquare, AlertCircle, CheckCircle, CheckC
 import { formatDistanceToNow } from 'date-fns';
 import { RelatedArticles } from '@/components/knowledge/related-articles';
 import { AttachmentPreview } from '@/components/ui/attachment-preview';
+import { getAvatarById } from '@/components/ui/avatar-presets';
 
 interface TicketFieldValue {
   id: string;
@@ -860,7 +861,7 @@ export default function TicketDetailPage() {
       <div className="min-h-screen bg-gray-50">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
             <p className="text-gray-600">Loading ticket...</p>
           </div>
         </div>
@@ -990,7 +991,7 @@ export default function TicketDetailPage() {
                 <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-lg">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Sparkles className="h-5 w-5 text-blue-500" />
+                      <Sparkles className="h-5 w-5 text-emerald-500" />
                       Additional Information
                     </CardTitle>
                   </CardHeader>
@@ -1019,7 +1020,7 @@ export default function TicketDetailPage() {
                               if (!value) return <span className="text-gray-400 italic">No file attached</span>;
                               return (
                                 <div className="inline-flex items-center gap-2 p-2 bg-cream-50 dark:bg-warm-dark-200 rounded-lg">
-                                  <FileText className="h-4 w-4 text-blue-500" />
+                                  <FileText className="h-4 w-4 text-emerald-500" />
                                   <span className="text-sm font-medium">{value}</span>
                                   <Button
                                     variant="ghost"
@@ -1069,7 +1070,7 @@ export default function TicketDetailPage() {
                                   href={value} 
                                   target="_blank" 
                                   rel="noopener noreferrer"
-                                  className="text-blue-500 hover:text-blue-700 underline inline-flex items-center gap-1"
+                                  className="text-emerald-500 hover:text-emerald-700 underline inline-flex items-center gap-1"
                                 >
                                   <span>{value}</span>
                                   <Eye className="h-3 w-3" />
@@ -1082,7 +1083,7 @@ export default function TicketDetailPage() {
                               return value ? (
                                 <a 
                                   href={`mailto:${value}`}
-                                  className="text-blue-500 hover:text-blue-700 underline"
+                                  className="text-emerald-500 hover:text-emerald-700 underline"
                                 >
                                   {value}
                                 </a>
@@ -1094,7 +1095,7 @@ export default function TicketDetailPage() {
                               return value ? (
                                 <a 
                                   href={`tel:${value}`}
-                                  className="text-blue-500 hover:text-blue-700 underline"
+                                  className="text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300 underline"
                                 >
                                   {value}
                                 </a>
@@ -1314,7 +1315,7 @@ export default function TicketDetailPage() {
               <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-lg">
                 <CardHeader className="bg-gradient-to-r from-cream-100 to-cream-200 dark:from-warm-dark-400 dark:to-warm-dark-500">
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <MessageSquare className="h-5 w-5 text-blue-600" />
+                    <MessageSquare className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                     <span>Discussion</span>
                     <Badge variant="secondary" className="ml-auto">
                       {ticket.comments.length} {ticket.comments.length === 1 ? 'comment' : 'comments'}
@@ -1336,8 +1337,16 @@ export default function TicketDetailPage() {
                           <div className="flex items-start justify-between mb-3">
                             <div className="flex items-center gap-3">
                               {/* User Avatar */}
-                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brown-400 to-brown-500 dark:from-brown-200 dark:to-brown-300 flex items-center justify-center text-white dark:text-brown-950 font-semibold">
-                                {comment.user.name?.charAt(0).toUpperCase()}
+                              <div className="w-10 h-10">
+                                {(comment.user as any)?.avatar && getAvatarById((comment.user as any).avatar) ? (
+                                  <div className="w-full h-full scale-90">
+                                    {getAvatarById((comment.user as any).avatar)?.component}
+                                  </div>
+                                ) : (
+                                  <div className="w-full h-full rounded-full bg-gradient-to-br from-brown-400 to-brown-500 dark:from-brown-200 dark:to-brown-300 flex items-center justify-center text-white dark:text-brown-950 font-semibold">
+                                    {comment.user.name?.charAt(0).toUpperCase()}
+                                  </div>
+                                )}
                               </div>
                               <div>
                                 <div className="flex items-center gap-2">
@@ -1400,7 +1409,7 @@ export default function TicketDetailPage() {
                                         <div className={`p-2.5 rounded-lg ${
                                           isImage ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' : 
                                           isPdf ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' :
-                                          'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+                                          'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
                                         }`}>
                                           <Icon className="h-5 w-5" />
                                         </div>
@@ -1509,10 +1518,10 @@ export default function TicketDetailPage() {
                       {isUploading && (
                         <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
                           <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                            <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
                               {uploadProgress < 90 ? 'Uploading files...' : 'Posting comment...'}
                             </span>
-                            <span className="text-sm text-blue-600 dark:text-blue-400">
+                            <span className="text-sm text-amber-600 dark:text-amber-400">
                               {uploadProgress}%
                             </span>
                           </div>
@@ -1651,7 +1660,7 @@ export default function TicketDetailPage() {
                         <Button
                           onClick={() => updateTicketStatus('OPEN')}
                           disabled={isUpdatingStatus}
-                          className="w-full flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+                          className="w-full flex items-center gap-2 bg-amber-600 hover:bg-amber-700 dark:bg-amber-400 dark:hover:bg-amber-500 text-white dark:text-brown-950"
                         >
                           <AlertCircle className="h-4 w-4" />
                           Reopen Ticket
@@ -1703,80 +1712,6 @@ export default function TicketDetailPage() {
                     />
                   </div>
 
-                  {/* Approval Status Section - Clean and Simple */}
-                  {((ticket.approvals && ticket.approvals.length > 0) || ticket.status === 'PENDING_APPROVAL' || ticket.service?.requiresApproval) && (
-                    <div className="border-t border-purple-100 dark:border-purple-800/50 pt-3 mt-2">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="p-1 bg-amber-100 dark:bg-amber-900/30 rounded">
-                          <Shield className="h-3 w-3 text-purple-600 dark:text-purple-400" />
-                        </div>
-                        <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Approval Status</span>
-                      </div>
-                      
-                      {(() => {
-                        const latestApproval = getLatestApproval();
-                        
-                        if (latestApproval) {
-                          return (
-                            <div className="flex items-center gap-2 pl-1">
-                              <div className={`flex-shrink-0 ${
-                                latestApproval.status === 'APPROVED' ? 'text-green-600 dark:text-green-400' :
-                                latestApproval.status === 'REJECTED' ? 'text-red-600 dark:text-red-400' :
-                                'text-yellow-600 dark:text-yellow-400'
-                              }`}>
-                                {getApprovalStatusIcon(latestApproval.status)}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <Badge 
-                                    variant={getApprovalStatusBadgeVariant(latestApproval.status)} 
-                                    className="text-xs"
-                                  >
-                                    {latestApproval.status}
-                                  </Badge>
-                                  <span className="text-xs text-gray-500 dark:text-gray-400">
-                                    {formatDistanceToNow(new Date(latestApproval.createdAt), { addSuffix: true })}
-                                  </span>
-                                </div>
-                                <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
-                                  by {latestApproval.approver.name}
-                                </p>
-                              </div>
-                            </div>
-                          );
-                        }
-                        
-                        if (ticket.status === 'PENDING_APPROVAL') {
-                          return (
-                            <div className="flex items-center gap-2 pl-1">
-                              <Timer className="h-4 w-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
-                              <div className="flex items-center gap-2">
-                                <Badge variant="warning" className="text-xs">
-                                  PENDING
-                                </Badge>
-                                <span className="text-xs text-gray-600 dark:text-gray-400">
-                                  Awaiting approval
-                                </span>
-                              </div>
-                            </div>
-                          );
-                        }
-                        
-                        if (ticket.service?.requiresApproval) {
-                          return (
-                            <div className="flex items-center gap-2 pl-1">
-                              <AlertCircle className="h-4 w-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
-                              <span className="text-xs text-gray-600 dark:text-gray-400">
-                                Approval required for this service
-                              </span>
-                            </div>
-                          );
-                        }
-                        
-                        return null;
-                      })()}
-                    </div>
-                  )}
                 </CardContent>
               </Card>
 
@@ -1784,7 +1719,7 @@ export default function TicketDetailPage() {
               <Card className="bg-gradient-to-br from-cream-50 to-amber-50/30 dark:from-warm-dark-300 dark:to-warm-dark-400 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-xl overflow-hidden">
                 <CardHeader className="bg-gradient-to-r from-amber-600/10 to-brown-600/10 dark:from-amber-900/20 dark:to-brown-900/20 border-b border-amber-200 dark:border-amber-900">
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <Hash className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    <Hash className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                     Ticket Information
                   </CardTitle>
                 </CardHeader>
@@ -1793,7 +1728,7 @@ export default function TicketDetailPage() {
                     {/* Ticket Number */}
                     <div className="flex items-start gap-3">
                       <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
-                        <Hash className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        <Hash className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                       </div>
                       <div className="flex-1">
                         <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Ticket Number</span>
@@ -1839,11 +1774,26 @@ export default function TicketDetailPage() {
                       </div>
                       <div className="flex-1">
                         <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Created By</span>
-                        <p className="text-sm text-gray-900 dark:text-gray-100 mt-1 font-medium">{ticket.createdBy.name}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{ticket.createdBy.email}</p>
-                        <Badge variant="outline" className="text-xs mt-1">
-                          {ticket.createdBy.role}
-                        </Badge>
+                        <div className="flex items-center gap-3 mt-1">
+                          <div className="w-8 h-8">
+                            {(ticket.createdBy as any)?.avatar && getAvatarById((ticket.createdBy as any).avatar) ? (
+                              <div className="w-full h-full scale-75">
+                                {getAvatarById((ticket.createdBy as any).avatar)?.component}
+                              </div>
+                            ) : (
+                              <div className="w-full h-full rounded-full bg-gradient-to-br from-brown-400 to-brown-500 dark:from-brown-200 dark:to-brown-300 flex items-center justify-center text-white dark:text-brown-950 text-xs font-semibold">
+                                {ticket.createdBy.name?.charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-900 dark:text-gray-100 font-medium">{ticket.createdBy.name}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{ticket.createdBy.email}</p>
+                            <Badge variant="outline" className="text-xs mt-1">
+                              {ticket.createdBy.role}
+                            </Badge>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
@@ -1855,13 +1805,26 @@ export default function TicketDetailPage() {
                       <div className="flex-1">
                         <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Assigned To</span>
                         {ticket.assignedTo ? (
-                          <>
-                            <p className="text-sm text-gray-900 dark:text-gray-100 mt-1 font-medium">{ticket.assignedTo.name}</p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{ticket.assignedTo.email}</p>
-                            <Badge variant="outline" className="text-xs mt-1">
-                              {ticket.assignedTo.role}
-                            </Badge>
-                          </>
+                          <div className="flex items-center gap-3 mt-1">
+                            <div className="w-8 h-8">
+                              {(ticket.assignedTo as any)?.avatar && getAvatarById((ticket.assignedTo as any).avatar) ? (
+                                <div className="w-full h-full scale-75">
+                                  {getAvatarById((ticket.assignedTo as any).avatar)?.component}
+                                </div>
+                              ) : (
+                                <div className="w-full h-full rounded-full bg-gradient-to-br from-brown-400 to-brown-500 dark:from-brown-200 dark:to-brown-300 flex items-center justify-center text-white dark:text-brown-950 text-xs font-semibold">
+                                  {ticket.assignedTo.name?.charAt(0).toUpperCase()}
+                                </div>
+                              )}
+                            </div>
+                            <div>
+                              <p className="text-sm text-gray-900 dark:text-gray-100 font-medium">{ticket.assignedTo.name}</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">{ticket.assignedTo.email}</p>
+                              <Badge variant="outline" className="text-xs mt-1">
+                                {ticket.assignedTo.role}
+                              </Badge>
+                            </div>
+                          </div>
                         ) : (
                           <div className="mt-1">
                             <Badge variant="outline" className="text-xs border-orange-300 text-orange-600 dark:border-orange-700 dark:text-orange-400">

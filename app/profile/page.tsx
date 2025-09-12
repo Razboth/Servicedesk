@@ -21,8 +21,11 @@ import {
   Clock,
   Key,
   Save,
-  Camera
+  Camera,
+  Users
 } from 'lucide-react'
+import { AvatarSelector } from '@/components/ui/avatar-selector'
+import { getAvatarById } from '@/components/ui/avatar-presets'
 
 export default function ProfilePage() {
   const { data: session, update } = useSession()
@@ -32,7 +35,8 @@ export default function ProfilePage() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    phone: ''
+    phone: '',
+    avatar: ''
   })
 
   useEffect(() => {
@@ -40,7 +44,8 @@ export default function ProfilePage() {
       setFormData({
         name: session.user.name || '',
         email: session.user.email || '',
-        phone: session.user.phone || ''
+        phone: session.user.phone || '',
+        avatar: (session.user as any).avatar || ''
       })
     }
   }, [session])
@@ -55,7 +60,23 @@ export default function ProfilePage() {
       })
 
       if (response.ok) {
-        await update() // Refresh session
+        const result = await response.json()
+        
+        // Update the form data with the response
+        if (result.user) {
+          setFormData({
+            name: result.user.name || '',
+            email: result.user.email || '',
+            phone: result.user.phone || '',
+            avatar: result.user.avatar || ''
+          })
+        }
+        
+        // Force session refresh with trigger data
+        await update({
+          avatar: formData.avatar
+        })
+        
         toast.success('Profile updated successfully')
       } else {
         toast.error('Failed to update profile')
@@ -70,6 +91,10 @@ export default function ProfilePage() {
 
   const handleChangePassword = () => {
     router.push('/auth/change-password')
+  }
+
+  const handleAvatarSelect = (avatarId: string) => {
+    setFormData(prev => ({ ...prev, avatar: avatarId }))
   }
 
   if (!session) {
@@ -104,24 +129,34 @@ export default function ProfilePage() {
               {/* Avatar Section */}
               <div className="flex items-center gap-6">
                 <div className="relative">
-                  <div className="w-24 h-24 rounded-full bg-gradient-to-br from-brown-400 to-brown-600 dark:from-brown-200 dark:to-brown-300 p-1">
-                    <div className="w-full h-full rounded-full bg-cream-50 dark:bg-warm-dark-300 flex items-center justify-center">
-                      <span className="text-2xl font-bold text-brown-700 dark:text-cream-200">
-                        {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
-                      </span>
-                    </div>
+                  <div className="w-24 h-24">
+                    {(formData.avatar || (session.user as any)?.avatar) && getAvatarById(formData.avatar || (session.user as any)?.avatar) ? (
+                      <div className="w-full h-full">
+                        {getAvatarById(formData.avatar || (session.user as any)?.avatar)?.component}
+                      </div>
+                    ) : (
+                      <div className="w-full h-full rounded-full bg-gradient-to-br from-brown-400 to-brown-600 dark:from-brown-200 dark:to-brown-300 p-1">
+                        <div className="w-full h-full rounded-full bg-cream-50 dark:bg-warm-dark-300 flex items-center justify-center">
+                          <span className="text-2xl font-bold text-brown-700 dark:text-cream-200">
+                            {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <Button 
-                    size="sm" 
-                    className="absolute bottom-0 right-0 rounded-full w-8 h-8 p-0 bg-brown-400 hover:bg-brown-500 dark:bg-brown-200 dark:hover:bg-brown-300"
-                    disabled
-                  >
-                    <Camera className="h-4 w-4 text-white dark:text-brown-950" />
-                  </Button>
+                  <AvatarSelector
+                    currentAvatar={formData.avatar}
+                    onSelect={handleAvatarSelect}
+                  />
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-brown-900 dark:text-cream-200">{session.user.name}</h3>
                   <p className="text-sm text-brown-600 dark:text-cream-400">{session.user.role}</p>
+                  {(formData.avatar || (session.user as any)?.avatar) && (
+                    <p className="text-xs text-brown-500 dark:text-cream-500 mt-1">
+                      Avatar: {getAvatarById(formData.avatar || (session.user as any)?.avatar)?.name}
+                    </p>
+                  )}
                 </div>
               </div>
 

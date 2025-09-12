@@ -12,14 +12,14 @@ export default function AutoTicketsPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
           Auto-Generated Tickets
-          {session?.user?.role !== 'ADMIN' && session?.user?.branchName && (
+          {!['ADMIN', 'SUPER_ADMIN', 'MANAGER'].includes(session?.user?.role || '') && session?.user?.branchName && (
             <Badge variant="outline" className="text-sm font-normal">
               {session.user.branchName}
             </Badge>
           )}
         </h1>
         <p className="text-muted-foreground">
-          {session?.user?.role === 'ADMIN' 
+          {['ADMIN', 'SUPER_ADMIN', 'MANAGER'].includes(session?.user?.role || '') 
             ? 'Monitor automatically generated network monitoring tickets and their resolution status across all branches'
             : `Monitor automatically generated network monitoring tickets and their resolution status for ${session?.user?.branchName || 'your branch'}`
           }

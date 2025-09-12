@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider      = "prisma-client-js"
   binaryTargets = ["native", "debian-openssl-3.0.x"]
@@ -11,70 +8,59 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// User Management
 model User {
-  id             String   @id @default(cuid())
-  username       String   @unique
-  email          String   @unique
-  name           String
-  password       String?
-  phone          String?
-  role           UserRole @default(USER)
-  branchId       String?
-  supportGroupId String? // For technicians
-  isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  // Account lockout and activity tracking
-  loginAttempts     Int       @default(0)
-  lockedAt          DateTime?
-  lastLoginAttempt  DateTime?
-  lastActivity      DateTime  @default(now())
-  
-  // Password change tracking
-  mustChangePassword Boolean   @default(true)
-  isFirstLogin       Boolean   @default(true)
-  passwordChangedAt  DateTime?
-
-  // Relations
-  branch          Branch?          @relation(fields: [branchId], references: [id])
-  supportGroup    SupportGroup?    @relation(fields: [supportGroupId], references: [id])
-  createdTickets  Ticket[]         @relation("TicketCreator")
-  assignedTickets Ticket[]         @relation("TicketAssignee")
-  approvals       TicketApproval[]
-  comments        TicketComment[]
-  sessions        Session[]
-  accounts        Account[]
-  auditLogs       AuditLog[]
-  completedTasks  TicketTask[]
-  notifications   Notification[]
-  createdApiKeys  ApiKey[]         @relation("ApiKeyCreatedBy")
-  linkedApiKeys   ApiKey[]         @relation("ApiKeyLinkedUser")
-  
-  // Service usage tracking
-  serviceUsage    ServiceUsage[]
-  favoriteServices UserFavoriteService[]
-  favoriteCategories UserFavoriteCategory[]
-
-  // Knowledge Base relations
-  knowledgeArticles KnowledgeArticle[]
-  knowledgeVersions KnowledgeVersion[]
-  knowledgeAttachments KnowledgeAttachment[]
-  knowledgeComments KnowledgeComment[]
-  ticketKnowledge TicketKnowledge[]
-  knowledgeFeedback KnowledgeFeedback[]
-
-  // Report Builder relations
-  createdReports     CustomReport[] @relation("ReportCreator")
-  executedReports    ReportExecution[] @relation("ReportExecutor")
-  favoriteReports    ReportFavorite[] @relation("ReportFavorites")
-  
-  // Branch-based ATM claim processing
-  verifiedClaims        ATMClaimVerification[]
-  assignedBranchTasks   BranchAssignment[] @relation("AssignedBranchTasks")
-  createdBranchTasks    BranchAssignment[] @relation("AssignedByBranchTasks")
-  branchCommunications  BranchCommunication[]
+  id                     String                 @id @default(cuid())
+  email                  String                 @unique
+  name                   String
+  password               String?
+  role                   UserRole               @default(USER)
+  branchId               String?
+  isActive               Boolean                @default(true)
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+  phone                  String?
+  avatar                 String?                // Avatar identifier or URL
+  supportGroupId         String?
+  lastActivity           DateTime               @default(now())
+  lastLoginAttempt       DateTime?
+  lockedAt               DateTime?
+  loginAttempts          Int                    @default(0)
+  username               String                 @unique
+  isFirstLogin           Boolean                @default(true)
+  mustChangePassword     Boolean                @default(true)
+  passwordChangedAt      DateTime?
+  createdApiKeys         ApiKey[]               @relation("ApiKeyCreatedBy")
+  linkedApiKeys          ApiKey[]               @relation("ApiKeyLinkedUser")
+  accounts               Account[]
+  verifiedClaims         ATMClaimVerification[]
+  auditLogs              AuditLog[]
+  createdBranchTasks     BranchAssignment[]     @relation("AssignedByBranchTasks")
+  assignedBranchTasks    BranchAssignment[]     @relation("AssignedBranchTasks")
+  branchCommunications   BranchCommunication[]
+  createdReports         CustomReport[]         @relation("ReportCreator")
+  knowledgeArticles      KnowledgeArticle[]
+  knowledgeAttachments   KnowledgeAttachment[]
+  knowledgeComments      KnowledgeComment[]
+  knowledgeFeedback      KnowledgeFeedback[]
+  knowledgeVersions      KnowledgeVersion[]
+  assignedLegacyTickets  LegacyTicket[]         @relation("LegacyTicketAssignee")
+  convertedLegacyTickets LegacyTicket[]         @relation("LegacyTicketConverter")
+  createdLegacyTickets   LegacyTicket[]         @relation("LegacyTicketCreator")
+  notifications          Notification[]
+  executedReports        ReportExecution[]      @relation("ReportExecutor")
+  favoriteReports        ReportFavorite[]       @relation("ReportFavorites")
+  serviceUsage           ServiceUsage[]
+  sessions               Session[]
+  approvals              TicketApproval[]
+  comments               TicketComment[]
+  ticketKnowledge        TicketKnowledge[]
+  completedTasks         TicketTask[]
+  assignedTickets        Ticket[]               @relation("TicketAssignee")
+  createdTickets         Ticket[]               @relation("TicketCreator")
+  favoriteCategories     UserFavoriteCategory[]
+  favoriteServices       UserFavoriteService[]
+  branch                 Branch?                @relation(fields: [branchId], references: [id])
+  supportGroup           SupportGroup?          @relation(fields: [supportGroupId], references: [id])
 
   @@map("users")
 }
@@ -85,15 +71,14 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
   @@map("accounts")
@@ -118,291 +103,244 @@ model VerificationToken {
   @@map("verification_tokens")
 }
 
-// Branch Management
 model Branch {
-  id               String   @id @default(cuid())
-  name             String
-  code             String   @unique
-  address          String?
-  city             String?
-  province         String?
-  ipAddress        String?  // Network monitoring - primary IP
-  backupIpAddress  String?  // Network monitoring - backup IP
-  monitoringEnabled Boolean @default(false) // Network monitoring toggle
-  networkMedia     NetworkMedia? // VSAT, M2M, FO
-  networkVendor    String?       // Telkom, Indosat, etc.
-  isActive         Boolean  @default(true)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  // Relations
-  users           User[]
-  tickets         Ticket[]
-  atms            ATM[]
-  networkIncidents NetworkIncident[]
-  pingResults     NetworkPingResult[] @relation("BranchPingResults")
-  
-  // Service usage tracking
-  serviceUsage    ServiceUsage[]
-  
-  // Branch-based ATM claim processing
-  branchAssignments    BranchAssignment[]
-  sentCommunications   BranchCommunication[] @relation("SentCommunications")
+  id                     String                @id @default(cuid())
+  name                   String
+  code                   String                @unique
+  address                String?
+  city                   String?
+  province               String?
+  isActive               Boolean               @default(true)
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  backupIpAddress        String?
+  ipAddress              String?
+  monitoringEnabled      Boolean               @default(false)
+  networkMedia           NetworkMedia?
+  networkVendor          String?
+  atms                   ATM[]
+  branchAssignments      BranchAssignment[]
+  sentCommunications     BranchCommunication[] @relation("SentCommunications")
   receivedCommunications BranchCommunication[] @relation("ReceivedCommunications")
+  legacyTickets          LegacyTicket[]
+  networkIncidents       NetworkIncident[]
+  pingResults            NetworkPingResult[]   @relation("BranchPingResults")
+  serviceUsage           ServiceUsage[]
+  tickets                Ticket[]
+  users                  User[]
 
   @@map("branches")
 }
 
-// Service Catalog
 model ServiceCategory {
-  id          String   @id @default(cuid())
+  id          String                 @id @default(cuid())
   name        String
   description String?
   parentId    String?
-  level       Int      @default(1) // 1=Category, 2=Subcategory, 3=Item
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  parent   ServiceCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
-  children ServiceCategory[] @relation("CategoryHierarchy")
-  services Service[]
+  level       Int                    @default(1)
+  isActive    Boolean                @default(true)
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  parent      ServiceCategory?       @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children    ServiceCategory[]      @relation("CategoryHierarchy")
+  services    Service[]
   favoritedBy UserFavoriteCategory[]
 
   @@map("service_categories")
 }
 
 model Service {
-  id               String         @id @default(cuid())
-  name             String
-  description      String
-  helpText         String?
-  categoryId       String // Legacy - will be deprecated
-  subcategoryId    String?
-  itemId           String?
-  supportGroupId   String? // Reference to SupportGroup
-  priority         TicketPriority @default(MEDIUM)
-  estimatedHours   Int?           @default(4)
-  slaHours         Int            @default(24)
-  isActive         Boolean        @default(true)
-  requiresApproval Boolean        @default(true)
-  isConfidential   Boolean        @default(false)
-  isKasdaService   Boolean        @default(false)
-
-  // Default values for ticket creation
-  defaultTitle               String? // Auto-populate ticket title
-  defaultItilCategory        TicketCategory?      @default(INCIDENT)
+  id                         String                 @id @default(cuid())
+  name                       String
+  description                String
+  helpText                   String?
+  categoryId                 String
+  subcategoryId              String?
+  itemId                     String?
+  priority                   TicketPriority         @default(MEDIUM)
+  estimatedHours             Int?                   @default(4)
+  slaHours                   Int                    @default(24)
+  isActive                   Boolean                @default(true)
+  requiresApproval           Boolean                @default(true)
+  isConfidential             Boolean                @default(false)
+  createdAt                  DateTime               @default(now())
+  updatedAt                  DateTime               @updatedAt
+  businessHoursOnly          Boolean                @default(true)
+  escalationHours            Int?                   @default(48)
+  isKasdaService             Boolean                @default(false)
+  resolutionHours            Int?                   @default(24)
+  responseHours              Int?                   @default(4)
+  tier1CategoryId            String?
+  tier2SubcategoryId         String?
+  tier3ItemId                String?
   defaultIssueClassification IssueClassification?
-
-  // 3-Tier Category Relations
-  tier1CategoryId    String? // Level 1: Category
-  tier2SubcategoryId String? // Level 2: Subcategory
-  tier3ItemId        String? // Level 3: Item
-
-  // SLA Configuration
-  responseHours     Int?    @default(4)
-  resolutionHours   Int?    @default(24)
-  escalationHours   Int?    @default(48)
-  businessHoursOnly Boolean @default(true)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  category         ServiceCategory        @relation(fields: [categoryId], references: [id])
-  supportGroup     SupportGroup?          @relation(fields: [supportGroupId], references: [id])
-  tier1Category    Category?              @relation(fields: [tier1CategoryId], references: [id])
-  tier2Subcategory Subcategory?           @relation(fields: [tier2SubcategoryId], references: [id])
-  tier3Item        Item?                  @relation(fields: [tier3ItemId], references: [id])
-  fields           ServiceField[]
-  fieldTemplates   ServiceFieldTemplate[]
-  tickets          Ticket[]
-  slaTemplate      SLATemplate?
-  taskTemplates    TaskTemplate[]
-  
-  // Service usage tracking
-  usage            ServiceUsage[]
-  favoritedBy      UserFavoriteService[]
-
-  // Report Builder relations
-  reportTemplates  ReportTemplate[]
+  defaultItilCategory        TicketCategory?        @default(INCIDENT)
+  defaultTitle               String?
+  supportGroupId             String?
+  legacyTickets              LegacyTicket[]
+  reportTemplates            ReportTemplate[]
+  fieldTemplates             ServiceFieldTemplate[]
+  fields                     ServiceField[]
+  usage                      ServiceUsage[]
+  category                   ServiceCategory        @relation(fields: [categoryId], references: [id])
+  supportGroup               SupportGroup?          @relation(fields: [supportGroupId], references: [id])
+  tier1Category              Category?              @relation(fields: [tier1CategoryId], references: [id])
+  tier2Subcategory           Subcategory?           @relation(fields: [tier2SubcategoryId], references: [id])
+  tier3Item                  Item?                  @relation(fields: [tier3ItemId], references: [id])
+  slaTemplate                SLATemplate?
+  taskTemplates              TaskTemplate[]
+  tickets                    Ticket[]
+  favoritedBy                UserFavoriteService[]
 
   @@map("services")
 }
 
 model ServiceField {
-  id            String    @id @default(cuid())
+  id            String             @id @default(cuid())
   serviceId     String
   name          String
   label         String
   type          FieldType
-  isRequired    Boolean   @default(false)
-  isUserVisible Boolean   @default(true) // false = technician-only
+  isRequired    Boolean            @default(false)
+  isUserVisible Boolean            @default(true)
   placeholder   String?
   helpText      String?
   defaultValue  String?
-  options       Json? // For select, radio, checkbox fields
-  validation    Json? // Validation rules
-  order         Int       @default(0)
-  isActive      Boolean   @default(true)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  // Relations
-  service     Service            @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  fieldValues TicketFieldValue[]
+  options       Json?
+  validation    Json?
+  order         Int                @default(0)
+  isActive      Boolean            @default(true)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  service       Service            @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  fieldValues   TicketFieldValue[]
 
   @@unique([serviceId, name])
   @@map("service_fields")
 }
 
-// Field Template Management - Reusable fields across services
 model FieldTemplate {
-  id           String    @id @default(cuid())
-  name         String    @unique // Internal name for the template
-  label        String // Display label
-  description  String? // Description of what this field is for
-  type         FieldType
-  isRequired   Boolean   @default(false)
-  placeholder  String?
-  helpText     String?
-  defaultValue String?
-  options      Json? // For select, radio, checkbox fields
-  validation   Json? // Validation rules
-  category     String? // Category to group templates (e.g., "Contact Info", "Technical Details")
-  isActive     Boolean   @default(true)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  createdBy    String?
-
-  // Relations
+  id                    String                 @id @default(cuid())
+  name                  String                 @unique
+  label                 String
+  description           String?
+  type                  FieldType
+  isRequired            Boolean                @default(false)
+  placeholder           String?
+  helpText              String?
+  defaultValue          String?
+  options               Json?
+  validation            Json?
+  category              String?
+  isActive              Boolean                @default(true)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  createdBy             String?
   serviceFieldTemplates ServiceFieldTemplate[]
 
   @@map("field_templates")
 }
 
-// Many-to-many relationship between Services and Field Templates
 model ServiceFieldTemplate {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid())
   serviceId       String
   fieldTemplateId String
-  order           Int      @default(0)
-  isRequired      Boolean? // Override template's isRequired for this service
-  isUserVisible   Boolean  @default(true) // false = technician-only
-  helpText        String? // Override template's helpText for this service
-  defaultValue    String? // Override template's defaultValue for this service
-
-  // Relations
-  service       Service       @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  fieldTemplate FieldTemplate @relation(fields: [fieldTemplateId], references: [id])
+  order           Int           @default(0)
+  isRequired      Boolean?
+  isUserVisible   Boolean       @default(true)
+  helpText        String?
+  defaultValue    String?
+  fieldTemplate   FieldTemplate @relation(fields: [fieldTemplateId], references: [id])
+  service         Service       @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
   @@unique([serviceId, fieldTemplateId])
   @@map("service_field_templates")
 }
 
-// Ticket Management
 model Ticket {
-  id                   String               @id @default(cuid())
-  ticketNumber         String               @unique
-  title                String
-  description          String
-  category             TicketCategory       @default(INCIDENT)
-  serviceId            String
-  categoryId           String? // 3-tier: Level 1 Category
-  subcategoryId        String? // 3-tier: Level 2 Subcategory  
-  itemId               String? // 3-tier: Level 3 Item
-  priority             TicketPriority       @default(MEDIUM)
-  status               TicketStatus         @default(OPEN)
-  createdById          String
-  assignedToId         String?
-  branchId             String?
-  supportGroupId       String? // Reference to SupportGroup
-  isConfidential       Boolean              @default(false)
-  issueClassification  IssueClassification?
-  rootCause            String?
-  preventiveMeasures   String?
-  knowledgeBaseCreated Boolean              @default(false)
-  estimatedHours       Int?
-  actualHours          Float?
-  resolutionNotes      String?
-  createdAt            DateTime             @default(now())
-  updatedAt            DateTime             @updatedAt
-  resolvedAt           DateTime?
-  closedAt             DateTime?
-
-  // Security-related fields (optional for backward compatibility)
-  securityClassification String? // "HIGH", "MEDIUM", "LOW"
-  securityFindings       Json? // Store SOC findings details
-
-  // Relations
-  service       Service            @relation(fields: [serviceId], references: [id])
-  supportGroup  SupportGroup?      @relation(fields: [supportGroupId], references: [id])
-  createdBy     User               @relation("TicketCreator", fields: [createdById], references: [id])
-  assignedTo    User?              @relation("TicketAssignee", fields: [assignedToId], references: [id])
-  branch        Branch?            @relation(fields: [branchId], references: [id])
-  fieldValues   TicketFieldValue[]
-  comments      TicketComment[]
-  attachments      TicketAttachment[]
-  approvals        TicketApproval[]
-  slaTracking      SLATracking[]
-  auditLogs        AuditLog[]
-  vendorTickets    VendorTicket[]
-  tasks            TicketTask[]
-  ATMIncident      ATMIncident[]
-  networkIncidents NetworkIncident[]
-  
-  // Service usage tracking
-  serviceUsage     ServiceUsage[]
-  
-  // Knowledge Base relations
-  knowledgeArticles TicketKnowledge[]
-  
-  // Branch-based ATM claim processing
-  atmClaimVerification ATMClaimVerification?
-  branchAssignments    BranchAssignment[]
-  branchCommunications BranchCommunication[]
-  
-  // Migration fields for legacy systems
-  isLegacy         Boolean   @default(false)
-  legacySystem     String?   // e.g., "MANAGEENGINE"
-  legacyTicketId   String?   // Original ticket ID from source system
-  legacyData       Json?     // Store unmapped/additional data
-  importedAt       DateTime?
-  importBatchId    String?
-  
-  // Relations
-  migrationBatch   MigrationBatch? @relation(fields: [importBatchId], references: [id])
+  id                     String                @id @default(cuid())
+  ticketNumber           String                @unique
+  title                  String
+  description            String
+  serviceId              String
+  categoryId             String?
+  subcategoryId          String?
+  itemId                 String?
+  priority               TicketPriority        @default(MEDIUM)
+  status                 TicketStatus          @default(OPEN)
+  createdById            String
+  assignedToId           String?
+  branchId               String?
+  isConfidential         Boolean               @default(false)
+  issueClassification    IssueClassification?
+  rootCause              String?
+  preventiveMeasures     String?
+  knowledgeBaseCreated   Boolean               @default(false)
+  estimatedHours         Int?
+  actualHours            Float?
+  resolutionNotes        String?
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  resolvedAt             DateTime?
+  closedAt               DateTime?
+  category               TicketCategory        @default(INCIDENT)
+  securityClassification String?
+  securityFindings       Json?
+  supportGroupId         String?
+  importBatchId          String?
+  importedAt             DateTime?
+  isLegacy               Boolean               @default(false)
+  legacyData             Json?
+  legacySystem           String?
+  legacyTicketId         String?
+  atmClaimVerification   ATMClaimVerification?
+  ATMIncident            ATMIncident[]
+  auditLogs              AuditLog[]
+  branchAssignments      BranchAssignment[]
+  branchCommunications   BranchCommunication[]
+  legacyTicketMapping    LegacyTicket?         @relation("LegacyTicketMapping")
+  networkIncidents       NetworkIncident[]
+  serviceUsage           ServiceUsage[]
+  slaTracking            SLATracking[]
+  approvals              TicketApproval[]
+  attachments            TicketAttachment[]
+  comments               TicketComment[]
+  fieldValues            TicketFieldValue[]
+  knowledgeArticles      TicketKnowledge[]
+  tasks                  TicketTask[]
+  assignedTo             User?                 @relation("TicketAssignee", fields: [assignedToId], references: [id])
+  branch                 Branch?               @relation(fields: [branchId], references: [id])
+  createdBy              User                  @relation("TicketCreator", fields: [createdById], references: [id])
+  migrationBatch         MigrationBatch?       @relation(fields: [importBatchId], references: [id])
+  service                Service               @relation(fields: [serviceId], references: [id])
+  supportGroup           SupportGroup?         @relation(fields: [supportGroupId], references: [id])
+  vendorTickets          VendorTicket[]
 
   @@map("tickets")
 }
 
 model TicketFieldValue {
-  id       String @id @default(cuid())
+  id       String       @id @default(cuid())
   ticketId String
   fieldId  String
   value    String
-
-  // Relations
-  ticket Ticket       @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  field  ServiceField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  field    ServiceField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  ticket   Ticket       @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
   @@unique([ticketId, fieldId])
   @@map("ticket_field_values")
 }
 
 model TicketComment {
-  id         String   @id @default(cuid())
-  ticketId   String
-  userId     String
-  content    String   @db.Text
-  isInternal Boolean  @default(false)
-  createdAt  DateTime @default(now())
-
-  // Relations
+  id          String              @id @default(cuid())
+  ticketId    String
+  userId      String
+  content     String
+  isInternal  Boolean             @default(false)
+  createdAt   DateTime            @default(now())
+  attachments CommentAttachment[]
   ticket      Ticket              @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   user        User                @relation(fields: [userId], references: [id])
-  attachments CommentAttachment[]
 
   @@map("ticket_comments")
 }
@@ -416,85 +354,73 @@ model TicketAttachment {
   size         Int
   path         String
   createdAt    DateTime @default(now())
-
-  // Relations
-  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticket       Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
   @@map("ticket_attachments")
 }
 
 model CommentAttachment {
-  id           String   @id @default(cuid())
+  id           String        @id @default(cuid())
   commentId    String
   filename     String
   originalName String
   mimeType     String
   size         Int
   path         String
-  createdAt    DateTime @default(now())
-
-  // Relations
-  comment TicketComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  createdAt    DateTime      @default(now())
+  comment      TicketComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
 
   @@map("comment_attachments")
 }
 
-// 3-Tier Category Structure
 model Category {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  isActive    Boolean  @default(true)
-  order       Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  subcategories Subcategory[]
-  services      Service[]
+  id                String             @id @default(cuid())
+  name              String
+  description       String?
+  isActive          Boolean            @default(true)
+  order             Int                @default(0)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
   knowledgeArticles KnowledgeArticle[]
+  services          Service[]
+  subcategories     Subcategory[]
 
   @@map("categories")
 }
 
 model Subcategory {
-  id          String   @id @default(cuid())
-  categoryId  String
-  name        String
-  description String?
-  isActive    Boolean  @default(true)
-  order       Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  category Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  items    Item[]
-  services Service[]
+  id                String             @id @default(cuid())
+  categoryId        String
+  name              String
+  description       String?
+  isActive          Boolean            @default(true)
+  order             Int                @default(0)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  items             Item[]
   knowledgeArticles KnowledgeArticle[]
+  services          Service[]
+  category          Category           @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@map("subcategories")
 }
 
 model Item {
-  id            String   @id @default(cuid())
-  subcategoryId String
-  name          String
-  description   String?
-  isActive      Boolean  @default(true)
-  order         Int      @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  // Relations
-  subcategory Subcategory @relation(fields: [subcategoryId], references: [id], onDelete: Cascade)
-  services    Service[]
+  id                String             @id @default(cuid())
+  subcategoryId     String
+  name              String
+  description       String?
+  isActive          Boolean            @default(true)
+  order             Int                @default(0)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  subcategory       Subcategory        @relation(fields: [subcategoryId], references: [id], onDelete: Cascade)
   knowledgeArticles KnowledgeArticle[]
+  services          Service[]
 
   @@map("items")
 }
 
-// Approval Workflow
 model TicketApproval {
   id         String         @id @default(cuid())
   ticketId   String
@@ -503,35 +429,30 @@ model TicketApproval {
   reason     String?
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
-
-  // Relations
-  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  approver User   @relation(fields: [approverId], references: [id])
+  approver   User           @relation(fields: [approverId], references: [id])
+  ticket     Ticket         @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
   @@map("ticket_approvals")
 }
 
-// SLA Management
 model SLATemplate {
-  id                String   @id @default(cuid())
-  serviceId         String   @unique
-  responseHours     Int      @default(4)
-  resolutionHours   Int      @default(24)
-  escalationHours   Int      @default(48)
-  businessHoursOnly Boolean  @default(true)
-  isActive          Boolean  @default(true)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  // Relations
-  service     Service       @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  slaTracking SLATracking[]
+  id                String        @id @default(cuid())
+  serviceId         String        @unique
+  responseHours     Int           @default(4)
+  resolutionHours   Int           @default(24)
+  escalationHours   Int           @default(48)
+  businessHoursOnly Boolean       @default(true)
+  isActive          Boolean       @default(true)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  service           Service       @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  slaTracking       SLATracking[]
 
   @@map("sla_templates")
 }
 
 model SLATracking {
-  id                   String    @id @default(cuid())
+  id                   String      @id @default(cuid())
   ticketId             String
   slaTemplateId        String
   responseDeadline     DateTime
@@ -539,39 +460,34 @@ model SLATracking {
   escalationDeadline   DateTime
   responseTime         DateTime?
   resolutionTime       DateTime?
-  isResponseBreached   Boolean   @default(false)
-  isResolutionBreached Boolean   @default(false)
-  isEscalated          Boolean   @default(false)
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
-
-  // Relations
-  ticket      Ticket      @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  slaTemplate SLATemplate @relation(fields: [slaTemplateId], references: [id])
+  isResponseBreached   Boolean     @default(false)
+  isResolutionBreached Boolean     @default(false)
+  isEscalated          Boolean     @default(false)
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+  slaTemplate          SLATemplate @relation(fields: [slaTemplateId], references: [id])
+  ticket               Ticket      @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
   @@map("sla_tracking")
 }
 
-// ATM Monitoring
 model ATM {
-  id        String   @id @default(cuid())
-  code      String   @unique
-  name      String
-  branchId  String
-  ipAddress String?
-  location  String?
-  latitude  Float?
-  longitude Float?
-  networkMedia  NetworkMedia? // VSAT, M2M, FO
-  networkVendor String?       // Telkom, Indosat, etc.
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  branch           Branch             @relation(fields: [branchId], references: [id])
-  monitoringLogs   ATMMonitoringLog[]
+  id               String              @id @default(cuid())
+  code             String              @unique
+  name             String
+  branchId         String
+  ipAddress        String?
+  location         String?
+  latitude         Float?
+  longitude        Float?
+  isActive         Boolean             @default(true)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  networkMedia     NetworkMedia?
+  networkVendor    String?
   incidents        ATMIncident[]
+  monitoringLogs   ATMMonitoringLog[]
+  branch           Branch              @relation(fields: [branchId], references: [id])
   networkIncidents NetworkIncident[]
   pingResults      NetworkPingResult[] @relation("ATMPingResults")
 
@@ -585,50 +501,41 @@ model ATMMonitoringLog {
   responseTime Float?
   errorMessage String?
   checkedAt    DateTime  @default(now())
-
-  // Relations
-  atm ATM @relation(fields: [atmId], references: [id], onDelete: Cascade)
+  atm          ATM       @relation(fields: [atmId], references: [id], onDelete: Cascade)
 
   @@map("atm_monitoring_logs")
 }
 
 model ATMIncident {
-  id          String           @id @default(cuid())
-  atmId       String
-  ticketId    String?
-  type        IncidentType
-  severity    IncidentSeverity
-  description String
-  status      IncidentStatus   @default(OPEN)
-  detectedAt  DateTime         @default(now())
-  resolvedAt  DateTime?
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-
-  // External monitoring integration fields
-  externalReferenceId String? // Reference ID from external monitoring system
-  metrics             Json? // Additional metrics/data from monitoring system
-
-  // Relations
-  atm    ATM     @relation(fields: [atmId], references: [id], onDelete: Cascade)
-  ticket Ticket? @relation(fields: [ticketId], references: [id])
+  id                  String           @id @default(cuid())
+  atmId               String
+  ticketId            String?
+  type                IncidentType
+  severity            IncidentSeverity
+  description         String
+  status              IncidentStatus   @default(OPEN)
+  detectedAt          DateTime         @default(now())
+  resolvedAt          DateTime?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  externalReferenceId String?
+  metrics             Json?
+  atm                 ATM              @relation(fields: [atmId], references: [id], onDelete: Cascade)
+  ticket              Ticket?          @relation(fields: [ticketId], references: [id])
 
   @@map("atm_incidents")
 }
 
-// Vendor Management
 model Vendor {
-  id          String   @id @default(cuid())
-  name        String
-  contactName String?
-  email       String?
-  phone       String?
-  address     String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
+  id            String         @id @default(cuid())
+  name          String
+  contactName   String?
+  email         String?
+  phone         String?
+  address       String?
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
   vendorTickets VendorTicket[]
 
   @@map("vendors")
@@ -643,15 +550,12 @@ model VendorTicket {
   description    String?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
-
-  // Relations
-  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  vendor Vendor @relation(fields: [vendorId], references: [id])
+  ticket         Ticket       @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  vendor         Vendor       @relation(fields: [vendorId], references: [id])
 
   @@map("vendor_tickets")
 }
 
-// Audit & Logging
 model AuditLog {
   id        String   @id @default(cuid())
   userId    String?
@@ -664,10 +568,8 @@ model AuditLog {
   ipAddress String?
   userAgent String?
   createdAt DateTime @default(now())
-
-  // Relations
-  user   User?   @relation(fields: [userId], references: [id])
-  ticket Ticket? @relation(fields: [ticketId], references: [id])
+  ticket    Ticket?  @relation(fields: [ticketId], references: [id])
+  user      User?    @relation(fields: [userId], references: [id])
 
   @@map("audit_logs")
 }
@@ -680,66 +582,55 @@ model LoginAttempt {
   success       Boolean
   attemptedAt   DateTime @default(now())
   lockTriggered Boolean  @default(false)
-  
+
   @@map("login_attempts")
 }
 
-// Support Group Management
 model SupportGroup {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  description String?
-  code        String   @unique // For backward compatibility with enum
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  users    User[]
-  services Service[]
-  tickets  Ticket[]
+  id            String         @id @default(cuid())
+  name          String         @unique
+  description   String?
+  code          String         @unique
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  legacyTickets LegacyTicket[]
+  services      Service[]
+  tickets       Ticket[]
+  users         User[]
 
   @@map("support_groups")
 }
 
-// Knowledge Base System
 model KnowledgeArticle {
-  id                String   @id @default(cuid())
-  title             String
-  slug              String   @unique
-  content           String   @db.Text
-  summary           String?
-  status            KnowledgeStatus @default(DRAFT)
-  
-  // 3-Tier Category Relations
-  categoryId        String?
-  subcategoryId     String?
-  itemId            String?
-  
-  // Metadata
-  views             Int      @default(0)
-  helpful           Int      @default(0)
-  notHelpful        Int      @default(0)
-  tags              String[] // Array of tags for search
-  
-  // Author and timestamps
-  authorId          String
-  publishedAt       DateTime?
-  expiresAt         DateTime?
-  isActive          Boolean  @default(true)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  
-  // Relations
-  author            User                    @relation(fields: [authorId], references: [id])
-  category          Category?               @relation(fields: [categoryId], references: [id])
-  subcategory       Subcategory?            @relation(fields: [subcategoryId], references: [id])
-  item              Item?                   @relation(fields: [itemId], references: [id])
-  versions          KnowledgeVersion[]
-  attachments       KnowledgeAttachment[]
-  comments          KnowledgeComment[]
-  relatedTickets    TicketKnowledge[]
-  feedback          KnowledgeFeedback[]
+  id             String                @id @default(cuid())
+  title          String
+  content        String
+  categoryId     String?
+  tags           String[]
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  authorId       String
+  expiresAt      DateTime?
+  helpful        Int                   @default(0)
+  isActive       Boolean               @default(true)
+  itemId         String?
+  notHelpful     Int                   @default(0)
+  publishedAt    DateTime?
+  slug           String                @unique
+  status         KnowledgeStatus       @default(DRAFT)
+  subcategoryId  String?
+  summary        String?
+  views          Int                   @default(0)
+  author         User                  @relation(fields: [authorId], references: [id])
+  category       Category?             @relation(fields: [categoryId], references: [id])
+  item           Item?                 @relation(fields: [itemId], references: [id])
+  subcategory    Subcategory?          @relation(fields: [subcategoryId], references: [id])
+  attachments    KnowledgeAttachment[]
+  comments       KnowledgeComment[]
+  feedback       KnowledgeFeedback[]
+  versions       KnowledgeVersion[]
+  relatedTickets TicketKnowledge[]
 
   @@index([status, isActive])
   @@index([categoryId, subcategoryId, itemId])
@@ -748,142 +639,612 @@ model KnowledgeArticle {
   @@map("knowledge_articles")
 }
 
-// Task Management
 model TaskTemplate {
-  id          String   @id @default(cuid())
+  id          String             @id @default(cuid())
   serviceId   String
   name        String
   description String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  service Service            @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  items   TaskTemplateItem[]
+  isActive    Boolean            @default(true)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  items       TaskTemplateItem[]
+  service     Service            @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
   @@map("task_templates")
 }
 
 model TaskTemplateItem {
-  id               String   @id @default(cuid())
+  id               String       @id @default(cuid())
   taskTemplateId   String
   title            String
   description      String?
-  estimatedMinutes Int?     @default(30)
-  order            Int      @default(0)
-  isRequired       Boolean  @default(true)
+  estimatedMinutes Int?         @default(30)
+  order            Int          @default(0)
+  isRequired       Boolean      @default(true)
   knowledgeBaseUrl String?
-  isActive         Boolean  @default(true)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  // Relations
-  taskTemplate TaskTemplate @relation(fields: [taskTemplateId], references: [id], onDelete: Cascade)
-  ticketTasks  TicketTask[]
+  isActive         Boolean      @default(true)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  taskTemplate     TaskTemplate @relation(fields: [taskTemplateId], references: [id], onDelete: Cascade)
+  ticketTasks      TicketTask[]
 
   @@map("task_template_items")
 }
 
 model TicketTask {
-  id                 String     @id @default(cuid())
+  id                 String           @id @default(cuid())
   ticketId           String
   taskTemplateItemId String
-  status             TaskStatus @default(PENDING)
+  status             TaskStatus       @default(PENDING)
   startedAt          DateTime?
   completedAt        DateTime?
   actualMinutes      Int?
   notes              String?
   completedById      String?
-  createdAt          DateTime   @default(now())
-  updatedAt          DateTime   @updatedAt
-
-  // Relations
-  ticket           Ticket           @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  taskTemplateItem TaskTemplateItem @relation(fields: [taskTemplateItemId], references: [id])
-  completedBy      User?            @relation(fields: [completedById], references: [id])
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  completedBy        User?            @relation(fields: [completedById], references: [id])
+  taskTemplateItem   TaskTemplateItem @relation(fields: [taskTemplateItemId], references: [id])
+  ticket             Ticket           @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
   @@unique([ticketId, taskTemplateItemId])
   @@map("ticket_tasks")
 }
 
-// Network Monitoring Models
 model NetworkMonitoringLog {
-  id              String   @id @default(cuid())
-  entityType      String   // 'BRANCH' or 'ATM'
-  entityId        String   // ID of the branch or ATM
-  ipAddress       String   // IP address being monitored
+  id              String         @id @default(cuid())
+  entityType      String
+  entityId        String
+  ipAddress       String
   status          NetworkStatus
-  responseTimeMs  Int?     // Response time in milliseconds
-  packetLoss      Float?   // Packet loss percentage
-  errorMessage    String?  // Error details if any
-  checkedAt       DateTime @default(now())
-  
-  // Status change tracking
+  responseTimeMs  Int?
+  packetLoss      Float?
+  errorMessage    String?
+  checkedAt       DateTime       @default(now())
   previousStatus  NetworkStatus?
-  statusChangedAt DateTime?  // When status last changed
-  downSince       DateTime?  // When downtime started (for offline status)
-  uptimeSeconds   Int?       // Cumulative uptime in seconds
-  downtimeSeconds Int?       // Cumulative downtime in seconds
-  
+  statusChangedAt DateTime?
+  downSince       DateTime?
+  uptimeSeconds   Int?
+  downtimeSeconds Int?
+
   @@unique([entityType, entityId])
   @@map("network_monitoring_logs")
 }
 
 model NetworkStatusHistory {
-  id              String       @id @default(cuid())
-  entityType      String       // 'BRANCH' or 'ATM'
-  entityId        String       // ID of the branch or ATM
-  ipAddress       String       // IP address that was monitored
-  status          NetworkStatus
-  previousStatus  NetworkStatus?
-  responseTimeMs  Int?
-  packetLoss      Float?
-  errorMessage    String?
-  duration        Int?         // How long this status lasted (in seconds)
-  startedAt       DateTime     // When this status period began
-  endedAt         DateTime?    // When this status period ended (null if current)
-  createdAt       DateTime     @default(now())
-  
+  id             String         @id @default(cuid())
+  entityType     String
+  entityId       String
+  ipAddress      String
+  status         NetworkStatus
+  previousStatus NetworkStatus?
+  responseTimeMs Int?
+  packetLoss     Float?
+  errorMessage   String?
+  duration       Int?
+  startedAt      DateTime
+  endedAt        DateTime?
+  createdAt      DateTime       @default(now())
+
   @@index([entityType, entityId, startedAt])
   @@index([status, startedAt])
   @@map("network_status_history")
 }
 
 model NetworkIncident {
-  id                  String            @id @default(cuid())
-  branchId            String?           // For branch network incidents
-  atmId               String?           // For ATM network incidents  
+  id                  String              @id @default(cuid())
+  branchId            String?
+  atmId               String?
   type                NetworkIncidentType
   severity            IncidentSeverity
   description         String
-  status              IncidentStatus    @default(OPEN)
-  ticketId            String?           // Auto-created ticket ID
-  detectedAt          DateTime          @default(now())
+  status              IncidentStatus      @default(OPEN)
+  ticketId            String?
+  detectedAt          DateTime            @default(now())
   resolvedAt          DateTime?
-  createdAt           DateTime          @default(now())
-  updatedAt           DateTime          @updatedAt
-  
-  // External monitoring integration
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
   externalReferenceId String?
   metrics             Json?
-  
-  // Relations
-  branch  Branch? @relation(fields: [branchId], references: [id])
-  atm     ATM?    @relation(fields: [atmId], references: [id], onDelete: Cascade)
-  ticket  Ticket? @relation(fields: [ticketId], references: [id])
-  
+  atm                 ATM?                @relation(fields: [atmId], references: [id], onDelete: Cascade)
+  branch              Branch?             @relation(fields: [branchId], references: [id])
+  ticket              Ticket?             @relation(fields: [ticketId], references: [id])
+
   @@map("network_incidents")
 }
 
-// Network Media enum for branches and ATMs
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  data      Json?
+  isRead    Boolean          @default(false)
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  user      User             @relation(fields: [userId], references: [id])
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+
+model ApiKey {
+  id           String    @id @default(cuid())
+  name         String
+  key          String    @unique
+  hashedKey    String    @unique
+  description  String?
+  permissions  Json?
+  isActive     Boolean   @default(true)
+  expiresAt    DateTime?
+  lastUsedAt   DateTime?
+  usageCount   Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  createdById  String
+  linkedUserId String?
+  createdBy    User      @relation("ApiKeyCreatedBy", fields: [createdById], references: [id])
+  linkedUser   User?     @relation("ApiKeyLinkedUser", fields: [linkedUserId], references: [id])
+
+  @@index([key])
+  @@index([hashedKey])
+  @@index([isActive])
+  @@index([linkedUserId])
+}
+
+model NetworkPingResult {
+  id                 String        @id @default(cuid())
+  entityType         String
+  entityId           String
+  branchId           String?
+  atmId              String?
+  ipAddress          String
+  ipType             String        @default("PRIMARY")
+  networkMedia       NetworkMedia?
+  networkVendor      String?
+  status             NetworkStatus
+  responseTimeMs     Int?
+  packetLoss         Float?        @default(0)
+  minRtt             Float?
+  maxRtt             Float?
+  avgRtt             Float?
+  mdev               Float?
+  packetsTransmitted Int?
+  packetsReceived    Int?
+  errorMessage       String?
+  checkedAt          DateTime      @default(now())
+  atm                ATM?          @relation("ATMPingResults", fields: [atmId], references: [id], onDelete: Cascade)
+  branch             Branch?       @relation("BranchPingResults", fields: [branchId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([checkedAt])
+  @@index([status])
+  @@map("network_ping_results")
+}
+
+model ServiceUsage {
+  id        String   @id @default(cuid())
+  serviceId String
+  userId    String
+  ticketId  String
+  branchId  String?
+  usedAt    DateTime @default(now())
+  branch    Branch?  @relation(fields: [branchId], references: [id])
+  service   Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([serviceId, usedAt])
+  @@index([userId, serviceId])
+  @@index([branchId, serviceId])
+  @@index([usedAt])
+  @@map("service_usage")
+}
+
+model UserFavoriteService {
+  id         String   @id @default(cuid())
+  userId     String
+  serviceId  String
+  lastUsedAt DateTime @updatedAt
+  isPinned   Boolean  @default(false)
+  order      Int      @default(0)
+  createdAt  DateTime @default(now())
+  service    Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, serviceId])
+  @@index([userId, lastUsedAt])
+  @@index([userId, isPinned, order])
+  @@map("user_favorite_services")
+}
+
+model UserFavoriteCategory {
+  id         String          @id @default(cuid())
+  userId     String
+  categoryId String
+  order      Int             @default(0)
+  createdAt  DateTime        @default(now())
+  category   ServiceCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, categoryId])
+  @@index([userId, order])
+  @@map("user_favorite_categories")
+}
+
+model KnowledgeVersion {
+  id          String           @id @default(cuid())
+  articleId   String
+  version     Int
+  title       String
+  content     String
+  summary     String?
+  changeNotes String?
+  authorId    String
+  createdAt   DateTime         @default(now())
+  article     KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  author      User             @relation(fields: [authorId], references: [id])
+
+  @@unique([articleId, version])
+  @@index([articleId, createdAt])
+  @@map("knowledge_versions")
+}
+
+model KnowledgeAttachment {
+  id           String           @id @default(cuid())
+  articleId    String
+  filename     String
+  originalName String
+  mimeType     String
+  size         Int
+  path         String
+  version      Int              @default(1)
+  uploadedBy   String
+  createdAt    DateTime         @default(now())
+  article      KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  uploader     User             @relation(fields: [uploadedBy], references: [id])
+
+  @@index([articleId])
+  @@map("knowledge_attachments")
+}
+
+model KnowledgeComment {
+  id         String             @id @default(cuid())
+  articleId  String
+  userId     String
+  content    String
+  parentId   String?
+  isResolved Boolean            @default(false)
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+  article    KnowledgeArticle   @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  parent     KnowledgeComment?  @relation("CommentReplies", fields: [parentId], references: [id])
+  replies    KnowledgeComment[] @relation("CommentReplies")
+  user       User               @relation(fields: [userId], references: [id])
+
+  @@index([articleId, parentId])
+  @@index([userId])
+  @@map("knowledge_comments")
+}
+
+model TicketKnowledge {
+  id        String           @id @default(cuid())
+  ticketId  String
+  articleId String
+  linkedBy  String
+  linkedAt  DateTime         @default(now())
+  article   KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [linkedBy], references: [id])
+  ticket    Ticket           @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@unique([ticketId, articleId])
+  @@index([ticketId])
+  @@index([articleId])
+  @@map("ticket_knowledge")
+}
+
+model KnowledgeFeedback {
+  id        String           @id @default(cuid())
+  articleId String
+  userId    String
+  isHelpful Boolean
+  comment   String?
+  createdAt DateTime         @default(now())
+  article   KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id])
+
+  @@unique([articleId, userId])
+  @@index([articleId, isHelpful])
+  @@map("knowledge_feedback")
+}
+
+model CustomReport {
+  id            String            @id @default(cuid())
+  title         String
+  description   String?
+  type          ReportType
+  module        String
+  configuration Json
+  query         String?
+  columns       Json
+  filters       Json
+  groupBy       String[]
+  orderBy       Json
+  chartConfig   Json?
+  createdBy     String
+  isPublic      Boolean           @default(false)
+  category      String?
+  tags          String[]
+  lastRunAt     DateTime?
+  runCount      Int               @default(0)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  creator       User              @relation("ReportCreator", fields: [createdBy], references: [id])
+  executions    ReportExecution[]
+  favorites     ReportFavorite[]
+  schedules     ReportSchedule[]
+
+  @@index([createdBy])
+  @@index([type])
+  @@index([module])
+  @@map("custom_reports")
+}
+
+model ReportSchedule {
+  id           String            @id @default(cuid())
+  reportId     String
+  frequency    ScheduleFrequency
+  scheduleTime String
+  nextRunAt    DateTime
+  lastRunAt    DateTime?
+  format       ExportFormat
+  recipients   String[]
+  emailSubject String?
+  emailBody    String?
+  isActive     Boolean           @default(true)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  report       CustomReport      @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@index([nextRunAt])
+  @@map("report_schedules")
+}
+
+model ReportExecution {
+  id            String          @id @default(cuid())
+  reportId      String
+  executedBy    String?
+  status        ExecutionStatus
+  resultCount   Int?
+  executionTime Int?
+  error         String?
+  resultPath    String?
+  createdAt     DateTime        @default(now())
+  executor      User?           @relation("ReportExecutor", fields: [executedBy], references: [id])
+  report        CustomReport    @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@index([executedBy])
+  @@map("report_executions")
+}
+
+model ReportFavorite {
+  id        String       @id @default(cuid())
+  reportId  String
+  userId    String
+  createdAt DateTime     @default(now())
+  report    CustomReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  user      User         @relation("ReportFavorites", fields: [userId], references: [id])
+
+  @@unique([reportId, userId])
+  @@map("report_favorites")
+}
+
+model ReportTemplate {
+  id              String   @id @default(cuid())
+  name            String
+  description     String?
+  serviceId       String?
+  baseQuery       String
+  availableFields Json
+  defaultFilters  Json?
+  category        String
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  service         Service? @relation(fields: [serviceId], references: [id])
+
+  @@index([serviceId])
+  @@map("report_templates")
+}
+
+model ATMClaimVerification {
+  id                  String                      @id @default(cuid())
+  ticketId            String                      @unique
+  journalChecked      Boolean                     @default(false)
+  journalFindings     String?
+  journalAttachments  Json?
+  ejTransactionFound  Boolean?
+  ejReferenceNumber   String?
+  amountMatches       Boolean?
+  cashOpening         Decimal?                    @db.Decimal(15, 2)
+  cashDispensed       Decimal?                    @db.Decimal(15, 2)
+  cashRemaining       Decimal?                    @db.Decimal(15, 2)
+  cashVariance        Decimal?                    @db.Decimal(15, 2)
+  cctvReviewed        Boolean                     @default(false)
+  cctvFindings        String?
+  cctvEvidenceUrl     String?
+  cctvRequestedAt     DateTime?
+  debitSuccessful     Boolean?
+  reversalCompleted   Boolean?
+  coreSystemCheckedAt DateTime?
+  verifiedById        String?
+  verifiedAt          DateTime?
+  recommendation      VerificationRecommendation?
+  recommendationNotes String?
+  attachments         Json?
+  createdAt           DateTime                    @default(now())
+  updatedAt           DateTime                    @updatedAt
+  ticket              Ticket                      @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  verifiedBy          User?                       @relation(fields: [verifiedById], references: [id])
+
+  @@map("atm_claim_verifications")
+}
+
+model BranchAssignment {
+  id           String           @id @default(cuid())
+  ticketId     String
+  branchId     String
+  assignedToId String
+  assignedById String
+  taskType     BranchTaskType
+  dueTime      DateTime
+  priority     TicketPriority   @default(MEDIUM)
+  status       AssignmentStatus @default(ASSIGNED)
+  startedAt    DateTime?
+  completedAt  DateTime?
+  instructions String?
+  notes        String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  assignedBy   User             @relation("AssignedByBranchTasks", fields: [assignedById], references: [id])
+  assignedTo   User             @relation("AssignedBranchTasks", fields: [assignedToId], references: [id])
+  branch       Branch           @relation(fields: [branchId], references: [id])
+  ticket       Ticket           @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([branchId, status])
+  @@index([assignedToId, status])
+  @@map("branch_assignments")
+}
+
+model BranchCommunication {
+  id           String            @id @default(cuid())
+  ticketId     String
+  fromBranchId String
+  toBranchId   String?
+  userId       String
+  message      String
+  messageType  CommunicationType @default(INFO)
+  attachments  Json?
+  readBy       Json?
+  createdAt    DateTime          @default(now())
+  fromBranch   Branch            @relation("SentCommunications", fields: [fromBranchId], references: [id])
+  ticket       Ticket            @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  toBranch     Branch?           @relation("ReceivedCommunications", fields: [toBranchId], references: [id])
+  user         User              @relation(fields: [userId], references: [id])
+
+  @@index([ticketId, createdAt])
+  @@map("branch_communications")
+}
+
+model LegacyTicket {
+  id                  String                   @id @default(cuid())
+  ticketNumber        String                   @unique
+  title               String
+  description         String
+  category            TicketCategory           @default(INCIDENT)
+  serviceId           String
+  priority            TicketPriority           @default(MEDIUM)
+  status              TicketStatus             @default(OPEN)
+  createdById         String
+  assignedToId        String?
+  branchId            String?
+  supportGroupId      String?
+  isConfidential      Boolean                  @default(false)
+  issueClassification IssueClassification?
+  resolutionNotes     String?
+  originalTicketId    String
+  originalSystem      String
+  originalData        Json
+  importedAt          DateTime                 @default(now())
+  importBatchId       String
+  mappedToTicketId    String?                  @unique
+  isConverted         Boolean                  @default(false)
+  convertedAt         DateTime?
+  convertedById       String?
+  originalCreatedAt   DateTime
+  originalUpdatedAt   DateTime?
+  originalResolvedAt  DateTime?
+  originalClosedAt    DateTime?
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+  attachments         LegacyTicketAttachment[]
+  comments            LegacyTicketComment[]
+  assignedTo          User?                    @relation("LegacyTicketAssignee", fields: [assignedToId], references: [id])
+  branch              Branch?                  @relation(fields: [branchId], references: [id])
+  convertedBy         User?                    @relation("LegacyTicketConverter", fields: [convertedById], references: [id])
+  createdBy           User                     @relation("LegacyTicketCreator", fields: [createdById], references: [id])
+  migrationBatch      MigrationBatch           @relation(fields: [importBatchId], references: [id])
+  mappedToTicket      Ticket?                  @relation("LegacyTicketMapping", fields: [mappedToTicketId], references: [id])
+  service             Service                  @relation(fields: [serviceId], references: [id])
+  supportGroup        SupportGroup?            @relation(fields: [supportGroupId], references: [id])
+
+  @@index([originalSystem, originalTicketId])
+  @@index([importBatchId])
+  @@index([isConverted])
+  @@map("legacy_tickets")
+}
+
+model LegacyTicketComment {
+  id                String       @id @default(cuid())
+  legacyTicketId    String
+  content           String
+  isInternal        Boolean      @default(false)
+  originalAuthor    String?
+  originalData      Json?
+  createdAt         DateTime     @default(now())
+  originalCreatedAt DateTime
+  legacyTicket      LegacyTicket @relation(fields: [legacyTicketId], references: [id], onDelete: Cascade)
+
+  @@map("legacy_ticket_comments")
+}
+
+model LegacyTicketAttachment {
+  id             String       @id @default(cuid())
+  legacyTicketId String
+  filename       String
+  originalName   String
+  mimeType       String
+  size           Int
+  originalUrl    String?
+  downloadUrl    String?
+  isDownloaded   Boolean      @default(false)
+  originalData   Json?
+  createdAt      DateTime     @default(now())
+  legacyTicket   LegacyTicket @relation(fields: [legacyTicketId], references: [id], onDelete: Cascade)
+
+  @@map("legacy_ticket_attachments")
+}
+
+model MigrationBatch {
+  id            String          @id @default(cuid())
+  source        String
+  status        MigrationStatus @default(PENDING)
+  totalCount    Int             @default(0)
+  importedCount Int             @default(0)
+  errorCount    Int             @default(0)
+  startedAt     DateTime?
+  completedAt   DateTime?
+  metadata      Json?
+  errorLog      Json?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  legacyTickets LegacyTicket[]
+  tickets       Ticket[]
+
+  @@map("migration_batches")
+}
+
 enum NetworkMedia {
   VSAT
   M2M
   FO
 }
 
-// Enums
 enum UserRole {
   USER
   TECHNICIAN
@@ -901,7 +1262,6 @@ enum TicketCategory {
 
 enum TicketStatus {
   OPEN
-  PENDING
   PENDING_APPROVAL
   APPROVED
   REJECTED
@@ -910,6 +1270,7 @@ enum TicketStatus {
   RESOLVED
   CLOSED
   CANCELLED
+  PENDING
 }
 
 enum TicketPriority {
@@ -919,8 +1280,6 @@ enum TicketPriority {
   CRITICAL
   EMERGENCY
 }
-
-// SupportGroup is now a model, not an enum
 
 enum IssueClassification {
   HUMAN_ERROR
@@ -1017,27 +1376,6 @@ enum NetworkIncidentType {
   NETWORK_CONGESTION
 }
 
-// Notification System
-model Notification {
-  id          String               @id @default(cuid())
-  userId      String
-  type        NotificationType
-  title       String
-  message     String
-  data        Json?                // Additional data like ticketId, commentId, etc.
-  isRead      Boolean              @default(false)
-  readAt      DateTime?
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
-  
-  // Relations
-  user        User                 @relation(fields: [userId], references: [id])
-  
-  @@index([userId, isRead])
-  @@index([userId, createdAt])
-  @@map("notifications")
-}
-
 enum NotificationType {
   TICKET_CREATED
   TICKET_ASSIGNED
@@ -1052,332 +1390,12 @@ enum NotificationType {
   MENTION
 }
 
-model ApiKey {
-  id            String    @id @default(cuid())
-  name          String
-  key           String    @unique
-  hashedKey     String    @unique
-  description   String?
-  permissions   Json?     // Array of allowed endpoints or permissions
-  isActive      Boolean   @default(true)
-  expiresAt     DateTime?
-  lastUsedAt    DateTime?
-  usageCount    Int       @default(0)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  createdBy     User      @relation("ApiKeyCreatedBy", fields: [createdById], references: [id])
-  createdById   String
-  linkedUser    User?     @relation("ApiKeyLinkedUser", fields: [linkedUserId], references: [id])
-  linkedUserId  String?
-  
-  @@index([key])
-  @@index([hashedKey])
-  @@index([isActive])
-  @@index([linkedUserId])
-}
-
-// Network Ping Result Model for monitoring
-model NetworkPingResult {
-  id                String            @id @default(cuid())
-  entityType        String            // "BRANCH" or "ATM"
-  entityId          String            // Branch or ATM id
-  branchId          String?           // Direct reference for branches
-  atmId             String?           // Direct reference for ATMs
-  ipAddress         String            // IP address that was pinged
-  ipType            String            @default("PRIMARY") // "PRIMARY" or "BACKUP"
-  networkMedia      NetworkMedia?     // The network media type
-  networkVendor     String?           // The network vendor
-  status            NetworkStatus     // ONLINE, OFFLINE, SLOW, TIMEOUT, ERROR
-  responseTimeMs    Int?              // Response time in milliseconds
-  packetLoss        Float?            @default(0) // Packet loss percentage (0-100)
-  minRtt            Float?            // Minimum round-trip time
-  maxRtt            Float?            // Maximum round-trip time
-  avgRtt            Float?            // Average round-trip time
-  mdev              Float?            // Mean deviation of RTT
-  packetsTransmitted Int?             // Number of packets sent
-  packetsReceived   Int?              // Number of packets received
-  errorMessage      String?           // Error details if any
-  checkedAt         DateTime          @default(now())
-  
-  // Relations
-  branch  Branch? @relation("BranchPingResults", fields: [branchId], references: [id])
-  atm     ATM?    @relation("ATMPingResults", fields: [atmId], references: [id], onDelete: Cascade)
-  
-  @@index([entityType, entityId])
-  @@index([checkedAt])
-  @@index([status])
-  @@map("network_ping_results")
-}
-
-// Service Usage Tracking for Analytics
-model ServiceUsage {
-  id        String   @id @default(cuid())
-  serviceId String
-  service   Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  ticketId  String
-  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  
-  branchId  String?
-  branch    Branch?  @relation(fields: [branchId], references: [id])
-  
-  usedAt    DateTime @default(now())
-  
-  @@index([serviceId, usedAt])
-  @@index([userId, serviceId])
-  @@index([branchId, serviceId])
-  @@index([usedAt])
-  @@map("service_usage")
-}
-
-// User Favorite Services
-model UserFavoriteService {
-  id         String   @id @default(cuid())
-  
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  serviceId  String
-  service    Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  
-  lastUsedAt DateTime @updatedAt
-  isPinned   Boolean  @default(false) // User can pin favorites to top
-  order      Int      @default(0)     // Custom ordering
-  createdAt  DateTime @default(now())
-  
-  @@unique([userId, serviceId])
-  @@index([userId, lastUsedAt])
-  @@index([userId, isPinned, order])
-  @@map("user_favorite_services")
-}
-
-// User Favorite Categories
-model UserFavoriteCategory {
-  id         String   @id @default(cuid())
-  
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  categoryId String
-  category   ServiceCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  
-  order      Int      @default(0)     // Custom ordering
-  createdAt  DateTime @default(now())
-  
-  @@unique([userId, categoryId])
-  @@index([userId, order])
-  @@map("user_favorite_categories")
-}
-
-
-model KnowledgeVersion {
-  id              String   @id @default(cuid())
-  articleId       String
-  version         Int
-  title           String
-  content         String   @db.Text
-  summary         String?
-  changeNotes     String?  // Version comment/notes
-  authorId        String
-  createdAt       DateTime @default(now())
-  
-  // Relations
-  article         KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  author          User             @relation(fields: [authorId], references: [id])
-
-  @@unique([articleId, version])
-  @@index([articleId, createdAt])
-  @@map("knowledge_versions")
-}
-
-model KnowledgeAttachment {
-  id              String   @id @default(cuid())
-  articleId       String
-  filename        String
-  originalName    String
-  mimeType        String
-  size            Int
-  path            String
-  version         Int      @default(1)
-  uploadedBy      String
-  createdAt       DateTime @default(now())
-  
-  // Relations
-  article         KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  uploader        User             @relation(fields: [uploadedBy], references: [id])
-
-  @@index([articleId])
-  @@map("knowledge_attachments")
-}
-
-model KnowledgeComment {
-  id              String   @id @default(cuid())
-  articleId       String
-  userId          String
-  content         String   @db.Text
-  parentId        String?  // For nested comments
-  isResolved      Boolean  @default(false)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  // Relations
-  article         KnowledgeArticle  @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  user            User              @relation(fields: [userId], references: [id])
-  parent          KnowledgeComment? @relation("CommentReplies", fields: [parentId], references: [id])
-  replies         KnowledgeComment[] @relation("CommentReplies")
-
-  @@index([articleId, parentId])
-  @@index([userId])
-  @@map("knowledge_comments")
-}
-
-model TicketKnowledge {
-  id              String   @id @default(cuid())
-  ticketId        String
-  articleId       String
-  linkedBy        String
-  linkedAt        DateTime @default(now())
-  
-  // Relations
-  ticket          Ticket           @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  article         KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  user            User             @relation(fields: [linkedBy], references: [id])
-  
-  @@unique([ticketId, articleId])
-  @@index([ticketId])
-  @@index([articleId])
-  @@map("ticket_knowledge")
-}
-
-model KnowledgeFeedback {
-  id              String   @id @default(cuid())
-  articleId       String
-  userId          String
-  isHelpful       Boolean
-  comment         String?
-  createdAt       DateTime @default(now())
-  
-  // Relations
-  article         KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  user            User             @relation(fields: [userId], references: [id])
-  
-  @@unique([articleId, userId])
-  @@index([articleId, isHelpful])
-  @@map("knowledge_feedback")
-}
-
 enum KnowledgeStatus {
   DRAFT
   UNDER_REVIEW
   PUBLISHED
   ARCHIVED
   EXPIRED
-}
-
-// Report Builder Models
-model CustomReport {
-  id              String   @id @default(cuid())
-  title           String
-  description     String?
-  type            ReportType
-  module          String   // TICKETS, SERVICES, USERS, etc.
-  configuration   Json     // Stores report configuration
-  query           String?  @db.Text // SQL query for advanced reports
-  columns         Json     // Selected columns configuration
-  filters         Json     // Filter criteria
-  groupBy         String[]
-  orderBy         Json
-  chartConfig     Json?    // Chart configuration
-  createdBy       String
-  creator         User     @relation("ReportCreator", fields: [createdBy], references: [id])
-  isPublic        Boolean  @default(false)
-  category        String?  // Report category for organization
-  tags            String[]
-  lastRunAt       DateTime?
-  runCount        Int      @default(0)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  schedules       ReportSchedule[]
-  executions      ReportExecution[]
-  favorites       ReportFavorite[]
-  
-  @@index([createdBy])
-  @@index([type])
-  @@index([module])
-  @@map("custom_reports")
-}
-
-model ReportSchedule {
-  id              String   @id @default(cuid())
-  reportId        String
-  report          CustomReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  frequency       ScheduleFrequency
-  scheduleTime    String   // Cron expression or time
-  nextRunAt       DateTime
-  lastRunAt       DateTime?
-  format          ExportFormat
-  recipients      String[] // Email addresses
-  emailSubject    String?
-  emailBody       String?  @db.Text
-  isActive        Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  @@index([reportId])
-  @@index([nextRunAt])
-  @@map("report_schedules")
-}
-
-model ReportExecution {
-  id              String   @id @default(cuid())
-  reportId        String
-  report          CustomReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  executedBy      String?
-  executor        User?    @relation("ReportExecutor", fields: [executedBy], references: [id])
-  status          ExecutionStatus
-  resultCount     Int?
-  executionTime   Int?     // in milliseconds
-  error           String?  @db.Text
-  resultPath      String?  // Path to stored result file
-  createdAt       DateTime @default(now())
-  
-  @@index([reportId])
-  @@index([executedBy])
-  @@map("report_executions")
-}
-
-model ReportFavorite {
-  id              String   @id @default(cuid())
-  reportId        String
-  report          CustomReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  userId          String
-  user            User     @relation("ReportFavorites", fields: [userId], references: [id])
-  createdAt       DateTime @default(now())
-  
-  @@unique([reportId, userId])
-  @@map("report_favorites")
-}
-
-model ReportTemplate {
-  id              String   @id @default(cuid())
-  name            String
-  description     String?
-  serviceId       String?  // Link to service template
-  service         Service? @relation(fields: [serviceId], references: [id])
-  baseQuery       String   @db.Text
-  availableFields Json     // Fields available for this template
-  defaultFilters  Json?
-  category        String
-  isActive        Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  @@index([serviceId])
-  @@map("report_templates")
 }
 
 enum ReportType {
@@ -1408,125 +1426,6 @@ enum ExecutionStatus {
   FAILED
 }
 
-// ========== BRANCH-BASED ATM CLAIM PROCESSING MODELS ==========
-
-// ATM Claim Verification model for branch processing
-model ATMClaimVerification {
-  id              String    @id @default(cuid())
-  ticketId        String    @unique
-  
-  // Journal verification
-  journalChecked      Boolean   @default(false)
-  journalFindings     String?   @db.Text
-  journalAttachments  Json?
-  
-  // Electronic Journal
-  ejTransactionFound  Boolean?
-  ejReferenceNumber   String?
-  amountMatches       Boolean?
-  
-  // Cash reconciliation
-  cashOpening         Decimal?  @db.Decimal(15, 2)
-  cashDispensed       Decimal?  @db.Decimal(15, 2)
-  cashRemaining       Decimal?  @db.Decimal(15, 2)
-  cashVariance        Decimal?  @db.Decimal(15, 2)
-  
-  // CCTV Review
-  cctvReviewed        Boolean   @default(false)
-  cctvFindings        String?   @db.Text
-  cctvEvidenceUrl     String?
-  cctvRequestedAt     DateTime?
-  
-  // Core banking check
-  debitSuccessful     Boolean?
-  reversalCompleted   Boolean?
-  coreSystemCheckedAt DateTime?
-  
-  // Verification result
-  verifiedById        String?
-  verifiedAt          DateTime?
-  recommendation      VerificationRecommendation?
-  recommendationNotes String?   @db.Text
-  
-  // Evidence and attachments
-  attachments         Json?     // Array of {filename, url, type, uploadedAt}
-  
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
-  
-  // Relations
-  ticket              Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  verifiedBy          User?     @relation(fields: [verifiedById], references: [id])
-  
-  @@map("atm_claim_verifications")
-}
-
-// Branch Assignment model for staff task allocation
-model BranchAssignment {
-  id            String    @id @default(cuid())
-  ticketId      String
-  branchId      String
-  assignedToId  String
-  assignedById  String
-  
-  // Task details
-  taskType      BranchTaskType
-  dueTime       DateTime
-  priority      TicketPriority  @default(MEDIUM)
-  
-  // Status tracking
-  status        AssignmentStatus @default(ASSIGNED)
-  startedAt     DateTime?
-  completedAt   DateTime?
-  
-  // Notes and communication
-  instructions  String?   @db.Text
-  notes         String?   @db.Text
-  
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  
-  // Relations
-  ticket        Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  branch        Branch    @relation(fields: [branchId], references: [id])
-  assignedTo    User      @relation("AssignedBranchTasks", fields: [assignedToId], references: [id])
-  assignedBy    User      @relation("AssignedByBranchTasks", fields: [assignedById], references: [id])
-  
-  @@index([branchId, status])
-  @@index([assignedToId, status])
-  @@map("branch_assignments")
-}
-
-// Inter-branch communication for collaboration
-model BranchCommunication {
-  id            String    @id @default(cuid())
-  ticketId      String
-  fromBranchId  String
-  toBranchId    String?   // Null for broadcast to all related branches
-  userId        String
-  
-  message       String    @db.Text
-  messageType   CommunicationType @default(INFO)
-  
-  // Attachments
-  attachments   Json?
-  
-  // Read receipts
-  readBy        Json?     // Array of {userId, readAt}
-  
-  createdAt     DateTime  @default(now())
-  
-  // Relations
-  ticket        Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  fromBranch    Branch    @relation("SentCommunications", fields: [fromBranchId], references: [id])
-  toBranch      Branch?   @relation("ReceivedCommunications", fields: [toBranchId], references: [id])
-  user          User      @relation(fields: [userId], references: [id])
-  
-  @@index([ticketId, createdAt])
-  @@map("branch_communications")
-}
-
-// Enum for verification recommendations
 enum VerificationRecommendation {
   APPROVE
   REJECT
@@ -1534,7 +1433,6 @@ enum VerificationRecommendation {
   NEED_MORE_INFO
 }
 
-// Enum for branch task types
 enum BranchTaskType {
   VERIFY_CLAIM
   REVIEW_DOCUMENTS
@@ -1544,7 +1442,6 @@ enum BranchTaskType {
   RECONCILE_CASH
 }
 
-// Enum for assignment status
 enum AssignmentStatus {
   ASSIGNED
   IN_PROGRESS
@@ -1553,7 +1450,6 @@ enum AssignmentStatus {
   OVERDUE
 }
 
-// Enum for communication types
 enum CommunicationType {
   INFO
   URGENT
@@ -1562,28 +1458,6 @@ enum CommunicationType {
   ESCALATION
 }
 
-// Migration batch tracking
-model MigrationBatch {
-  id             String   @id @default(cuid())
-  source         String   // e.g., "MANAGEENGINE"
-  status         MigrationStatus @default(PENDING)
-  totalCount     Int      @default(0)
-  importedCount  Int      @default(0)
-  errorCount     Int      @default(0)
-  startedAt      DateTime?
-  completedAt    DateTime?
-  metadata       Json?    // Store configuration, mappings, etc.
-  errorLog       Json?    // Store error details
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  
-  // Relations
-  tickets        Ticket[]
-  
-  @@map("migration_batches")
-}
-
-// Enum for migration status
 enum MigrationStatus {
   PENDING
   IN_PROGRESS

@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { getClientIp } from '@/lib/utils/ip-utils';
+import { authenticateApiKey, checkApiPermission, createApiErrorResponse } from '@/lib/auth-api';
 
 // Validation schema for creating ATM incidents
 const createIncidentSchema = z.object({
@@ -46,31 +47,52 @@ const ATM_INCIDENT_MAPPING = {
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    // Check for API key first
+    const apiAuth = await authenticateApiKey(request);
+    let userId: string | null = null;
+    let hasAccess = false;
     
-    if (!session || !['MANAGER', 'ADMIN', 'TECHNICIAN'].includes(session.user.role)) {
+    if (apiAuth.authenticated && apiAuth.apiKey) {
+      // Check if API key has required permissions for monitoring
+      if (checkApiPermission(apiAuth.apiKey, 'monitoring:read') || checkApiPermission(apiAuth.apiKey, 'atm:read')) {
+        hasAccess = true;
+        userId = apiAuth.apiKey.linkedUserId || apiAuth.apiKey.createdById;
+      }
+    } else {
+      // Fall back to session authentication if no valid API key
+      const session = await auth();
+      
+      if (session && ['MANAGER', 'ADMIN', 'SUPER_ADMIN', 'TECHNICIAN'].includes(session.user.role)) {
+        hasAccess = true;
+        userId = session.user.id;
+      }
+    }
+    
+    if (!hasAccess) {
       // Log unauthorized access attempt
       const clientIp = getClientIp(request);
       console.log(`[ATM Incidents] Unauthorized access attempt from IP: ${clientIp}`);
       
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return createApiErrorResponse('Unauthorized - requires valid API key with monitoring:read permission or session with appropriate role', 401);
     }
 
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '20');
     const atmCode = searchParams.get('atmCode');
 
-    // Get user's branch if not admin
+    // Get user's branch if not admin (for API keys, show all data)
     let branchId: string | undefined;
-    if (session.user.role !== 'ADMIN') {
+    if (userId && !apiAuth.authenticated) {
+      // Only filter by branch for session-based access (not API key access)
       const user = await prisma.user.findUnique({
-        where: { id: session.user.id },
-        select: { branchId: true }
+        where: { id: userId },
+        select: { branchId: true, role: true }
       });
-      branchId = user?.branchId || undefined;
+      
+      // Admins, Super Admins, and Managers can see all branches
+      if (user && !['ADMIN', 'SUPER_ADMIN', 'MANAGER'].includes(user.role)) {
+        branchId = user.branchId || undefined;
+      }
     }
 
     // Build where clause
@@ -153,19 +175,28 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/monitoring/atms/incidents - Create new ATM incident (for external monitoring systems)
+// POST /api/monitoring/atms/incidents - Create new ATM incident (requires API key)
 export async function POST(request: NextRequest) {
   try {
-    // Allow external monitoring systems or internal users with proper roles
-    const session = await auth();
+    // Check for API key first (required for POST)
+    const apiAuth = await authenticateApiKey(request);
+    let userId: string | null = null;
+    let hasAccess = false;
     
-    // If there's a session, check if user has proper permissions
-    // If no session, allow external monitoring systems (API key validation can be added later)
-    if (session && !['MANAGER', 'ADMIN', 'TECHNICIAN', 'SECURITY_ANALYST'].includes(session.user.role)) {
-      return NextResponse.json(
-        { error: 'Unauthorized - insufficient permissions' },
-        { status: 403 }
-      );
+    if (apiAuth.authenticated && apiAuth.apiKey) {
+      // Check if API key has required permissions for creating incidents
+      if (checkApiPermission(apiAuth.apiKey, 'monitoring:write') || checkApiPermission(apiAuth.apiKey, 'atm:write')) {
+        hasAccess = true;
+        userId = apiAuth.apiKey.linkedUserId || apiAuth.apiKey.createdById;
+      }
+    }
+    
+    if (!hasAccess) {
+      // Log unauthorized access attempt
+      const clientIp = getClientIp(request);
+      console.log(`[ATM Incidents] Unauthorized POST attempt from IP: ${clientIp}`);
+      
+      return createApiErrorResponse('Unauthorized - requires valid API key with monitoring:write or atm:write permission', 401);
     }
 
     const body = await request.json();
@@ -190,8 +221,8 @@ export async function POST(request: NextRequest) {
     
     if (validatedData.autoCreateTicket) {
       try {
-        // Find or create a system user for external API calls
-        if (!session?.user?.id) {
+        // Find or create a system user for API key calls or use linked user
+        if (!userId) {
           systemUser = await prisma.user.findFirst({
             where: { 
               email: 'system@banksulutgo.co.id',
@@ -280,7 +311,7 @@ export async function POST(request: NextRequest) {
             supportGroupId: service.supportGroupId, // Assign to service's support group
             priority,
             status: 'OPEN',
-            createdById: session?.user?.id || systemUser!.id, // Use system user if external
+            createdById: userId || systemUser!.id, // Use API key user or system user
             branchId: atm.branchId,
             isConfidential: validatedData.type === 'SECURITY_BREACH', // Security incidents are confidential
             issueClassification: validatedData.type === 'HARDWARE_FAILURE' ? 'HARDWARE_FAILURE' :
@@ -347,12 +378,17 @@ export async function POST(request: NextRequest) {
     const clientIp = getClientIp(request);
     
     // Create audit log for incident creation
-    if (session?.user?.id) {
+    const auditUserId = userId || systemUser?.id || (await prisma.user.findFirst({
+      where: { email: 'system@banksulutgo.co.id' },
+      select: { id: true }
+    }))?.id;
+    
+    if (auditUserId) {
       await prisma.auditLog.create({
         data: {
-          userId: session.user.id,
+          userId: auditUserId,
           ticketId,
-          action: 'CREATE_ATM_INCIDENT',
+          action: apiAuth.authenticated ? 'CREATE_ATM_INCIDENT_API' : 'CREATE_ATM_INCIDENT',
           entity: 'ATMIncident',
           entityId: incident.id,
           newValues: {
@@ -361,38 +397,13 @@ export async function POST(request: NextRequest) {
             severity: validatedData.severity,
             autoTicketCreated: !!ticketId,
             sourceIp: clientIp,
-            userAgent: request.headers.get('user-agent') || 'Unknown'
+            userAgent: request.headers.get('user-agent') || 'Unknown',
+            externalReferenceId: validatedData.externalReferenceId,
+            apiKeyName: apiAuth.apiKey?.name || null,
+            note: apiAuth.authenticated ? 'Created via API key' : 'Created via session'
           }
         }
       });
-    } else {
-      // For external API calls without session, still log with system user
-      const systemUserId = systemUser?.id || (await prisma.user.findFirst({
-        where: { email: 'system@banksulutgo.co.id' },
-        select: { id: true }
-      }))?.id;
-      
-      if (systemUserId) {
-        await prisma.auditLog.create({
-          data: {
-            userId: systemUserId,
-            ticketId,
-            action: 'CREATE_ATM_INCIDENT_EXTERNAL',
-            entity: 'ATMIncident',
-            entityId: incident.id,
-            newValues: {
-              atmCode: validatedData.atmCode,
-              type: validatedData.type,
-              severity: validatedData.severity,
-              autoTicketCreated: !!ticketId,
-              sourceIp: clientIp,
-              userAgent: request.headers.get('user-agent') || 'Unknown',
-              externalReferenceId: validatedData.externalReferenceId,
-              note: 'Created via external API'
-            }
-          }
-        });
-      }
     }
 
     return NextResponse.json({

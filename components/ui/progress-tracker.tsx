@@ -3,6 +3,7 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
 import { RichTextViewer } from "@/components/ui/rich-text-editor"
+import { getAvatarById } from "@/components/ui/avatar-presets"
 import { 
   Clock, 
   User, 
@@ -100,16 +101,27 @@ const statusIcons: Record<string, React.ReactNode> = {
 }
 
 const statusColors: Record<string, string> = {
-  "OPEN": "bg-blue-500 text-white",
-  "PENDING": "bg-yellow-500 text-white",
-  "PENDING_APPROVAL": "bg-orange-500 text-white", 
-  "APPROVED": "bg-emerald-500 text-white",
-  "REJECTED": "bg-red-500 text-white",
-  "IN_PROGRESS": "bg-indigo-500 text-white",
-  "PENDING_VENDOR": "bg-purple-500 text-white",
-  "RESOLVED": "bg-teal-500 text-white",
-  "CLOSED": "bg-green-500 text-white",
-  "CANCELLED": "bg-gray-500 text-white"
+  "OPEN": "bg-amber-500 text-white dark:bg-amber-400 dark:text-brown-950",
+  "PENDING": "bg-yellow-500 text-white dark:bg-yellow-400 dark:text-brown-950",
+  "PENDING_APPROVAL": "bg-orange-500 text-white dark:bg-orange-400 dark:text-brown-950", 
+  "APPROVED": "bg-emerald-500 text-white dark:bg-emerald-400 dark:text-brown-950",
+  "REJECTED": "bg-red-500 text-white dark:bg-red-400 dark:text-brown-950",
+  "IN_PROGRESS": "bg-brown-500 text-white dark:bg-brown-400 dark:text-brown-950",
+  "PENDING_VENDOR": "bg-purple-500 text-white dark:bg-purple-400 dark:text-brown-950",
+  "RESOLVED": "bg-teal-500 text-white dark:bg-teal-400 dark:text-brown-950",
+  "CLOSED": "bg-green-500 text-white dark:bg-green-400 dark:text-brown-950",
+  "CANCELLED": "bg-gray-500 text-white dark:bg-gray-400 dark:text-brown-950"
+}
+
+// Helper function to generate user initials
+const getUserInitials = (name: string): string => {
+  if (!name) return '';
+  return name
+    .split(' ')
+    .map(word => word[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
 }
 
 // Helper function to filter technician comments for a specific step
@@ -173,7 +185,7 @@ const getDefaultSteps = (currentStatus: string, ticketData?: any): ProgressStep[
           status: "completed",
           timestamp: latestApproval.updatedAt,
           user: latestApproval.approver,
-          description: latestApproval.reason || "Approved by manager"
+          description: `Approved by ${latestApproval.approver.name}`
         })
       } else if (latestApproval.status === 'REJECTED') {
         steps.push({
@@ -207,14 +219,24 @@ const getDefaultSteps = (currentStatus: string, ticketData?: any): ProgressStep[
       id: "RESOLVED",
       label: "Resolved",
       status: getStepStatus("RESOLVED", currentStatus, steps),
-      timestamp: ticketData?.resolvedAt
+      timestamp: ticketData?.resolvedAt,
+      user: ticketData?.assignedTo, // Usually the assigned technician resolves the ticket
+      description: ticketData?.resolvedAt 
+        ? `Ticket resolved ${ticketData.assignedTo?.name ? `by ${ticketData.assignedTo.name}` : ''}`
+        : undefined,
+      comments: getCommentsForStep("RESOLVED", ticketData)
     })
     
     steps.push({
       id: "CLOSED",
       label: "Closed",
       status: getStepStatus("CLOSED", currentStatus, steps),
-      timestamp: ticketData?.closedAt
+      timestamp: ticketData?.closedAt,
+      user: ticketData?.assignedTo, // Usually the assigned technician closes the ticket
+      description: ticketData?.closedAt 
+        ? `Ticket closed and marked as complete ${ticketData.assignedTo?.name ? `by ${ticketData.assignedTo.name}` : ''}`
+        : undefined,
+      comments: getCommentsForStep("CLOSED", ticketData)
     })
   }
   
@@ -273,16 +295,27 @@ export const ProgressTracker = React.forwardRef<
           <div key={step.id} className="flex items-start gap-4">
             {/* Step indicator */}
             <div className="flex flex-col items-center">
-              <div
-                className={cn(
-                  "w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300 shadow-md",
-                  step.status === "completed" && statusColors[step.id] || "bg-green-500 text-white",
-                  step.status === "current" && statusColors[step.id] || "bg-blue-500 text-white animate-pulse",
-                  step.status === "pending" && "bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400",
-                  step.status === "skipped" && "bg-gray-300 text-gray-400 dark:bg-gray-600"
+              <div className="w-10 h-10 relative">
+                {step.user && (step.user as any)?.avatar && getAvatarById((step.user as any).avatar) ? (
+                  <div className="w-full h-full scale-90">
+                    {getAvatarById((step.user as any).avatar)?.component}
+                  </div>
+                ) : (
+                  <div
+                    className={cn(
+                      "w-full h-full rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300 shadow-md",
+                      step.status === "completed" && statusColors[step.id] || "bg-green-500 text-white",
+                      step.status === "current" && statusColors[step.id] || "bg-amber-500 text-white dark:bg-amber-400 dark:text-brown-950 animate-pulse",
+                      step.status === "pending" && "bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400",
+                      step.status === "skipped" && "bg-gray-300 text-gray-400 dark:bg-gray-600"
+                    )}
+                  >
+                    {step.user && step.user.name ? 
+                      getUserInitials(step.user.name) : 
+                      (statusIcons[step.id] || (index + 1))
+                    }
+                  </div>
                 )}
-              >
-                {statusIcons[step.id] || (index + 1)}
               </div>
               {index < steps.length - 1 && (
                 <div
@@ -301,8 +334,8 @@ export const ProgressTracker = React.forwardRef<
               <div className="flex items-center justify-between">
                 <h4 className={cn(
                   "font-medium transition-colors",
-                  step.status === "completed" && "text-green-600 dark:text-green-400",
-                  step.status === "current" && "text-blue-600 dark:text-blue-400",
+                  step.status === "completed" && "text-brown-600 dark:text-brown-400",
+                  step.status === "current" && "text-amber-600 dark:text-amber-400",
                   step.status === "pending" && "text-gray-500 dark:text-gray-400",
                   step.status === "skipped" && "text-gray-400 line-through"
                 )}>
@@ -327,7 +360,8 @@ export const ProgressTracker = React.forwardRef<
                 </p>
               )}
               
-              {showUsers && step.user && (
+              {/* Always show user info for key steps */}
+              {step.user && (step.id === 'OPEN' || step.id === 'APPROVED' || step.id === 'RESOLVED' || step.id === 'CLOSED' || showUsers) && (
                 <div className="flex items-center gap-1 mt-1">
                   <User className="w-3 h-3 text-gray-400" />
                   <span className="text-xs text-gray-500">
@@ -343,11 +377,11 @@ export const ProgressTracker = React.forwardRef<
                     Technician Updates
                   </div>
                   {step.comments.map((comment) => (
-                    <div key={comment.id} className="bg-blue-50 dark:bg-blue-900/20 border-l-2 border-blue-200 dark:border-blue-700 p-2 rounded-r">
+                    <div key={comment.id} className="bg-amber-50 dark:bg-amber-900/20 border-l-2 border-amber-200 dark:border-amber-700 p-2 rounded-r">
                       <RichTextViewer content={comment.content} className="text-sm text-gray-700 dark:text-gray-300 mb-1" />
                       <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
                         <span className="font-medium">{comment.user.name} ({comment.user.role})</span>
-                        <span>{new Date(comment.createdAt).toLocaleDateString()}</span>
+                        <span>{new Date(comment.createdAt).toLocaleString()}</span>
                       </div>
                     </div>
                   ))}
@@ -371,22 +405,33 @@ export const ProgressTracker = React.forwardRef<
         {steps.map((step, index) => (
           <div key={step.id} className="flex items-center">
             <div className="flex flex-col items-center">
-              <div
-                className={cn(
-                  "w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300 shadow-md",
-                  step.status === "completed" && statusColors[step.id] || "bg-green-500 text-white",
-                  step.status === "current" && statusColors[step.id] || "bg-blue-500 text-white animate-pulse",
-                  step.status === "pending" && "bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400",
-                  step.status === "skipped" && "bg-gray-300 text-gray-400 dark:bg-gray-600"
+              <div className="w-10 h-10 relative">
+                {step.user && (step.user as any)?.avatar && getAvatarById((step.user as any).avatar) ? (
+                  <div className="w-full h-full scale-90">
+                    {getAvatarById((step.user as any).avatar)?.component}
+                  </div>
+                ) : (
+                  <div
+                    className={cn(
+                      "w-full h-full rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300 shadow-md",
+                      step.status === "completed" && statusColors[step.id] || "bg-green-500 text-white",
+                      step.status === "current" && statusColors[step.id] || "bg-amber-500 text-white dark:bg-amber-400 dark:text-brown-950 animate-pulse",
+                      step.status === "pending" && "bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400",
+                      step.status === "skipped" && "bg-gray-300 text-gray-400 dark:bg-gray-600"
+                    )}
+                  >
+                    {step.user && step.user.name ? 
+                      getUserInitials(step.user.name) : 
+                      (statusIcons[step.id] || (index + 1))
+                    }
+                  </div>
                 )}
-              >
-                {statusIcons[step.id] || (index + 1)}
               </div>
               <div className="mt-2 text-center">
                 <div className={cn(
                   "text-sm font-medium transition-colors",
-                  step.status === "completed" && "text-green-600 dark:text-green-400",
-                  step.status === "current" && "text-blue-600 dark:text-blue-400",
+                  step.status === "completed" && "text-brown-600 dark:text-brown-400",
+                  step.status === "current" && "text-amber-600 dark:text-amber-400",
                   step.status === "pending" && "text-gray-500 dark:text-gray-400",
                   step.status === "skipped" && "text-gray-400 line-through"
                 )}>

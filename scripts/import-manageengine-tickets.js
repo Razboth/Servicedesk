@@ -44,7 +44,8 @@ const options = {
   filter: null,
   dateFrom: null,
   dateTo: null,
-  verbose: false
+  verbose: false,
+  insecure: false
 };
 
 // Parse arguments
@@ -89,6 +90,9 @@ for (let i = 0; i < args.length; i++) {
     case '--verbose':
       options.verbose = true;
       break;
+    case '--insecure':
+      options.insecure = true;
+      break;
     case '--help':
       showHelp();
       process.exit(0);
@@ -116,6 +120,7 @@ Options:
   --date-from YYYY-MM-DD   Only import tickets created after this date
   --date-to YYYY-MM-DD     Only import tickets created before this date
   --verbose                Show detailed progress (default: false)
+  --insecure               Disable SSL certificate verification (use with caution)
   --help                   Show this help message
 
 Examples:
@@ -130,6 +135,9 @@ Examples:
 
   # Import tickets created in 2025
   node scripts/import-manageengine-tickets.js --api-key YOUR_KEY --date-from 2025-01-01
+  
+  # Import with self-signed SSL certificate (insecure)
+  node scripts/import-manageengine-tickets.js --api-key YOUR_KEY --insecure
   `);
 }
 
@@ -143,8 +151,11 @@ if (!options.apiKey) {
 // Initialize Prisma client
 const prisma = new PrismaClient();
 
-// Disable SSL verification for self-signed certificates
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+// Conditionally disable SSL verification for self-signed certificates
+if (options.insecure) {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+  console.log('⚠️  SSL certificate verification disabled (--insecure flag)');
+}
 
 // Statistics tracking
 const stats = {
@@ -195,6 +206,7 @@ const cache = {
   users: new Map(),
   branches: new Map(),
   services: new Map(),
+  legacyService: null, // Cache for Legacy Tickets service
   defaultUserId: null,
   defaultBranchId: null,
   defaultServiceId: null
@@ -287,72 +299,558 @@ async function getOrCreateUser(meUser) {
 }
 
 /**
- * Get or create branch
+ * Generate unique ticket number for imported legacy tickets
  */
-async function getOrCreateBranch(meSite) {
-  if (!meSite) return cache.defaultBranchId;
+async function generateTicketNumber() {
+  const year = new Date().getFullYear();
+  const ticketCount = await prisma.legacyTicket.count();
+  const paddedNumber = String(ticketCount + 1).padStart(6, '0');
+  return `LEG${year}${paddedNumber}`;
+}
+
+/**
+ * Map branch based on legacy ticket requester info
+ * Maps branch names like "Cabang Utama" -> branch code "001"
+ * Maps "Cabang Pembantu Sam Ratulangi" -> branch code "047"
+ */
+function mapBranchFromLegacyData(username, email, displayName) {
+  if (!username && !email && !displayName) return null;
   
-  if (cache.branches.has(meSite.name)) {
-    return cache.branches.get(meSite.name);
+  // Combine all identifiers for searching
+  const identifiers = [
+    username || '',
+    email || '',
+    displayName || ''
+  ].join(' ').toLowerCase();
+  
+  // Comprehensive branch mapping for Bank SulutGo (All 80 active branches)
+  // Format: search pattern -> branch code
+  const branchMappings = {
+    // KANTOR PUSAT (000)
+    'kantor pusat': '000',
+    'head office': '000',
+    'pusat': '000',
+    'cab000': '000',
+
+    // CABANG UTAMA (001) 
+    'cabang utama': '001',
+    'main branch': '001',
+    'utama': '001',
+    'cab001': '001',
+
+    // CABANG KOTAMOBAGU (002)
+    'cabang kotamobagu': '002',
+    'kotamobagu': '002',
+    'cab002': '002',
+
+    // CABANG GORONTALO (003)
+    'cabang gorontalo': '003',
+    'gorontalo': '003',
+    'cab003': '003',
+
+    // CABANG TAHUNA (004)
+    'cabang tahuna': '004',
+    'tahuna': '004',
+    'cab004': '004',
+
+    // CABANG BITUNG (005)
+    'cabang bitung': '005',
+    'bitung': '005',
+    'cab005': '005',
+
+    // CABANG KAWANGKOAN (006)
+    'cabang kawangkoan': '006',
+    'kawangkoan': '006',
+    'cab006': '006',
+
+    // CABANG LIMBOTO (007)
+    'cabang limboto': '007',
+    'limboto': '007',
+    'cab007': '007',
+
+    // CABANG TONDANO (008)
+    'cabang tondano': '008',
+    'tondano': '008',
+    'cab008': '008',
+
+    // CABANG TOMOHON (009)
+    'cabang tomohon': '009',
+    'tomohon': '009',
+    'cab009': '009',
+
+    // CABANG MARISA (010)
+    'cabang marisa': '010',
+    'marisa': '010',
+    'cab010': '010',
+
+    // CABANG CALACA (011)
+    'cabang calaca': '011',
+    'calaca': '011',
+    'cab011': '011',
+
+    // CABANG AMURANG (012)
+    'cabang amurang': '012',
+    'amurang': '012',
+    'cab012': '012',
+
+    // CABANG SIAU (013)
+    'cabang siau': '013',
+    'siau': '013',
+    'cab013': '013',
+
+    // CAPEM LIRUNG (014)
+    'capem lirung': '014',
+    'lirung': '014',
+    'cab014': '014',
+
+    // CABANG TILAMUTA (015)
+    'cabang tilamuta': '015',
+    'tilamuta': '015',
+    'cab015': '015',
+
+    // CABANG JAKARTA (016)
+    'cabang jakarta': '016',
+    'jakarta': '016',
+    'cab016': '016',
+
+    // CABANG AIRMADIDI (017)
+    'cabang airmadidi': '017',
+    'airmadidi': '017',
+    'air madidi': '017',
+    'cab017': '017',
+
+    // CABANG SUWAWA (018)
+    'cabang suwawa': '018',
+    'suwawa': '018',
+    'cab018': '018',
+
+    // CABANG KWANDANG (019)
+    'cabang kwandang': '019',
+    'kwandang': '019',
+    'cab019': '019',
+
+    // CABANG BOROKO (020)
+    'cabang boroko': '020',
+    'boroko': '020',
+    'cab020': '020',
+
+    // CAPEM KELAPA GADING (021)
+    'capem kelapa gading': '021',
+    'kelapa gading': '021',
+    'kelapa': '021',
+    'gading': '021',
+    'cab021': '021',
+
+    // CABANG RATAHAN (022)
+    'cabang ratahan': '022',
+    'ratahan': '022',
+    'cab022': '022',
+
+    // CABANG SURABAYA (023)
+    'cabang surabaya': '023',
+    'surabaya': '023',
+    'cab023': '023',
+
+    // CAPEM CEMPAKA PUTIH (024)
+    'capem cempaka putih': '024',
+    'cempaka putih': '024',
+    'cempaka': '024',
+    'putih': '024',
+    'cab024': '024',
+
+    // CAPEM MANGGA DUA (025)
+    'capem mangga dua': '025',
+    'mangga dua': '025',
+    'mangga': '025',
+    'cab025': '025',
+
+    // CABANG MALANG (026)
+    'cabang malang': '026',
+    'malang': '026',
+    'cab026': '026',
+
+    // CABANG TUTUYAN (027)
+    'cabang tutuyan': '027',
+    'tutuyan': '027',
+    'cab027': '027',
+
+    // CAPEM POPAYATO (028)
+    'capem popayato': '028',
+    'popayato': '028',
+    'cab028': '028',
+
+    // CAPEM PASAR SENTRAL (029)
+    'capem pasar sentral': '029',
+    'pasar sentral': '029',
+    'pasar': '029',
+    'sentral': '029',
+    'cab029': '029',
+
+    // CABANG MOLIBAGU (030)
+    'cabang molibagu': '030',
+    'molibagu': '030',
+    'cab030': '030',
+
+    // CABANG LOLAK (031)
+    'cabang lolak': '031',
+    'lolak': '031',
+    'cab031': '031',
+
+    // CAPEM TAGULANDANG (032)
+    'capem tagulandang': '032',
+    'tagulandang': '032',
+    'cab032': '032',
+
+    // CAPEM TUMINTING (033)
+    'capem tuminting': '033',
+    'tuminting': '033',
+    'cab033': '033',
+
+    // CAPEM LIKUPANG (034)
+    'capem likupang': '034',
+    'likupang': '034',
+    'cab034': '034',
+
+    // CAPEM PAAL DUA (035)
+    'capem paal dua': '035',
+    'paal dua': '035',
+    'paal': '035',
+    'cab035': '035',
+
+    // CAPEM PAGUAT (036)
+    'capem paguat': '036',
+    'paguat': '036',
+    'cab036': '036',
+
+    // CAPEM MOTOLING (037)
+    'capem motoling': '037',
+    'motoling': '037',
+    'cab037': '037',
+
+    // CABANG MELONGUANE (038)
+    'cabang melonguane': '038',
+    'melonguane': '038',
+    'cab038': '038',
+
+    // CAPEM MANEMBO-NEMBO (039)
+    'capem manembo-nembo': '039',
+    'manembo-nembo': '039',
+    'manembo': '039',
+    'nembo': '039',
+    'cab039': '039',
+
+    // CAPEM RANDANGAN (040)
+    'capem randangan': '040',
+    'randangan': '040',
+    'cab040': '040',
+
+    // CAPEM TOLANGOHULA (041)
+    'capem tolangohula': '041',
+    'tolangohula': '041',
+    'cab041': '041',
+
+    // CAPEM BAHU (042)
+    'capem bahu': '042',
+    'bahu': '042',
+    'cab042': '042',
+
+    // CAPEM RANOTANA (043)
+    'capem ranotana': '043',
+    'ranotana': '043',
+    'cab043': '043',
+
+    // CAPEM TAMAKO (044)
+    'capem tamako': '044',
+    'tamako': '044',
+    'cab044': '044',
+
+    // CAPEM PAGUYAMAN (045)
+    'capem paguyaman': '045',
+    'paguyaman': '045',
+    'cab045': '045',
+
+    // CAPEM LANGOWAN (046)
+    'capem langowan': '046',
+    'langowan': '046',
+    'cab046': '046',
+
+    // CAPEM SAMRAT (047) - Sam Ratulangi
+    'capem samrat': '047',
+    'capem sam ratulangi': '047',
+    'sam ratulangi': '047',
+    'samrat': '047',
+    'ratulangi': '047',
+    'cab047': '047',
+
+    // CAPEM BEO (048)
+    'capem beo': '048',
+    'beo': '048',
+    'cab048': '048',
+
+    // CAPEM TELAGA (049)
+    'capem telaga': '049',
+    'telaga': '049',
+    'cab049': '049',
+
+    // CAPEM MOPUYA (050)
+    'capem mopuya': '050',
+    'mopuya': '050',
+    'cab050': '050',
+
+    // CAPEM MODOINDING (051)
+    'capem modoinding': '051',
+    'modoinding': '051',
+    'cab051': '051',
+
+    // Departmental/Divisional codes
+    'departemen administrasi': 'ALK',
+    'laporan kredit': 'ALK',
+    'administrasi': 'ALK',
+    'alk': 'ALK',
+
+    'unit apu': 'APU',
+    'apu': 'APU',
+    'ppt': 'APU',
+
+    'corporate secretary': 'CSC',
+    'secretary': 'CSC',
+    'csc': 'CSC',
+
+    'teknologi informasi': 'ITE',
+    'divisi it': 'ITE',
+    'it': 'ITE',
+    'ite': 'ITE',
+
+    'divisi kepatuhan': 'KEP',
+    'kepatuhan': 'KEP',
+    'kep': 'KEP',
+
+    'ketahanan siber': 'KKS',
+    'keamanan siber': 'KKS',
+    'cyber security': 'KKS',
+    'kks': 'KKS',
+
+    'kredit komersial': 'KSB',
+    'komersial': 'KSB',
+    'ksb': 'KSB',
+
+    'kredit konsumer': 'KSF',
+    'konsumer': 'KSF',
+    'ksf': 'KSF',
+
+    'kantor wilayah': 'KWL',
+    'wilayah': 'KWL',
+    'kwl': 'KWL',
+
+    'manajemen risiko': 'MRI',
+    'risk management': 'MRI',
+    'mri': 'MRI',
+
+    'operasional': 'OL',
+    'layanan': 'OL',
+    'ol': 'OL',
+
+    'pengembangan bisnis': 'PBJ',
+    'bisnis': 'PBJ',
+    'jaringan': 'PBJ',
+    'pbj': 'PBJ',
+
+    'unit pajak': 'PJK',
+    'pajak': 'PJK',
+    'pjk': 'PJK',
+
+    'pengendalian keuangan': 'PKU',
+    'keuangan': 'PKU',
+    'pku': 'PKU',
+
+    'pemasaran dana': 'PRI',
+    'pemasaran': 'PRI',
+    'dana': 'PRI',
+    'pri': 'PRI',
+
+    'perencanaan': 'REN',
+    'evaluasi': 'REN',
+    'ren': 'REN',
+
+    'special asset': 'SAM',
+    'asset management': 'SAM',
+    'sam': 'SAM',
+
+    'human capital': 'SDM',
+    'human resources': 'SDM',
+    'sdm': 'SDM',
+
+    'audit internal': 'SKAI',
+    'internal audit': 'SKAI',
+    'skai': 'SKAI',
+
+    'sentra layanan atm': 'SLA',
+    'atm': 'SLA',
+    'sla': 'SLA',
+
+    'trisuri': 'TRI',
+    'tri': 'TRI',
+
+    'divisi umum': 'UMM',
+    'umum': 'UMM',
+    'umm': 'UMM'
+  };
+  
+  // Search for branch patterns in identifiers
+  for (const [pattern, branchCode] of Object.entries(branchMappings)) {
+    if (identifiers.includes(pattern)) {
+      return branchCode;
+    }
+  }
+  
+  // Check email patterns for branch codes
+  if (email && email.includes('@')) {
+    const emailLocal = email.split('@')[0].toLowerCase();
+    for (const [pattern, branchCode] of Object.entries(branchMappings)) {
+      if (emailLocal.includes(pattern)) {
+        return branchCode;
+      }
+    }
+  }
+  
+  if (options.verbose) {
+    console.log(`  🔍 No branch mapping found for identifiers: ${identifiers}`);
+  }
+  
+  return null;
+}
+
+/**
+ * Get or create branch with improved mapping based on requester info
+ */
+async function getOrCreateBranch(meSite, requesterInfo = null) {
+  let branchCode = null;
+  let branchName = null;
+  
+  // First try to map based on requester info to get branch code
+  if (requesterInfo) {
+    branchCode = mapBranchFromLegacyData(
+      requesterInfo.name, 
+      requesterInfo.email, 
+      requesterInfo.display_name
+    );
+    if (branchCode && options.verbose) {
+      console.log(`  🌍 Mapped branch code from user info: ${branchCode}`);
+    }
+  }
+  
+  // Fall back to site-based mapping if no branch code found
+  if (!branchCode && meSite) {
+    // Try to extract branch code from site name
+    branchCode = mapBranchFromLegacyData('', '', meSite.name);
+    branchName = meSite.name;
+  }
+  
+  // Use default if no mapping found
+  if (!branchCode) return cache.defaultBranchId;
+  
+  // Check cache using branch code
+  if (cache.branches.has(branchCode)) {
+    return cache.branches.get(branchCode);
   }
 
+  // Look for branch by code first (most reliable)
   let branch = await prisma.branch.findFirst({
     where: {
       OR: [
-        { name: meSite.name },
-        { code: meSite.name.toUpperCase().replace(/\s+/g, '_') }
+        { code: branchCode },
+        { code: branchCode.padStart(3, '0') }, // Ensure 3-digit format
+        { name: { contains: branchName || '', mode: 'insensitive' } }
       ]
     }
   });
 
   if (!branch && !options.dryRun) {
+    // Create branch with proper code if not found
+    const formattedCode = branchCode.padStart(3, '0');
     branch = await prisma.branch.create({
       data: {
-        code: `ME_${meSite.id}`,
-        name: meSite.name,
-        address: 'Imported from ManageEngine',
-        city: 'Unknown',
+        code: formattedCode,
+        name: branchName || `Branch ${formattedCode}`,
+        address: 'Imported from ManageEngine Legacy System',
+        city: 'Sulawesi Utara',
         isActive: true
       }
     });
     if (options.verbose) {
-      console.log(`  Created branch: ${branch.name}`);
+      console.log(`  🏢 Created branch: ${branch.code} - ${branch.name}`);
     }
   }
 
   const branchId = branch?.id || cache.defaultBranchId;
-  cache.branches.set(meSite.name, branchId);
+  cache.branches.set(branchCode, branchId);
   return branchId;
 }
 
 /**
- * Get or create service
+ * Get the Legacy Tickets service for all imported tickets
  */
-async function getOrCreateService(category, subcategory, item) {
-  const cacheKey = `${category?.name}_${subcategory?.name}_${item?.name}`;
-  if (cache.services.has(cacheKey)) {
-    return cache.services.get(cacheKey);
+async function getLegacyTicketsService() {
+  // Check cache first
+  if (cache.legacyService) {
+    return cache.legacyService;
   }
 
-  // Try to find matching service
+  // Find the Legacy Tickets service
   let service = await prisma.service.findFirst({
     where: {
-      OR: [
-        { name: { contains: item?.name || subcategory?.name || category?.name || 'General' } },
-        { description: { contains: category?.name || 'General' } }
-      ]
+      name: 'Legacy Tickets',
+      isActive: true
     }
   });
 
   if (!service) {
-    service = await prisma.service.findFirst({
-      where: { isActive: true }
+    // If not found, create it
+    console.log('⚠️  Legacy Tickets service not found, creating it...');
+    
+    // Get or create Legacy Systems category
+    let category = await prisma.serviceCategory.findFirst({
+      where: { name: 'Legacy Systems' }
     });
+    
+    if (!category) {
+      category = await prisma.serviceCategory.create({
+        data: {
+          name: 'Legacy Systems',
+          description: 'Services for managing tickets imported from legacy systems',
+          isActive: true
+        }
+      });
+    }
+    
+    // Create the service
+    service = await prisma.service.create({
+      data: {
+        name: 'Legacy Tickets',
+        description: 'Service for tickets imported from ManageEngine and other legacy systems.',
+        helpText: 'Used automatically by the import system for legacy tickets.',
+        categoryId: category.id,
+        isActive: true,
+        requiresApproval: false,
+        estimatedHours: 0,
+        slaHours: 24,
+        responseHours: 24,
+        resolutionHours: 72,
+        priority: 'MEDIUM',
+        defaultTitle: 'Legacy Ticket Import',
+        defaultItilCategory: 'INCIDENT',
+        isConfidential: false,
+        isKasdaService: false,
+        businessHoursOnly: false
+      }
+    });
+    
+    console.log(`✅ Created Legacy Tickets service: ${service.id}`);
   }
 
-  const serviceId = service?.id || cache.defaultServiceId;
-  cache.services.set(cacheKey, serviceId);
-  return serviceId;
+  // Cache the service ID
+  cache.legacyService = service.id;
+  return service.id;
 }
 
 /**
@@ -400,37 +898,57 @@ async function initializeCache() {
 async function importTicket(meTicket, batchId) {
   // Check if already imported
   if (options.skipExisting) {
-    const existing = await prisma.ticket.findFirst({
+    const existing = await prisma.legacyTicket.findFirst({
       where: {
-        legacySystem: 'MANAGEENGINE',
-        legacyTicketId: meTicket.id
+        originalSystem: 'MANAGEENGINE',
+        originalTicketId: meTicket.id
+      },
+      include: {
+        _count: {
+          select: {
+            comments: true
+          }
+        }
       }
     });
     
     if (existing) {
-      stats.skippedTickets++;
-      if (options.verbose) {
-        console.log(`  ⏭️  Skipped ticket ${meTicket.id} (already imported)`);
+      // Check if existing ticket has comments
+      if (existing._count.comments === 0 && options.importComments) {
+        // Existing ticket without comments - import comments only
+        if (options.verbose) {
+          console.log(`  📝 Importing missing comments for existing ticket ${meTicket.id}`);
+        }
+        return { id: existing.id, ticketNumber: existing.ticketNumber, isExisting: true };
+      } else {
+        // Skip completely - already has comments or comments disabled
+        stats.skippedTickets++;
+        if (options.verbose) {
+          const reason = existing._count.comments > 0 ? 'already has comments' : 'comments disabled';
+          console.log(`  ⏭️  Skipped ticket ${meTicket.id} (already imported, ${reason})`);
+        }
+        return null;
       }
-      return null;
     }
   }
 
-  // Map data
-  const createdById = await getOrCreateUser(meTicket.requester);
-  const assignedToId = meTicket.technician ? await getOrCreateUser(meTicket.technician) : null;
-  const branchId = await getOrCreateBranch(meTicket.site);
-  const serviceId = await getOrCreateService(meTicket.category, meTicket.subcategory, meTicket.item);
+  // Map data using branch mapping instead of user creation
+  const branchId = await getOrCreateBranch(meTicket.site, meTicket.requester);
+  const serviceId = await getLegacyTicketsService();
+  const ticketNumber = await generateTicketNumber();
+  
+  // Extract requester and technician names for reference
+  const requesterName = meTicket.requester?.name || meTicket.requester?.display_name || 'Unknown Requester';
+  const technicianName = meTicket.technician?.name || meTicket.technician?.display_name || null;
 
   // Parse dates
   const createdAt = new Date(parseInt(meTicket.created_time.value));
-  const dueAt = meTicket.due_by_time ? new Date(parseInt(meTicket.due_by_time.value)) : null;
   const resolvedAt = meTicket.resolved_time ? new Date(parseInt(meTicket.resolved_time.value)) : null;
   const closedAt = meTicket.closed_time ? new Date(parseInt(meTicket.closed_time.value)) : null;
 
-  // Build legacy data
-  const legacyData = {
-    originalId: meTicket.id,
+  // Build original data object
+  const originalData = {
+    id: meTicket.id,
     subject: meTicket.subject,
     description: meTicket.description,
     status: meTicket.status,
@@ -449,30 +967,27 @@ async function importTicket(meTicket, batchId) {
     closed_time: meTicket.closed_time
   };
 
-  const ticketData = {
+  const legacyTicketData = {
+    ticketNumber,
     title: meTicket.subject || 'No Subject',
     description: meTicket.description || 'No description provided',
+    originalTicketId: meTicket.id,
+    originalSystem: 'MANAGEENGINE',
+    originalData,
     status: STATUS_MAPPING[meTicket.status.name] || 'OPEN',
     priority: PRIORITY_MAPPING[meTicket.priority.name] || 'MEDIUM',
     category: 'INCIDENT',
-    createdAt,
-    dueAt,
-    resolvedAt,
-    closedAt,
+    originalCreatedAt: createdAt, // Original creation date from ManageEngine
+    originalUpdatedAt: createdAt, // Use created date as updated date if no updated date
+    originalResolvedAt: resolvedAt,
+    originalClosedAt: closedAt,
     resolutionNotes: meTicket.resolution,
-    
-    // Legacy fields
-    isLegacy: true,
-    legacySystem: 'MANAGEENGINE',
-    legacyTicketId: meTicket.id,
-    legacyData,
-    importedAt: new Date(),
     importBatchId: batchId,
+    originalRequester: requesterName,
+    originalTechnician: technicianName,
     
-    // Relations
+    // Relations (only include IDs that exist in schema)
     serviceId,
-    createdById,
-    assignedToId,
     branchId
   };
 
@@ -481,25 +996,26 @@ async function importTicket(meTicket, batchId) {
     return { id: 'dry-run-' + meTicket.id };
   }
 
-  const createdTicket = await prisma.ticket.create({
-    data: ticketData
+  const createdLegacyTicket = await prisma.legacyTicket.create({
+    data: legacyTicketData
   });
 
   stats.importedTickets++;
   if (options.verbose) {
-    console.log(`  ✅ Imported ticket: ${createdTicket.ticketNumber} (ME ID: ${meTicket.id})`);
+    console.log(`  ✅ Imported legacy ticket: ${createdLegacyTicket.ticketNumber} (ME ID: ${meTicket.id})`);
   }
 
-  return createdTicket;
+  return createdLegacyTicket;
 }
 
 /**
- * Import comments for a ticket
+ * Import comments for a legacy ticket
  */
-async function importComments(meTicketId, ticketId) {
+async function importComments(meTicketId, legacyTicketId) {
   if (!options.importComments || options.dryRun) return;
 
   try {
+    // Use the v3 API endpoint for notes
     const inputData = {
       list_info: {
         row_count: 100,
@@ -516,16 +1032,21 @@ async function importComments(meTicketId, ticketId) {
 
     if (response.notes && response.notes.length > 0) {
       for (const note of response.notes) {
-        const userId = await getOrCreateUser(note.created_by);
-        const createdAt = new Date(parseInt(note.created_time.value));
+        // Extract author name from the created_by object or use display_name
+        const authorName = note.created_by?.name || note.created_by?.display_name || 'Unknown User';
+        const createdAt = new Date(parseInt(note.created_time?.value || Date.now()));
+        const originalCreatedAt = createdAt;
 
-        await prisma.ticketComment.create({
+        // Create the legacy ticket comment with proper fields
+        await prisma.legacyTicketComment.create({
           data: {
-            content: note.description,
-            isInternal: !note.is_public,
+            content: note.description || 'No content available',
+            isInternal: note.is_public === false, // Convert to internal flag
+            originalAuthor: authorName,
+            originalData: note, // Store the entire note object for reference
             createdAt,
-            ticketId,
-            userId
+            originalCreatedAt,
+            legacyTicketId
           }
         });
 
@@ -535,16 +1056,23 @@ async function importComments(meTicketId, ticketId) {
       if (options.verbose) {
         console.log(`    💬 Imported ${response.notes.length} comments`);
       }
+    } else {
+      if (options.verbose) {
+        console.log(`    💬 No comments found for ticket ${meTicketId}`);
+      }
     }
   } catch (error) {
-    console.error(`    ⚠️  Failed to import comments: ${error.message}`);
+    console.error(`    ⚠️  Failed to import comments for ticket ${meTicketId}: ${error.message}`);
+    if (options.verbose) {
+      console.error(`    Debug info: endpoint used was requests/${meTicketId}/notes`);
+    }
   }
 }
 
 /**
- * Import attachment metadata for a ticket
+ * Import attachment metadata for a legacy ticket
  */
-async function importAttachments(meTicketId, ticketId) {
+async function importAttachments(meTicketId, legacyTicketId) {
   if (!options.importAttachments || options.dryRun) return;
 
   try {
@@ -552,17 +1080,17 @@ async function importAttachments(meTicketId, ticketId) {
 
     if (response.attachments && response.attachments.length > 0) {
       for (const attachment of response.attachments) {
-        // Store attachment metadata in legacyData
-        const ticket = await prisma.ticket.findUnique({
-          where: { id: ticketId }
+        // Store attachment metadata in originalData
+        const legacyTicket = await prisma.legacyTicket.findUnique({
+          where: { id: legacyTicketId }
         });
 
-        const legacyData = ticket.legacyData || {};
-        if (!legacyData.attachments) {
-          legacyData.attachments = [];
+        const originalData = legacyTicket.originalData || {};
+        if (!originalData.attachments) {
+          originalData.attachments = [];
         }
 
-        legacyData.attachments.push({
+        originalData.attachments.push({
           id: attachment.id,
           name: attachment.name,
           size: attachment.size,
@@ -571,9 +1099,9 @@ async function importAttachments(meTicketId, ticketId) {
           manageEngineUrl: `${options.url}/api/v3/requests/${meTicketId}/attachments/${attachment.id}/download`
         });
 
-        await prisma.ticket.update({
-          where: { id: ticketId },
-          data: { legacyData }
+        await prisma.legacyTicket.update({
+          where: { id: legacyTicketId },
+          data: { originalData }
         });
 
         stats.totalAttachments++;
@@ -647,23 +1175,64 @@ async function runImport() {
       filters.created_time.to = new Date(options.dateTo).getTime();
     }
 
-    // Get total count
-    const countInputData = {
-      list_info: {
-        row_count: 1,
-        start_index: 1
-      }
-    };
-    if (Object.keys(filters).length > 0) {
-      countInputData.search_fields = filters;
-    }
+    // Get total count - if limit is specified, use it directly to avoid excessive API calls
+    let totalCount = 0;
+    if (options.limit) {
+      console.log(`📊 Using specified limit: ${options.limit} tickets`);
+      totalCount = options.limit;
+    } else {
+      console.log('🔍 Discovering total ticket count (this may take a while)...');
+      let countPage = 1;
+      let hasMoreRows = true;
+      
+      // For unlimited imports, discover in smaller chunks and be more conservative
+      while (hasMoreRows && countPage <= 500) { // Limit discovery to 500 pages (50000 tickets)
+        const countInputData = {
+          list_info: {
+            row_count: 100,
+            start_index: (countPage - 1) * 100 + 1,
+            sort_field: 'created_time',
+            sort_order: 'desc'
+          }
+        };
+        if (Object.keys(filters).length > 0) {
+          countInputData.search_fields = filters;
+        }
 
-    const countResponse = await makeManageEngineRequest('requests', {
-      input_data: JSON.stringify(countInputData)
-    });
+        try {
+          const countResponse = await makeManageEngineRequest('requests', {
+            input_data: JSON.stringify(countInputData)
+          });
+          
+          const pageCount = countResponse.requests ? countResponse.requests.length : 0;
+          totalCount += pageCount;
+          hasMoreRows = countResponse.list_info?.has_more_rows || false;
+          
+          if (options.verbose && countPage % 5 === 0) { // Show progress every 5 pages
+            console.log(`   Page ${countPage}: ${pageCount} tickets (total so far: ${totalCount})`);
+          }
+          
+          countPage++;
+          
+          // Add delay to avoid rate limiting
+          if (hasMoreRows) {
+            await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay between pages
+          }
+        } catch (error) {
+          if (error.message.includes('maximum access limit')) {
+            console.log(`⚠️  Rate limit hit during discovery. Using current count: ${totalCount}`);
+            break;
+          }
+          throw error;
+        }
+      }
+      
+      if (hasMoreRows && countPage > 500) {
+        console.log(`⚠️  Discovery limited to first 50000 tickets. Use --limit for more control.`);
+      }
+    }
     
-    const totalCount = countResponse.list_info?.row_count || 0;
-    stats.totalTickets = options.limit ? Math.min(totalCount, options.limit) : totalCount;
+    stats.totalTickets = totalCount;
     
     console.log(`📊 Found ${totalCount} tickets to import`);
     if (options.limit) {
@@ -671,19 +1240,25 @@ async function runImport() {
     }
     console.log('');
 
-    // Import tickets in batches
-    let startIndex = options.startFrom;
+    // Import tickets in batches using proper pagination
     let processedCount = 0;
+    let currentPage = 1;
+    let importHasMoreRows = true;
+    
     const progressInterval = setInterval(() => {
       const elapsed = (Date.now() - stats.startTime) / 1000;
       const rate = stats.importedTickets / (elapsed / 60);
       process.stdout.write(`\r⏳ Progress: ${processedCount}/${stats.totalTickets} | Imported: ${stats.importedTickets} | Skipped: ${stats.skippedTickets} | Failed: ${stats.failedTickets} | Rate: ${rate.toFixed(1)}/min`);
     }, 1000);
 
-    while (processedCount < stats.totalTickets) {
+    while (importHasMoreRows && processedCount < stats.totalTickets) {
+      // Use ManageEngine's pagination system (max 100 per request)
+      const actualBatchSize = Math.min(100, options.batchSize, stats.totalTickets - processedCount);
+      const startIndex = (currentPage - 1) * 100 + 1;
+      
       const batchInputData = {
         list_info: {
-          row_count: Math.min(options.batchSize, stats.totalTickets - processedCount),
+          row_count: actualBatchSize,
           start_index: startIndex,
           sort_field: 'created_time',
           sort_order: 'desc'
@@ -700,18 +1275,27 @@ async function runImport() {
       if (!batchResponse.requests || batchResponse.requests.length === 0) {
         break;
       }
+      
+      importHasMoreRows = batchResponse.list_info?.has_more_rows || false;
 
       // Process each ticket
       for (const meTicket of batchResponse.requests) {
         try {
-          const createdTicket = await importTicket(meTicket, batchId);
+          const createdLegacyTicket = await importTicket(meTicket, batchId);
           
-          if (createdTicket && createdTicket.id !== 'dry-run-' + meTicket.id) {
-            // Import comments
-            await importComments(meTicket.id, createdTicket.id);
+          if (createdLegacyTicket && createdLegacyTicket.id !== 'dry-run-' + meTicket.id) {
+            // Import comments (for both new tickets and existing tickets without comments)
+            await importComments(meTicket.id, createdLegacyTicket.id);
             
-            // Import attachment metadata
-            await importAttachments(meTicket.id, createdTicket.id);
+            // Import attachment metadata (only for new tickets, not existing ones)
+            if (!createdLegacyTicket.isExisting) {
+              await importAttachments(meTicket.id, createdLegacyTicket.id);
+            }
+            
+            // Update stats based on whether it's new or existing
+            if (createdLegacyTicket.isExisting) {
+              stats.commentsImported = (stats.commentsImported || 0) + 1;
+            }
           }
         } catch (error) {
           stats.failedTickets++;
@@ -744,10 +1328,10 @@ async function runImport() {
         });
       }
 
-      startIndex += options.batchSize;
+      currentPage++;
       
-      // Add delay between batches to avoid overloading API
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Add delay between batches to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 1500)); // Increased to 1.5 seconds
     }
 
     clearInterval(progressInterval);
@@ -773,10 +1357,11 @@ async function runImport() {
     console.log('================================');
     console.log(`Duration: ${Math.floor(duration / 60)}m ${Math.floor(duration % 60)}s`);
     console.log(`Total Tickets: ${stats.totalTickets}`);
-    console.log(`Imported: ${stats.importedTickets}`);
+    console.log(`New Tickets Imported: ${stats.importedTickets}`);
+    console.log(`Existing Tickets with Comments Added: ${stats.commentsImported || 0}`);
     console.log(`Skipped: ${stats.skippedTickets}`);
     console.log(`Failed: ${stats.failedTickets}`);
-    console.log(`Comments Imported: ${stats.importedComments}`);
+    console.log(`Total Comments Imported: ${stats.importedComments}`);
     console.log(`Attachments Found: ${stats.totalAttachments}`);
     
     if (stats.errors.length > 0) {

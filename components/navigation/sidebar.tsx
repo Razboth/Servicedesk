@@ -19,6 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { getAvatarById } from '@/components/ui/avatar-presets';
 
 export function Sidebar() {
   const { data: session } = useSession();
@@ -229,6 +230,12 @@ export function Sidebar() {
               </svg>
               {(!isCollapsed || isMobile) && 'Workbench'}
             </Link>
+            <Link href="/tickets/legacy" className={linkClass('/tickets/legacy')} onClick={handleLinkClick}>
+              <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+              </svg>
+              {(!isCollapsed || isMobile) && 'Legacy Tickets'}
+            </Link>
           </div>
         )}
 
@@ -264,6 +271,12 @@ export function Sidebar() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
               {(!isCollapsed || isMobile) && 'ATMs'}
+            </Link>
+            <Link href="/tickets/legacy" className={linkClass('/tickets/legacy')} onClick={handleLinkClick}>
+              <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+              </svg>
+              {(!isCollapsed || isMobile) && 'Legacy Tickets'}
             </Link>
           </div>
         )}
@@ -350,6 +363,12 @@ export function Sidebar() {
               </svg>
               {(!isCollapsed || isMobile) && 'Import'}
             </Link>
+            <Link href="/tickets/legacy" className={linkClass('/tickets/legacy')} onClick={handleLinkClick}>
+              <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+              </svg>
+              {(!isCollapsed || isMobile) && 'Legacy Tickets'}
+            </Link>
           </div>
         )}
         
@@ -410,12 +429,20 @@ export function Sidebar() {
                 {(isCollapsed && !isMobile) ? (
                   // Collapsed state - just avatar
                   <div className="relative">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-600 to-orange-600 dark:from-amber-700 dark:to-orange-700 p-0.5">
-                      <div className="w-full h-full rounded-full overflow-hidden bg-white dark:bg-gray-800 flex items-center justify-center">
-                        <span className="text-xs font-medium text-gray-700 dark:text-gray-200">
-                          {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
-                        </span>
-                      </div>
+                    <div className="w-8 h-8">
+                      {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
+                        <div className="w-full h-full scale-75">
+                          {getAvatarById((session.user as any).avatar)?.component}
+                        </div>
+                      ) : (
+                        <div className="w-full h-full rounded-full bg-gradient-to-br from-amber-600 to-orange-600 dark:from-amber-700 dark:to-orange-700 p-0.5">
+                          <div className="w-full h-full rounded-full overflow-hidden bg-white dark:bg-gray-800 flex items-center justify-center">
+                            <span className="text-xs font-medium text-gray-700 dark:text-gray-200">
+                              {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
+                            </span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ) : (
@@ -430,12 +457,20 @@ export function Sidebar() {
                       </div>
                     </div>
                     <div className="relative flex-shrink-0">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-600 to-orange-600 dark:from-amber-700 dark:to-orange-700 p-0.5">
-                        <div className="w-full h-full rounded-full overflow-hidden bg-white dark:bg-gray-800 flex items-center justify-center">
-                          <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
-                            {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
-                          </span>
-                        </div>
+                      <div className="w-10 h-10">
+                        {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
+                          <div className="w-full h-full scale-90">
+                            {getAvatarById((session.user as any).avatar)?.component}
+                          </div>
+                        ) : (
+                          <div className="w-full h-full rounded-full bg-gradient-to-br from-amber-600 to-orange-600 dark:from-amber-700 dark:to-orange-700 p-0.5">
+                            <div className="w-full h-full rounded-full overflow-hidden bg-white dark:bg-gray-800 flex items-center justify-center">
+                              <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                                {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
+                              </span>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </>
@@ -474,12 +509,20 @@ export function Sidebar() {
               {/* Profile header */}
               <div className="p-3 mb-2 bg-gray-50/50 dark:bg-gray-800/50 rounded-lg border border-gray-200/30 dark:border-gray-700/30">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-600 to-orange-600 dark:from-amber-700 dark:to-orange-700 p-0.5 flex-shrink-0">
-                    <div className="w-full h-full rounded-full overflow-hidden bg-white dark:bg-gray-800 flex items-center justify-center">
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
-                        {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
-                      </span>
-                    </div>
+                  <div className="w-10 h-10 flex-shrink-0">
+                    {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
+                      <div className="w-full h-full scale-90">
+                        {getAvatarById((session.user as any).avatar)?.component}
+                      </div>
+                    ) : (
+                      <div className="w-full h-full rounded-full bg-gradient-to-br from-amber-600 to-orange-600 dark:from-amber-700 dark:to-orange-700 p-0.5">
+                        <div className="w-full h-full rounded-full overflow-hidden bg-white dark:bg-gray-800 flex items-center justify-center">
+                          <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                            {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 dark:text-gray-100 tracking-tight leading-tight truncate">

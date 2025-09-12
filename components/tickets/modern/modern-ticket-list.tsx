@@ -1295,7 +1295,7 @@ export function ModernTicketList({ viewMode, searchTerm, onCreateTicket, ticketF
                 ? 'No tickets match your current filters.'
                 : 'Create your first ticket to get started.'}
             </p>
-            <Button onClick={onCreateTicket} className="bg-gradient-to-r from-blue-500 to-indigo-600">
+            <Button onClick={onCreateTicket} className="bg-gradient-to-r from-emerald-500 to-teal-600">
               <Plus className="h-4 w-4 mr-2" />
               Create Ticket
             </Button>

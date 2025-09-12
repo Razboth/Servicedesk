@@ -285,10 +285,10 @@ export default function SimpleCreateTicketPage() {
               </div>
 
               {/* Help Text */}
-              <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mt-6">
+              <div className="bg-emerald-50 border border-emerald-200 rounded-md p-4 mt-6">
                 <div className="flex">
-                  <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0" />
-                  <div className="text-sm text-blue-700">
+                  <AlertCircle className="h-5 w-5 text-emerald-600 mt-0.5 mr-3 flex-shrink-0" />
+                  <div className="text-sm text-emerald-700">
                     <p className="font-medium mb-1">Need help?</p>
                     <p>
                       For urgent issues, contact IT support directly. For general questions, 

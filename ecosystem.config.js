@@ -20,10 +20,10 @@ module.exports = {
     // Environment variables
     env: {
       NODE_ENV: 'production',
-      PORT: 443,
+      PORT: 3000,
       HOSTNAME: '0.0.0.0',
-      USE_HTTPS: 'true',
-      NEXTAUTH_URL: 'https://hd.bsg.id',
+      USE_HTTPS: 'false',
+      NEXTAUTH_URL: 'http://localhost:3000',
       DATABASE_URL: 'postgresql://postgres:admin@localhost:5432/servicedesk_database?schema=public'
     },
     
@@ -80,5 +80,34 @@ module.exports = {
     time: true,
     
     ignore_watch: ['node_modules', '.git', 'logs', '.next', 'public/uploads', '*.log']
+  },
+  {
+    // Network Monitoring Service
+    name: 'bsg-monitoring',
+    script: 'scripts/start-monitoring.ts',
+    interpreter: 'tsx',
+    instances: 1,
+    exec_mode: 'fork',
+    autorestart: true,
+    watch: false,
+    max_memory_restart: '512M',
+    
+    env: {
+      NODE_ENV: 'production',
+      DATABASE_URL: 'postgresql://postgres:admin@localhost:5432/servicedesk_database?schema=public',
+      MONITORING_ENABLED: 'true'
+    },
+    
+    error_file: './logs/pm2-monitoring-error.log',
+    out_file: './logs/pm2-monitoring-out.log',
+    merge_logs: true,
+    time: true,
+    
+    restart_delay: 5000,
+    kill_timeout: 3000,
+    min_uptime: '30s',
+    max_restarts: 5,
+    
+    args: 'start'
   }]
 };

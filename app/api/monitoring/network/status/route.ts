@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
   try {
     const session = await auth();
     
-    if (!session || !['MANAGER', 'ADMIN', 'TECHNICIAN'].includes(session.user.role)) {
+    if (!session || !['MANAGER', 'ADMIN', 'SUPER_ADMIN', 'TECHNICIAN'].includes(session.user.role)) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -16,14 +16,14 @@ export async function GET(request: NextRequest) {
     // Get query parameters
     const { searchParams } = new URL(request.url);
     const entityType = searchParams.get('type'); // 'BRANCH', 'ATM', or null for both
-    const defaultLimit = session.user.role === 'ADMIN' ? '500' : '50'; // Higher limit for admins
+    const defaultLimit = ['ADMIN', 'SUPER_ADMIN', 'MANAGER'].includes(session.user.role) ? '500' : '50'; // Higher limit for admins
     const limit = parseInt(searchParams.get('limit') || defaultLimit);
     
     // Get branchId from query params or user's branch
     let branchId: string | undefined = searchParams.get('branchId') || undefined;
     
     // If no branchId in query and user is not admin, use their branch (admins see all)
-    if (!branchId && session.user.role !== 'ADMIN') {
+    if (!branchId && !['ADMIN', 'SUPER_ADMIN', 'MANAGER'].includes(session.user.role)) {
       const user = await prisma.user.findUnique({
         where: { id: session.user.id },
         select: { branchId: true }

@@ -117,7 +117,7 @@ export default function NetworkOverviewPage() {
   const fetchNetworkData = async () => {
     const params = new URLSearchParams();
     // Only set branchId for non-admin users
-    if (session?.user?.branchId && session?.user?.role !== 'ADMIN') {
+    if (session?.user?.branchId && !['ADMIN', 'SUPER_ADMIN', 'MANAGER'].includes(session?.user?.role || '')) {
       params.set('branchId', session.user.branchId);
     }
     
@@ -377,7 +377,7 @@ export default function NetworkOverviewPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
           Network Monitoring
-          {session?.user?.role === 'ADMIN' ? (
+          {['ADMIN', 'SUPER_ADMIN', 'MANAGER'].includes(session?.user?.role || '') ? (
             <Badge variant="outline" className="text-sm font-normal">
               All Branches
             </Badge>
@@ -388,7 +388,7 @@ export default function NetworkOverviewPage() {
           )}
         </h1>
         <p className="text-muted-foreground">
-          {session?.user?.role === 'ADMIN' 
+          {['ADMIN', 'SUPER_ADMIN', 'MANAGER'].includes(session?.user?.role || '') 
             ? 'Real-time network monitoring for all branches and ATMs'
             : 'Real-time network monitoring for your branch and ATMs'
           }
@@ -470,7 +470,7 @@ export default function NetworkOverviewPage() {
             <div className="flex items-center gap-2">
               <Building2 className="h-5 w-5 text-blue-600" />
               <CardTitle>
-                {session?.user?.role === 'ADMIN' ? 'Branch Networks' : 'Branch Network'}
+                {['ADMIN', 'SUPER_ADMIN', 'MANAGER'].includes(session?.user?.role || '') ? 'Branch Networks' : 'Branch Network'}
               </CardTitle>
               <Badge variant="outline" className="text-sm">
                 {branchData.length} {branchData.length === 1 ? 'Branch' : 'Branches'}
@@ -504,7 +504,7 @@ export default function NetworkOverviewPage() {
         </CardHeader>
         <CardContent>
           {/* Branch Filters - only show for admins with multiple branches */}
-          {session?.user?.role === 'ADMIN' && uniqueBranches.length > 1 && (
+          {['ADMIN', 'SUPER_ADMIN', 'MANAGER'].includes(session?.user?.role || '') && uniqueBranches.length > 1 && (
             <div className="flex flex-col md:flex-row gap-4 mb-6">
               <div className="flex-1">
                 <div className="relative">
@@ -552,7 +552,7 @@ export default function NetworkOverviewPage() {
               <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : filteredBranches.length > 0 ? (
-            <div className={`grid gap-4 ${session?.user?.role === 'ADMIN' ? 'md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'max-w-sm'}`}>
+            <div className={`grid gap-4 ${['ADMIN', 'SUPER_ADMIN', 'MANAGER'].includes(session?.user?.role || '') ? 'md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'max-w-sm'}`}>
               {filteredBranches.map(renderEndpointCard)}
             </div>
           ) : (
@@ -589,7 +589,7 @@ export default function NetworkOverviewPage() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder={session?.user?.role === 'ADMIN' 
+                  placeholder={['ADMIN', 'SUPER_ADMIN', 'MANAGER'].includes(session?.user?.role || '') 
                     ? "Search ATMs by name, code, IP address, or branch..."
                     : "Search ATMs by name, code, or IP address..."
                   }
@@ -613,7 +613,7 @@ export default function NetworkOverviewPage() {
                 <SelectItem value="UNKNOWN">Unknown</SelectItem>
               </SelectContent>
             </Select>
-            {session?.user?.role === 'ADMIN' && uniqueBranches.length > 1 && (
+            {['ADMIN', 'SUPER_ADMIN', 'MANAGER'].includes(session?.user?.role || '') && uniqueBranches.length > 1 && (
               <Select value={branchFilter} onValueChange={setBranchFilter}>
                 <SelectTrigger className="w-[200px]">
                   <SelectValue placeholder="Filter by branch" />

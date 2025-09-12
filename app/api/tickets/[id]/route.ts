@@ -51,6 +51,7 @@ export async function GET(
             name: true, 
             email: true, 
             role: true, 
+            avatar: true,
             branchId: true,
             branch: {
               select: { 
@@ -61,7 +62,7 @@ export async function GET(
             }
           } 
         },
-        assignedTo: { select: { name: true, email: true, role: true } },
+        assignedTo: { select: { name: true, email: true, role: true, avatar: true } },
         fieldValues: {
           include: {
             field: { select: { name: true, type: true, label: true } }
@@ -69,7 +70,7 @@ export async function GET(
         },
         comments: {
           include: {
-            user: { select: { name: true, email: true, role: true } },
+            user: { select: { name: true, email: true, role: true, avatar: true } },
             attachments: {
               select: {
                 id: true,
@@ -363,6 +364,7 @@ export async function PATCH(
             name: true, 
             email: true, 
             role: true, 
+            avatar: true,
             branchId: true,
             branch: {
               select: { 
@@ -373,7 +375,7 @@ export async function PATCH(
             }
           } 
         },
-        assignedTo: { select: { name: true, email: true, role: true } },
+        assignedTo: { select: { name: true, email: true, role: true, avatar: true } },
         fieldValues: {
           include: {
             field: { select: { name: true, type: true, label: true } }
@@ -381,7 +383,7 @@ export async function PATCH(
         },
         comments: {
           include: {
-            user: { select: { name: true, email: true, role: true } },
+            user: { select: { name: true, email: true, role: true, avatar: true } },
             attachments: {
               select: {
                 id: true,

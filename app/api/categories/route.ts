@@ -10,42 +10,21 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { searchParams } = new URL(request.url);
-    const level = searchParams.get('level');
-    const parentId = searchParams.get('parentId');
-    const includeChildren = searchParams.get('includeChildren') === 'true';
+    // No additional filtering parameters needed for service categories
 
-    // Build where clause
-    const where: any = {
-      isActive: true
-    };
-
-    if (level) {
-      where.level = parseInt(level);
-    }
-
-    if (parentId) {
-      where.parentId = parentId;
-    } else if (parentId === null) {
-      where.parentId = null;
-    }
-
-    // All users can see all categories - no role-based filtering
+    // All users can see all service categories - no role-based filtering
     // Branch users (USER role) can now see and create tickets for any category
-    const categories = await prisma.category.findMany({
+    const categories = await prisma.serviceCategory.findMany({
       where: {
         isActive: true
       },
       include: {
-        subcategories: {
+        services: {
           where: { isActive: true },
-          include: {
-            items: {
-              where: { isActive: true },
-              orderBy: { name: 'asc' }
-            }
-          },
-          orderBy: { name: 'asc' }
+          select: {
+            id: true,
+            name: true
+          }
         },
         _count: {
           select: {
@@ -58,7 +37,10 @@ export async function GET(request: NextRequest) {
       orderBy: { name: 'asc' }
     });
 
-    return NextResponse.json({ categories });
+    // Filter out categories with no active services for the ticket wizard
+    const categoriesWithServices = categories.filter(cat => cat._count.services > 0);
+
+    return NextResponse.json({ categories: categoriesWithServices });
   } catch (error) {
     console.error('Error fetching categories:', error);
     return NextResponse.json(
