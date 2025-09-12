@@ -208,12 +208,12 @@ export default function PCAssetsPage() {
               className="pl-10"
             />
           </div>
-          <Select value={filterBranch} onValueChange={setFilterBranch}>
+          <Select value={filterBranch || "all"} onValueChange={(value) => setFilterBranch(value === "all" ? "" : value)}>
             <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="All Branches" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Branches</SelectItem>
+              <SelectItem value="all">All Branches</SelectItem>
               {branches.map((branch) => (
                 <SelectItem key={branch.id} value={branch.id}>
                   {branch.name}
