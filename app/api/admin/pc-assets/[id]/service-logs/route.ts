@@ -91,7 +91,7 @@ export async function POST(
     }
 
     // Check if PC asset exists
-    const pcAsset = await prisma.pCAsset.findUnique({
+    const pcAsset = await prisma.PCAsset.findUnique({
       where: { id: params.id },
       include: {
         branch: true,

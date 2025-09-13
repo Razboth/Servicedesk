@@ -14,7 +14,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const pcAsset = await prisma.pCAsset.findUnique({
+    const pcAsset = await prisma.PCAsset.findUnique({
       where: { id: params.id },
       include: {
         branch: true,
@@ -86,7 +86,7 @@ export async function PUT(
     const body = await request.json();
 
     // Check if PC exists
-    const existingPC = await prisma.pCAsset.findUnique({
+    const existingPC = await prisma.PCAsset.findUnique({
       where: { id: params.id }
     });
 
@@ -96,7 +96,7 @@ export async function PUT(
 
     // Check for duplicate PC name if changed
     if (body.pcName && body.pcName !== existingPC.pcName) {
-      const duplicateName = await prisma.pCAsset.findUnique({
+      const duplicateName = await prisma.PCAsset.findUnique({
         where: { pcName: body.pcName }
       });
 
@@ -110,7 +110,7 @@ export async function PUT(
 
     // Check for duplicate asset tag if changed
     if (body.assetTag && body.assetTag !== existingPC.assetTag) {
-      const duplicateTag = await prisma.pCAsset.findUnique({
+      const duplicateTag = await prisma.PCAsset.findUnique({
         where: { assetTag: body.assetTag }
       });
 
@@ -123,7 +123,7 @@ export async function PUT(
     }
 
     // Update PC asset
-    const updatedPC = await prisma.pCAsset.update({
+    const updatedPC = await prisma.PCAsset.update({
       where: { id: params.id },
       data: {
         pcName: body.pcName,
@@ -207,7 +207,7 @@ export async function DELETE(
     }
 
     // Check if PC exists
-    const existingPC = await prisma.pCAsset.findUnique({
+    const existingPC = await prisma.PCAsset.findUnique({
       where: { id: params.id },
       include: {
         _count: {
@@ -226,7 +226,7 @@ export async function DELETE(
     // Don't delete if there are service logs or hardening checklists
     if (existingPC._count.serviceLogs > 0 || existingPC._count.hardeningChecklists > 0) {
       // Soft delete instead
-      const updatedPC = await prisma.pCAsset.update({
+      const updatedPC = await prisma.PCAsset.update({
         where: { id: params.id },
         data: { isActive: false }
       });
@@ -248,7 +248,7 @@ export async function DELETE(
     }
 
     // Hard delete if no related records
-    await prisma.pCAsset.delete({
+    await prisma.PCAsset.delete({
       where: { id: params.id }
     });
 

@@ -71,7 +71,7 @@ export async function POST(request: Request) {
         }
 
         // Check for duplicate PC name
-        const existingPC = await prisma.pCAsset.findUnique({
+        const existingPC = await prisma.PCAsset.findUnique({
           where: { pcName: asset.pcName }
         });
 
@@ -86,7 +86,7 @@ export async function POST(request: Request) {
 
         // Check for duplicate asset tag
         if (asset.assetTag) {
-          const existingTag = await prisma.pCAsset.findUnique({
+          const existingTag = await prisma.PCAsset.findUnique({
             where: { assetTag: asset.assetTag }
           });
 
@@ -119,7 +119,7 @@ export async function POST(request: Request) {
         }
 
         // Create PC asset
-        await prisma.pCAsset.create({
+        await prisma.PCAsset.create({
           data: {
             pcName: asset.pcName,
             brand: asset.brand,

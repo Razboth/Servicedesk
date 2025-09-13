@@ -44,7 +44,7 @@ export async function GET(request: Request) {
       ];
     }
 
-    const pcAssets = await prisma.pCAsset.findMany({
+    const pcAssets = await prisma.PCAsset.findMany({
       where,
       include: {
         branch: {
@@ -133,7 +133,7 @@ export async function POST(request: Request) {
     }
 
     // Check for duplicate PC name
-    const existingPC = await prisma.pCAsset.findUnique({
+    const existingPC = await prisma.PCAsset.findUnique({
       where: { pcName: body.pcName }
     });
 
@@ -146,7 +146,7 @@ export async function POST(request: Request) {
 
     // Check for duplicate asset tag if provided
     if (body.assetTag) {
-      const existingAssetTag = await prisma.pCAsset.findUnique({
+      const existingAssetTag = await prisma.PCAsset.findUnique({
         where: { assetTag: body.assetTag }
       });
 
@@ -159,7 +159,7 @@ export async function POST(request: Request) {
     }
 
     // Create PC asset
-    const pcAsset = await prisma.pCAsset.create({
+    const pcAsset = await prisma.PCAsset.create({
       data: {
         pcName: body.pcName,
         brand: body.brand,

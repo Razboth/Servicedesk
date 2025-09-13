@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     }
 
     // Check if PC asset exists
-    const pcAsset = await prisma.pCAsset.findUnique({
+    const pcAsset = await prisma.PCAsset.findUnique({
       where: { id: body.pcAssetId }
     });
 
