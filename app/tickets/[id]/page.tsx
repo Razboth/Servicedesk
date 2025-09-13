@@ -121,6 +121,7 @@ interface Ticket {
   service: {
     name: string;
     requiresApproval?: boolean;
+    supportGroupId?: string;
     category: {
       name: string;
     };
@@ -853,12 +854,12 @@ export default function TicketDetailPage() {
     if (!session?.user?.role || !ticket) return false;
     
     // Transaction Claims Support group members cannot claim tickets
-    if (session.user.role === 'TECHNICIAN' && userSupportGroup?.code === 'TRANSACTION_CLAIMS_SUPPORT') {
+    if (session.user.role === 'TECHNICIAN' && session.user.supportGroupCode === 'TRANSACTION_CLAIMS_SUPPORT') {
       return false;
     }
     
-    // Only technicians can claim tickets
-    if (!['TECHNICIAN', 'SECURITY_ANALYST', 'ADMIN'].includes(session.user.role)) return false;
+    // Only technicians and admins can claim tickets
+    if (!['TECHNICIAN', 'SECURITY_ANALYST', 'ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) return false;
     
     // Can't claim if already assigned
     if (ticket.assignedToId) return false;
@@ -875,6 +876,23 @@ export default function TicketDetailPage() {
     // Ticket must be in a claimable status (OPEN)
     if (!['OPEN'].includes(ticket.status)) {
       return false;
+    }
+    
+    // For technicians and security analysts, check if ticket's service support group matches their support group
+    if (session.user.role === 'TECHNICIAN' || session.user.role === 'SECURITY_ANALYST') {
+      // If ticket has a support group assigned
+      if (ticket.service?.supportGroupId) {
+        // User must have the same support group
+        if (!session.user.supportGroupId || ticket.service.supportGroupId !== session.user.supportGroupId) {
+          return false;
+        }
+      }
+      // If ticket has no support group, any technician can claim it
+    }
+    
+    // Admins can always claim any ticket
+    if (session.user.role === 'ADMIN' || session.user.role === 'SUPER_ADMIN') {
+      return true;
     }
     
     return true;

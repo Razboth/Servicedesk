@@ -14,8 +14,8 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Only technicians can claim tickets
-    if (!session.user.role || !['TECHNICIAN', 'ADMIN', 'SECURITY_ANALYST'].includes(session.user.role)) {
+    // Only technicians and admins can claim tickets
+    if (!session.user.role || !['TECHNICIAN', 'ADMIN', 'SUPER_ADMIN', 'SECURITY_ANALYST'].includes(session.user.role)) {
       return NextResponse.json({ error: 'Only technicians can claim tickets' }, { status: 403 });
     }
 
@@ -38,7 +38,8 @@ export async function POST(
         },
         service: {
           select: {
-            requiresApproval: true
+            requiresApproval: true,
+            supportGroupId: true
           }
         }
       }
@@ -46,6 +47,37 @@ export async function POST(
 
     if (!existingTicket) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
+    }
+
+    // For technicians and security analysts, check support group match
+    if (session.user.role === 'TECHNICIAN' || session.user.role === 'SECURITY_ANALYST') {
+      // Get user's support group
+      const userWithSupportGroup = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { 
+          supportGroupId: true,
+          supportGroup: {
+            select: { code: true }
+          }
+        }
+      });
+
+      // Check for Transaction Claims Support group members
+      if (userWithSupportGroup?.supportGroup?.code === 'TRANSACTION_CLAIMS_SUPPORT') {
+        return NextResponse.json({ 
+          error: 'Transaction Claims Support members cannot claim tickets' 
+        }, { status: 403 });
+      }
+
+      // If ticket has a support group, technician must be in the same group
+      if (existingTicket.service?.supportGroupId) {
+        if (!userWithSupportGroup?.supportGroupId || 
+            userWithSupportGroup.supportGroupId !== existingTicket.service.supportGroupId) {
+          return NextResponse.json({ 
+            error: 'You can only claim tickets assigned to your support group' 
+          }, { status: 403 });
+        }
+      }
     }
 
     // Check if ticket is in a claimable status
