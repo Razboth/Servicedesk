@@ -46,7 +46,8 @@ import {
   Phone,
   Mail,
   Calendar,
-  TrendingUp
+  TrendingUp,
+  BarChart
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -240,10 +241,16 @@ export default function VendorsPage() {
           <h1 className="text-3xl font-bold">Vendor Management</h1>
           <p className="text-muted-foreground">Manage external vendors and their performance</p>
         </div>
-        <Button onClick={handleCreate}>
-          <Plus className="w-4 h-4 mr-2" />
-          Add Vendor
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => router.push('/admin/vendors/performance')}>
+            <BarChart className="w-4 h-4 mr-2" />
+            View Performance
+          </Button>
+          <Button onClick={handleCreate}>
+            <Plus className="w-4 h-4 mr-2" />
+            Add Vendor
+          </Button>
+        </div>
       </div>
 
       {/* Statistics Cards */}
