@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { 
   Monitor, 
@@ -38,9 +39,12 @@ import {
   AlertTriangle,
   CheckCircle,
   Upload,
-  Download
+  Download,
+  Key,
+  ShieldCheck
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { OSLicensesTab } from '@/components/pc-assets/os-licenses-tab';
 
 interface PCAsset {
   id: string;
@@ -175,26 +179,48 @@ export default function PCAssetsPage() {
   };
 
   return (
-    <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-8">
+    <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold flex items-center gap-2">
           <Monitor className="h-8 w-8" />
-          PC Asset Management
+          PC Asset & License Management
         </h1>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => router.push('/admin/pc-assets/import')}
-          >
-            <Upload className="h-4 w-4 mr-2" />
-            Import CSV
-          </Button>
-          <Button onClick={() => router.push('/admin/pc-assets/new')}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add PC Asset
-          </Button>
-        </div>
       </div>
+
+      <Tabs defaultValue="assets" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="assets" className="flex items-center gap-2">
+            <Monitor className="h-4 w-4" />
+            PC Assets
+          </TabsTrigger>
+          <TabsTrigger value="os-licenses" className="flex items-center gap-2">
+            <Shield className="h-4 w-4" />
+            OS Licenses
+          </TabsTrigger>
+          <TabsTrigger value="office-licenses" className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Office Licenses
+          </TabsTrigger>
+          <TabsTrigger value="antivirus-licenses" className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4" />
+            Antivirus
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="assets" className="space-y-6">
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => router.push('/admin/pc-assets/import')}
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Import CSV
+            </Button>
+            <Button onClick={() => router.push('/admin/pc-assets/new')}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add PC Asset
+            </Button>
+          </div>
 
       <Card className="mb-6">
         <CardHeader>
@@ -395,6 +421,36 @@ export default function PCAssetsPage() {
           </Table>
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="os-licenses">
+          <OSLicensesTab />
+        </TabsContent>
+
+        <TabsContent value="office-licenses">
+          <div className="text-center py-12">
+            <FileText className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+            <h3 className="text-lg font-medium">Office License Management</h3>
+            <p className="text-gray-500 mt-2">Manage Microsoft Office licenses</p>
+            <Button className="mt-4">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Office License
+            </Button>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="antivirus-licenses">
+          <div className="text-center py-12">
+            <ShieldCheck className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+            <h3 className="text-lg font-medium">Antivirus License Management</h3>
+            <p className="text-gray-500 mt-2">Manage antivirus software licenses</p>
+            <Button className="mt-4">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Antivirus License
+            </Button>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

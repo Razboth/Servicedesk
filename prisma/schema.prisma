@@ -68,6 +68,7 @@ model User {
   createdOSLicenses      OSLicense[]            @relation("OSLicenseCreatedBy")
   assignedOfficeLicenses OfficeLicense[]        @relation("OfficeLicenseAssignedUser")
   createdOfficeLicenses  OfficeLicense[]        @relation("OfficeLicenseCreatedBy")
+  assignedAntivirusLicenses AntivirusLicense[]  @relation("AntivirusLicenseAssignedUser")
   branch                 Branch?                @relation(fields: [branchId], references: [id])
   supportGroup           SupportGroup?          @relation(fields: [supportGroupId], references: [id])
 
@@ -140,6 +141,7 @@ model Branch {
   pcAssets               PCAsset[]
   osLicenses             OSLicense[]
   officeLicenses         OfficeLicense[]
+  antivirusLicenses      AntivirusLicense[]
 
   @@map("branches")
 }
@@ -1605,6 +1607,7 @@ model PCAsset {
   hardeningChecklists   HardeningChecklist[]
   osLicenses            OSLicense[]
   officeLicenses        OfficeLicense[]
+  antivirusLicenses     AntivirusLicense[]
   
   @@index([branchId])
   @@index([assignedToId])
@@ -1812,4 +1815,52 @@ model OfficeLicense {
   @@index([assignedToBranch])
   @@index([expiryDate])
   @@map("office_licenses")
+}
+
+// ============================================
+// Antivirus License Management
+// ============================================
+
+model AntivirusLicense {
+  id                    String            @id @default(cuid())
+  name                  String            // License name/description
+  productName           String            // e.g., Kaspersky, Norton, McAfee, Windows Defender
+  productVersion        String?           // e.g., 2024, 21.0.1
+  licenseType           String            // SUBSCRIPTION, PERPETUAL, TRIAL
+  licenseKey            String?           @unique // Product key or license code
+  subscriptionId        String?           // For subscription-based licenses
+  purchaseDate          DateTime?
+  expiryDate            DateTime?
+  renewalDate           DateTime?         // For subscriptions
+  cost                  Float?
+  costPeriod            String?           // Monthly, Yearly, One-time
+  vendor                String?           // Where purchased from
+  invoiceNumber         String?
+  maxDevices            Int               @default(1)
+  currentDevices        Int               @default(0)
+  isActive              Boolean           @default(true)
+  autoRenew             Boolean           @default(false)
+  notes                 String?           @db.Text
+  
+  // Assignment tracking
+  assignedToPC          String?           // Can be assigned to specific PC
+  assignedToBranch      String?           // Or assigned to branch
+  assignedToUser        String?           // Or assigned to user
+  
+  // Relations
+  pcAsset               PCAsset?          @relation(fields: [assignedToPC], references: [id], onDelete: SetNull)
+  branch                Branch?           @relation(fields: [assignedToBranch], references: [id], onDelete: SetNull)
+  user                  User?             @relation("AntivirusLicenseAssignedUser", fields: [assignedToUser], references: [id], onDelete: SetNull)
+  
+  // Timestamps
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  
+  // Indexes
+  @@index([expiryDate])
+  @@index([assignedToPC])
+  @@index([assignedToBranch])
+  @@index([isActive])
+  
+  @@map("antivirus_licenses")
 }
