@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/modern-dialog';
 import { ProgressTracker } from '@/components/ui/progress-tracker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Clock, User, MessageSquare, AlertCircle, CheckCircle, CheckCheck, Plus, X, Paperclip, Download, FileText, Eye, Edit, Sparkles, Shield, UserCheck, UserX, Timer, Trash2, Image as ImageIcon, File, MoreVertical, Building2, Briefcase, UserCircle, Calendar, Hash, MapPin } from 'lucide-react';
+import { ArrowLeft, Clock, User, MessageSquare, AlertCircle, CheckCircle, CheckCheck, Plus, X, Paperclip, Download, FileText, Eye, Edit, Sparkles, Shield, UserCheck, UserX, Timer, Trash2, Image as ImageIcon, File, MoreVertical, Building2, Briefcase, UserCircle, Calendar, Hash, MapPin, PlayCircle, XCircle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { RelatedArticles } from '@/components/knowledge/related-articles';
 import { AttachmentPreview } from '@/components/ui/attachment-preview';
@@ -1696,28 +1696,36 @@ export default function TicketDetailPage() {
                           <span className="font-medium">Resolve + Close</span>
                         </Button>
                       )}
-                      {ticket.status === 'PENDING_VENDOR' && ['TECHNICIAN', 'SECURITY_ANALYST'].includes(session?.user?.role) && (
+                      {ticket.status === 'PENDING_VENDOR' && canUpdateStatus() && (
                         <>
                           <Button
                             onClick={() => updateTicketStatus('IN_PROGRESS')}
                             disabled={isUpdatingStatus}
-                            className="w-full flex items-center gap-2 bg-brown-600 hover:bg-brown-700 dark:bg-brown-400 dark:hover:bg-brown-500 text-white dark:text-brown-950"
+                            className="w-full flex items-center gap-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-400 dark:hover:bg-blue-500 text-white"
                           >
-                            <AlertCircle className="h-4 w-4" />
+                            <PlayCircle className="h-4 w-4" />
                             Resume Work
                           </Button>
                           <Button
-                            onClick={handleResolveClick}
+                            onClick={() => updateTicketStatus('RESOLVED')}
                             disabled={isUpdatingStatus}
-                            className="w-full flex items-center gap-2"
+                            className="w-full flex items-center gap-2 bg-green-600 hover:bg-green-700 dark:bg-green-400 dark:hover:bg-green-500 text-white"
                           >
-                            <Edit className="h-4 w-4" />
-                            Update Status
+                            <CheckCircle className="h-4 w-4" />
+                            Resolve Ticket
+                          </Button>
+                          <Button
+                            onClick={() => updateTicketStatus('CLOSED')}
+                            disabled={isUpdatingStatus}
+                            className="w-full flex items-center gap-2 bg-gray-600 hover:bg-gray-700 dark:bg-gray-400 dark:hover:bg-gray-500 text-white"
+                          >
+                            <XCircle className="h-4 w-4" />
+                            Close Ticket
                           </Button>
                         </>
                       )}
                       {/* Allow reopening from any closed/resolved/cancelled status */}
-                      {['CLOSED', 'CANCELLED', 'RESOLVED', 'REJECTED', 'PENDING_APPROVAL', 'APPROVED', 'PENDING', 'PENDING_VENDOR'].includes(ticket.status) && canUpdateStatus() && (
+                      {['CLOSED', 'CANCELLED', 'RESOLVED', 'REJECTED', 'PENDING_APPROVAL', 'APPROVED', 'PENDING'].includes(ticket.status) && canUpdateStatus() && (
                         <Button
                           onClick={() => updateTicketStatus('OPEN')}
                           disabled={isUpdatingStatus}

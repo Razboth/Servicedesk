@@ -419,6 +419,75 @@ export async function PATCH(
       });
     }
 
+    // Update vendor ticket status based on main ticket status changes
+    if (validatedData.status) {
+      // If closing or resolving main ticket, also resolve vendor ticket
+      if (['CLOSED', 'RESOLVED'].includes(validatedData.status)) {
+        const activeVendorTicket = await prisma.vendorTicket.findFirst({
+          where: {
+            ticketId: id,
+            status: { in: ['PENDING', 'IN_PROGRESS'] }
+          },
+          include: {
+            vendor: true
+          }
+        });
+
+        if (activeVendorTicket) {
+          await prisma.vendorTicket.update({
+            where: { id: activeVendorTicket.id },
+            data: {
+              status: 'RESOLVED',
+              resolvedAt: new Date()
+            }
+          });
+
+          // Add a comment about vendor ticket resolution
+          await prisma.comment.create({
+            data: {
+              content: `Vendor ticket ${activeVendorTicket.vendorTicketNumber} with ${activeVendorTicket.vendor.name} has been marked as resolved due to main ticket ${validatedData.status === 'CLOSED' ? 'closure' : 'resolution'}.`,
+              ticketId: id,
+              userId: session.user.id,
+              isInternal: false
+            }
+          });
+        }
+      }
+      
+      // If reopening from PENDING_VENDOR to IN_PROGRESS, cancel vendor ticket
+      if (existingTicket.status === 'PENDING_VENDOR' && validatedData.status === 'IN_PROGRESS') {
+        const activeVendorTicket = await prisma.vendorTicket.findFirst({
+          where: {
+            ticketId: id,
+            status: { in: ['PENDING', 'IN_PROGRESS'] }
+          },
+          include: {
+            vendor: true
+          }
+        });
+
+        if (activeVendorTicket) {
+          await prisma.vendorTicket.update({
+            where: { id: activeVendorTicket.id },
+            data: {
+              status: 'CANCELLED',
+              resolvedAt: new Date()
+            }
+          });
+
+          // Add a comment about vendor ticket cancellation
+          await prisma.comment.create({
+            data: {
+              content: `Vendor ticket ${activeVendorTicket.vendorTicketNumber} with ${activeVendorTicket.vendor.name} has been cancelled as work resumed internally.`,
+              ticketId: id,
+              userId: session.user.id,
+              isInternal: false
+            }
+          });
+        }
+      }
+    }
+
     // Emit socket events for real-time updates
     if (validatedData.status && validatedData.status !== existingTicket.status) {
       emitTicketStatusChanged(
