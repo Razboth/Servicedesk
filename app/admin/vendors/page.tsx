@@ -54,23 +54,22 @@ interface Vendor {
   id: string;
   name: string;
   code: string;
-  contactPerson: string | null;
-  email: string | null;
-  phone: string | null;
+  contactName: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
   address: string | null;
-  serviceTypes: string[];
-  contractStartDate: string | null;
-  contractEndDate: string | null;
-  slaResponseTime: number;
-  slaResolutionTime: number;
+  website: string | null;
+  supportHours: string | null;
+  slaResponseTime: number | null;
+  slaResolutionTime: number | null;
   notes: string | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-  totalTickets: number;
-  activeTickets: number;
-  resolvedTickets: number;
-  avgResolutionTimeHours: number;
+  totalTickets?: number;
+  activeTickets?: number;
+  resolvedTickets?: number;
+  avgResolutionTimeHours?: number;
 }
 
 export default function VendorsPage() {
@@ -92,9 +91,8 @@ export default function VendorsPage() {
     email: '',
     phone: '',
     address: '',
-    serviceTypes: [] as string[],
-    contractStartDate: '',
-    contractEndDate: '',
+    website: '',
+    supportHours: '',
     slaResponseTime: 4,
     slaResolutionTime: 24,
     notes: '',
@@ -138,9 +136,8 @@ export default function VendorsPage() {
       email: '',
       phone: '',
       address: '',
-      serviceTypes: [],
-      contractStartDate: '',
-      contractEndDate: '',
+      website: '',
+      supportHours: '',
       slaResponseTime: 4,
       slaResolutionTime: 24,
       notes: '',
@@ -154,15 +151,14 @@ export default function VendorsPage() {
     setFormData({
       name: vendor.name,
       code: vendor.code,
-      contactPerson: vendor.contactPerson || '',
-      email: vendor.email || '',
-      phone: vendor.phone || '',
+      contactPerson: vendor.contactName || '',
+      email: vendor.contactEmail || '',
+      phone: vendor.contactPhone || '',
       address: vendor.address || '',
-      serviceTypes: vendor.serviceTypes,
-      contractStartDate: vendor.contractStartDate ? vendor.contractStartDate.split('T')[0] : '',
-      contractEndDate: vendor.contractEndDate ? vendor.contractEndDate.split('T')[0] : '',
-      slaResponseTime: vendor.slaResponseTime,
-      slaResolutionTime: vendor.slaResolutionTime,
+      website: vendor.website || '',
+      supportHours: vendor.supportHours || '',
+      slaResponseTime: vendor.slaResponseTime || 4,
+      slaResolutionTime: vendor.slaResolutionTime || 24,
       notes: vendor.notes || '',
       isActive: vendor.isActive
     });
@@ -226,24 +222,14 @@ export default function VendorsPage() {
     }
   };
 
-  const getServiceTypeColor = (type: string) => {
-    const colors: Record<string, string> = {
-      'HARDWARE': 'bg-blue-500',
-      'SOFTWARE': 'bg-green-500',
-      'NETWORK': 'bg-purple-500',
-      'SECURITY': 'bg-red-500',
-      'OTHER': 'bg-gray-500'
-    };
-    return colors[type] || 'bg-gray-500';
-  };
 
   // Statistics
   const stats = {
     totalVendors: vendors.filter(v => v.isActive).length,
-    totalTickets: vendors.reduce((acc, v) => acc + v.totalTickets, 0),
-    activeTickets: vendors.reduce((acc, v) => acc + v.activeTickets, 0),
+    totalTickets: vendors.reduce((acc, v) => acc + (v.totalTickets || 0), 0),
+    activeTickets: vendors.reduce((acc, v) => acc + (v.activeTickets || 0), 0),
     avgResolutionTime: vendors.length > 0
-      ? Math.round(vendors.reduce((acc, v) => acc + v.avgResolutionTimeHours, 0) / vendors.length)
+      ? Math.round(vendors.reduce((acc, v) => acc + (v.avgResolutionTimeHours || 0), 0) / vendors.length)
       : 0
   };
 
@@ -380,30 +366,26 @@ export default function VendorsPage() {
                     </TableCell>
                     <TableCell>
                       <div className="space-y-1">
-                        {vendor.contactPerson && (
-                          <p className="text-sm">{vendor.contactPerson}</p>
+                        {vendor.contactName && (
+                          <p className="text-sm">{vendor.contactName}</p>
                         )}
-                        {vendor.email && (
+                        {vendor.contactEmail && (
                           <p className="text-xs text-muted-foreground flex items-center gap-1">
                             <Mail className="h-3 w-3" />
-                            {vendor.email}
+                            {vendor.contactEmail}
                           </p>
                         )}
-                        {vendor.phone && (
+                        {vendor.contactPhone && (
                           <p className="text-xs text-muted-foreground flex items-center gap-1">
                             <Phone className="h-3 w-3" />
-                            {vendor.phone}
+                            {vendor.contactPhone}
                           </p>
                         )}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {vendor.serviceTypes.map((type) => (
-                          <Badge key={type} className={getServiceTypeColor(type)}>
-                            {type}
-                          </Badge>
-                        ))}
+                      <div className="text-sm text-gray-600">
+                        {vendor.supportHours || 'Not specified'}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -416,15 +398,15 @@ export default function VendorsPage() {
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <span className="text-sm">Total:</span>
-                          <Badge variant="outline">{vendor.totalTickets}</Badge>
+                          <Badge variant="outline">{vendor.totalTickets || 0}</Badge>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-sm">Active:</span>
-                          <Badge variant="destructive">{vendor.activeTickets}</Badge>
+                          <Badge variant="destructive">{vendor.activeTickets || 0}</Badge>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-sm">Avg:</span>
-                          <Badge variant="secondary">{vendor.avgResolutionTimeHours}h</Badge>
+                          <Badge variant="secondary">{vendor.avgResolutionTimeHours || 0}h</Badge>
                         </div>
                       </div>
                     </TableCell>
