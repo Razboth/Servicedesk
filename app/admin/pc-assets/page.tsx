@@ -44,7 +44,8 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { OSLicensesTab } from '@/components/pc-assets/os-licenses-tab';
+import OSTypesTab from '@/components/pc-assets/os-types-tab';
+import OfficeTypesTab from '@/components/pc-assets/office-types-tab';
 
 interface PCAsset {
   id: string;
@@ -188,22 +189,18 @@ export default function PCAssetsPage() {
       </div>
 
       <Tabs defaultValue="assets" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="assets" className="flex items-center gap-2">
             <Monitor className="h-4 w-4" />
             PC Assets
           </TabsTrigger>
-          <TabsTrigger value="os-licenses" className="flex items-center gap-2">
+          <TabsTrigger value="os-types" className="flex items-center gap-2">
             <Shield className="h-4 w-4" />
-            OS Licenses
+            Operating Systems
           </TabsTrigger>
-          <TabsTrigger value="office-licenses" className="flex items-center gap-2">
+          <TabsTrigger value="office-types" className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
-            Office Licenses
-          </TabsTrigger>
-          <TabsTrigger value="antivirus-licenses" className="flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4" />
-            Antivirus
+            Office Products
           </TabsTrigger>
         </TabsList>
 
@@ -423,32 +420,12 @@ export default function PCAssetsPage() {
       </Card>
         </TabsContent>
 
-        <TabsContent value="os-licenses">
-          <OSLicensesTab />
+        <TabsContent value="os-types">
+          <OSTypesTab />
         </TabsContent>
 
-        <TabsContent value="office-licenses">
-          <div className="text-center py-12">
-            <FileText className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium">Office License Management</h3>
-            <p className="text-gray-500 mt-2">Manage Microsoft Office licenses</p>
-            <Button className="mt-4">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Office License
-            </Button>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="antivirus-licenses">
-          <div className="text-center py-12">
-            <ShieldCheck className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium">Antivirus License Management</h3>
-            <p className="text-gray-500 mt-2">Manage antivirus software licenses</p>
-            <Button className="mt-4">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Antivirus License
-            </Button>
-          </div>
+        <TabsContent value="office-types">
+          <OfficeTypesTab />
         </TabsContent>
       </Tabs>
     </div>

@@ -28,26 +28,34 @@ interface StorageDevice {
   brand: string;
 }
 
-interface OSLicense {
+interface OSType {
   id: string;
-  name: string;
-  osName: string;
-  osVersion: string | null;
-  licenseType: string;
-  displayName: string;
-  availableActivations: number;
-  isAvailable: boolean;
+  label: string;
+  value: string;
+  type: string;
+  architecture: string | null;
+  raw: {
+    id: string;
+    name: string;
+    version: string | null;
+    type: string;
+    architecture: string | null;
+    edition: string | null;
+  };
 }
 
-interface OfficeLicense {
+interface OfficeType {
   id: string;
-  name: string;
-  productName: string;
-  productType: string;
-  licenseType: string;
-  displayName: string;
-  availableUsers: number;
-  isAvailable: boolean;
+  label: string;
+  value: string;
+  type: string;
+  raw: {
+    id: string;
+    name: string;
+    version: string | null;
+    type: string;
+    edition: string | null;
+  };
 }
 
 export default function NewPCAssetPage() {
@@ -57,10 +65,10 @@ export default function NewPCAssetPage() {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [selectedBranch, setSelectedBranch] = useState('');
-  const [osLicenses, setOSLicenses] = useState<OSLicense[]>([]);
-  const [officeLicenses, setOfficeLicenses] = useState<OfficeLicense[]>([]);
-  const [selectedOSLicense, setSelectedOSLicense] = useState('');
-  const [selectedOfficeLicense, setSelectedOfficeLicense] = useState('');
+  const [osTypes, setOSTypes] = useState<OSType[]>([]);
+  const [officeTypes, setOfficeTypes] = useState<OfficeType[]>([]);
+  const [selectedOSType, setSelectedOSType] = useState('');
+  const [selectedOfficeType, setSelectedOfficeType] = useState('');
   const [storageDevices, setStorageDevices] = useState<StorageDevice[]>([
     { type: 'SSD', size: '', brand: '' }
   ]);
@@ -79,13 +87,10 @@ export default function NewPCAssetPage() {
     purchaseOrderNumber: '',
     warrantyExpiry: '',
     assetTag: '',
-    osName: 'Windows 11 Pro',
-    osVersion: '',
+    operatingSystemId: '',
     osLicenseType: 'OEM' as const,
     osSerialNumber: '',
-    officeProduct: '',
-    officeVersion: '',
-    officeProductType: 'OFFICE_365' as const,
+    officeProductId: '',
     officeLicenseType: 'SUBSCRIPTION' as const,
     officeSerialNumber: '',
     antivirusName: '',
@@ -97,7 +102,7 @@ export default function NewPCAssetPage() {
   useEffect(() => {
     fetchBranches();
     fetchUsers();
-    fetchAvailableLicenses();
+    fetchPCAssetTypes();
   }, []);
 
   const fetchBranches = async () => {
@@ -124,16 +129,16 @@ export default function NewPCAssetPage() {
     }
   };
 
-  const fetchAvailableLicenses = async () => {
+  const fetchPCAssetTypes = async () => {
     try {
-      const response = await fetch('/api/admin/licenses/available');
+      const response = await fetch('/api/admin/pc-assets/types');
       if (response.ok) {
         const data = await response.json();
-        setOSLicenses(data.osLicenses || []);
-        setOfficeLicenses(data.officeLicenses || []);
+        setOSTypes(data.operatingSystems || []);
+        setOfficeTypes(data.officeProducts || []);
       }
     } catch (error) {
-      console.error('Error fetching available licenses:', error);
+      console.error('Error fetching PC asset types:', error);
     }
   };
 
@@ -196,8 +201,8 @@ export default function NewPCAssetPage() {
           purchaseDate: formData.purchaseDate || null,
           warrantyExpiry: formData.warrantyExpiry || null,
           antivirusLicenseExpiry: formData.antivirusLicenseExpiry || null,
-          osLicenseId: selectedOSLicense || null,
-          officeLicenseId: selectedOfficeLicense || null
+          operatingSystemId: selectedOSType || null,
+          officeProductId: selectedOfficeType || null
         })
       });
 
@@ -445,44 +450,35 @@ export default function NewPCAssetPage() {
             <CardHeader>
               <CardTitle>Operating System</CardTitle>
               <CardDescription>
-                Select an available OS license from inventory
+                Select the operating system for this PC
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="osLicense">Select OS License *</Label>
+                <Label htmlFor="osType">Select Operating System *</Label>
                 <Select 
-                  value={selectedOSLicense} 
+                  value={selectedOSType} 
                   onValueChange={(value) => {
-                    setSelectedOSLicense(value);
-                    const license = osLicenses.find(l => l.id === value);
-                    if (license) {
-                      setFormData(prev => ({
-                        ...prev,
-                        osName: license.osName,
-                        osVersion: license.osVersion || '',
-                        osLicenseType: license.licenseType,
-                        osSerialNumber: ''
-                      }));
-                    }
+                    setSelectedOSType(value);
+                    setFormData(prev => ({
+                      ...prev,
+                      operatingSystemId: value
+                    }));
                   }}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select an available OS license" />
+                    <SelectValue placeholder="Select an operating system" />
                   </SelectTrigger>
                   <SelectContent>
-                    {osLicenses.length === 0 ? (
-                      <SelectItem value="none" disabled>No available licenses</SelectItem>
+                    {osTypes.length === 0 ? (
+                      <SelectItem value="none" disabled>No OS types available</SelectItem>
                     ) : (
-                      osLicenses.map(license => (
+                      osTypes.map(os => (
                         <SelectItem 
-                          key={license.id} 
-                          value={license.id}
-                          disabled={!license.isAvailable}
+                          key={os.id} 
+                          value={os.value}
                         >
-                          {license.displayName} 
-                          {license.availableActivations > 0 && 
-                            ` (${license.availableActivations} available)`}
+                          {os.label}
                         </SelectItem>
                       ))
                     )}
@@ -490,31 +486,27 @@ export default function NewPCAssetPage() {
                 </Select>
               </div>
 
-              {selectedOSLicense && (
+              {selectedOSType && (
                 <div className="grid grid-cols-2 gap-4 pt-4 border-t">
                   <div>
-                    <Label>OS Name</Label>
-                    <Input
-                      value={formData.osName}
-                      disabled
-                      className="bg-muted"
-                    />
-                  </div>
-                  <div>
-                    <Label>OS Version</Label>
-                    <Input
-                      value={formData.osVersion}
-                      disabled
-                      className="bg-muted"
-                    />
-                  </div>
-                  <div>
-                    <Label>License Type</Label>
-                    <Input
+                    <Label htmlFor="osLicenseType">License Type</Label>
+                    <Select
                       value={formData.osLicenseType}
-                      disabled
-                      className="bg-muted"
-                    />
+                      onValueChange={(value) => handleSelectChange('osLicenseType', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="OEM">OEM</SelectItem>
+                        <SelectItem value="FPP">FPP (Full Package Product)</SelectItem>
+                        <SelectItem value="OLP">OLP (Open License Program)</SelectItem>
+                        <SelectItem value="VOLUME">Volume License</SelectItem>
+                        <SelectItem value="OPEN_SOURCE">Open Source</SelectItem>
+                        <SelectItem value="TRIAL">Trial</SelectItem>
+                        <SelectItem value="OTHER">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
                     <Label htmlFor="osSerialNumber">OS Serial Number (Optional)</Label>
@@ -536,74 +528,60 @@ export default function NewPCAssetPage() {
             <CardHeader>
               <CardTitle>Office Suite (Optional)</CardTitle>
               <CardDescription>
-                Select an available Office license from inventory (optional)
+                Select the Office product for this PC (optional)
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="officeLicense">Select Office License (Optional)</Label>
+                <Label htmlFor="officeType">Select Office Product (Optional)</Label>
                 <Select 
-                  value={selectedOfficeLicense} 
+                  value={selectedOfficeType} 
                   onValueChange={(value) => {
-                    setSelectedOfficeLicense(value);
-                    const license = officeLicenses.find(l => l.id === value);
-                    if (license) {
-                      setFormData(prev => ({
-                        ...prev,
-                        officeProduct: license.productName,
-                        officeVersion: '',
-                        officeProductType: license.productType,
-                        officeLicenseType: license.licenseType,
-                        officeSerialNumber: ''
-                      }));
-                    }
+                    setSelectedOfficeType(value);
+                    setFormData(prev => ({
+                      ...prev,
+                      officeProductId: value || null
+                    }));
                   }}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select an available Office license (optional)" />
+                    <SelectValue placeholder="Select an Office product (optional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No Office License</SelectItem>
-                    {officeLicenses.map(license => (
+                    <SelectItem value="">No Office Product</SelectItem>
+                    {officeTypes.map(office => (
                       <SelectItem 
-                        key={license.id} 
-                        value={license.id}
-                        disabled={!license.isAvailable}
+                        key={office.id} 
+                        value={office.value}
                       >
-                        {license.displayName} 
-                        {license.availableUsers > 0 && 
-                          ` (${license.availableUsers} available)`}
+                        {office.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
-              {selectedOfficeLicense && (
+              {selectedOfficeType && (
                 <div className="grid grid-cols-2 gap-4 pt-4 border-t">
                   <div>
-                    <Label>Office Product</Label>
-                    <Input
-                      value={formData.officeProduct}
-                      disabled
-                      className="bg-muted"
-                    />
-                  </div>
-                  <div>
-                    <Label>Product Type</Label>
-                    <Input
-                      value={formData.officeProductType}
-                      disabled
-                      className="bg-muted"
-                    />
-                  </div>
-                  <div>
-                    <Label>License Type</Label>
-                    <Input
+                    <Label htmlFor="officeLicenseType">License Type</Label>
+                    <Select
                       value={formData.officeLicenseType}
-                      disabled
-                      className="bg-muted"
-                    />
+                      onValueChange={(value) => handleSelectChange('officeLicenseType', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="OEM">OEM</SelectItem>
+                        <SelectItem value="FPP">FPP (Full Package Product)</SelectItem>
+                        <SelectItem value="OLP">OLP (Open License Program)</SelectItem>
+                        <SelectItem value="VOLUME">Volume License</SelectItem>
+                        <SelectItem value="SUBSCRIPTION">Subscription</SelectItem>
+                        <SelectItem value="OPEN_SOURCE">Open Source</SelectItem>
+                        <SelectItem value="OTHER">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
                     <Label htmlFor="officeSerialNumber">Office Serial Number (Optional)</Label>

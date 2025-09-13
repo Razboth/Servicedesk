@@ -69,6 +69,8 @@ model User {
   assignedOfficeLicenses OfficeLicense[]        @relation("OfficeLicenseAssignedUser")
   createdOfficeLicenses  OfficeLicense[]        @relation("OfficeLicenseCreatedBy")
   assignedAntivirusLicenses AntivirusLicense[]  @relation("AntivirusLicenseAssignedUser")
+  createdOperatingSystems OperatingSystem[]     @relation("OSCreatedBy")
+  createdOfficeProducts  OfficeProduct[]        @relation("OfficeCreatedBy")
   branch                 Branch?                @relation(fields: [branchId], references: [id])
   supportGroup           SupportGroup?          @relation(fields: [supportGroupId], references: [id])
 
@@ -1572,17 +1574,14 @@ model PCAsset {
   assetTag              String?           @unique
   
   // Operating System
-  osName                String            // e.g., "Windows 11 Pro"
-  osVersion             String?           // e.g., "22H2"
-  osLicenseType         OSLicenseType
-  osSerialNumber        String?
+  operatingSystemId     String?           // Reference to OperatingSystem
+  osLicenseType         OSLicenseType?    // Keep for license type tracking
+  osSerialNumber        String?           // Keep for serial number if needed
   
-  // Office Suite
-  officeProduct         String?           // e.g., "Microsoft Office Professional Plus 2021"
-  officeVersion         String?           // e.g., "2021"
-  officeProductType     OfficeProductType?
-  officeLicenseType     OfficeLicenseType?
-  officeSerialNumber    String?
+  // Office Suite  
+  officeProductId       String?           // Reference to OfficeProduct
+  officeLicenseType     OfficeLicenseType? // Keep for license type tracking
+  officeSerialNumber    String?           // Keep for serial number if needed
   
   // Security
   antivirusName         String?
@@ -1603,6 +1602,8 @@ model PCAsset {
   branch                Branch            @relation(fields: [branchId], references: [id])
   assignedTo            User?             @relation("AssignedPCAssets", fields: [assignedToId], references: [id])
   createdBy             User              @relation("CreatedPCAssets", fields: [createdById], references: [id])
+  operatingSystem       OperatingSystem?  @relation(fields: [operatingSystemId], references: [id])
+  officeProduct         OfficeProduct?    @relation(fields: [officeProductId], references: [id])
   serviceLogs           PCServiceLog[]
   hardeningChecklists   HardeningChecklist[]
   osLicenses            OSLicense[]
@@ -1612,6 +1613,8 @@ model PCAsset {
   @@index([branchId])
   @@index([assignedToId])
   @@index([isActive])
+  @@index([operatingSystemId])
+  @@index([officeProductId])
   @@index([antivirusLicenseExpiry])
   @@index([warrantyExpiry])
   @@map("pc_assets")
@@ -1863,4 +1866,78 @@ model AntivirusLicense {
   @@index([isActive])
   
   @@map("antivirus_licenses")
+}
+
+// ============================================
+// OS and Office Type Management
+// ============================================
+
+model OperatingSystem {
+  id                    String            @id @default(cuid())
+  name                  String            // e.g., "Windows 10 Pro", "Windows 11 Enterprise"
+  version               String?           // e.g., "22H2", "21H1"
+  type                  OSType            // WINDOWS, LINUX, MACOS, OTHER
+  architecture          String?           // e.g., "x64", "x86", "ARM"
+  edition               String?           // e.g., "Pro", "Enterprise", "Home"
+  isActive              Boolean           @default(true)
+  description           String?           @db.Text
+  sortOrder             Int               @default(0)
+  
+  // Relations
+  pcAssets              PCAsset[]
+  
+  // Metadata
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  createdById           String?
+  createdBy             User?             @relation("OSCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  
+  @@unique([name, version])
+  @@index([type, isActive])
+  @@index([sortOrder])
+  @@map("operating_systems")
+}
+
+model OfficeProduct {
+  id                    String            @id @default(cuid())
+  name                  String            // e.g., "Office 365", "Office LTSC 2021"
+  version               String?           // e.g., "2021", "2024", "365"
+  type                  OfficeType        // MICROSOFT_365, LTSC, LIBRE_OFFICE, OPEN_OFFICE, WPS, OTHER
+  edition               String?           // e.g., "Professional Plus", "Standard", "Home & Business"
+  isActive              Boolean           @default(true)
+  description           String?           @db.Text
+  sortOrder             Int               @default(0)
+  
+  // Relations
+  pcAssets              PCAsset[]
+  
+  // Metadata
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  createdById           String?
+  createdBy             User?             @relation("OfficeCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  
+  @@unique([name, version])
+  @@index([type, isActive])
+  @@index([sortOrder])
+  @@map("office_products")
+}
+
+enum OSType {
+  WINDOWS
+  LINUX
+  MACOS
+  UNIX
+  CHROME_OS
+  OTHER
+}
+
+enum OfficeType {
+  MICROSOFT_365
+  OFFICE_LTSC
+  LIBRE_OFFICE
+  OPEN_OFFICE
+  WPS_OFFICE
+  GOOGLE_WORKSPACE
+  OTHER
 }
