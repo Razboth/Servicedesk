@@ -179,17 +179,16 @@ export async function PUT(
       data: {
         name: data.name,
         code: data.code,
-        contactPerson: data.contactPerson,
-        email: data.email,
-        phone: data.phone,
-        address: data.address,
-        serviceTypes: data.serviceTypes || [],
-        contractStartDate: data.contractStartDate ? new Date(data.contractStartDate) : null,
-        contractEndDate: data.contractEndDate ? new Date(data.contractEndDate) : null,
-        slaResponseTime: data.slaResponseTime,
-        slaResolutionTime: data.slaResolutionTime,
-        notes: data.notes,
-        isActive: data.isActive
+        contactName: data.contactPerson || data.contactName || existingVendor.contactName,
+        contactEmail: data.email || data.contactEmail || existingVendor.contactEmail,
+        contactPhone: data.phone || data.contactPhone || existingVendor.contactPhone,
+        address: data.address !== undefined ? data.address : existingVendor.address,
+        website: data.website !== undefined ? data.website : existingVendor.website,
+        supportHours: data.supportHours !== undefined ? data.supportHours : existingVendor.supportHours,
+        slaResponseTime: data.slaResponseTime !== undefined ? data.slaResponseTime : existingVendor.slaResponseTime,
+        slaResolutionTime: data.slaResolutionTime !== undefined ? data.slaResolutionTime : existingVendor.slaResolutionTime,
+        notes: data.notes !== undefined ? data.notes : existingVendor.notes,
+        isActive: data.isActive !== undefined ? data.isActive : existingVendor.isActive
       }
     });
 

@@ -123,17 +123,16 @@ export async function POST(request: NextRequest) {
       data: {
         name: data.name,
         code: data.code,
-        contactPerson: data.contactPerson,
-        email: data.email,
-        phone: data.phone,
-        address: data.address,
-        serviceTypes: data.serviceTypes || [],
-        contractStartDate: data.contractStartDate ? new Date(data.contractStartDate) : null,
-        contractEndDate: data.contractEndDate ? new Date(data.contractEndDate) : null,
-        slaResponseTime: data.slaResponseTime || 4,
-        slaResolutionTime: data.slaResolutionTime || 24,
-        notes: data.notes,
-        isActive: true
+        contactName: data.contactPerson || data.contactName || null,
+        contactEmail: data.email || data.contactEmail || null,
+        contactPhone: data.phone || data.contactPhone || null,
+        address: data.address || null,
+        website: data.website || null,
+        supportHours: data.supportHours || null,
+        slaResponseTime: data.slaResponseTime || null,
+        slaResolutionTime: data.slaResolutionTime || null,
+        notes: data.notes || null,
+        isActive: data.isActive !== undefined ? data.isActive : true
       }
     });
 
