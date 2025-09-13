@@ -10,7 +10,11 @@ import { authenticateApiKey, checkApiPermission, createApiErrorResponse, createA
 const statusUpdateSchema = z.object({
   status: z.enum(['OPEN', 'PENDING', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'IN_PROGRESS', 'PENDING_VENDOR', 'RESOLVED', 'CLOSED', 'CANCELLED']),
   reason: z.string().optional(),
-  resolutionNotes: z.string().optional()
+  resolutionNotes: z.string().optional(),
+  // Vendor-related fields for PENDING_VENDOR status
+  vendorId: z.string().optional(),
+  vendorTicketNumber: z.string().optional(),
+  vendorNotes: z.string().optional()
 });
 
 // PUT /api/tickets/[id]/status - Update ticket status with session auth
@@ -122,6 +126,43 @@ export async function PUT(
       updateData.closedAt = null;
     }
 
+    // Handle vendor assignment when changing to PENDING_VENDOR
+    let vendorName = '';
+    if (validatedData.status === 'PENDING_VENDOR') {
+      if (!validatedData.vendorId || !validatedData.vendorTicketNumber) {
+        return NextResponse.json(
+          { error: 'Vendor ID and vendor ticket number are required for PENDING_VENDOR status' },
+          { status: 400 }
+        );
+      }
+
+      // Check if vendor exists and is active
+      const vendor = await prisma.vendor.findUnique({
+        where: { id: validatedData.vendorId }
+      });
+
+      if (!vendor || !vendor.isActive) {
+        return NextResponse.json(
+          { error: 'Invalid or inactive vendor' },
+          { status: 400 }
+        );
+      }
+
+      vendorName = vendor.name;
+
+      // Create vendor ticket record
+      await prisma.vendorTicket.create({
+        data: {
+          ticketId: id,
+          vendorId: validatedData.vendorId,
+          vendorTicketNumber: validatedData.vendorTicketNumber,
+          assignedById: session.user.id,
+          status: 'IN_PROGRESS',
+          notes: validatedData.vendorNotes
+        }
+      });
+    }
+
     // Update the ticket
     const updatedTicket = await prisma.ticket.update({
       where: { id },
@@ -150,16 +191,29 @@ export async function PUT(
       }
     });
 
-    // Add comment if reason provided
-    if (validatedData.reason) {
-      await prisma.ticketComment.create({
-        data: {
-          ticketId: id,
-          userId: session.user.id,
-          content: `Status changed from ${existingTicket.status} to ${validatedData.status}: ${validatedData.reason}`,
-          isInternal: false
+    // Add comment if reason provided or vendor assignment
+    if (validatedData.reason || validatedData.status === 'PENDING_VENDOR') {
+      let commentContent = '';
+      
+      if (validatedData.status === 'PENDING_VENDOR' && vendorName) {
+        commentContent = `Telah di Follow Up ke ${vendorName} dengan Ticket ${validatedData.vendorTicketNumber}`;
+        if (validatedData.reason) {
+          commentContent += `\n${validatedData.reason}`;
         }
-      });
+      } else if (validatedData.reason) {
+        commentContent = `Status changed from ${existingTicket.status} to ${validatedData.status}: ${validatedData.reason}`;
+      }
+
+      if (commentContent) {
+        await prisma.ticketComment.create({
+          data: {
+            ticketId: id,
+            userId: session.user.id,
+            content: commentContent,
+            isInternal: false
+          }
+        });
+      }
     }
 
     // Emit socket event for real-time update

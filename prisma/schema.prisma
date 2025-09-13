@@ -63,6 +63,10 @@ model User {
   createdPCAssets        PCAsset[]              @relation("CreatedPCAssets")
   pcServiceLogs          PCServiceLog[]
   hardeningChecklists    HardeningChecklist[]
+  assignedOSLicenses     OSLicense[]            @relation("OSLicenseAssignedUser")
+  createdOSLicenses      OSLicense[]            @relation("OSLicenseCreatedBy")
+  assignedOfficeLicenses OfficeLicense[]        @relation("OfficeLicenseAssignedUser")
+  createdOfficeLicenses  OfficeLicense[]        @relation("OfficeLicenseCreatedBy")
   branch                 Branch?                @relation(fields: [branchId], references: [id])
   supportGroup           SupportGroup?          @relation(fields: [supportGroupId], references: [id])
 
@@ -133,6 +137,8 @@ model Branch {
   tickets                Ticket[]
   users                  User[]
   pcAssets               PCAsset[]
+  osLicenses             OSLicense[]
+  officeLicenses         OfficeLicense[]
 
   @@map("branches")
 }
@@ -1586,6 +1592,8 @@ model PCAsset {
   createdBy             User              @relation("CreatedPCAssets", fields: [createdById], references: [id])
   serviceLogs           PCServiceLog[]
   hardeningChecklists   HardeningChecklist[]
+  osLicenses            OSLicense[]
+  officeLicenses        OfficeLicense[]
   
   @@index([branchId])
   @@index([assignedToId])
@@ -1700,4 +1708,97 @@ model HardeningChecklistResult {
   
   @@unique([checklistId, checklistItemId])
   @@map("hardening_checklist_results")
+}
+
+// ============================================
+// OS License Management
+// ============================================
+
+model OSLicense {
+  id                    String            @id @default(cuid())
+  name                  String            // License name/description
+  osName                String            // e.g., Windows 11 Pro, Windows Server 2022
+  osVersion             String?           // e.g., 22H2, 21H1
+  licenseType           OSLicenseType     // OEM, FPP, OLP, etc.
+  licenseKey            String?           @unique // Product key
+  purchaseDate          DateTime?
+  expiryDate            DateTime?
+  cost                  Float?
+  vendor                String?           // Where purchased from
+  invoiceNumber         String?
+  maxActivations        Int               @default(1)
+  currentActivations    Int               @default(0)
+  isActive              Boolean           @default(true)
+  notes                 String?           @db.Text
+  
+  // Assignment tracking
+  assignedToPC          String?           // Can be assigned to specific PC
+  assignedToBranch      String?           // Or assigned to branch
+  assignedToUser        String?           // Or assigned to user
+  
+  // Relations
+  pcAsset               PCAsset?          @relation(fields: [assignedToPC], references: [id], onDelete: SetNull)
+  branch                Branch?           @relation(fields: [assignedToBranch], references: [id], onDelete: SetNull)
+  user                  User?             @relation("OSLicenseAssignedUser", fields: [assignedToUser], references: [id], onDelete: SetNull)
+  
+  // Audit fields
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  createdBy             String?
+  createdByUser         User?             @relation("OSLicenseCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+  
+  @@index([licenseType, isActive])
+  @@index([osName])
+  @@index([assignedToPC])
+  @@index([assignedToBranch])
+  @@map("os_licenses")
+}
+
+// ============================================
+// Office License Management
+// ============================================
+
+model OfficeLicense {
+  id                    String            @id @default(cuid())
+  name                  String            // License name/description
+  productName           String            // e.g., Office 365, Office 2021 LTSC
+  productType           OfficeProductType // OFFICE_365, OFFICE_2021_LTSC, etc.
+  licenseType           OfficeLicenseType // SUBSCRIPTION, PERPETUAL, etc.
+  licenseKey            String?           @unique // Product key or subscription ID
+  subscriptionId        String?           // For subscription-based licenses
+  purchaseDate          DateTime?
+  expiryDate            DateTime?
+  renewalDate           DateTime?         // For subscriptions
+  cost                  Float?
+  costPeriod            String?           // Monthly, Yearly, One-time
+  vendor                String?           // Where purchased from
+  invoiceNumber         String?
+  maxUsers              Int               @default(1)
+  currentUsers          Int               @default(0)
+  isActive              Boolean           @default(true)
+  autoRenew             Boolean           @default(false)
+  notes                 String?           @db.Text
+  
+  // Assignment tracking
+  assignedToPC          String?           // Can be assigned to specific PC
+  assignedToBranch      String?           // Or assigned to branch
+  assignedToUser        String?           // Or assigned to user
+  
+  // Relations
+  pcAsset               PCAsset?          @relation(fields: [assignedToPC], references: [id], onDelete: SetNull)
+  branch                Branch?           @relation(fields: [assignedToBranch], references: [id], onDelete: SetNull)
+  user                  User?             @relation("OfficeLicenseAssignedUser", fields: [assignedToUser], references: [id], onDelete: SetNull)
+  
+  // Audit fields
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  createdBy             String?
+  createdByUser         User?             @relation("OfficeLicenseCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+  
+  @@index([productType, isActive])
+  @@index([licenseType])
+  @@index([assignedToPC])
+  @@index([assignedToBranch])
+  @@index([expiryDate])
+  @@map("office_licenses")
 }

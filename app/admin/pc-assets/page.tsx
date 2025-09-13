@@ -75,6 +75,8 @@ interface PCAsset {
   _count: {
     serviceLogs: number;
     hardeningChecklists: number;
+    osLicenses: number;
+    officeLicenses: number;
   };
 }
 
@@ -244,6 +246,7 @@ export default function PCAssetsPage() {
                 <TableHead>Branch</TableHead>
                 <TableHead>Assigned To</TableHead>
                 <TableHead>Operating System</TableHead>
+                <TableHead>Licenses</TableHead>
                 <TableHead>Security</TableHead>
                 <TableHead>Services</TableHead>
                 <TableHead>Status</TableHead>
@@ -253,13 +256,13 @@ export default function PCAssetsPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8">
+                  <TableCell colSpan={10} className="text-center py-8">
                     Loading PC assets...
                   </TableCell>
                 </TableRow>
               ) : pcAssets.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8">
+                  <TableCell colSpan={10} className="text-center py-8">
                     No PC assets found
                   </TableCell>
                 </TableRow>
@@ -315,6 +318,23 @@ export default function PCAssetsPage() {
                         <Badge variant="outline" className="w-fit text-xs">
                           {asset.osLicenseType}
                         </Badge>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        {asset._count.osLicenses > 0 && (
+                          <Badge variant="outline" className="text-xs">
+                            OS: {asset._count.osLicenses}
+                          </Badge>
+                        )}
+                        {asset._count.officeLicenses > 0 && (
+                          <Badge variant="outline" className="text-xs">
+                            Office: {asset._count.officeLicenses}
+                          </Badge>
+                        )}
+                        {asset._count.osLicenses === 0 && asset._count.officeLicenses === 0 && (
+                          <span className="text-xs text-gray-400">No licenses</span>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>

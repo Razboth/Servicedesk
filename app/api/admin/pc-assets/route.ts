@@ -71,7 +71,9 @@ export async function GET(request: Request) {
         _count: {
           select: {
             serviceLogs: true,
-            hardeningChecklists: true
+            hardeningChecklists: true,
+            osLicenses: true,
+            officeLicenses: true
           }
         },
         ...(includeServiceLogs && {
@@ -198,6 +200,28 @@ export async function POST(request: Request) {
         createdBy: true
       }
     });
+
+    // Assign OS License if provided
+    if (body.osLicenseId) {
+      await prisma.oSLicense.update({
+        where: { id: body.osLicenseId },
+        data: {
+          assignedToPC: pcAsset.id,
+          currentActivations: { increment: 1 }
+        }
+      });
+    }
+
+    // Assign Office License if provided
+    if (body.officeLicenseId) {
+      await prisma.officeLicense.update({
+        where: { id: body.officeLicenseId },
+        data: {
+          assignedToPC: pcAsset.id,
+          currentUsers: { increment: 1 }
+        }
+      });
+    }
 
     // Create audit log
     await prisma.auditLog.create({

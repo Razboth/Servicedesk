@@ -27,6 +27,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { RelatedArticles } from '@/components/knowledge/related-articles';
 import { AttachmentPreview } from '@/components/ui/attachment-preview';
 import { getAvatarById } from '@/components/ui/avatar-presets';
+import { VendorAssignmentDialog } from '@/components/tickets/vendor-assignment-dialog';
 
 interface TicketFieldValue {
   id: string;
@@ -174,6 +175,7 @@ export default function TicketDetailPage() {
   const [previewAttachment, setPreviewAttachment] = useState<TicketAttachment | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [userSupportGroup, setUserSupportGroup] = useState<{ code?: string; name?: string } | null>(null);
+  const [showVendorDialog, setShowVendorDialog] = useState(false);
 
   // Helper function to check if file is previewable
   const isPreviewable = (mimeType: string) => {
@@ -567,6 +569,13 @@ export default function TicketDetailPage() {
   };
 
   const handleResolutionSubmit = async () => {
+    // Check if status is PENDING_VENDOR and show vendor dialog instead
+    if (selectedResolutionStatus === 'PENDING_VENDOR') {
+      setShowResolveModal(false);
+      setShowVendorDialog(true);
+      return;
+    }
+
     try {
       setIsSubmittingResolution(true);
       
@@ -617,6 +626,40 @@ export default function TicketDetailPage() {
     setShowResolveModal(false);
     setResolutionComment('');
     setSelectedResolutionStatus('RESOLVED');
+  };
+
+  const handleVendorAssignment = async (data: {
+    vendorId: string;
+    vendorTicketNumber: string;
+    vendorNotes?: string;
+    reason?: string;
+  }) => {
+    try {
+      const response = await fetch(`/api/tickets/${ticketId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: 'PENDING_VENDOR',
+          vendorId: data.vendorId,
+          vendorTicketNumber: data.vendorTicketNumber,
+          vendorNotes: data.vendorNotes,
+          reason: data.reason
+        }),
+      });
+      
+      if (response.ok) {
+        setShowVendorDialog(false);
+        fetchTicket(); // Refresh ticket data
+      } else {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to assign vendor');
+      }
+    } catch (err) {
+      console.error('Error assigning vendor:', err);
+      throw err;
+    }
   };
 
   const handleResolveAndClose = async () => {
@@ -2102,6 +2145,15 @@ export default function TicketDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Vendor Assignment Dialog */}
+      <VendorAssignmentDialog
+        open={showVendorDialog}
+        onOpenChange={setShowVendorDialog}
+        ticketId={ticketId}
+        ticketNumber={ticket?.ticketNumber || ''}
+        onAssign={handleVendorAssignment}
+      />
     </div>
   );
 }

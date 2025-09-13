@@ -45,6 +45,33 @@ export async function GET(
               }
             }
           }
+        },
+        osLicenses: {
+          where: { isActive: true },
+          select: {
+            id: true,
+            name: true,
+            osName: true,
+            osVersion: true,
+            licenseType: true,
+            licenseKey: true,
+            maxActivations: true,
+            currentActivations: true
+          }
+        },
+        officeLicenses: {
+          where: { isActive: true },
+          select: {
+            id: true,
+            name: true,
+            productName: true,
+            productType: true,
+            licenseType: true,
+            licenseKey: true,
+            maxUsers: true,
+            currentUsers: true,
+            expiryDate: true
+          }
         }
       }
     });
