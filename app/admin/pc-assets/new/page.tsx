@@ -8,7 +8,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/components/ui/use-toast';
 import { ArrowLeft, Save, Plus, Trash2, HardDrive } from 'lucide-react';
 
 interface Branch {
@@ -31,8 +30,8 @@ interface StorageDevice {
 
 export default function NewPCAssetPage() {
   const router = useRouter();
-  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [branches, setBranches] = useState<Branch[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [selectedBranch, setSelectedBranch] = useState('');
@@ -129,24 +128,17 @@ export default function NewPCAssetPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     
     if (!selectedBranch) {
-      toast({
-        title: 'Error',
-        description: 'Please select a branch',
-        variant: 'destructive'
-      });
+      setError('Please select a branch');
       return;
     }
 
     // Validate storage devices
     const validStorageDevices = storageDevices.filter(d => d.size && d.brand);
     if (validStorageDevices.length === 0) {
-      toast({
-        title: 'Error',
-        description: 'Please add at least one storage device with size and brand',
-        variant: 'destructive'
-      });
+      setError('Please add at least one storage device with size and brand');
       return;
     }
 
@@ -168,26 +160,14 @@ export default function NewPCAssetPage() {
       });
 
       if (response.ok) {
-        toast({
-          title: 'Success',
-          description: 'PC asset created successfully'
-        });
         router.push('/admin/pc-assets');
       } else {
-        const error = await response.json();
-        toast({
-          title: 'Error',
-          description: error.error || 'Failed to create PC asset',
-          variant: 'destructive'
-        });
+        const errorData = await response.json();
+        setError(errorData.error || 'Failed to create PC asset');
       }
     } catch (error) {
       console.error('Error creating PC asset:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to create PC asset',
-        variant: 'destructive'
-      });
+      setError('Failed to create PC asset');
     } finally {
       setLoading(false);
     }
@@ -210,6 +190,12 @@ export default function NewPCAssetPage() {
           Register a new PC asset in the system
         </p>
       </div>
+
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
+          {error}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit}>
         <div className="grid gap-6">
