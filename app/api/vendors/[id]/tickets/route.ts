@@ -181,10 +181,9 @@ export async function POST(
       data: {
         action: 'ASSIGN_TICKET_TO_VENDOR',
         entity: 'VendorTicket',
-        entityType: 'VendorTicket',
         entityId: vendorTicket.id,
         userId: session.user.id,
-        details: {
+        newValues: {
           ticketNumber: ticket.ticketNumber,
           vendorName: vendor.name,
           vendorTicketNumber: data.vendorTicketNumber

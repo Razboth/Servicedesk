@@ -141,10 +141,9 @@ export async function POST(request: NextRequest) {
       data: {
         action: 'CREATE_VENDOR',
         entity: 'Vendor',
-        entityType: 'Vendor',
         entityId: vendor.id,
         userId: session.user.id,
-        details: {
+        newValues: {
           name: vendor.name,
           code: vendor.code
         }

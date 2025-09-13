@@ -93,10 +93,9 @@ export async function PUT(
       data: {
         action: 'UPDATE_VENDOR_TICKET',
         entity: 'VendorTicket',
-        entityType: 'VendorTicket',
         entityId: vendorTicket.id,
         userId: session.user.id,
-        details: {
+        newValues: {
           vendorName: vendorTicket.vendor.name,
           ticketNumber: vendorTicket.ticket.ticketNumber,
           status: data.status,
@@ -178,10 +177,9 @@ export async function DELETE(
       data: {
         action: 'CANCEL_VENDOR_TICKET',
         entity: 'VendorTicket',
-        entityType: 'VendorTicket',
         entityId: vendorTicket.id,
         userId: session.user.id,
-        details: {
+        newValues: {
           vendorName: vendorTicket.vendor.name,
           ticketNumber: vendorTicket.ticket.ticketNumber,
           vendorTicketNumber: vendorTicket.vendorTicketNumber

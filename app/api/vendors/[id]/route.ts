@@ -197,7 +197,6 @@ export async function PUT(
       data: {
         action: 'UPDATE_VENDOR',
         entity: 'Vendor',
-        entityType: 'Vendor',
         entityId: vendor.id,
         userId: session.user.id,
         details: {
@@ -267,7 +266,6 @@ export async function DELETE(
       data: {
         action: 'DELETE_VENDOR',
         entity: 'Vendor',
-        entityType: 'Vendor',
         entityId: vendor.id,
         userId: session.user.id,
         details: {
