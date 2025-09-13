@@ -602,14 +602,14 @@ export default function NewPCAssetPage() {
                 <div>
                   <Label htmlFor="assignedToId">Assigned To</Label>
                   <Select 
-                    value={formData.assignedToId} 
-                    onValueChange={(value) => handleSelectChange('assignedToId', value)}
+                    value={formData.assignedToId || "unassigned"} 
+                    onValueChange={(value) => handleSelectChange('assignedToId', value === 'unassigned' ? '' : value)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select user (optional)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Unassigned</SelectItem>
+                      <SelectItem value="unassigned">Unassigned</SelectItem>
                       {users.map(user => (
                         <SelectItem key={user.id} value={user.id}>
                           {user.name} ({user.email})
