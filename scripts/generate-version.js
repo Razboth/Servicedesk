@@ -87,7 +87,7 @@ export const APP_VERSION = {
   buildNumber: ${gitInfo.commitCount},
   buildDate: '${gitInfo.buildDate.split('T')[0]}',
   environment: process.env.NODE_ENV || 'development',
-  copyright: '© 2024 Bank SulutGo',
+  copyright: '© 2025 Bank SulutGo',
   lastCommit: {
     message: \`${gitInfo.lastCommitMessage.replace(/`/g, '\\`').replace(/\$/g, '\\$')}\`,
     date: '${gitInfo.lastCommitDate}',
