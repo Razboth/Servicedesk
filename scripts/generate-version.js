@@ -38,11 +38,9 @@ function getGitInfo() {
       // No tag on current commit
     }
     
-    // Calculate semantic version based on commit count
-    const major = Math.floor(commitCount / 100);
-    const minor = Math.floor((commitCount % 100) / 10);
-    const patch = commitCount % 10;
-    const semanticVersion = `${major}.${minor}.${patch}`;
+    // Get semantic version from package.json
+    const packageJson = require('../package.json');
+    const semanticVersion = packageJson.version || '1.0.0';
     
     return {
       version: semanticVersion,
@@ -57,9 +55,13 @@ function getGitInfo() {
     };
   } catch (error) {
     console.error('Error getting git info:', error.message);
+    // Get version from package.json even if git is not available
+    const packageJson = require('../package.json');
+    const semanticVersion = packageJson.version || '1.0.0';
+
     // Return default values if git is not available
     return {
-      version: '0.0.1',
+      version: semanticVersion,
       commitHash: 'unknown',
       branch: 'unknown',
       commitCount: '0',

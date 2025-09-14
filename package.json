@@ -1,6 +1,6 @@
 {
   "name": "bank-sulutgo-servicedesk",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "ITIL v4-compliant service management system for Bank SulutGo",
   "private": true,
   "scripts": {
@@ -54,7 +54,11 @@
     "pm2:monitor": "pm2 monit",
     "pm2:setup": "npm run build && pm2 start ecosystem.config.js --only bsg-servicedesk",
     "pm2:save": "pm2 save",
-    "pm2:startup": "pm2 startup"
+    "pm2:startup": "pm2 startup",
+    "version:bump:major": "node scripts/bump-version.js major",
+    "version:bump:minor": "node scripts/bump-version.js minor",
+    "version:bump:patch": "node scripts/bump-version.js patch",
+    "version:bump": "node scripts/bump-version.js"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.7.2",
