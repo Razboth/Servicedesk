@@ -372,7 +372,7 @@ async function getEmailTemplate(
 
     case 'ticket_updated':
       return {
-        subject: `[Ticket #${data.ticket.ticketNumber}] Status updated: ${data.ticket.status}`,
+        subject: `[Ticket #${data.ticket.ticketNumber}] Status updated: ${data.newStatus || data.ticket.status}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #333;">Ticket Status Updated</h2>
@@ -382,8 +382,10 @@ async function getEmailTemplate(
               <h3 style="margin-top: 0;">Update Details:</h3>
               <p><strong>Ticket Number:</strong> #${data.ticket.ticketNumber}</p>
               <p><strong>Title:</strong> ${data.ticket.title}</p>
-              <p><strong>New Status:</strong> <span style="color: #007bff; font-weight: bold;">${data.ticket.status}</span></p>
+              <p><strong>New Status:</strong> <span style="color: #007bff; font-weight: bold;">${data.newStatus || data.ticket.status}</span></p>
               ${data.previousStatus ? `<p><strong>Previous Status:</strong> ${data.previousStatus}</p>` : ''}
+              ${data.updatedBy ? `<p><strong>Updated By:</strong> ${data.updatedBy}</p>` : ''}
+              ${data.reason ? `<p><strong>Reason:</strong> ${data.reason}</p>` : ''}
               ${data.updateNote ? `<p><strong>Update Note:</strong> ${data.updateNote}</p>` : ''}
             </div>
 
@@ -478,18 +480,23 @@ async function getEmailTemplate(
         subject: `[Ticket #${data.ticket.ticketNumber}] Resolved: ${data.ticket.title}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #28a745;">Ticket Resolved</h2>
+            <h2 style="color: #28a745;">Ticket Resolved ✅</h2>
             <p>Your ticket has been resolved.</p>
 
             <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
               <h3 style="margin-top: 0;">Resolution Details:</h3>
               <p><strong>Ticket Number:</strong> #${data.ticket.ticketNumber}</p>
               <p><strong>Title:</strong> ${data.ticket.title}</p>
-              <p><strong>Resolved by:</strong> ${data.ticket.assignedTo?.name || 'Support Team'}</p>
-              ${data.resolutionNote ? `<p><strong>Resolution Note:</strong> ${data.resolutionNote}</p>` : ''}
+              <p><strong>Service:</strong> ${data.ticket.service?.name || 'N/A'}</p>
+              <p><strong>Resolved by:</strong> ${data.updatedBy || data.ticket.assignedTo?.name || 'Support Team'}</p>
+              ${data.resolutionNotes ? `<p><strong>Resolution Notes:</strong> ${data.resolutionNotes}</p>` : ''}
+              ${data.reason ? `<p><strong>Additional Notes:</strong> ${data.reason}</p>` : ''}
+              <p><strong>Resolved at:</strong> ${new Date().toLocaleString()}</p>
             </div>
 
-            <p>If you're satisfied with the resolution, you can close the ticket. If you need further assistance, please add a comment to reopen the discussion.</p>
+            <p style="background: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 15px; border-radius: 5px;">
+              If you're satisfied with the resolution, you can close the ticket. If you need further assistance, please add a comment to reopen the discussion.
+            </p>
 
             <p style="margin-top: 20px;">
               <a href="${ticketUrl}" style="background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
@@ -518,12 +525,15 @@ async function getEmailTemplate(
               <p><strong>Ticket Number:</strong> #${data.ticket.ticketNumber}</p>
               <p><strong>Title:</strong> ${data.ticket.title}</p>
               <p><strong>Service:</strong> ${data.ticket.service?.name || 'N/A'}</p>
-              <p><strong>Closed by:</strong> ${data.closedBy || data.ticket.assignedTo?.name || 'Support Team'}</p>
+              <p><strong>Closed by:</strong> ${data.updatedBy || data.closedBy || data.ticket.assignedTo?.name || 'Support Team'}</p>
+              ${data.reason ? `<p><strong>Closing Notes:</strong> ${data.reason}</p>` : ''}
               <p><strong>Closed at:</strong> ${new Date().toLocaleString()}</p>
             </div>
 
-            <p>Thank you for using Bank SulutGo ServiceDesk. This ticket is now closed.</p>
-            <p>If you need further assistance, please create a new ticket.</p>
+            <p style="background: #f8f9fa; border: 1px solid #dee2e6; color: #495057; padding: 15px; border-radius: 5px;">
+              Thank you for using Bank SulutGo ServiceDesk. This ticket is now closed.
+              If you need further assistance, please create a new ticket.
+            </p>
 
             <p style="margin-top: 20px;">
               <a href="${baseUrl}/tickets/new" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">

@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { emitTicketStatusChanged } from '@/lib/socket-manager';
 import { createTicketNotifications, createNotification } from '@/lib/notifications';
 import { authenticateApiKey, checkApiPermission, createApiErrorResponse, createApiSuccessResponse } from '@/lib/auth-api';
+import { sendTicketNotification } from '@/lib/services/email.service';
 
 // Validation schema for status updates
 const statusUpdateSchema = z.object({
@@ -234,6 +235,23 @@ export async function PUT(
 
     await createTicketNotifications(id, notificationType, session.user.id)
       .catch(err => console.error('Failed to create notifications:', err));
+
+    // Send email notifications for status changes
+    let emailNotificationType: 'ticket_updated' | 'ticket_resolved' | 'ticket_closed' = 'ticket_updated';
+    if (validatedData.status === 'RESOLVED') {
+      emailNotificationType = 'ticket_resolved';
+    } else if (validatedData.status === 'CLOSED') {
+      emailNotificationType = 'ticket_closed';
+    }
+
+    // Send email notification with additional context
+    await sendTicketNotification(id, emailNotificationType, {
+      previousStatus: existingTicket.status,
+      newStatus: validatedData.status,
+      updatedBy: session.user.name || session.user.email,
+      reason: validatedData.reason,
+      resolutionNotes: validatedData.resolutionNotes
+    }).catch(err => console.error('Failed to send email notification:', err));
 
     return NextResponse.json({
       success: true,
