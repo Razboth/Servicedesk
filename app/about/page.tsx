@@ -4,6 +4,12 @@ import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { APP_VERSION, getFullVersionInfo, VERSION_HISTORY } from '@/lib/version';
 import {
   GitBranch,
@@ -423,7 +429,29 @@ export default function AboutPage() {
       <div className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-800">
         <div className="text-center text-sm text-gray-500">
           <p className="mb-2">{APP_VERSION.copyright}</p>
-          <p>Built with 💙 for enhanced service management</p>
+          <p>
+            Built with 💙 by Dept Ops{' '}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="font-semibold cursor-help border-b border-dotted border-gray-400 hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                    Divisi TI
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <div className="space-y-2">
+                    <p className="font-semibold text-sm">IT Division Team:</p>
+                    <div className="text-xs space-y-1">
+                      <p>• Razaan Botutihe - Lead Developer</p>
+                      <p>• Yanry Pangow - System Analyst</p>
+                      <p>• Claude - AI Assistant</p>
+                      <p>• And the entire IT Division team</p>
+                    </div>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </p>
         </div>
       </div>
     </div>
