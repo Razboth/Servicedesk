@@ -246,10 +246,28 @@ export async function sendTicketNotification(
 
     // Log notification
     if (result.success) {
+      // Map email notification types to database notification types
+      const notificationTypeMap: Record<EmailNotificationType, string> = {
+        'ticket_created': 'TICKET_CREATED',
+        'ticket_assigned': 'TICKET_ASSIGNED',
+        'ticket_updated': 'TICKET_UPDATED',
+        'ticket_resolved': 'TICKET_RESOLVED',
+        'ticket_closed': 'TICKET_CLOSED',
+        'ticket_approved': 'TICKET_APPROVED',
+        'comment_added': 'TICKET_COMMENT',
+        'technician_action': 'TICKET_UPDATED',
+        'sla_warning': 'SYSTEM_ALERT',
+        'sla_breach': 'SYSTEM_ALERT',
+        'approval_required': 'TICKET_APPROVED',
+        'approval_completed': 'TICKET_APPROVED',
+        'password_reset': 'SYSTEM_ALERT',
+        'account_locked': 'SYSTEM_ALERT',
+      };
+
       await prisma.notification.create({
         data: {
           userId: ticket.createdById,
-          type: 'TICKET',
+          type: notificationTypeMap[notificationType] as any || 'SYSTEM_ALERT',
           title: subject,
           message: `Email notification sent for ticket #${ticket.ticketNumber}`,
           relatedId: ticketId,
