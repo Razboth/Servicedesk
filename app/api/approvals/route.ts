@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { sendTicketNotification } from '@/lib/services/email.service';
 
 // Validation schema for bulk approval actions
 const bulkApprovalSchema = z.object({
@@ -199,6 +200,38 @@ export async function POST(request: NextRequest) {
 
       return { updatedTickets, approvalRecords, auditLogs };
     });
+
+    // Send email notifications for approved tickets
+    if (validatedData.action === 'approve') {
+      // Get full ticket details for email notifications
+      const approvedTickets = await prisma.ticket.findMany({
+        where: { id: { in: validatedData.ticketIds } },
+        include: {
+          service: {
+            include: {
+              supportGroup: true
+            }
+          },
+          createdBy: true,
+          assignedTo: true,
+          branch: true
+        }
+      });
+
+      // Send email notifications for each approved ticket
+      for (const ticket of approvedTickets) {
+        await sendTicketNotification(ticket.id, 'ticket_approved', {
+          approver: {
+            id: session.user.id,
+            name: session.user.name,
+            email: session.user.email
+          },
+          approvalNotes: validatedData.reason
+        }).catch(err =>
+          console.error(`Failed to send approval email for ticket ${ticket.ticketNumber}:`, err)
+        );
+      }
+    }
 
     return NextResponse.json({
       message: `Successfully ${validatedData.action}d ${validatedData.ticketIds.length} ticket(s)`,

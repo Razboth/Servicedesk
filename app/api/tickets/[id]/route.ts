@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
-import { emitTicketUpdated, emitTicketStatusChanged, emitTicketAssigned } from '@/lib/socket-manager';
+import { sendTicketNotification } from '@/lib/services/email.service';
+import { emitTicketUpdated, emitTicketAssigned } from '@/lib/services/socket.service';
 import { createTicketNotifications, createNotification } from '@/lib/notifications';
 import { PriorityValidator, type PriorityValidationContext } from '@/lib/priority-validation';
 
@@ -488,33 +489,48 @@ export async function PATCH(
       }
     }
 
-    // Emit socket events for real-time updates
+    // Send email notification for ticket updates
     if (validatedData.status && validatedData.status !== existingTicket.status) {
-      emitTicketStatusChanged(
-        id,
-        existingTicket.status,
-        validatedData.status,
-        session.user.id
-      );
-      
-      // Create notifications based on status change
-      let notificationType: 'TICKET_UPDATED' | 'TICKET_RESOLVED' | 'TICKET_CLOSED' = 'TICKET_UPDATED';
+      // Determine email notification type based on status change
+      let emailType: 'TICKET_UPDATED' | 'TICKET_RESOLVED' | 'TICKET_CLOSED' = 'TICKET_UPDATED';
       if (validatedData.status === 'RESOLVED') {
-        notificationType = 'TICKET_RESOLVED';
+        emailType = 'TICKET_RESOLVED';
       } else if (validatedData.status === 'CLOSED') {
-        notificationType = 'TICKET_CLOSED';
+        emailType = 'TICKET_CLOSED';
       }
-      
-      await createTicketNotifications(id, notificationType, session.user.id)
+
+      // Send email notification
+      sendTicketNotification(id, emailType).catch(err =>
+        console.error('Failed to send email notification:', err)
+      );
+
+      // Create in-app notifications
+      await createTicketNotifications(id, emailType, session.user.id)
         .catch(err => console.error('Failed to create status change notifications:', err));
     }
-    
+
+    // Emit socket events for real-time updates
+    emitTicketUpdated(updatedTicket, existingTicket.status).catch(err =>
+      console.error('Failed to emit socket event:', err)
+    );
+
     if (validatedData.assignedToId && validatedData.assignedToId !== existingTicket.assignedToId) {
-      emitTicketAssigned(
-        id,
-        validatedData.assignedToId,
-        session.user.id
+      // Send assignment email notification
+      sendTicketNotification(id, 'TICKET_ASSIGNED').catch(err =>
+        console.error('Failed to send assignment email:', err)
       );
+
+      // Get assigned user details for socket event
+      const assignedUser = await prisma.user.findUnique({
+        where: { id: validatedData.assignedToId },
+        select: { id: true, name: true, email: true }
+      });
+
+      if (assignedUser) {
+        emitTicketAssigned(updatedTicket, assignedUser).catch(err =>
+          console.error('Failed to emit assignment event:', err)
+        );
+      }
       
       // Create notification for newly assigned technician
       if (validatedData.assignedToId) {

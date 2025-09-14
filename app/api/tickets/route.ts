@@ -4,7 +4,8 @@ import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { trackServiceUsage, updateFavoriteServiceUsage } from '@/lib/services/usage-tracker';
 import { sanitizeSearchInput } from '@/lib/security';
-import { emitTicketCreated } from '@/lib/socket-manager';
+import { sendTicketNotification } from '@/lib/services/email.service';
+import { emitTicketCreated } from '@/lib/services/socket.service';
 import { createNotification } from '@/lib/notifications';
 import { getClientIp } from '@/lib/utils/ip-utils';
 import { getDeviceInfo, formatDeviceInfo } from '@/lib/utils/device-utils';
@@ -1256,16 +1257,26 @@ export async function POST(request: NextRequest) {
     // This only updates lastUsedAt for already-favorited services
     updateFavoriteServiceUsage(validatedData.serviceId, session.user.id);
 
-    // Emit socket event for real-time updates
-    emitTicketCreated({
-      id: ticket.id,
-      ticketNumber: ticket.ticketNumber,
-      title: ticket.title,
-      status: ticket.status,
-      priority: validatedData.priority,
-      branchId: targetBranchId || undefined,
-      createdBy: session.user.id
+    // Get full ticket details for notifications
+    const fullTicket = await prisma.ticket.findUnique({
+      where: { id: ticket.id },
+      include: {
+        service: true,
+        createdBy: true,
+        assignedTo: true,
+        branch: true
+      }
     });
+
+    // Send email notification for ticket creation
+    sendTicketNotification(ticket.id, 'TICKET_CREATED').catch(err =>
+      console.error('Failed to send email notification:', err)
+    );
+
+    // Emit socket event for real-time updates
+    emitTicketCreated(fullTicket).catch(err =>
+      console.error('Failed to emit socket event:', err)
+    );
 
     // Create notification for assigned technician if ticket is assigned
     if (ticket.assignedToId && ticket.assignedToId !== session.user.id) {

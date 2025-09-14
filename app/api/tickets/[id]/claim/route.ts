@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { sendTicketNotification } from '@/lib/services/email.service';
+import { emitTicketAssigned } from '@/lib/services/socket.service';
 
 // POST /api/tickets/[id]/claim - Claim an unassigned ticket
 export async function POST(
@@ -189,6 +191,30 @@ export async function POST(
         newValues: { assignedToId: session.user.id, status: newStatus, claimedBy: session.user.name }
       }
     });
+
+    // Send email notifications
+    // 1. Send assignment notification to all parties
+    await sendTicketNotification(ticketId, 'ticket_assigned').catch(err =>
+      console.error('Failed to send assignment email:', err)
+    );
+
+    // 2. Send technician action notification specifically for the technician
+    await sendTicketNotification(ticketId, 'technician_action', {
+      technician: {
+        id: session.user.id,
+        name: session.user.name,
+        email: session.user.email
+      },
+      action: 'Claimed the ticket',
+      notes: `Ticket has been claimed and is now being worked on`
+    }).catch(err =>
+      console.error('Failed to send technician action email:', err)
+    );
+
+    // Emit socket event for real-time updates
+    emitTicketAssigned(updatedTicket, updatedTicket.assignedTo).catch(err =>
+      console.error('Failed to emit assignment event:', err)
+    );
 
     return NextResponse.json({
       message: 'Ticket claimed successfully',

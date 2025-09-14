@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
-import { emitTicketCommented } from '@/lib/socket-manager';
+import { sendTicketNotification } from '@/lib/services/email.service';
+import { emitCommentAdded } from '@/lib/services/socket.service';
 import { createTicketNotifications } from '@/lib/notifications';
 
 // Validation schema for creating comments
@@ -242,18 +243,23 @@ export async function POST(
 
     // Create notifications for ticket participants (except internal comments)
     if (!comment.isInternal) {
+      // Send email notification for comments
+      await sendTicketNotification(id, 'comment_added', {
+        comment: {
+          content: comment.content,
+          user: comment.user,
+          createdAt: comment.createdAt
+        }
+      }).catch(err => console.error('Failed to send comment email:', err));
+
       await createTicketNotifications(id, 'TICKET_COMMENT', session.user.id)
         .catch(err => console.error('Failed to create comment notifications:', err));
     }
 
     // Emit socket event for real-time updates
-    emitTicketCommented(id, {
-      id: comment.id,
-      content: comment.content,
-      isInternal: comment.isInternal,
-      user: comment.user,
-      createdAt: comment.createdAt
-    });
+    emitCommentAdded(id, comment).catch(err =>
+      console.error('Failed to emit comment event:', err)
+    );
 
     return NextResponse.json(comment, { status: 201 });
   } catch (error) {

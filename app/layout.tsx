@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { Providers } from '@/components/providers/session-provider'
 import { SidebarProvider } from '@/components/providers/sidebar-provider'
+import { SocketProvider } from '@/components/providers/socket-provider'
 import { SidebarLayout } from '@/components/navigation/sidebar-layout'
 import { ThemeProvider } from '@/components/providers/theme-provider'
 import { Toaster } from 'sonner'
@@ -35,15 +36,17 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <Providers>
-            <BrowserCompatibilityWarning />
-            <SidebarProvider>
-              <SidebarLayout>
-                {children}
-              </SidebarLayout>
-            </SidebarProvider>
-            <IdleTimer />
-            <TicketNotifications />
-            <Toaster position="top-right" richColors />
+            <SocketProvider>
+              <BrowserCompatibilityWarning />
+              <SidebarProvider>
+                <SidebarLayout>
+                  {children}
+                </SidebarLayout>
+              </SidebarProvider>
+              <IdleTimer />
+              <TicketNotifications />
+              <Toaster position="top-right" richColors />
+            </SocketProvider>
           </Providers>
         </ThemeProvider>
       </body>
