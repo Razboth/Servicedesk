@@ -1,5 +1,4 @@
 import nodemailer from 'nodemailer';
-import { render } from '@react-email/render';
 import prisma from '@/lib/prisma';
 
 // Email configuration
@@ -270,8 +269,8 @@ export async function sendTicketNotification(
           type: notificationTypeMap[notificationType] as any || 'SYSTEM_ALERT',
           title: subject,
           message: `Email notification sent for ticket #${ticket.ticketNumber}`,
-          relatedId: ticketId,
-          metadata: {
+          data: {
+            ticketId,
             notificationType,
             recipients,
             messageId: result.messageId,
