@@ -209,6 +209,12 @@ export async function sendTicketNotification(
   additionalData?: Record<string, any>
 ) {
   try {
+    // Check if email is configured before attempting to send
+    if (!process.env.EMAIL_SERVER_HOST || !process.env.EMAIL_SERVER_USER || !process.env.EMAIL_SERVER_PASSWORD) {
+      console.log('📧 Email service not configured, skipping notification');
+      return { success: false, error: 'Email service not configured' };
+    }
+
     const ticket = await prisma.ticket.findUnique({
       where: { id: ticketId },
       include: {
@@ -221,13 +227,13 @@ export async function sendTicketNotification(
 
     if (!ticket) {
       console.error('Ticket not found:', ticketId);
-      return;
+      return { success: false, error: 'Ticket not found' };
     }
 
     const recipients = await getEmailRecipients(ticketId, notificationType);
     if (recipients.length === 0) {
       console.log('No recipients for notification');
-      return;
+      return { success: false, error: 'No recipients' };
     }
 
     // Get email template based on notification type
