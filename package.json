@@ -1,6 +1,6 @@
 {
   "name": "bank-sulutgo-servicedesk",
-  "version": "1.0.1",
+  "version": "2.3.0",
   "description": "ITIL v4-compliant service management system for Bank SulutGo",
   "private": true,
   "scripts": {
