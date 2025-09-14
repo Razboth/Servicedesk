@@ -1269,7 +1269,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Send email notification for ticket creation
-    sendTicketNotification(ticket.id, 'TICKET_CREATED').catch(err =>
+    sendTicketNotification(ticket.id, 'ticket_created').catch(err =>
       console.error('Failed to send email notification:', err)
     );
 

@@ -516,7 +516,7 @@ export async function PATCH(
 
     if (validatedData.assignedToId && validatedData.assignedToId !== existingTicket.assignedToId) {
       // Send assignment email notification
-      sendTicketNotification(id, 'TICKET_ASSIGNED').catch(err =>
+      sendTicketNotification(id, 'ticket_assigned').catch(err =>
         console.error('Failed to send assignment email:', err)
       );
 
