@@ -667,9 +667,12 @@ export function Sidebar() {
           <p className="text-xs text-brown-600 dark:text-cream-400 font-medium">
             {getVersionString()}
           </p>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+          <Link
+            href="/about"
+            className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 hover:text-blue-600 dark:hover:text-blue-400 transition-colors inline-block"
+          >
             {APP_VERSION.copyright}
-          </p>
+          </Link>
         </div>
       </div>
       

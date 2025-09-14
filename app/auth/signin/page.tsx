@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { signIn, getSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getVersionString, APP_VERSION } from '@/lib/version';
@@ -153,9 +154,12 @@ export default function SignInPage() {
               <p className="text-xs text-gray-400 font-medium">
                 {getVersionString()}
               </p>
-              <p className="text-xs text-gray-400 mt-1">
+              <Link
+                href="/about"
+                className="text-xs text-gray-400 mt-1 hover:text-blue-600 transition-colors inline-block"
+              >
                 {APP_VERSION.copyright}
-              </p>
+              </Link>
             </div>
           </CardContent>
         </Card>
