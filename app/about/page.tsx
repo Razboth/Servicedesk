@@ -57,30 +57,30 @@ export default function AboutPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Fetch GitHub data
-    const fetchGitHubData = async () => {
+    // Fetch local git data
+    const fetchGitData = async () => {
       try {
-        // Fetch contributors
-        const contribResponse = await fetch('https://api.github.com/repos/Razboth/Servicedesk/contributors');
+        // Fetch contributors from local git
+        const contribResponse = await fetch('/api/about/contributors');
         if (contribResponse.ok) {
           const contribData = await contribResponse.json();
-          setContributors(contribData.slice(0, 10)); // Top 10 contributors
+          setContributors(contribData);
         }
 
-        // Fetch recent commits
-        const commitsResponse = await fetch('https://api.github.com/repos/Razboth/Servicedesk/commits?per_page=20');
+        // Fetch recent commits from local git
+        const commitsResponse = await fetch('/api/about/commits');
         if (commitsResponse.ok) {
           const commitsData = await commitsResponse.json();
           setRecentCommits(commitsData);
         }
       } catch (error) {
-        console.error('Error fetching GitHub data:', error);
+        console.error('Error fetching git data:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchGitHubData();
+    fetchGitData();
   }, []);
 
   const systemFeatures: SystemFeature[] = [
@@ -290,13 +290,9 @@ export default function AboutPage() {
               {recentCommits.map((commit) => (
                 <Card key={commit.sha} className="p-4 hover:shadow-md transition-shadow">
                   <div className="flex items-start gap-4">
-                    {commit.author && (
-                      <img
-                        src={commit.author.avatar_url}
-                        alt={commit.author.login}
-                        className="w-10 h-10 rounded-full"
-                      />
-                    )}
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm">
+                      {commit.commit.author.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)}
+                    </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         {getCommitTypeIcon(commit.commit.message)}
@@ -308,14 +304,9 @@ export default function AboutPage() {
                           {formatDate(commit.commit.author.date)}
                         </span>
                       </div>
-                      <a
-                        href={commit.html_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
-                      >
+                      <p className="text-sm text-gray-700 dark:text-gray-300">
                         {commit.commit.message.split('\n')[0]}
-                      </a>
+                      </p>
                       <p className="text-xs text-gray-500 mt-1">
                         by {commit.commit.author.name}
                       </p>
