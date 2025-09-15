@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { sendTicketNotification } from '@/lib/services/email.service';
 import { emitCommentAdded } from '@/lib/services/socket.service';
 import { createTicketNotifications } from '@/lib/notifications';
+import { createAuditLog } from '@/lib/audit-logger';
 
 // Validation schema for creating comments
 const createCommentSchema = z.object({
@@ -239,6 +240,21 @@ export async function POST(
     await prisma.ticket.update({
       where: { id },
       data: { updatedAt: new Date() }
+    });
+
+    // Create audit log for comment creation
+    await createAuditLog({
+      userId: session.user.id,
+      action: 'ADD_COMMENT',
+      entity: 'COMMENT',
+      entityId: comment.id,
+      ticketId: id,
+      newValues: {
+        content: comment.content.substring(0, 100) + (comment.content.length > 100 ? '...' : ''),
+        isInternal: comment.isInternal,
+        attachmentCount: comment.attachments?.length || 0
+      },
+      request
     });
 
     // Create notifications for ticket participants (except internal comments)
