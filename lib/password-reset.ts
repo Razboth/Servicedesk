@@ -1,6 +1,19 @@
 import { randomBytes } from 'crypto';
 import bcrypt from 'bcryptjs';
-import { prisma } from '@/lib/prisma';
+import { PrismaClient } from '@prisma/client';
+
+// Create singleton Prisma instance
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined
+};
+
+const prisma = globalForPrisma.prisma ?? new PrismaClient({
+  log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+});
+
+if (process.env.NODE_ENV !== 'production') {
+  globalForPrisma.prisma = prisma;
+}
 
 /**
  * Generate a secure password reset token
@@ -33,6 +46,8 @@ export async function createPasswordResetToken(
   ipAddress?: string,
   userAgent?: string
 ) {
+  console.log('Creating password reset token for:', { userId, email });
+
   // Generate token
   const token = generateResetToken();
   const hashedToken = await hashResetToken(token);

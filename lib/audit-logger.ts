@@ -1,10 +1,24 @@
-import { prisma } from '@/lib/prisma';
+import { PrismaClient } from '@prisma/client';
 import { NextRequest } from 'next/server';
 import { getClientIp } from '@/lib/utils/ip-utils';
+
+// Create singleton Prisma instance
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined
+};
+
+const prisma = globalForPrisma.prisma ?? new PrismaClient({
+  log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+});
+
+if (process.env.NODE_ENV !== 'production') {
+  globalForPrisma.prisma = prisma;
+}
 
 export type AuditAction =
   // User Management
   | 'CREATE_USER' | 'UPDATE_USER' | 'DELETE_USER' | 'ENABLE_USER' | 'DISABLE_USER' | 'UNLOCK_USER' | 'RESET_PASSWORD'
+  | 'PASSWORD_RESET_REQUESTED' | 'PASSWORD_RESET_COMPLETED' | 'PASSWORD_RESET_FAILED' | 'PASSWORD_RESET_RATE_LIMITED'
   // Ticket Actions
   | 'CREATE_TICKET' | 'UPDATE_TICKET' | 'DELETE_TICKET' | 'STATUS_UPDATE' | 'ASSIGN_TICKET' | 'CLAIM_TICKET' | 'RESOLVE_TICKET' | 'CLOSE_TICKET'
   // Comments

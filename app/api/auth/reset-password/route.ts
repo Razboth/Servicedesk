@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
-import { prisma } from '@/lib/prisma';
 import {
   validateResetToken,
   markTokenAsUsed
@@ -9,6 +8,20 @@ import {
 import { sendPasswordResetSuccessEmail } from '@/lib/services/email.service';
 import { createAuditLog } from '@/lib/audit-logger';
 import { getClientIp } from '@/lib/utils/ip-utils';
+import { PrismaClient } from '@prisma/client';
+
+// Create new Prisma instance for this route
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined
+};
+
+const prisma = globalForPrisma.prisma ?? new PrismaClient({
+  log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+});
+
+if (process.env.NODE_ENV !== 'production') {
+  globalForPrisma.prisma = prisma;
+}
 
 // Validation schema
 const resetPasswordSchema = z.object({

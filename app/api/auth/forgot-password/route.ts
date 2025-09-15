@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { prisma } from '@/lib/prisma';
 import {
   createPasswordResetToken,
   checkResetRateLimit
@@ -8,6 +7,20 @@ import {
 import { sendPasswordResetEmail } from '@/lib/services/email.service';
 import { createAuditLog } from '@/lib/audit-logger';
 import { getClientIp } from '@/lib/utils/ip-utils';
+import { PrismaClient } from '@prisma/client';
+
+// Create new Prisma instance for this route
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined
+};
+
+const prisma = globalForPrisma.prisma ?? new PrismaClient({
+  log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+});
+
+if (process.env.NODE_ENV !== 'production') {
+  globalForPrisma.prisma = prisma;
+}
 
 // Validation schema
 const forgotPasswordSchema = z.object({
@@ -73,6 +86,8 @@ export async function POST(request: NextRequest) {
 
     if (user) {
       try {
+        console.log('User found:', { id: user.id, email: user.email });
+
         // Create reset token
         const resetToken = await createPasswordResetToken(
           user.id,
