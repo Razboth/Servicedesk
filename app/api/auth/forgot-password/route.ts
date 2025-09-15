@@ -82,25 +82,38 @@ export async function POST(request: NextRequest) {
           ipAddress,
           userAgent
         );
+        console.log('Reset token created successfully');
 
         // Send reset email
-        await sendPasswordResetEmail(
-          user.email,
-          user.name || user.email,
-          resetToken
-        );
+        try {
+          await sendPasswordResetEmail(
+            user.email,
+            user.name || user.email,
+            resetToken
+          );
+          console.log('Password reset email sent successfully');
+        } catch (emailError) {
+          console.error('Failed to send password reset email:', emailError);
+          // Continue even if email fails - token is created
+        }
 
         // Log successful request
-        await createAuditLog({
-          userId: user.id,
-          action: 'PASSWORD_RESET_REQUESTED',
-          entity: 'USER',
-          entityId: user.id,
-          metadata: {
-            email: user.email
-          },
-          request
-        });
+        try {
+          await createAuditLog({
+            userId: user.id,
+            action: 'PASSWORD_RESET_REQUESTED',
+            entity: 'USER',
+            entityId: user.id,
+            metadata: {
+              email: user.email
+            },
+            request
+          });
+          console.log('Audit log created');
+        } catch (auditError) {
+          console.error('Failed to create audit log:', auditError);
+          // Continue even if audit log fails
+        }
 
       } catch (error) {
         console.error('Error in password reset process:', error);

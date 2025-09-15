@@ -44,24 +44,36 @@ export async function createPasswordResetToken(
   expiresAt.setHours(expiresAt.getHours() + 1);
 
   // Delete any existing unused tokens for this user
-  await prisma.passwordResetToken.deleteMany({
-    where: {
-      userId,
-      usedAt: null
-    }
-  });
+  try {
+    await prisma.passwordResetToken.deleteMany({
+      where: {
+        userId,
+        usedAt: null
+      }
+    });
+    console.log('Deleted existing tokens');
+  } catch (error) {
+    console.error('Error deleting existing tokens:', error);
+    throw error;
+  }
 
   // Create new token
-  await prisma.passwordResetToken.create({
-    data: {
-      token: hashedToken,
-      userId,
-      email,
-      expiresAt,
-      ipAddress,
-      userAgent
-    }
-  });
+  try {
+    const resetToken = await prisma.passwordResetToken.create({
+      data: {
+        token: hashedToken,
+        userId,
+        email,
+        expiresAt,
+        ipAddress,
+        userAgent
+      }
+    });
+    console.log('Created reset token:', resetToken.id);
+  } catch (error) {
+    console.error('Error creating reset token:', error);
+    throw error;
+  }
 
   // Return the unhashed token for the email
   return token;
