@@ -90,8 +90,8 @@ export function ServiceFieldTemplatesDialog({
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      // Fetch all field templates
-      const templatesRes = await fetch('/api/admin/field-templates?isActive=true');
+      // Fetch all field templates (including newly created ones)
+      const templatesRes = await fetch('/api/admin/field-templates');
       if (templatesRes.ok) {
         const templates = await templatesRes.json();
         setFieldTemplates(templates);
