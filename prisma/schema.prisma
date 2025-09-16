@@ -71,6 +71,7 @@ model User {
   assignedAntivirusLicenses AntivirusLicense[]  @relation("AntivirusLicenseAssignedUser")
   createdOperatingSystems OperatingSystem[]     @relation("OSCreatedBy")
   createdOfficeProducts  OfficeProduct[]        @relation("OfficeCreatedBy")
+  passwordResetTokens    PasswordResetToken[]
   branch                 Branch?                @relation(fields: [branchId], references: [id])
   supportGroup           SupportGroup?          @relation(fields: [supportGroupId], references: [id])
 
@@ -611,6 +612,26 @@ model LoginAttempt {
   lockTriggered Boolean  @default(false)
 
   @@map("login_attempts")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  token     String    @unique
+  userId    String
+  email     String
+  expiresAt DateTime
+  usedAt    DateTime?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime  @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@index([email])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
 }
 
 model SupportGroup {

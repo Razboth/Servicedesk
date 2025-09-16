@@ -10,6 +10,7 @@ import { createNotification } from '@/lib/notifications';
 import { getClientIp } from '@/lib/utils/ip-utils';
 import { getDeviceInfo, formatDeviceInfo } from '@/lib/utils/device-utils';
 import { PriorityValidator, type PriorityValidationContext } from '@/lib/priority-validation';
+import { createAuditLog } from '@/lib/audit-logger';
 
 // Helper function to determine sort order
 function getSortOrder(sortBy: string, sortOrder: string) {
@@ -1266,6 +1267,25 @@ export async function POST(request: NextRequest) {
         assignedTo: true,
         branch: true
       }
+    });
+
+    // Create audit log for ticket creation
+    await createAuditLog({
+      userId: session.user.id,
+      action: 'CREATE_TICKET',
+      entity: 'TICKET',
+      entityId: ticket.id,
+      ticketId: ticket.id,
+      newValues: {
+        ticketNumber: ticket.ticketNumber,
+        title: ticket.title,
+        service: fullTicket?.service?.name,
+        priority: ticket.priority,
+        status: ticket.status,
+        branch: fullTicket?.branch?.name,
+        assignedTo: fullTicket?.assignedTo?.name || null
+      },
+      request
     });
 
     // Send email notification for ticket creation

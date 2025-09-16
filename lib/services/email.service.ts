@@ -94,6 +94,8 @@ export type EmailNotificationType =
   | 'approval_required'
   | 'approval_completed'
   | 'password_reset'
+  | 'password_reset_request'
+  | 'password_reset_success'
   | 'account_locked';
 
 // Get email recipients based on notification type
@@ -594,6 +596,98 @@ async function getEmailTemplate(
         `,
       };
 
+    case 'password_reset_request':
+      const resetUrl = `${baseUrl}/auth/reset-password?token=${data.resetToken}`;
+      return {
+        subject: 'Password Reset Request - Bank SulutGo ServiceDesk',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #333;">Password Reset Request</h2>
+
+            <p>Hi ${data.userName || 'User'},</p>
+
+            <p>We received a request to reset your password for your Bank SulutGo ServiceDesk account.</p>
+
+            <div style="background: #f5f5f5; padding: 20px; border-radius: 5px; margin: 20px 0;">
+              <p style="margin: 0 0 15px 0;">Click the button below to reset your password:</p>
+              <a href="${resetUrl}" style="display: inline-block; background: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                Reset Password
+              </a>
+            </div>
+
+            <p style="color: #666; font-size: 14px;">
+              Or copy and paste this link into your browser:<br>
+              <span style="color: #007bff; word-break: break-all;">${resetUrl}</span>
+            </p>
+
+            <div style="background: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 5px; margin: 20px 0;">
+              <p style="margin: 0; color: #856404;">
+                <strong>⚠️ Important:</strong><br>
+                • This link will expire in 1 hour<br>
+                • If you didn't request this password reset, please ignore this email<br>
+                • Your password won't change until you create a new one
+              </p>
+            </div>
+
+            <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+
+            <p style="color: #666; font-size: 12px;">
+              If you're having trouble clicking the button, copy and paste the URL above into your web browser.<br><br>
+              For security reasons, this link will expire in 1 hour. If you need a new link, please visit the sign-in page and click "Forgot Password" again.<br><br>
+              If you didn't request this password reset, you can safely ignore this email. Someone may have typed your email address by mistake.
+            </p>
+
+            <p style="color: #666; font-size: 12px; margin-top: 20px;">
+              Need help? Contact IT Support at support@banksulutgo.co.id
+            </p>
+          </div>
+        `,
+      };
+
+    case 'password_reset_success':
+      return {
+        subject: 'Password Successfully Reset - Bank SulutGo ServiceDesk',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #28a745;">Password Successfully Reset</h2>
+
+            <p>Hi ${data.userName || 'User'},</p>
+
+            <p>Your password for Bank SulutGo ServiceDesk has been successfully reset.</p>
+
+            <div style="background: #d4edda; border: 1px solid #c3e6cb; padding: 15px; border-radius: 5px; margin: 20px 0;">
+              <p style="margin: 0; color: #155724;">
+                <strong>✅ Password Changed</strong><br>
+                Date: ${new Date().toLocaleString()}<br>
+                IP Address: ${data.ipAddress || 'Unknown'}
+              </p>
+            </div>
+
+            <p>You can now sign in with your new password:</p>
+
+            <p style="margin: 20px 0;">
+              <a href="${baseUrl}/auth/signin" style="display: inline-block; background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+                Sign In to ServiceDesk
+              </a>
+            </p>
+
+            <div style="background: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; border-radius: 5px; margin: 20px 0;">
+              <p style="margin: 0; color: #721c24;">
+                <strong>🔒 Security Notice:</strong><br>
+                If you did not make this change, please contact IT Support immediately at support@banksulutgo.co.id or call ext. 1234.
+              </p>
+            </div>
+
+            <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+
+            <p style="color: #666; font-size: 12px;">
+              This is an automated security notification from Bank SulutGo ServiceDesk.<br>
+              For your security, we recommend using a strong, unique password.
+            </p>
+          </div>
+        `,
+      };
+
     default:
       return {
         subject: `[ServiceDesk] Notification`,
@@ -626,6 +720,52 @@ export function queueEmail(email: Omit<QueuedEmail, 'attempts'>) {
     ...email,
     attempts: 0,
   });
+}
+
+// Send password reset email
+export async function sendPasswordResetEmail(
+  email: string,
+  userName: string,
+  resetToken: string
+) {
+  try {
+    const { subject, html } = await getEmailTemplate('password_reset_request', {
+      userName,
+      resetToken
+    });
+
+    return await sendEmail({
+      to: [email],
+      subject,
+      html
+    });
+  } catch (error) {
+    console.error('Failed to send password reset email:', error);
+    throw error;
+  }
+}
+
+// Send password reset success email
+export async function sendPasswordResetSuccessEmail(
+  email: string,
+  userName: string,
+  ipAddress?: string
+) {
+  try {
+    const { subject, html } = await getEmailTemplate('password_reset_success', {
+      userName,
+      ipAddress
+    });
+
+    return await sendEmail({
+      to: [email],
+      subject,
+      html
+    });
+  } catch (error) {
+    console.error('Failed to send password reset success email:', error);
+    // Don't throw error for success email
+  }
 }
 
 // Process email queue
