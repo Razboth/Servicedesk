@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     const fieldType = searchParams.get('fieldType') || undefined;
     const isActive = searchParams.get('isActive');
     const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '50');
+    const limit = parseInt(searchParams.get('limit') || '1000'); // Increased default limit to show all templates
     const skip = (page - 1) * limit;
 
     // Build where clause
