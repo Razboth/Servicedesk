@@ -24,9 +24,10 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Edit, Trash2, Eye, Settings, Save, X, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, Settings, Save, X, ArrowUp, ArrowDown, Download, FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
 import { ServiceFieldTemplatesDialog } from '@/components/admin/service-field-templates-dialog';
+import { exportToCSV, exportToExcel, generateFilename } from '@/lib/export-utils';
 
 interface ServiceCategory {
   id: string;
@@ -79,6 +80,9 @@ interface Service {
   requiresApproval: boolean;
   isConfidential: boolean;
   category?: ServiceCategory;
+  tier1Category?: { id: string; name: string; };
+  tier2Subcategory?: { id: string; name: string; };
+  tier3Item?: { id: string; name: string; };
   fields: ServiceField[];
   serviceFieldTemplates?: any[];
   _count?: {
@@ -417,6 +421,74 @@ export default function ServicesPage() {
     }
   };
 
+  const handleExportCSV = () => {
+    try {
+      const exportData = filteredServices.map(service => ({
+        'Service Name': service.name,
+        'Description': service.description,
+        'Category (Tier 1)': service.tier1Category?.name || 'N/A',
+        'Subcategory (Tier 2)': service.tier2Subcategory?.name || 'N/A',
+        'Item (Tier 3)': service.tier3Item?.name || 'N/A',
+        'Support Group': service.supportGroup?.name || 'N/A',
+        'Priority': service.priority,
+        'Estimated Hours': service.estimatedHours || 'N/A',
+        'SLA Hours': service.slaHours,
+        'Status': service.isActive ? 'Active' : 'Inactive',
+        'Requires Approval': service.requiresApproval ? 'Yes' : 'No',
+        'Confidential': service.isConfidential ? 'Yes' : 'No',
+        'Total Tickets': service._count?.tickets || 0,
+        'Total Fields': service._count?.fieldTemplates || 0
+      }));
+
+      const filename = generateFilename('services-export', 'csv');
+      
+      exportToCSV({
+        data: exportData,
+        filename,
+        title: 'Services Export'
+      });
+      
+      toast.success('Services exported to CSV successfully');
+    } catch (error) {
+      console.error('Error exporting services:', error);
+      toast.error('Failed to export services');
+    }
+  };
+
+  const handleExportExcel = () => {
+    try {
+      const exportData = filteredServices.map(service => ({
+        'Service Name': service.name,
+        'Description': service.description,
+        'Category (Tier 1)': service.tier1Category?.name || 'N/A',
+        'Subcategory (Tier 2)': service.tier2Subcategory?.name || 'N/A',
+        'Item (Tier 3)': service.tier3Item?.name || 'N/A',
+        'Support Group': service.supportGroup?.name || 'N/A',
+        'Priority': service.priority,
+        'Estimated Hours': service.estimatedHours || 'N/A',
+        'SLA Hours': service.slaHours,
+        'Status': service.isActive ? 'Active' : 'Inactive',
+        'Requires Approval': service.requiresApproval ? 'Yes' : 'No',
+        'Confidential': service.isConfidential ? 'Yes' : 'No',
+        'Total Tickets': service._count?.tickets || 0,
+        'Total Fields': service._count?.fieldTemplates || 0
+      }));
+
+      const filename = generateFilename('services-export', 'xlsx');
+      
+      exportToExcel({
+        data: exportData,
+        filename,
+        title: 'Services Export'
+      });
+      
+      toast.success('Services exported to Excel successfully');
+    } catch (error) {
+      console.error('Error exporting services:', error);
+      toast.error('Failed to export services');
+    }
+  };
+
   const openEditDialog = (service: Service) => {
     setSelectedService(service);
     setEditService({
@@ -466,13 +538,31 @@ export default function ServicesPage() {
           description="Manage service catalog and configurations"
           icon={<Settings className="h-6 w-6" />}
           action={
-            <Button 
-              onClick={() => setIsNewServiceOpen(true)}
-              className="bg-gray-900 hover:bg-gray-800 text-white"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              New Service
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                onClick={handleExportCSV}
+                variant="outline"
+                disabled={filteredServices.length === 0}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                CSV
+              </Button>
+              <Button 
+                onClick={handleExportExcel}
+                variant="outline"
+                disabled={filteredServices.length === 0}
+              >
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                Excel
+              </Button>
+              <Button 
+                onClick={() => setIsNewServiceOpen(true)}
+                className="bg-gray-900 hover:bg-gray-800 text-white"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                New Service
+              </Button>
+            </div>
           }
         />
 

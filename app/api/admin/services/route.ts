@@ -88,6 +88,9 @@ export async function GET(request: NextRequest) {
         include: {
           category: true,
           supportGroup: true,
+          tier1Category: true,
+          tier2Subcategory: true,
+          tier3Item: true,
           fields: {
             orderBy: {
               order: 'asc'
@@ -111,6 +114,9 @@ export async function GET(request: NextRequest) {
         include: {
           category: true,
           supportGroup: true,
+          tier1Category: true,
+          tier2Subcategory: true,
+          tier3Item: true,
           _count: {
             select: {
               tickets: true,
