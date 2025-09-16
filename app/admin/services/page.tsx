@@ -262,6 +262,7 @@ export default function ServicesPage() {
       const response = await fetch('/api/admin/services');
       if (!response.ok) throw new Error('Failed to fetch services');
       const data = await response.json();
+      console.log('Services data from API:', data[0]); // Debug log to see structure
       setServices(data);
     } catch (error) {
       console.error('Error fetching services:', error);
@@ -423,22 +424,34 @@ export default function ServicesPage() {
 
   const handleExportCSV = () => {
     try {
-      const exportData = filteredServices.map(service => ({
-        'Service Name': service.name,
-        'Description': service.description,
-        'Category (Tier 1)': service.tier1Category?.name || 'N/A',
-        'Subcategory (Tier 2)': service.tier2Subcategory?.name || 'N/A',
-        'Item (Tier 3)': service.tier3Item?.name || 'N/A',
-        'Support Group': service.supportGroup?.name || 'N/A',
-        'Priority': service.priority,
-        'Estimated Hours': service.estimatedHours || 'N/A',
-        'SLA Hours': service.slaHours,
-        'Status': service.isActive ? 'Active' : 'Inactive',
-        'Requires Approval': service.requiresApproval ? 'Yes' : 'No',
-        'Confidential': service.isConfidential ? 'Yes' : 'No',
-        'Total Tickets': service._count?.tickets || 0,
-        'Total Fields': service._count?.fieldTemplates || 0
-      }));
+      const exportData = filteredServices.map(service => {
+        // Create clean export object without IDs
+        const cleanExport: any = {
+          'Service Name': service.name,
+          'Description': service.description,
+          'Category (Tier 1)': service.tier1Category?.name || service.category?.name || 'N/A',
+          'Subcategory (Tier 2)': service.tier2Subcategory?.name || 'N/A',
+          'Item (Tier 3)': service.tier3Item?.name || 'N/A',
+          'Support Group': service.supportGroup?.name || 'N/A',
+          'Priority': service.priority,
+          'Estimated Hours': service.estimatedHours || 'N/A',
+          'SLA Hours': service.slaHours,
+          'Status': service.isActive ? 'Active' : 'Inactive',
+          'Requires Approval': service.requiresApproval ? 'Yes' : 'No',
+          'Confidential': service.isConfidential ? 'Yes' : 'No',
+          'Total Tickets': service._count?.tickets || 0,
+          'Total Fields': service._count?.fieldTemplates || 0
+        };
+        
+        // Ensure no ID fields are included
+        Object.keys(cleanExport).forEach(key => {
+          if (key.toLowerCase().includes('id') && !key.includes('Confidential')) {
+            delete cleanExport[key];
+          }
+        });
+        
+        return cleanExport;
+      });
 
       const filename = generateFilename('services-export', 'csv');
       
@@ -457,22 +470,34 @@ export default function ServicesPage() {
 
   const handleExportExcel = () => {
     try {
-      const exportData = filteredServices.map(service => ({
-        'Service Name': service.name,
-        'Description': service.description,
-        'Category (Tier 1)': service.tier1Category?.name || 'N/A',
-        'Subcategory (Tier 2)': service.tier2Subcategory?.name || 'N/A',
-        'Item (Tier 3)': service.tier3Item?.name || 'N/A',
-        'Support Group': service.supportGroup?.name || 'N/A',
-        'Priority': service.priority,
-        'Estimated Hours': service.estimatedHours || 'N/A',
-        'SLA Hours': service.slaHours,
-        'Status': service.isActive ? 'Active' : 'Inactive',
-        'Requires Approval': service.requiresApproval ? 'Yes' : 'No',
-        'Confidential': service.isConfidential ? 'Yes' : 'No',
-        'Total Tickets': service._count?.tickets || 0,
-        'Total Fields': service._count?.fieldTemplates || 0
-      }));
+      const exportData = filteredServices.map(service => {
+        // Create clean export object without IDs
+        const cleanExport: any = {
+          'Service Name': service.name,
+          'Description': service.description,
+          'Category (Tier 1)': service.tier1Category?.name || service.category?.name || 'N/A',
+          'Subcategory (Tier 2)': service.tier2Subcategory?.name || 'N/A',
+          'Item (Tier 3)': service.tier3Item?.name || 'N/A',
+          'Support Group': service.supportGroup?.name || 'N/A',
+          'Priority': service.priority,
+          'Estimated Hours': service.estimatedHours || 'N/A',
+          'SLA Hours': service.slaHours,
+          'Status': service.isActive ? 'Active' : 'Inactive',
+          'Requires Approval': service.requiresApproval ? 'Yes' : 'No',
+          'Confidential': service.isConfidential ? 'Yes' : 'No',
+          'Total Tickets': service._count?.tickets || 0,
+          'Total Fields': service._count?.fieldTemplates || 0
+        };
+        
+        // Ensure no ID fields are included
+        Object.keys(cleanExport).forEach(key => {
+          if (key.toLowerCase().includes('id') && !key.includes('Confidential')) {
+            delete cleanExport[key];
+          }
+        });
+        
+        return cleanExport;
+      });
 
       const filename = generateFilename('services-export', 'xlsx');
       
