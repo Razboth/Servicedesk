@@ -4,7 +4,8 @@ module.exports = {
     name: 'bsg-servicedesk',
     
     // Script to start the application with Socket.io support
-    script: 'server.js',
+    script: 'node',
+    args: 'server.js',
     
     // Cluster mode for better performance (must use fork for Socket.io)
     instances: 1,

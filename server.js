@@ -55,11 +55,41 @@ const app = (0, next_1.default)({ dev, hostname, port });
 const handle = app.getRequestHandler();
 // Certificate paths
 const certsDir = path.join(__dirname, 'certificates');
-// Function to check if certificates exist
-const certificatesExist = () => {
+// Function to check if certificates exist and determine which to use
+const getCertificateConfig = () => {
+    // Check for production Bank SulutGo certificate first
+    const prodCertPath = path.join(certsDir, 'star_banksulutgo_co_id.crt');
+    const prodKeyPath = path.join(certsDir, 'star_banksulutgo_co_id.key');
+    const prodCaPath = path.join(certsDir, 'DigiCertCA.crt');
+    
+    if (fs.existsSync(prodCertPath) && fs.existsSync(prodKeyPath)) {
+        const config = {
+            cert: fs.readFileSync(prodCertPath),
+            key: fs.readFileSync(prodKeyPath)
+        };
+        // Include CA certificate if it exists
+        if (fs.existsSync(prodCaPath)) {
+            config.ca = fs.readFileSync(prodCaPath);
+        }
+        return { exists: true, config, type: 'production' };
+    }
+    
+    // Fallback to localhost certificate
     const certPath = path.join(certsDir, 'localhost.pem');
     const keyPath = path.join(certsDir, 'localhost-key.pem');
-    return fs.existsSync(certPath) && fs.existsSync(keyPath);
+    
+    if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
+        return {
+            exists: true,
+            config: {
+                cert: fs.readFileSync(certPath),
+                key: fs.readFileSync(keyPath)
+            },
+            type: 'localhost'
+        };
+    }
+    
+    return { exists: false, config: null, type: null };
 };
 // Function to initialize Prisma
 const initializePrisma = async () => {
@@ -104,12 +134,10 @@ const startServer = async () => {
         
         await app.prepare();
         let server;
-        if (useHttps && certificatesExist()) {
+        const certConfig = getCertificateConfig();
+        if (useHttps && certConfig.exists) {
             // HTTPS Server
-            const httpsOptions = {
-                key: fs.readFileSync(path.join(certsDir, 'localhost-key.pem')),
-                cert: fs.readFileSync(path.join(certsDir, 'localhost.pem')),
-            };
+            const httpsOptions = certConfig.config;
             server = (0, https_1.createServer)(httpsOptions, async (req, res) => {
                 try {
                     const parsedUrl = (0, url_1.parse)(req.url, true);
@@ -137,6 +165,7 @@ const startServer = async () => {
                 console.log(`🔒 HTTPS Server ready on https://${hostname}:${port}`);
                 console.log(`🚀 Environment: ${dev ? 'development' : 'production'}`);
                 console.log(`🔌 Socket.io server initialized`);
+                console.log(`📜 Using ${certConfig.type === 'production' ? 'Bank SulutGo wildcard' : 'localhost'} certificate`);
                 console.log();
                 if (dev) {
                     console.log('📝 Development Notes:');
@@ -162,7 +191,7 @@ const startServer = async () => {
         }
         else {
             // Fallback to HTTP if certificates don't exist or HTTPS is disabled
-            if (useHttps && !certificatesExist()) {
+            if (useHttps && !certConfig.exists) {
                 console.warn('⚠️  HTTPS certificates not found!');
                 console.log('   Run "npm run cert:generate" to create certificates');
                 console.log('   Falling back to HTTP...\n');
