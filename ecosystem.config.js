@@ -20,10 +20,10 @@ module.exports = {
     // Environment variables
     env: {
       NODE_ENV: 'production',
-      PORT: 3000,
+      PORT: 4000,
       HOSTNAME: '0.0.0.0',
       USE_HTTPS: 'false',
-      NEXTAUTH_URL: 'http://localhost:3000',
+      NEXTAUTH_URL: 'http://localhost:4000',
       DATABASE_URL: 'postgresql://postgres:admin@localhost:5432/servicedesk_database?schema=public'
     },
     

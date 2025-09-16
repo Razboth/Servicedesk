@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 
 // PUT /api/vendors/[id]/tickets/[ticketId] - Update vendor ticket status

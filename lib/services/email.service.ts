@@ -1,5 +1,5 @@
 import nodemailer from 'nodemailer';
-import prisma from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 
 // Email configuration
 const transporter = nodemailer.createTransport({

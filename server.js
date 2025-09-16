@@ -48,7 +48,7 @@ const socket_manager_1 = require("./lib/socket-manager");
 dotenv.config();
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = process.env.HOSTNAME || 'localhost';
-const port = parseInt(process.env.PORT || '3000', 10);
+const port = parseInt(process.env.PORT || '4000', 10);
 const useHttps = process.env.USE_HTTPS !== 'false'; // Default to HTTPS
 // Configure Next.js
 const app = (0, next_1.default)({ dev, hostname, port });

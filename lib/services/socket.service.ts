@@ -3,7 +3,7 @@ import { Server as SocketServer, Socket } from 'socket.io';
 import { parse } from 'cookie';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 
 let io: SocketServer | null = null;
 

@@ -1,6 +1,6 @@
 import { randomBytes } from 'crypto';
 import bcrypt from 'bcryptjs';
-import prisma from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 
 /**
  * Generate a secure password reset token

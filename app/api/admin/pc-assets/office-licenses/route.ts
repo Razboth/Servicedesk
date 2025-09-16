@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 
 // GET /api/admin/pc-assets/office-licenses - List all Office licenses
