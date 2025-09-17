@@ -22,20 +22,49 @@ const updateTicketSchema = z.object({
   actualHours: z.number().optional()
 });
 
-// GET /api/tickets/[id] - Get specific ticket
+// GET /api/tickets/[id] - Get specific ticket (by ID or ticket number)
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Check for API key first
+    const apiKeyHeader = request.headers.get('X-API-Key') || request.headers.get('Authorization')?.replace('Bearer ', '');
+    let userId: string | undefined;
+    let userRole: string | undefined;
+
+    if (apiKeyHeader) {
+      // Import API auth functions
+      const { authenticateApiKey, checkApiPermission, createApiErrorResponse } = await import('@/lib/auth-api');
+
+      // API key authentication
+      const authResult = await authenticateApiKey(request);
+      if (!authResult.authenticated) {
+        return createApiErrorResponse(authResult.error || 'Unauthorized', 401);
+      }
+
+      if (!checkApiPermission(authResult.apiKey!, 'tickets:read')) {
+        return createApiErrorResponse('Insufficient permissions to read tickets', 403);
+      }
+
+      userId = authResult.apiKey?.linkedUserId || authResult.apiKey?.createdById;
+      userRole = 'ADMIN'; // API keys get admin-level read access
+    } else {
+      // Session authentication
+      const session = await auth();
+      if (!session?.user?.id) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+      userId = session.user.id;
+      userRole = session.user.role;
     }
 
+    // Check if the id is a ticket number (e.g., TKT-2025-001402) or a regular ID
+    const isTicketNumber = /^[A-Z]+-\d{4}-\d+$/.test(id);
+
     const ticket = await prisma.ticket.findUnique({
-      where: { id },
+      where: isTicketNumber ? { ticketNumber: id } : { id },
       include: {
         service: {
           select: {
@@ -137,9 +166,9 @@ export async function GET(
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
-    // Get user's details for access control
-    const userWithDetails = await prisma.user.findUnique({
-      where: { id: session.user.id },
+    // Get user's details for access control (skip for API keys)
+    const userWithDetails = userId && !apiKeyHeader ? await prisma.user.findUnique({
+      where: { id: userId },
       select: { 
         branchId: true, 
         role: true, 
@@ -148,19 +177,22 @@ export async function GET(
           select: { code: true }
         }
       }
-    });
+    }) : null;
 
-    // Check access permissions
-    let canAccess = false;
-    
-    if (session.user.role === 'ADMIN') {
+    // Check access permissions (API keys get full access)
+    let canAccess = !!apiKeyHeader;
+
+    if (apiKeyHeader) {
+      // API keys have full read access
+      canAccess = true;
+    } else if (userRole === 'ADMIN') {
       // Super admin can see all tickets
       canAccess = true;
-    } else if (session.user.role === 'MANAGER') {
+    } else if (userRole === 'MANAGER') {
       // Managers can see tickets assigned to their branch (for ATM claims and inter-branch tickets)
       const isFromSameBranch = userWithDetails?.branchId === ticket.branchId;
       canAccess = isFromSameBranch;
-    } else if (session.user.role === 'TECHNICIAN') {
+    } else if (userRole === 'TECHNICIAN') {
       // Check if this is a Call Center technician
       const isCallCenterTech = userWithDetails?.supportGroup?.code === 'CALL_CENTER';
       
@@ -185,7 +217,7 @@ export async function GET(
       } else {
         // Regular technicians can see:
         // 1. Tickets they created or are assigned to
-        const isCreatorOrAssignee = ticket.createdById === session.user.id || ticket.assignedToId === session.user.id;
+        const isCreatorOrAssignee = ticket.createdById === userId || ticket.assignedToId === userId;
         
         // 2. Tickets in their support group (if they have one) that are approved or pending approval
         let canSeeGroupTicket = false;
@@ -218,11 +250,11 @@ export async function GET(
       
       const isSecurityAnalystTicket = ticket.createdBy?.role === 'SECURITY_ANALYST';
       canAccess = isCreatorOrAssignee || isApprovedOrNoApprovalNeeded || isSecurityAnalystTicket;
-    } else if (session.user.role === 'USER' || session.user.role === 'AGENT') {
+    } else if (userRole === 'USER' || userRole === 'AGENT') {
       // Users can see:
       // 1. Their own tickets
       // 2. Tickets assigned to their branch (for ATM claims processing)
-      const isOwnTicket = ticket.createdById === session.user.id;
+      const isOwnTicket = ticket.createdById === userId;
       const isBranchTicket = userWithDetails?.branchId === ticket.branchId;
       
       // For ATM claims, check if this is an ATM claim service
@@ -264,9 +296,12 @@ export async function PATCH(
     const body = await request.json();
     const validatedData = updateTicketSchema.parse(body);
 
+    // Check if the id is a ticket number or a regular ID
+    const isTicketNumber = /^[A-Z]+-\d{4}-\d+$/.test(id);
+
     // Check if ticket exists and user has permission
     const existingTicket = await prisma.ticket.findUnique({
-      where: { id },
+      where: isTicketNumber ? { ticketNumber: id } : { id },
       select: {
         id: true,
         createdById: true,
@@ -292,7 +327,7 @@ export async function PATCH(
       // Admin can update everything
       canUpdate = true;
       allowedFields = Object.keys(validatedData);
-    } else if (session.user.role === 'TECHNICIAN' || session.user.role === 'SECURITY_ANALYST') {
+    } else if (userRole === 'TECHNICIAN' || userRole === 'SECURITY_ANALYST') {
       // Technicians can only update tickets they are assigned to
       if (existingTicket.assignedToId === session.user.id) {
         canUpdate = true;
@@ -582,9 +617,12 @@ export async function PUT(
     const body = await request.json();
     const validatedData = updateTicketSchema.parse(body);
 
+    // Check if the id is a ticket number or a regular ID
+    const isTicketNumber = /^[A-Z]+-\d{4}-\d+$/.test(id);
+
     // Check if ticket exists and user has permission
     const existingTicket = await prisma.ticket.findUnique({
-      where: { id },
+      where: isTicketNumber ? { ticketNumber: id } : { id },
       select: {
         id: true,
         createdById: true,
@@ -844,8 +882,11 @@ export async function DELETE(
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
+    // Check if the id is a ticket number or a regular ID
+    const isTicketNumber = /^[A-Z]+-\d{4}-\d+$/.test(id);
+
     const ticket = await prisma.ticket.findUnique({
-      where: { id },
+      where: isTicketNumber ? { ticketNumber: id } : { id },
       select: { id: true }
     });
 

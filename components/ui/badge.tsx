@@ -3,36 +3,74 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold transition-all duration-200",
   {
     variants: {
       variant: {
         default:
-          "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
+          "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2)] hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3),0_2px_4px_0_rgba(0,0,0,0.1)]",
         secondary:
-          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
+          "bg-gradient-to-r from-neutral-200 to-neutral-300 dark:from-neutral-700 dark:to-neutral-800 text-neutral-900 dark:text-neutral-100 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2)]",
         destructive:
-          "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
+          "bg-gradient-to-r from-red-500 to-red-600 text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2)] hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3),0_2px_4px_0_rgba(0,0,0,0.1)]",
         warning:
-          "border-transparent bg-yellow-500 text-yellow-950 hover:bg-yellow-500/80",
+          "bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-950 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)] hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.4),0_2px_4px_0_rgba(0,0,0,0.1)]",
         success:
-          "border-transparent bg-green-500 text-green-950 hover:bg-green-500/80",
-        outline: "text-foreground",
+          "bg-gradient-to-r from-green-500 to-green-600 text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2)] hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3),0_2px_4px_0_rgba(0,0,0,0.1)]",
+        outline:
+          "border-2 border-neutral-200 dark:border-neutral-700 bg-transparent text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-900/50",
+        ghost:
+          "bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700",
+        purple:
+          "bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2)] hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3),0_2px_4px_0_rgba(0,0,0,0.1)]",
+      },
+      size: {
+        default: "text-xs px-3 py-1",
+        sm: "text-[10px] px-2 py-0.5",
+        lg: "text-sm px-4 py-1.5",
+      },
+      shimmer: {
+        true: "overflow-hidden relative",
+        false: "",
       },
     },
     defaultVariants: {
       variant: "default",
+      size: "default",
+      shimmer: false,
     },
   }
 )
 
 export interface BadgeProps
   extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof badgeVariants> {}
+    VariantProps<typeof badgeVariants> {
+  pulse?: boolean
+}
 
-function Badge({ className, variant, ...props }: BadgeProps) {
+function Badge({
+  className,
+  variant,
+  size,
+  shimmer,
+  pulse,
+  children,
+  ...props
+}: BadgeProps) {
   return (
-    <div className={cn(badgeVariants({ variant }), className)} {...props} />
+    <div
+      className={cn(
+        badgeVariants({ variant, size, shimmer }),
+        pulse && "animate-pulse",
+        className
+      )}
+      {...props}
+    >
+      {children}
+      {shimmer && (
+        <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+      )}
+    </div>
   )
 }
 

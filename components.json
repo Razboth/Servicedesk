@@ -12,5 +12,8 @@
   "aliases": {
     "components": "@/components",
     "utils": "@/lib/utils"
+  },
+  "registries": {
+    "@cult-ui": "https://www.cult-ui.com/api/component/{name}"
   }
 }

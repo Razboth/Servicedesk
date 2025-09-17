@@ -51,10 +51,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Find the ATM Claim service
-    const service = await prisma.service.findFirst({
+    // Find the ATM Claim service - try multiple variations
+    let service = await prisma.service.findFirst({
       where: {
-        name: 'Penarikan Tunai Internal - ATM Claim',
+        OR: [
+          { name: 'Penarikan Tunai Internal - ATM Klaim' },
+          { name: 'Penarikan Tunai Internal - ATM Claim' },
+          { name: { contains: 'ATM Klaim' } },
+          { name: { contains: 'ATM Claim' } }
+        ],
         isActive: true
       },
       include: {
@@ -66,9 +71,26 @@ export async function POST(request: NextRequest) {
       }
     })
 
+    // If still not found, create a generic ATM service or use any ATM-related service
+    if (!service) {
+      service = await prisma.service.findFirst({
+        where: {
+          name: { contains: 'ATM' },
+          isActive: true
+        },
+        include: {
+          fieldTemplates: {
+            include: {
+              fieldTemplate: true
+            }
+          }
+        }
+      })
+    }
+
     if (!service) {
       return NextResponse.json(
-        { error: 'ATM Claim service not found' },
+        { error: 'ATM Claim service not found. Please ensure ATM services are configured in the system.' },
         { status: 404 }
       )
     }
