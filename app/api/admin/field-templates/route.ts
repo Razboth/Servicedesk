@@ -19,8 +19,9 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
     const category = searchParams.get('category') || undefined;
     const fieldType = searchParams.get('fieldType') || undefined;
+    const isActive = searchParams.get('isActive');
     const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '50');
+    const limit = parseInt(searchParams.get('limit') || '1000'); // Increased default limit to show all templates
     const skip = (page - 1) * limit;
 
     // Build where clause
@@ -41,6 +42,14 @@ export async function GET(request: NextRequest) {
     if (fieldType && fieldType !== 'all') {
       where.type = fieldType;
     }
+
+    // Handle isActive filter - only filter if explicitly requested
+    if (isActive === 'true') {
+      where.isActive = true;
+    } else if (isActive === 'false') {
+      where.isActive = false;
+    }
+    // If isActive is not specified, return all templates
 
     const [fieldTemplates, total] = await Promise.all([
       prisma.fieldTemplate.findMany({
@@ -126,6 +135,7 @@ export async function POST(request: NextRequest) {
       type,
       description: body.description,
       isRequired: body.isRequired || false,
+      isActive: body.isActive !== false, // Default to true unless explicitly false
       placeholder: body.placeholder,
       helpText: body.helpText,
       defaultValue: body.defaultValue,
