@@ -6,8 +6,10 @@ import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
 import { TicketsDataTable } from '@/components/tickets/data-table/tickets-data-table'
 import { TicketCards } from '@/components/tickets/ticket-cards'
+import { TicketNotifications } from '@/components/tickets/ticket-notifications'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { PageHeader } from '@/components/ui/page-header'
@@ -99,14 +101,14 @@ export default function TechnicianWorkbenchPage() {
 
   if (!session) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-cream-100 dark:bg-brown-950">
-        <Card className="w-full max-w-md mx-4">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
+        <Card className="w-full max-w-md mx-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm">
           <CardContent className="p-8 text-center">
-            <div className="w-16 h-16 mx-auto mb-4 bg-cream-400 dark:bg-warm-dark-100 rounded-full flex items-center justify-center">
-              <Sparkles className="w-8 h-8 text-brown-400 dark:text-brown-200" />
+            <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
+              <Sparkles className="w-8 h-8 text-gray-600 dark:text-gray-400" />
             </div>
-            <h2 className="text-2xl font-bold text-brown-900 dark:text-cream-200 mb-2">Access Required</h2>
-            <p className="text-brown-600 dark:text-cream-300">Please sign in to access the technician workbench.</p>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Access Required</h2>
+            <p className="text-muted-foreground">Please sign in to access the technician workbench.</p>
           </CardContent>
         </Card>
       </div>
@@ -116,14 +118,14 @@ export default function TechnicianWorkbenchPage() {
   // Check if user is a technician or security analyst
   if (!session?.user?.role || !['TECHNICIAN', 'SECURITY_ANALYST'].includes(session.user.role)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-cream-100 dark:bg-brown-950">
-        <Card className="w-full max-w-md mx-4">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
+        <Card className="w-full max-w-md mx-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm">
           <CardContent className="p-8 text-center">
-            <div className="w-16 h-16 mx-auto mb-4 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center">
+            <div className="w-16 h-16 mx-auto mb-4 bg-red-50 dark:bg-red-950/20 rounded-full flex items-center justify-center">
               <UserCheck className="w-8 h-8 text-red-600 dark:text-red-400" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Access Denied</h2>
-            <p className="text-gray-600 dark:text-gray-400">This workbench is only accessible to technicians and security analysts.</p>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Access Denied</h2>
+            <p className="text-muted-foreground">This workbench is only accessible to technicians and security analysts.</p>
           </CardContent>
         </Card>
       </div>
@@ -131,14 +133,7 @@ export default function TechnicianWorkbenchPage() {
   }
 
   return (
-    <div className="min-h-screen bg-cream-100 dark:bg-brown-950">
-      {/* Decorative background elements */}
-      <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-gradient-to-r from-cream-400/20 to-brown-400/20 dark:from-warm-dark-100/20 dark:to-brown-700/20 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-3xl opacity-20 animate-blob"></div>
-        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-r from-cream-300/20 to-cream-400/20 dark:from-warm-dark-200/20 dark:to-warm-dark-100/20 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-brown-300/20 to-brown-400/20 dark:from-brown-700/20 dark:to-brown-600/20 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
-      </div>
-
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
         <PageHeader
           title="Technician Workbench"
@@ -170,28 +165,30 @@ export default function TechnicianWorkbenchPage() {
               </Button>
             </div>
 
-            {/* Compact Stats Cards */}
+            {/* ReUI Style Stats Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {isLoading ? (
-              // Loading skeleton
+              // Loading skeleton - ReUI style
               <>
                 {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="bg-card/50 backdrop-blur-sm border rounded-lg p-3 animate-pulse">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-muted rounded-md" />
-                      <div className="flex-1">
-                        <div className="h-3 bg-muted rounded w-20 mb-1" />
-                        <div className="h-5 bg-muted rounded w-12" />
+                  <Card key={i} className="border border-gray-200 dark:border-gray-800 rounded-xl">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="w-10 h-10 rounded-lg" />
+                        <div className="flex-1 space-y-2">
+                          <Skeleton className="h-3 w-16" />
+                          <Skeleton className="h-5 w-12" />
+                        </div>
                       </div>
-                    </div>
-                  </div>
+                    </CardContent>
+                  </Card>
                 ))}
               </>
             ) : quickStats.length > 0 ? (
               quickStats.map((stat, index) => (
-                <div
+                <Card
                   key={index}
-                  className="bg-card/50 backdrop-blur-sm border rounded-lg p-3 hover:bg-accent/50 transition-colors cursor-pointer"
+                  className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl hover:shadow-md transition-all duration-200 cursor-pointer group"
                   onClick={() => {
                     // Navigate to appropriate view based on stat
                     if (stat.label === 'My Tickets') {
@@ -203,30 +200,55 @@ export default function TechnicianWorkbenchPage() {
                     }
                   }}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 ${stat.color} rounded-md flex items-center justify-center`}>
-                      {stat.icon}
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-lg ${
+                        stat.label === 'My Tickets'
+                          ? 'bg-blue-100 dark:bg-blue-900/20'
+                          : stat.label === 'Available'
+                          ? 'bg-purple-100 dark:bg-purple-900/20'
+                          : stat.label === 'In Progress'
+                          ? 'bg-yellow-100 dark:bg-yellow-900/20'
+                          : 'bg-green-100 dark:bg-green-900/20'
+                      } flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                        <div className={
+                          stat.label === 'My Tickets'
+                            ? 'text-blue-600 dark:text-blue-400'
+                            : stat.label === 'Available'
+                            ? 'text-purple-600 dark:text-purple-400'
+                            : stat.label === 'In Progress'
+                            ? 'text-yellow-600 dark:text-yellow-400'
+                            : 'text-green-600 dark:text-green-400'
+                        }>
+                          {stat.icon}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground">{stat.label}</p>
+                        <p className="text-xl font-bold text-gray-900 dark:text-gray-100">{stat.count}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">{stat.label}</p>
-                      <p className="text-lg font-semibold">{stat.count}</p>
-                    </div>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
               ))
             ) : (
               // No data state
-              <div className="col-span-full text-center py-4 text-sm text-muted-foreground">
-                No statistics available
-              </div>
+              <Card className="col-span-full bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 rounded-xl">
+                <CardContent className="p-6 text-center">
+                  <p className="text-sm text-muted-foreground">No statistics available</p>
+                </CardContent>
+              </Card>
             )}
             </div>
           </div>
 
-          {/* Tabs with Data Tables/Cards */}
-          <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-lg overflow-hidden">
-            <CardContent className="p-4 sm:p-6">
-              <Tabs defaultValue="my-tickets" className="w-full">
+          {/* Main Content Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            {/* Tickets Section - Takes 3 columns on large screens */}
+            <div className="lg:col-span-3">
+              <Card className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm">
+                <CardContent className="p-6">
+                  <Tabs defaultValue="my-tickets" className="w-full">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
                   <TabsList className="grid w-full sm:w-auto max-w-md grid-cols-2">
                     <TabsTrigger value="my-tickets" className="flex items-center gap-1 sm:gap-2">
@@ -284,6 +306,17 @@ export default function TechnicianWorkbenchPage() {
               </Tabs>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Notifications Section - Takes 1 column on large screens */}
+        <div className="lg:col-span-1">
+          <Card className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm sticky top-4">
+            <CardContent className="p-4">
+              <TicketNotifications autoFetch={false} className="max-h-[600px]" />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
         </div>
       </div>
     </div>

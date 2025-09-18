@@ -1106,7 +1106,8 @@ export async function POST(request: NextRequest) {
         }
       });
       
-      const ticketNumber = `TKT-${currentYear}-${String(yearTicketCount + 1).padStart(6, '0')}`;
+      // New simplified ticket numbering - just sequential numbers
+      const ticketNumber = String(yearTicketCount + 1);
 
       const createdTicket = await tx.ticket.create({
       data: {

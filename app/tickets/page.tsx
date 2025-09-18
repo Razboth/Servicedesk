@@ -41,7 +41,7 @@ function TicketsPageContent() {
         description="Manage and track support tickets across all branches"
         icon={<TicketIcon className="h-6 w-6" />}
         action={
-          <Button 
+          <Button
             onClick={handleCreateTicket}
             className="bg-gradient-to-r from-brown-400 to-brown-500 dark:from-brown-200 dark:to-brown-300 text-white dark:text-brown-950 hover:from-brown-500 hover:to-brown-600 dark:hover:from-brown-300 dark:hover:to-brown-400"
           >
@@ -50,13 +50,13 @@ function TicketsPageContent() {
           </Button>
         }
       />
-      
-      <TicketsDataTable 
+
+      <TicketsDataTable
         onCreateTicket={handleCreateTicket}
         initialFilters={initialFilters}
         hideHeader={true}
       />
-      
+
       {showWizard && (
         <TicketWizard
           onClose={() => setShowWizard(false)}

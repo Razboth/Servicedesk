@@ -58,7 +58,10 @@
     "version:bump:major": "node scripts/bump-version.js major",
     "version:bump:minor": "node scripts/bump-version.js minor",
     "version:bump:patch": "node scripts/bump-version.js patch",
-    "version:bump": "node scripts/bump-version.js"
+    "version:bump": "node scripts/bump-version.js",
+    "migrate:tickets": "npx tsx scripts/migrate-ticket-numbers.ts",
+    "migrate:tickets:dry": "npx tsx scripts/migrate-ticket-numbers.ts --dry-run",
+    "migrate:tickets:rollback": "npx tsx scripts/migrate-ticket-numbers.ts --rollback"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.7.2",

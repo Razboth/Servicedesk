@@ -7,12 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
-import { 
-  Search, 
-  Plus, 
-  Users, 
-  Clock, 
-  CheckCircle2, 
+import { TicketNotifications } from '@/components/tickets/ticket-notifications';
+import {
+  Search,
+  Plus,
+  Users,
+  Clock,
+  CheckCircle2,
   AlertCircle,
   ArrowRight,
   Building2,
@@ -282,15 +283,19 @@ export default function BranchATMClaimsPage() {
         </TabsList>
       </Tabs>
 
-      {/* Source Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-4">
-          <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value="internal">Internal</TabsTrigger>
-          <TabsTrigger value="external">From Other Branches</TabsTrigger>
-        </TabsList>
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Claims List - Takes 3 columns */}
+        <div className="lg:col-span-3">
+          {/* Source Tabs */}
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="mb-4">
+              <TabsTrigger value="all">All</TabsTrigger>
+              <TabsTrigger value="internal">Internal</TabsTrigger>
+              <TabsTrigger value="external">From Other Branches</TabsTrigger>
+            </TabsList>
 
-        <TabsContent value={activeTab}>
+            <TabsContent value={activeTab}>
           {loading ? (
             <div className="text-center py-8">Loading claims...</div>
           ) : claims.length === 0 ? (
@@ -369,6 +374,17 @@ export default function BranchATMClaimsPage() {
           )}
         </TabsContent>
       </Tabs>
+    </div>
+
+    {/* Notifications Section - Takes 1 column */}
+    <div className="lg:col-span-1">
+      <Card className="sticky top-4">
+        <CardContent className="p-4">
+          <TicketNotifications autoFetch={false} className="max-h-[600px]" />
+        </CardContent>
+      </Card>
+    </div>
+  </div>
     </div>
   );
 }

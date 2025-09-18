@@ -108,13 +108,43 @@ export async function getEmailRecipients(
   const ticket = await prisma.ticket.findUnique({
     where: { id: ticketId },
     include: {
-      createdBy: true,
-      assignedTo: true,
+      createdBy: {
+        select: {
+          id: true,
+          email: true,
+          emailNotifyOnTicketCreated: true,
+          emailNotifyOnTicketAssigned: true,
+          emailNotifyOnTicketUpdated: true,
+          emailNotifyOnTicketResolved: true,
+          emailNotifyOnComment: true,
+        }
+      },
+      assignedTo: {
+        select: {
+          id: true,
+          email: true,
+          emailNotifyOnTicketCreated: true,
+          emailNotifyOnTicketAssigned: true,
+          emailNotifyOnTicketUpdated: true,
+          emailNotifyOnTicketResolved: true,
+          emailNotifyOnComment: true,
+        }
+      },
       service: {
         include: {
           supportGroup: {
             include: {
-              users: true,
+              users: {
+                select: {
+                  id: true,
+                  email: true,
+                  emailNotifyOnTicketCreated: true,
+                  emailNotifyOnTicketAssigned: true,
+                  emailNotifyOnTicketUpdated: true,
+                  emailNotifyOnTicketResolved: true,
+                  emailNotifyOnComment: true,
+                }
+              },
             },
           },
         },
@@ -126,76 +156,114 @@ export async function getEmailRecipients(
 
   switch (notificationType) {
     case 'ticket_created':
-      // Notify requester and support group
-      if (ticket.createdBy.email) recipients.add(ticket.createdBy.email);
+      // Notify requester and support group (only if they have this notification enabled)
+      if (ticket.createdBy.email && ticket.createdBy.emailNotifyOnTicketCreated) {
+        recipients.add(ticket.createdBy.email);
+      }
       if (ticket.service?.supportGroup?.users) {
         ticket.service.supportGroup.users
-          .filter(u => u.email)
+          .filter(u => u.email && u.emailNotifyOnTicketCreated)
           .forEach(u => recipients.add(u.email!));
       }
       break;
 
     case 'ticket_assigned':
-      // Notify assigned technician and requester
-      if (ticket.assignedTo?.email) recipients.add(ticket.assignedTo.email);
-      if (ticket.createdBy.email) recipients.add(ticket.createdBy.email);
+      // Notify assigned technician and requester (only if they have this notification enabled)
+      if (ticket.assignedTo?.email && ticket.assignedTo.emailNotifyOnTicketAssigned) {
+        recipients.add(ticket.assignedTo.email);
+      }
+      if (ticket.createdBy.email && ticket.createdBy.emailNotifyOnTicketAssigned) {
+        recipients.add(ticket.createdBy.email);
+      }
       break;
 
     case 'ticket_updated':
-    case 'comment_added':
     case 'technician_action':
-      // Notify requester and assigned technician
-      if (ticket.createdBy.email) recipients.add(ticket.createdBy.email);
-      if (ticket.assignedTo?.email) recipients.add(ticket.assignedTo.email);
+      // Notify requester and assigned technician (only if they have this notification enabled)
+      if (ticket.createdBy.email && ticket.createdBy.emailNotifyOnTicketUpdated) {
+        recipients.add(ticket.createdBy.email);
+      }
+      if (ticket.assignedTo?.email && ticket.assignedTo.emailNotifyOnTicketUpdated) {
+        recipients.add(ticket.assignedTo.email);
+      }
+      break;
+
+    case 'comment_added':
+      // Notify requester and assigned technician (only if they have comment notification enabled)
+      if (ticket.createdBy.email && ticket.createdBy.emailNotifyOnComment) {
+        recipients.add(ticket.createdBy.email);
+      }
+      if (ticket.assignedTo?.email && ticket.assignedTo.emailNotifyOnComment) {
+        recipients.add(ticket.assignedTo.email);
+      }
       break;
 
     case 'ticket_resolved':
     case 'ticket_closed':
-      // Notify requester and assigned technician
-      if (ticket.createdBy.email) recipients.add(ticket.createdBy.email);
-      if (ticket.assignedTo?.email) recipients.add(ticket.assignedTo.email);
+      // Notify requester and assigned technician (only if they have this notification enabled)
+      if (ticket.createdBy.email && ticket.createdBy.emailNotifyOnTicketResolved) {
+        recipients.add(ticket.createdBy.email);
+      }
+      if (ticket.assignedTo?.email && ticket.assignedTo.emailNotifyOnTicketResolved) {
+        recipients.add(ticket.assignedTo.email);
+      }
       break;
 
     case 'sla_warning':
     case 'sla_breach':
-      // Notify assigned technician and managers
-      if (ticket.assignedTo?.email) recipients.add(ticket.assignedTo.email);
+      // Notify assigned technician and managers (only if they have update notification enabled)
+      if (ticket.assignedTo?.email && ticket.assignedTo.emailNotifyOnTicketUpdated) {
+        recipients.add(ticket.assignedTo.email);
+      }
       // Add managers (users with MANAGER role in the same branch)
       const managers = await prisma.user.findMany({
         where: {
           role: 'MANAGER',
           branchId: ticket.createdBy.branchId,
           email: { not: null },
+          emailNotifyOnTicketUpdated: true, // Check notification preference
         },
+        select: {
+          email: true,
+        }
       });
       managers.forEach(m => m.email && recipients.add(m.email));
       break;
 
     case 'approval_required':
-      // Notify approvers
+      // Notify approvers (check their notification preferences)
       const approvals = await prisma.ticketApproval.findMany({
         where: {
           ticketId,
           status: 'PENDING',
         },
         include: {
-          approver: true,
+          approver: {
+            select: {
+              email: true,
+              emailNotifyOnTicketCreated: true,
+            }
+          },
         },
       });
       approvals
-        .filter(a => a.approver.email)
+        .filter(a => a.approver.email && a.approver.emailNotifyOnTicketCreated)
         .forEach(a => recipients.add(a.approver.email!));
       break;
 
     case 'ticket_approved':
     case 'approval_completed':
-      // Notify requester, support group, and assigned technician
-      if (ticket.createdBy.email) recipients.add(ticket.createdBy.email);
-      if (ticket.assignedTo?.email) recipients.add(ticket.assignedTo.email);
+      // Notify requester, support group, and assigned technician (only if they have notification enabled)
+      if (ticket.createdBy.email && ticket.createdBy.emailNotifyOnTicketUpdated) {
+        recipients.add(ticket.createdBy.email);
+      }
+      if (ticket.assignedTo?.email && ticket.assignedTo.emailNotifyOnTicketUpdated) {
+        recipients.add(ticket.assignedTo.email);
+      }
       // Notify all support group members
       if (ticket.service?.supportGroup?.users) {
         ticket.service.supportGroup.users
-          .filter(u => u.email)
+          .filter(u => u.email && u.emailNotifyOnTicketUpdated)
           .forEach(u => recipients.add(u.email!));
       }
       break;

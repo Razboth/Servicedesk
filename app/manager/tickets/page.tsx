@@ -4,12 +4,12 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from '@/components/ui/select';
 import {
   Table,
@@ -21,10 +21,11 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { TicketNotifications } from '@/components/tickets/ticket-notifications';
 import { toast } from 'sonner';
-import { 
-  Ticket, 
-  Search, 
+import {
+  Ticket,
+  Search,
   Building2,
   Clock,
   User,
@@ -256,22 +257,26 @@ export default function ManagerTicketsPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Title</TableHead>
-                <TableHead>User</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Priority</TableHead>
-                <TableHead>Assigned To</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Tickets Table - Takes 3 columns */}
+        <div className="lg:col-span-3">
+          <Card>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>ID</TableHead>
+                    <TableHead>Title</TableHead>
+                    <TableHead>User</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Priority</TableHead>
+                    <TableHead>Assigned To</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
               {loading ? (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center py-8">
@@ -351,6 +356,17 @@ export default function ManagerTicketsPage() {
           </Table>
         </CardContent>
       </Card>
+    </div>
+
+    {/* Notifications Section - Takes 1 column */}
+    <div className="lg:col-span-1">
+      <Card className="sticky top-4">
+        <CardContent className="p-4">
+          <TicketNotifications autoFetch={false} className="max-h-[600px]" />
+        </CardContent>
+      </Card>
+    </div>
+  </div>
     </div>
   );
 }

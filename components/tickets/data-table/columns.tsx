@@ -105,27 +105,27 @@ const getStatusIcon = (status: string) => {
 const getStatusColor = (status: string) => {
   switch (status) {
     case 'OPEN':
-      return 'bg-emerald-100 text-emerald-800 border-emerald-200'
+      return 'bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 dark:from-blue-900/30 dark:to-blue-800/30 dark:text-blue-300 border border-blue-200 dark:border-blue-700 font-medium'
     case 'PENDING':
-      return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+      return 'bg-gradient-to-r from-yellow-50 to-yellow-100 text-yellow-700 dark:from-yellow-900/30 dark:to-yellow-800/30 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-700 font-medium'
     case 'PENDING_APPROVAL':
-      return 'bg-orange-100 text-orange-800 border-orange-200'
+      return 'bg-gradient-to-r from-purple-50 to-purple-100 text-purple-700 dark:from-purple-900/30 dark:to-purple-800/30 dark:text-purple-300 border border-purple-200 dark:border-purple-700 font-medium'
     case 'APPROVED':
-      return 'bg-green-100 text-green-800 border-green-200'
+      return 'bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-700 dark:from-emerald-900/30 dark:to-emerald-800/30 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700 font-medium'
     case 'REJECTED':
-      return 'bg-red-100 text-red-800 border-red-200'
+      return 'bg-gradient-to-r from-red-50 to-red-100 text-red-700 dark:from-red-900/30 dark:to-red-800/30 dark:text-red-300 border border-red-200 dark:border-red-700 font-medium'
     case 'IN_PROGRESS':
-      return 'bg-amber-100 text-amber-800 border-amber-200'
+      return 'bg-gradient-to-r from-cyan-50 to-cyan-100 text-cyan-700 dark:from-cyan-900/30 dark:to-cyan-800/30 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-700 font-medium animate-pulse'
     case 'PENDING_VENDOR':
-      return 'bg-purple-100 text-purple-800 border-purple-200'
+      return 'bg-gradient-to-r from-indigo-50 to-indigo-100 text-indigo-700 dark:from-indigo-900/30 dark:to-indigo-800/30 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700 font-medium'
     case 'RESOLVED':
-      return 'bg-green-100 text-green-800 border-green-200'
+      return 'bg-gradient-to-r from-green-50 to-green-100 text-green-700 dark:from-green-900/30 dark:to-green-800/30 dark:text-green-300 border border-green-200 dark:border-green-700 font-semibold'
     case 'CLOSED':
-      return 'bg-gray-100 text-gray-800 border-gray-200'
+      return 'bg-gradient-to-r from-slate-50 to-slate-100 text-slate-700 dark:from-slate-800/30 dark:to-slate-700/30 dark:text-slate-300 border border-slate-200 dark:border-slate-700 font-medium'
     case 'CANCELLED':
-      return 'bg-red-100 text-red-800 border-red-200'
+      return 'bg-gradient-to-r from-rose-50 to-rose-100 text-rose-700 dark:from-rose-900/30 dark:to-rose-800/30 dark:text-rose-300 border border-rose-200 dark:border-rose-700 font-medium line-through'
     default:
-      return 'bg-gray-100 text-gray-800 border-gray-200'
+      return 'bg-gradient-to-r from-gray-50 to-gray-100 text-gray-700 dark:from-gray-800/30 dark:to-gray-700/30 dark:text-gray-300 border border-gray-200 dark:border-gray-700 font-medium'
   }
 }
 
