@@ -821,32 +821,40 @@ export default function TicketDetailPage() {
 
   const canViewTicket = () => {
     if (!session?.user?.role || !ticket) return false;
-    
+
     // Admin can always view
     if (session.user.role === 'ADMIN' || session.user.role === 'SUPER_ADMIN') return true;
-    
+
     // User who created the ticket can always view
     if (ticket.createdBy?.email === session.user.email) return true;
-    
+
     // Assigned technician can always view
     if (ticket.assignedTo?.email === session.user.email) return true;
-    
+
     // Managers can view tickets from their branch
     if (session.user.role === 'MANAGER') {
       // Add branch check if needed
       return true;
     }
-    
+
+    // Regular users and agents can view tickets from their branch
+    if (session.user.role === 'USER' || session.user.role === 'AGENT') {
+      // Check if user is from the same branch as the ticket
+      if (session.user.branchId && ticket.createdBy?.branch?.id === session.user.branchId) {
+        return true;
+      }
+    }
+
     // All technicians can view tickets that are approved (if approval required)
     if (session.user.role === 'TECHNICIAN' || session.user.role === 'SECURITY_ANALYST') {
       // If ticket doesn't require approval, all technicians can view
       if (!ticket.service?.requiresApproval) return true;
-      
+
       // If ticket requires approval, check if it's approved
       const latestApproval = getLatestApproval();
       return latestApproval?.status === 'APPROVED';
     }
-    
+
     return false;
   };
 

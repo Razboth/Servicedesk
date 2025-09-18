@@ -8,6 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { PageHeader } from '@/components/ui/page-header'
+import { ModernStatsCards } from '@/components/dashboard/modern-stats-cards'
+import { SimpleActivityFeed } from '@/components/dashboard/simple-activity-feed'
 import { CalendarDays, Clock, Users, AlertTriangle, CheckCircle, XCircle, Pause, Play, Shield, LayoutDashboard } from 'lucide-react'
 // Simple SVG icons as components
 const TicketIcon = ({ className }: { className?: string }) => (
@@ -152,159 +154,63 @@ export default function Dashboard() {
           }
         />
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
-          <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-brown-600 dark:text-cream-300">Total Tickets</CardTitle>
-              <div className="w-8 h-8 bg-gradient-to-br from-brown-400/10 to-brown-500/10 dark:from-brown-200/10 dark:to-brown-300/10 rounded-lg flex items-center justify-center">
-                <TicketIcon className="h-4 w-4 text-brown-500 dark:text-brown-200" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-brown-900 dark:text-cream-200">{stats.totalTickets.toLocaleString()}</div>
-              <p className="text-xs text-brown-600 dark:text-cream-400">All time</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-brown-600 dark:text-cream-300">Open Tickets</CardTitle>
-              <div className="w-8 h-8 bg-gradient-to-br from-brown-300/20 to-brown-400/20 dark:from-brown-300/20 dark:to-brown-200/20 rounded-lg flex items-center justify-center">
-                <ExclamationTriangleIcon className="h-4 w-4 text-brown-400 dark:text-brown-300" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-brown-400 dark:text-brown-300">{stats.openTickets}</div>
-              <p className="text-xs text-brown-600 dark:text-cream-400">Requires attention</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-brown-600 dark:text-cream-300">Resolved</CardTitle>
-              <div className="w-8 h-8 bg-gradient-to-br from-green-500/10 to-green-600/10 dark:from-green-400/10 dark:to-green-500/10 rounded-lg flex items-center justify-center">
-                <CheckCircleIcon className="h-4 w-4 text-green-600 dark:text-green-400" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.resolvedTickets.toLocaleString()}</div>
-              <p className="text-xs text-brown-600 dark:text-cream-400">This month</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-brown-600 dark:text-cream-300">Avg Resolution</CardTitle>
-              <div className="w-8 h-8 bg-gradient-to-br from-brown-500/10 to-brown-600/10 dark:from-brown-100/10 dark:to-brown-200/10 rounded-lg flex items-center justify-center">
-                <ClockIcon className="h-4 w-4 text-brown-600 dark:text-brown-100" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-brown-900 dark:text-cream-200">{stats.avgResolutionTime}</div>
-              <p className="text-xs text-gray-500 dark:text-gray-500">Last 30 days</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-brown-600 dark:text-cream-300">SLA Compliance</CardTitle>
-              <div className="w-8 h-8 bg-gradient-to-br from-brown-700/10 to-brown-800/10 dark:from-warm-dark-100/20 dark:to-warm-dark-200/20 rounded-lg flex items-center justify-center">
-                <ChartBarIcon className="h-4 w-4 text-brown-700 dark:text-cream-300" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-brown-700 dark:text-cream-300">{stats.slaCompliance}%</div>
-              <p className="text-xs text-brown-600 dark:text-cream-400">This month</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-brown-600 dark:text-cream-300">Active Users</CardTitle>
-              <div className="w-8 h-8 bg-gradient-to-br from-brown-400/10 to-brown-500/10 dark:from-brown-100/10 dark:to-brown-200/10 rounded-lg flex items-center justify-center">
-                <UserGroupIcon className="h-4 w-4 text-brown-500 dark:text-brown-200" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-brown-900 dark:text-cream-200">{stats.activeUsers}</div>
-              <p className="text-xs text-gray-500 dark:text-gray-500">Online now</p>
-            </CardContent>
-          </Card>
+        {/* Modern Stats Cards */}
+        <div className="mb-8">
+          <ModernStatsCards />
         </div>
 
-
-
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 cursor-pointer group">
-            <CardHeader>
-              <CardTitle className="text-lg text-brown-900 dark:text-cream-200 group-hover:text-brown-400 dark:group-hover:text-brown-300 transition-colors">
-                Create New Ticket
-              </CardTitle>
-              <CardDescription className="text-brown-600 dark:text-cream-400">
-                Report an incident or request service
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button 
-                className="w-full bg-gradient-to-r from-brown-400 to-brown-500 dark:from-brown-200 dark:to-brown-300 text-white dark:text-brown-950 hover:from-brown-500 hover:to-brown-600 dark:hover:from-brown-300 dark:hover:to-brown-400 shadow-md hover:shadow-lg transition-all duration-300"
-                onClick={() => router.push('/tickets')}
-              >
-                Create Ticket
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* SOC Parser Card - Only visible for Security Analysts */}
-          {(session.user.role === 'SECURITY_ANALYST' || session.user.supportGroupCode === 'SECURITY_OPS') && (
-            <>
-              <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 cursor-pointer group">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg text-brown-900 dark:text-cream-200 group-hover:text-brown-700 dark:group-hover:text-brown-400 transition-colors">
-                      SOC Parser
-                    </CardTitle>
-                    <Shield className="h-5 w-5 text-brown-700 dark:text-brown-400" />
-                  </div>
-                  <CardDescription className="text-brown-600 dark:text-cream-400">
-                    Parse security alerts and create SOC tickets
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button 
-                    className="w-full bg-gradient-to-r from-brown-700 to-brown-800 hover:from-brown-800 hover:to-brown-900 text-white shadow-lg transition-all duration-300"
-                    onClick={() => router.push('/security/soc-parser')}
-                  >
-                    Open SOC Parser
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 cursor-pointer group">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg text-brown-900 dark:text-cream-200 group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
-                      Antivirus Alert
-                    </CardTitle>
-                    <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
-                  </div>
-                  <CardDescription className="text-brown-600 dark:text-cream-400">
-                    Report antivirus detections and security incidents
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button 
-                    className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg transition-all duration-300"
-                    onClick={() => router.push('/security/antivirus-alert')}
-                  >
-                    Report Antivirus Alert
-                  </Button>
-                </CardContent>
-              </Card>
-            </>
-          )}
+        {/* Activity Feed and Quick Actions Grid */}
+        {/* Activity Feed - Full width */}
+        <div className="mb-8">
+          <SimpleActivityFeed />
         </div>
+
+        {/* Security Actions - Only visible for Security Analysts */}
+        {(session.user.role === 'SECURITY_ANALYST' || session.user.supportGroupCode === 'SECURITY_OPS') && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <Card className="bg-card/50 backdrop-blur-sm border shadow-sm hover:shadow-md transition-all duration-300">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">SOC Parser</CardTitle>
+                  <Shield className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <CardDescription className="text-sm">
+                  Parse security alerts and create SOC tickets
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button
+                  variant="secondary"
+                  className="w-full"
+                  onClick={() => router.push('/security/soc-parser')}
+                >
+                  Open SOC Parser
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-card/50 backdrop-blur-sm border shadow-sm hover:shadow-md transition-all duration-300">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">Antivirus Alert</CardTitle>
+                  <AlertTriangle className="h-4 w-4 text-red-500" />
+                </div>
+                <CardDescription className="text-sm">
+                  Report antivirus detections
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button
+                  variant="destructive"
+                  className="w-full"
+                  onClick={() => router.push('/security/antivirus-alert')}
+                >
+                  Report Alert
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </main>
     </div>
   )

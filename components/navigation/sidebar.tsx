@@ -69,6 +69,9 @@ export function Sidebar() {
     if (path === '/technician/inbox') {
       return pathname === '/technician/inbox';
     }
+    if (path === '/technician/daily-tasks') {
+      return pathname === '/technician/daily-tasks';
+    }
     // For other routes, use startsWith but ensure it's not a partial match
     return pathname === path || (pathname.startsWith(path + '/') && path !== '/technician');
   };
@@ -229,6 +232,12 @@ export function Sidebar() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2 2v-2m0 0V5a2 2 0 012-2h6l2 2h6a2 2 0 012 2v2M7 13h10M7 17h4" />
               </svg>
               {(!isCollapsed || isMobile) && 'Workbench'}
+            </Link>
+            <Link href="/technician/daily-tasks" className={linkClass('/technician/daily-tasks')} onClick={handleLinkClick}>
+              <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+              </svg>
+              {(!isCollapsed || isMobile) && 'Daily Task List'}
             </Link>
             {/* PC Assets and License Management for TECH_SUPPORT group and SUPER_ADMIN */}
             {(session.user?.supportGroupCode === 'TECH_SUPPORT' || session.user?.role === 'SUPER_ADMIN') && (

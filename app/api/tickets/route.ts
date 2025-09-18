@@ -518,24 +518,61 @@ export async function GET(request: NextRequest) {
 
     // If stats are requested, return stats instead of tickets
     if (requestStats) {
-      // Create base where clause for stats (without status/priority filters)
-      const statsWhere = { ...where };
-      // Remove any status/priority specific filters for stats
-      delete statsWhere.status;
-      delete statsWhere.priority;
-      
-      const [openCount, pendingCount, approvedCount, inProgressCount, onHoldCount, resolvedCount, closedCount, rejectedCount, cancelledCount] = await Promise.all([
+      // For technician workbench stats
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      // Calculate stats specific to the user
+      const [assignedCount, unassignedCount, inProgressCount, resolvedTodayCount] = await Promise.all([
+        // Tickets assigned to current user
+        prisma.ticket.count({
+          where: {
+            assignedToId: session.user.id,
+            status: {
+              notIn: ['CLOSED', 'RESOLVED', 'REJECTED', 'CANCELLED']
+            }
+          }
+        }),
+        // Available (unassigned) tickets
+        prisma.ticket.count({
+          where: {
+            assignedToId: null,
+            status: 'OPEN'
+          }
+        }),
+        // In Progress tickets (assigned to user)
+        prisma.ticket.count({
+          where: {
+            assignedToId: session.user.id,
+            status: 'IN_PROGRESS'
+          }
+        }),
+        // Tickets resolved today by this user
+        prisma.ticket.count({
+          where: {
+            assignedToId: session.user.id,
+            status: 'RESOLVED',
+            updatedAt: {
+              gte: today,
+              lt: tomorrow
+            }
+          }
+        })
+      ]);
+
+      // Also calculate general stats
+      const [openCount, pendingCount, approvedCount, generalInProgressCount, onHoldCount, resolvedCount, closedCount, rejectedCount, cancelledCount] = await Promise.all([
         // Open tickets count
         prisma.ticket.count({
           where: {
-            ...statsWhere,
             status: 'OPEN'
           }
         }),
         // Pending tickets count (PENDING + PENDING_APPROVAL)
         prisma.ticket.count({
           where: {
-            ...statsWhere,
             status: {
               in: ['PENDING', 'PENDING_APPROVAL']
             }
@@ -544,49 +581,42 @@ export async function GET(request: NextRequest) {
         // Approved tickets count
         prisma.ticket.count({
           where: {
-            ...statsWhere,
             status: 'APPROVED'
           }
         }),
         // In Progress tickets count
         prisma.ticket.count({
           where: {
-            ...statsWhere,
             status: 'IN_PROGRESS'
           }
         }),
         // On Hold tickets count (PENDING_VENDOR only)
         prisma.ticket.count({
           where: {
-            ...statsWhere,
             status: 'PENDING_VENDOR'
           }
         }),
         // Resolved tickets count
         prisma.ticket.count({
           where: {
-            ...statsWhere,
             status: 'RESOLVED'
           }
         }),
         // Closed tickets count
         prisma.ticket.count({
           where: {
-            ...statsWhere,
             status: 'CLOSED'
           }
         }),
         // Rejected tickets count
         prisma.ticket.count({
           where: {
-            ...statsWhere,
             status: 'REJECTED'
           }
         }),
         // Cancelled tickets count
         prisma.ticket.count({
           where: {
-            ...statsWhere,
             status: 'CANCELLED'
           }
         })
@@ -594,15 +624,21 @@ export async function GET(request: NextRequest) {
 
       return NextResponse.json({
         stats: {
+          // Technician-specific stats
+          assigned: assignedCount,
+          unassigned: unassignedCount,
+          inProgress: inProgressCount,
+          resolvedToday: resolvedTodayCount,
+          // General stats
           open: openCount,
           pending: pendingCount,
           approved: approvedCount,
-          inProgress: inProgressCount,
           onHold: onHoldCount,
           resolved: resolvedCount,
           closed: closedCount,
           rejected: rejectedCount,
-          cancelled: cancelledCount
+          cancelled: cancelledCount,
+          generalInProgress: generalInProgressCount
         }
       });
     }

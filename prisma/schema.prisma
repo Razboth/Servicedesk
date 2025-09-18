@@ -29,6 +29,14 @@ model User {
   isFirstLogin           Boolean                @default(true)
   mustChangePassword     Boolean                @default(true)
   passwordChangedAt      DateTime?
+
+  // Email notification preferences
+  emailNotifyOnTicketCreated  Boolean @default(true)
+  emailNotifyOnTicketAssigned Boolean @default(true)
+  emailNotifyOnTicketUpdated  Boolean @default(true)
+  emailNotifyOnTicketResolved Boolean @default(true)
+  emailNotifyOnComment        Boolean @default(true)
+
   createdApiKeys         ApiKey[]               @relation("ApiKeyCreatedBy")
   linkedApiKeys          ApiKey[]               @relation("ApiKeyLinkedUser")
   accounts               Account[]
@@ -72,6 +80,7 @@ model User {
   createdOperatingSystems OperatingSystem[]     @relation("OSCreatedBy")
   createdOfficeProducts  OfficeProduct[]        @relation("OfficeCreatedBy")
   passwordResetTokens    PasswordResetToken[]
+  dailyTaskLists         DailyTaskList[]
   branch                 Branch?                @relation(fields: [branchId], references: [id])
   supportGroup           SupportGroup?          @relation(fields: [supportGroupId], references: [id])
 
@@ -325,6 +334,7 @@ model Ticket {
   fieldValues            TicketFieldValue[]
   knowledgeArticles      TicketKnowledge[]
   tasks                  TicketTask[]
+  dailyTasks             DailyTask[]
   pcServiceLogs          PCServiceLog[]
   assignedTo             User?                 @relation("TicketAssignee", fields: [assignedToId], references: [id])
   branch                 Branch?               @relation(fields: [branchId], references: [id])
@@ -1961,4 +1971,60 @@ enum OfficeType {
   WPS_OFFICE
   GOOGLE_WORKSPACE
   OTHER
+}
+
+model DailyTaskList {
+  id            String      @id @default(cuid())
+  technicianId  String
+  date          DateTime    @db.Date
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  technician    User        @relation(fields: [technicianId], references: [id])
+  tasks         DailyTask[]
+
+  @@unique([technicianId, date])
+  @@index([technicianId, date])
+  @@map("daily_task_lists")
+}
+
+model DailyTask {
+  id              String         @id @default(cuid())
+  taskListId      String
+  ticketId        String?        // Optional link to ticket
+  title           String
+  description     String?
+  category        DailyTaskCategory @default(OTHER)
+  status          DailyTaskStatus   @default(PENDING)
+  priority        TicketPriority?
+  startTime       DateTime?
+  endTime         DateTime?
+  actualMinutes   Int?
+  notes           String?        @db.Text
+  order           Int            @default(0)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  taskList        DailyTaskList  @relation(fields: [taskListId], references: [id], onDelete: Cascade)
+  ticket          Ticket?        @relation(fields: [ticketId], references: [id])
+
+  @@index([taskListId])
+  @@map("daily_tasks")
+}
+
+enum DailyTaskCategory {
+  TICKET
+  MAINTENANCE
+  MEETING
+  TRAINING
+  DOCUMENTATION
+  SUPPORT
+  OTHER
+}
+
+enum DailyTaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  DEFERRED
 }

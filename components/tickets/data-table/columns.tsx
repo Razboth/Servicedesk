@@ -132,17 +132,17 @@ const getStatusColor = (status: string) => {
 const getPriorityColor = (priority: string) => {
   switch (priority) {
     case 'LOW':
-      return 'bg-emerald-100 text-emerald-800'
+      return 'bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 dark:from-blue-900/20 dark:to-blue-800/20 dark:text-blue-300 border border-blue-200 dark:border-blue-700 font-medium'
     case 'MEDIUM':
-      return 'bg-yellow-100 text-yellow-800'
+      return 'bg-gradient-to-r from-amber-50 to-amber-100 text-amber-700 dark:from-amber-900/20 dark:to-amber-800/20 dark:text-amber-300 border border-amber-200 dark:border-amber-700 font-medium'
     case 'HIGH':
-      return 'bg-orange-100 text-orange-800'
+      return 'bg-gradient-to-r from-orange-50 to-orange-100 text-orange-700 dark:from-orange-900/20 dark:to-orange-800/20 dark:text-orange-300 border border-orange-200 dark:border-orange-700 font-medium'
     case 'CRITICAL':
-      return 'bg-red-100 text-red-800'
+      return 'bg-gradient-to-r from-red-50 to-red-100 text-red-700 dark:from-red-900/20 dark:to-red-800/20 dark:text-red-300 border border-red-200 dark:border-red-700 font-semibold'
     case 'EMERGENCY':
-      return 'bg-red-200 text-red-900 font-bold'
+      return 'bg-gradient-to-r from-red-500 to-red-600 text-white dark:from-red-600 dark:to-red-700 border border-red-600 dark:border-red-500 font-bold animate-pulse shadow-lg'
     default:
-      return 'bg-gray-100 text-gray-800'
+      return 'bg-gradient-to-r from-gray-50 to-gray-100 text-gray-700 dark:from-gray-800/20 dark:to-gray-700/20 dark:text-gray-300 border border-gray-200 dark:border-gray-700 font-medium'
   }
 }
 
@@ -254,8 +254,11 @@ export const getColumns = (options?: {
     cell: ({ row }) => {
       const priority = row.getValue('priority') as string
       return (
-        <Badge className={getPriorityColor(priority)}>
-          {priority}
+        <Badge
+          className={`${getPriorityColor(priority)} px-2.5 py-0.5 text-xs`}
+          variant="secondary"
+        >
+          {priority === 'EMERGENCY' ? '🚨 ' + priority : priority}
         </Badge>
       )
     },

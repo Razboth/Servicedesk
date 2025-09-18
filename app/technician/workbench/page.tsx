@@ -11,7 +11,8 @@ import { TicketCards } from '@/components/tickets/ticket-cards'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { PageHeader } from '@/components/ui/page-header'
-import { 
+import { cn } from '@/lib/utils'
+import {
   Sparkles,
   User,
   Inbox,
@@ -21,7 +22,8 @@ import {
   AlertCircle,
   CheckCircle,
   LayoutGrid,
-  Table
+  Table,
+  RefreshCw
 } from 'lucide-react'
 
 interface QuickStat {
@@ -37,15 +39,20 @@ export default function TechnicianWorkbenchPage() {
   const router = useRouter()
   const [quickStats, setQuickStats] = useState<QuickStat[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table')
 
   useEffect(() => {
     loadQuickStats()
   }, [])
 
-  const loadQuickStats = async () => {
+  const loadQuickStats = async (isRefresh = false) => {
     try {
-      setIsLoading(true)
+      if (isRefresh) {
+        setIsRefreshing(true)
+      } else {
+        setIsLoading(true)
+      }
       const response = await fetch('/api/tickets?stats=true')
       if (response.ok) {
         const data = await response.json()
@@ -53,37 +60,39 @@ export default function TechnicianWorkbenchPage() {
           {
             label: 'My Tickets',
             count: data.stats?.assigned || 0,
-            color: 'bg-amber-500',
-            icon: <User className="h-4 w-4 text-white" />,
+            color: 'bg-blue-500/10 text-blue-500',
+            icon: <User className="h-4 w-4" />,
             trend: undefined
           },
           {
             label: 'Available',
             count: data.stats?.unassigned || 0,
-            color: 'bg-orange-500',
-            icon: <AlertCircle className="h-4 w-4 text-white" />,
+            color: 'bg-purple-500/10 text-purple-500',
+            icon: <Inbox className="h-4 w-4" />,
             trend: undefined
           },
           {
             label: 'In Progress',
             count: data.stats?.inProgress || 0,
-            color: 'bg-yellow-500',
-            icon: <Clock className="h-4 w-4 text-white" />,
+            color: 'bg-yellow-500/10 text-yellow-500',
+            icon: <Clock className="h-4 w-4" />,
             trend: undefined
           },
           {
             label: 'Resolved Today',
             count: data.stats?.resolvedToday || 0,
-            color: 'bg-green-500',
-            icon: <CheckCircle className="h-4 w-4 text-white" />,
+            color: 'bg-green-500/10 text-green-500',
+            icon: <CheckCircle className="h-4 w-4" />,
             trend: undefined
           }
         ])
       }
     } catch (error) {
       console.error('Error loading stats:', error)
+      setQuickStats([])
     } finally {
       setIsLoading(false)
+      setIsRefreshing(false)
     }
   }
 
@@ -130,7 +139,7 @@ export default function TechnicianWorkbenchPage() {
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-brown-300/20 to-brown-400/20 dark:from-brown-700/20 dark:to-brown-600/20 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
       </div>
 
-      <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
+      <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
         <PageHeader
           title="Technician Workbench"
           description="Manage and process your assigned tickets"
@@ -142,61 +151,105 @@ export default function TechnicianWorkbenchPage() {
             </Badge>
           }
         />
-        
-        <div className="space-y-4">
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {quickStats.map((stat, index) => (
-              <Card key={index} className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-brown-600 dark:text-cream-300">{stat.label}</p>
-                      <p className="text-2xl font-bold text-brown-900 dark:text-cream-200">{stat.count}</p>
+        <div className="space-y-4 overflow-x-hidden">
+
+          {/* Stats Section with Refresh */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-medium text-muted-foreground">Quick Overview</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => loadQuickStats(true)}
+                disabled={isRefreshing}
+                className="h-7 px-2"
+              >
+                <RefreshCw className={cn("h-3.5 w-3.5", isRefreshing && "animate-spin")} />
+                <span className="ml-1.5 text-xs">Refresh</span>
+              </Button>
+            </div>
+
+            {/* Compact Stats Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {isLoading ? (
+              // Loading skeleton
+              <>
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="bg-card/50 backdrop-blur-sm border rounded-lg p-3 animate-pulse">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-muted rounded-md" />
+                      <div className="flex-1">
+                        <div className="h-3 bg-muted rounded w-20 mb-1" />
+                        <div className="h-5 bg-muted rounded w-12" />
+                      </div>
                     </div>
-                    <div className={`w-10 h-10 ${stat.color} rounded-lg flex items-center justify-center shadow-lg`}>
+                  </div>
+                ))}
+              </>
+            ) : quickStats.length > 0 ? (
+              quickStats.map((stat, index) => (
+                <div
+                  key={index}
+                  className="bg-card/50 backdrop-blur-sm border rounded-lg p-3 hover:bg-accent/50 transition-colors cursor-pointer"
+                  onClick={() => {
+                    // Navigate to appropriate view based on stat
+                    if (stat.label === 'My Tickets') {
+                      const myTicketsTab = document.querySelector('[value="my-tickets"]') as HTMLElement;
+                      myTicketsTab?.click();
+                    } else if (stat.label === 'Available') {
+                      const availableTab = document.querySelector('[value="available-tickets"]') as HTMLElement;
+                      availableTab?.click();
+                    }
+                  }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 ${stat.color} rounded-md flex items-center justify-center`}>
                       {stat.icon}
                     </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">{stat.label}</p>
+                      <p className="text-lg font-semibold">{stat.count}</p>
+                    </div>
                   </div>
-                  <div className="mt-2">
-                    <p className="text-xs text-brown-600 dark:text-cream-400">
-                      {stat.label === 'My Tickets' && 'Currently assigned to you'}
-                      {stat.label === 'Available' && 'Unassigned tickets'}
-                      {stat.label === 'In Progress' && 'Active work items'}
-                      {stat.label === 'Resolved Today' && 'Completed today'}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                </div>
+              ))
+            ) : (
+              // No data state
+              <div className="col-span-full text-center py-4 text-sm text-muted-foreground">
+                No statistics available
+              </div>
+            )}
+            </div>
           </div>
 
           {/* Tabs with Data Tables/Cards */}
-          <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-lg">
-            <CardContent className="p-6">
+          <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-lg overflow-hidden">
+            <CardContent className="p-4 sm:p-6">
               <Tabs defaultValue="my-tickets" className="w-full">
-                <div className="flex items-center justify-between mb-6">
-                  <TabsList className="grid w-full max-w-md grid-cols-2">
-                    <TabsTrigger value="my-tickets" className="flex items-center gap-2">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+                  <TabsList className="grid w-full sm:w-auto max-w-md grid-cols-2">
+                    <TabsTrigger value="my-tickets" className="flex items-center gap-1 sm:gap-2">
                       <User className="h-4 w-4" />
-                      My Tickets
+                      <span className="hidden sm:inline">My Tickets</span>
+                      <span className="sm:hidden">Mine</span>
                     </TabsTrigger>
-                    <TabsTrigger value="available-tickets" className="flex items-center gap-2">
+                    <TabsTrigger value="available-tickets" className="flex items-center gap-1 sm:gap-2">
                       <Inbox className="h-4 w-4" />
-                      Available Tickets
+                      <span className="hidden sm:inline">Available Tickets</span>
+                      <span className="sm:hidden">Available</span>
                     </TabsTrigger>
                   </TabsList>
-                  
+
                   {/* View Mode Toggle */}
-                  <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value as 'table' | 'cards')}>
-                    <ToggleGroupItem value="table" aria-label="Table view" className="px-3">
-                      <Table className="h-4 w-4 mr-2" />
-                      Table
+                  <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value as 'table' | 'cards')} className="shrink-0">
+                    <ToggleGroupItem value="table" aria-label="Table view" className="px-2 sm:px-3">
+                      <Table className="h-4 w-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Table</span>
                     </ToggleGroupItem>
-                    <ToggleGroupItem value="cards" aria-label="Cards view" className="px-3">
-                      <LayoutGrid className="h-4 w-4 mr-2" />
-                      Cards
+                    <ToggleGroupItem value="cards" aria-label="Cards view" className="px-2 sm:px-3">
+                      <LayoutGrid className="h-4 w-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Cards</span>
                     </ToggleGroupItem>
                   </ToggleGroup>
                 </div>

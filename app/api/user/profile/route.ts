@@ -25,6 +25,13 @@ export async function GET(request: NextRequest) {
         phone: true,
         avatar: true,
         branchId: true,
+        createdAt: true,
+        lastActivity: true,
+        emailNotifyOnTicketCreated: true,
+        emailNotifyOnTicketAssigned: true,
+        emailNotifyOnTicketUpdated: true,
+        emailNotifyOnTicketResolved: true,
+        emailNotifyOnComment: true,
         branch: {
           select: {
             id: true,
@@ -74,7 +81,17 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, email, phone, avatar } = body;
+    const {
+      name,
+      email,
+      phone,
+      avatar,
+      emailNotifyOnTicketCreated,
+      emailNotifyOnTicketAssigned,
+      emailNotifyOnTicketUpdated,
+      emailNotifyOnTicketResolved,
+      emailNotifyOnComment
+    } = body;
 
     // Validate required fields
     if (!name || !email) {
@@ -108,7 +125,12 @@ export async function PUT(request: NextRequest) {
         name: name.trim(),
         email: email.trim(),
         phone: phone?.trim() || null,
-        avatar: avatar || null
+        avatar: avatar || null,
+        emailNotifyOnTicketCreated: emailNotifyOnTicketCreated !== undefined ? emailNotifyOnTicketCreated : undefined,
+        emailNotifyOnTicketAssigned: emailNotifyOnTicketAssigned !== undefined ? emailNotifyOnTicketAssigned : undefined,
+        emailNotifyOnTicketUpdated: emailNotifyOnTicketUpdated !== undefined ? emailNotifyOnTicketUpdated : undefined,
+        emailNotifyOnTicketResolved: emailNotifyOnTicketResolved !== undefined ? emailNotifyOnTicketResolved : undefined,
+        emailNotifyOnComment: emailNotifyOnComment !== undefined ? emailNotifyOnComment : undefined
       },
       select: {
         id: true,

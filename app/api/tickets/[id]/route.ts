@@ -236,9 +236,9 @@ export async function GET(
         
         canAccess = isCreatorOrAssignee || canSeeGroupTicket;
       }
-    } else if (session.user.role === 'SECURITY_ANALYST') {
+    } else if (userRole === 'SECURITY_ANALYST') {
       // Security Analysts function like technicians
-      const isCreatorOrAssignee = ticket.createdById === session.user.id || ticket.assignedToId === session.user.id;
+      const isCreatorOrAssignee = ticket.createdById === userId || ticket.assignedToId === userId;
       
       // All approved tickets (or tickets that don't require approval)
       let isApprovedOrNoApprovalNeeded = true;
@@ -253,18 +253,12 @@ export async function GET(
     } else if (userRole === 'USER' || userRole === 'AGENT') {
       // Users can see:
       // 1. Their own tickets
-      // 2. Tickets assigned to their branch (for ATM claims processing)
+      // 2. All tickets from their branch (for collaboration and visibility)
       const isOwnTicket = ticket.createdById === userId;
       const isBranchTicket = userWithDetails?.branchId === ticket.branchId;
-      
-      // For ATM claims, check if this is an ATM claim service
-      const isATMClaim = ticket.service?.name?.toLowerCase().includes('atm claim');
-      
-      if (isATMClaim && isBranchTicket) {
-        canAccess = true;
-      } else {
-        canAccess = isOwnTicket;
-      }
+
+      // Users can see their own tickets OR any ticket from their branch
+      canAccess = isOwnTicket || isBranchTicket;
     }
 
     if (!canAccess) {
@@ -327,7 +321,7 @@ export async function PATCH(
       // Admin can update everything
       canUpdate = true;
       allowedFields = Object.keys(validatedData);
-    } else if (userRole === 'TECHNICIAN' || userRole === 'SECURITY_ANALYST') {
+    } else if (session.user.role === 'TECHNICIAN' || session.user.role === 'SECURITY_ANALYST') {
       // Technicians can only update tickets they are assigned to
       if (existingTicket.assignedToId === session.user.id) {
         canUpdate = true;

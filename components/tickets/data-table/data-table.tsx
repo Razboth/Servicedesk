@@ -155,10 +155,9 @@ export function DataTable<TData, TValue>({
   }, [table.getState().pagination, data.length])
 
   return (
-    <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg overflow-hidden">
-      <CardContent className="p-6">
-        <div className="space-y-4">
-          <DataTableToolbar 
+    <div className="w-full">
+      <div className="space-y-4">
+          <DataTableToolbar
             table={table}
             onRefresh={onRefresh}
             globalFilter={globalFilter}
@@ -171,80 +170,81 @@ export function DataTable<TData, TValue>({
             serviceOptions={serviceOptions}
             technicianOptions={technicianOptions}
           />
-          <div className="relative -mx-6">
-            <div className="overflow-x-auto px-6">
-              <Table className="min-w-full">
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  return (
-                    <TableHead 
-                      key={header.id}
-                      className="text-xs"
-                    >
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
-                  )
-                })}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
-                  <div className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white"></div>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                  className="hover:bg-cream-100 dark:hover:bg-warm-dark-200/50 transition-colors"
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell 
-                      key={cell.id}
-                    >
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
+          <div className="relative rounded-lg border">
+            <div className="overflow-x-auto">
+              <table className="w-full caption-bottom text-sm">
+                <thead className="[&_tr]:border-b bg-muted/50">
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <tr key={headerGroup.id} className="border-b transition-colors hover:bg-muted/50">
+                      {headerGroup.headers.map((header) => {
+                        return (
+                          <th
+                            key={header.id}
+                            className="h-10 px-2 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 text-xs"
+                          >
+                            {header.isPlaceholder
+                              ? null
+                              : flexRender(
+                                  header.column.columnDef.header,
+                                  header.getContext()
+                                )}
+                          </th>
+                        )
+                      })}
+                    </tr>
                   ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
-                  No results.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-              </Table>
+                </thead>
+                <tbody className="[&_tr:last-child]:border-0">
+                  {isLoading ? (
+                    <tr className="border-b transition-colors">
+                      <td
+                        colSpan={columns.length}
+                        className="h-24 text-center"
+                      >
+                        <div className="flex items-center justify-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : table.getRowModel().rows?.length ? (
+                    table.getRowModel().rows.map((row) => (
+                      <tr
+                        key={row.id}
+                        data-state={row.getIsSelected() && "selected"}
+                        className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted cursor-pointer"
+                        onClick={() => onRowClick?.(row.original)}
+                      >
+                        {row.getVisibleCells().map((cell) => (
+                          <td
+                            key={cell.id}
+                            className="px-2 py-2 align-middle [&:has([role=checkbox])]:pr-0"
+                          >
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext()
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                    ))
+                  ) : (
+                    <tr className="border-b transition-colors">
+                      <td
+                        colSpan={columns.length}
+                        className="h-24 text-center"
+                      >
+                        No results.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
-          <div className="mt-4">
-            <DataTablePagination table={table} />
-          </div>
+        <div className="mt-4">
+          <DataTablePagination table={table} />
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }

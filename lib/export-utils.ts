@@ -59,29 +59,41 @@ export const exportToExcel = (exportData: ExportData) => {
   
   // Prepare data with proper headers
   const finalHeaders = headers || Object.keys(data[0]);
-  const worksheetData = [
-    finalHeaders,
-    ...data.map(row => finalHeaders.map(header => {
-      const value = row[header];
-      if (value instanceof Date) {
-        return value.toLocaleDateString();
-      }
-      return value;
-    }))
-  ];
 
-  const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
-  
+  let worksheet;
+
+  // If title is provided, add it at the top
+  if (title) {
+    const worksheetData = [
+      [title],
+      [], // Empty row for spacing
+      finalHeaders,
+      ...data.map(row => finalHeaders.map(header => {
+        const value = row[header];
+        if (value instanceof Date) {
+          return value.toLocaleDateString();
+        }
+        return value;
+      }))
+    ];
+    worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+  } else {
+    const worksheetData = [
+      finalHeaders,
+      ...data.map(row => finalHeaders.map(header => {
+        const value = row[header];
+        if (value instanceof Date) {
+          return value.toLocaleDateString();
+        }
+        return value;
+      }))
+    ];
+    worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+  }
+
   // Auto-size columns
   const colWidths = finalHeaders.map(header => ({ wch: Math.max(header.length, 15) }));
   worksheet['!cols'] = colWidths;
-
-  // Add title if provided
-  if (title) {
-    XLSX.utils.sheet_add_aoa(worksheet, [[title]], { origin: 'A1' });
-    XLSX.utils.sheet_add_aoa(worksheet, [finalHeaders], { origin: 'A3' });
-    XLSX.utils.sheet_add_aoa(worksheet, data.map(row => finalHeaders.map(header => row[header])), { origin: 'A4' });
-  }
 
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Data');
   XLSX.writeFile(workbook, filename);
