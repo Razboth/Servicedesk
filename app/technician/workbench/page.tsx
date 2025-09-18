@@ -9,7 +9,6 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TicketsDataTable } from '@/components/tickets/data-table/tickets-data-table'
 import { TicketCards } from '@/components/tickets/ticket-cards'
-import { TicketNotifications } from '@/components/tickets/ticket-notifications'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { PageHeader } from '@/components/ui/page-header'
@@ -242,13 +241,10 @@ export default function TechnicianWorkbenchPage() {
             </div>
           </div>
 
-          {/* Main Content Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Tickets Section - Takes 3 columns on large screens */}
-            <div className="lg:col-span-3">
-              <Card className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm">
-                <CardContent className="p-6">
-                  <Tabs defaultValue="my-tickets" className="w-full">
+          {/* Tabs with Data Tables/Cards - ReUI Style */}
+          <Card className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm">
+            <CardContent className="p-6">
+              <Tabs defaultValue="my-tickets" className="w-full">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
                   <TabsList className="grid w-full sm:w-auto max-w-md grid-cols-2">
                     <TabsTrigger value="my-tickets" className="flex items-center gap-1 sm:gap-2">
@@ -306,17 +302,6 @@ export default function TechnicianWorkbenchPage() {
               </Tabs>
             </CardContent>
           </Card>
-        </div>
-
-        {/* Notifications Section - Takes 1 column on large screens */}
-        <div className="lg:col-span-1">
-          <Card className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm sticky top-4">
-            <CardContent className="p-4">
-              <TicketNotifications autoFetch={false} className="max-h-[600px]" />
-            </CardContent>
-          </Card>
-        </div>
-      </div>
         </div>
       </div>
     </div>
