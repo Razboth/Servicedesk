@@ -64,6 +64,8 @@ export function TicketsDataTable({
   const [technicianOptions, setTechnicianOptions] = useState<{ value: string; label: string }[]>([])
   const [newItemsCount, setNewItemsCount] = useState(0)
   const [showNewItemsNotification, setShowNewItemsNotification] = useState(false)
+  const [serverSearchQuery, setServerSearchQuery] = useState('')
+  const [totalTickets, setTotalTickets] = useState(0)
 
   // Load branches for filter
   const loadBranches = async () => {
@@ -249,7 +251,7 @@ export function TicketsDataTable({
   }, [])
 
   // Load tickets from API
-  const loadTickets = async (isInitial = false) => {
+  const loadTickets = async (isInitial = false, searchQuery?: string) => {
     try {
       // Only show loading spinner on initial load
       if (isInitial) {
@@ -257,27 +259,32 @@ export function TicketsDataTable({
       } else {
         setIsRefreshing(true)
       }
-      
+
       const params = new URLSearchParams()
-      
+
       if (ticketFilter) {
         params.append('filter', ticketFilter)
       }
-      
+
       if (initialFilters?.status) {
         params.append('status', initialFilters.status)
       }
-      
+
       if (initialFilters?.priority) {
         params.append('priority', initialFilters.priority)
       }
-      
+
       if (initialFilters?.category) {
         params.append('categoryId', initialFilters.category)
       }
 
+      // Add search query if provided
+      if (searchQuery) {
+        params.append('search', searchQuery)
+      }
+
       // Add a higher limit to get more tickets
-      params.append('limit', '1000')
+      params.append('limit', '5000')
       
       const response = await fetch(`/api/tickets?${params}`)
       if (response.ok) {
