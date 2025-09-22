@@ -185,80 +185,70 @@ export async function GET(
     if (apiKeyHeader) {
       // API keys have full read access
       canAccess = true;
-    } else if (userRole === 'ADMIN') {
-      // Super admin can see all tickets
+    } else if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') {
+      // Admin and Super Admin can see all tickets
       canAccess = true;
+    } else if (userRole === 'SECURITY_ANALYST') {
+      // Security Analysts can see:
+      // 1. Their own tickets
+      // 2. Tickets assigned to them
+      // 3. Tickets in their support group
+      // 4. All tickets created by other Security Analysts
+      canAccess = ticket.createdById === userId ||
+                  ticket.assignedToId === userId ||
+                  (userWithDetails?.supportGroupId && ticket.service?.supportGroupId === userWithDetails.supportGroupId) ||
+                  ticket.createdBy?.role === 'SECURITY_ANALYST';
     } else if (userRole === 'MANAGER') {
-      // Managers can see tickets assigned to their branch (for ATM claims and inter-branch tickets)
-      const isFromSameBranch = userWithDetails?.branchId === ticket.branchId;
-      canAccess = isFromSameBranch;
+      // Managers can see tickets from their branch
+      canAccess = userWithDetails?.branchId === ticket.branchId;
     } else if (userRole === 'TECHNICIAN') {
-      // Check if this is a Call Center technician
       const isCallCenterTech = userWithDetails?.supportGroup?.code === 'CALL_CENTER';
-      
-      if (isCallCenterTech) {
-        // Call Center can ONLY access transaction-related claims - strict filtering
-        const serviceName = ticket.service?.name || '';
-        const isTransactionClaim = 
-          serviceName.includes('Claim') ||
-          serviceName.includes('claim') ||
-          serviceName.includes('Dispute') ||
-          serviceName.includes('dispute') ||
-          // Only allow "Transaction" if it also contains "Claim" or "Error"
-          (serviceName.includes('Transaction') && 
-           (serviceName.includes('Claim') || serviceName.includes('Error'))) ||
-          // Only allow ATM if it's specifically ATM Claim
-          (serviceName.includes('ATM') && serviceName.includes('Claim'));
-        
-        canAccess = isTransactionClaim;
-      } else if (userWithDetails?.supportGroup?.code === 'IT_HELPDESK') {
+      const isTransactionClaimsSupport = userWithDetails?.supportGroup?.code === 'TRANSACTION_CLAIMS_SUPPORT';
+      const isITHelpdeskTech = userWithDetails?.supportGroup?.code === 'IT_HELPDESK';
+
+      if (isCallCenterTech || isTransactionClaimsSupport) {
+        // These technicians can see transaction-related tickets
+        const TRANSACTION_CLAIMS_CATEGORY_ID = 'cmekrqi45001qhluspcsta20x';
+        const ATM_SERVICES_CATEGORY_ID = 'cmekrqi3t001ghlusklheksqz';
+
+        canAccess = ticket.createdById === userId ||
+                    ticket.assignedToId === userId ||
+                    ticket.categoryId === TRANSACTION_CLAIMS_CATEGORY_ID ||
+                    ticket.service?.categoryId === TRANSACTION_CLAIMS_CATEGORY_ID ||
+                    ticket.categoryId === ATM_SERVICES_CATEGORY_ID ||
+                    ticket.service?.categoryId === ATM_SERVICES_CATEGORY_ID;
+      } else if (isITHelpdeskTech) {
         // IT Helpdesk can see all tickets except those created by Security Analysts
         canAccess = ticket.createdBy?.role !== 'SECURITY_ANALYST';
       } else {
         // Regular technicians can see:
         // 1. Tickets they created or are assigned to
+        // 2. ALL tickets in their support group (remove approval check for viewing)
         const isCreatorOrAssignee = ticket.createdById === userId || ticket.assignedToId === userId;
-        
-        // 2. Tickets in their support group (if they have one) that are approved or pending approval
-        let canSeeGroupTicket = false;
-        if (userWithDetails?.supportGroupId && ticket.service?.supportGroupId === userWithDetails.supportGroupId) {
-          // For tickets in their support group, check if approved or pending approval
-          if (ticket.service?.requiresApproval) {
-            const latestApproval = ticket.approvals?.[0]; // Already ordered by desc
-            canSeeGroupTicket = latestApproval?.status === 'APPROVED' || 
-                               latestApproval?.status === 'PENDING' ||
-                               ticket.status === 'PENDING_APPROVAL';
-          } else {
-            // No approval needed, can see it
-            canSeeGroupTicket = true;
-          }
-        }
-        
-        canAccess = isCreatorOrAssignee || canSeeGroupTicket;
-      }
-    } else if (userRole === 'SECURITY_ANALYST') {
-      // Security Analysts function like technicians
-      const isCreatorOrAssignee = ticket.createdById === userId || ticket.assignedToId === userId;
-      
-      // All approved tickets (or tickets that don't require approval)
-      let isApprovedOrNoApprovalNeeded = true;
-      if (ticket.service?.requiresApproval) {
-        // Check if ticket is approved
-        const latestApproval = ticket.approvals?.[0]; // Already ordered by desc
-        isApprovedOrNoApprovalNeeded = latestApproval?.status === 'APPROVED';
-      }
-      
-      const isSecurityAnalystTicket = ticket.createdBy?.role === 'SECURITY_ANALYST';
-      canAccess = isCreatorOrAssignee || isApprovedOrNoApprovalNeeded || isSecurityAnalystTicket;
-    } else if (userRole === 'USER' || userRole === 'AGENT') {
-      // Users can see:
-      // 1. Their own tickets
-      // 2. All tickets from their branch (for collaboration and visibility)
-      const isOwnTicket = ticket.createdById === userId;
-      const isBranchTicket = userWithDetails?.branchId === ticket.branchId;
+        const isSupportGroupMatch = !!(userWithDetails?.supportGroupId && ticket.service?.supportGroupId === userWithDetails.supportGroupId);
 
-      // Users can see their own tickets OR any ticket from their branch
-      canAccess = isOwnTicket || isBranchTicket;
+        // Also allow if no support group (can see unassigned tickets)
+        const noSupportGroup = !userWithDetails?.supportGroupId && ticket.assignedToId === null;
+
+        canAccess = isCreatorOrAssignee || isSupportGroupMatch || noSupportGroup;
+      }
+    } else if (userRole === 'USER' || userRole === 'AGENT') {
+      const isCallCenterUser = userWithDetails?.supportGroup?.code === 'CALL_CENTER';
+
+      if (isCallCenterUser) {
+        // Call Center users can see transaction claims
+        const TRANSACTION_CLAIMS_CATEGORY_ID = 'cmekrqi45001qhluspcsta20x';
+
+        canAccess = ticket.createdById === userId ||
+                    ticket.categoryId === TRANSACTION_CLAIMS_CATEGORY_ID ||
+                    ticket.service?.categoryId === TRANSACTION_CLAIMS_CATEGORY_ID;
+      } else if (userWithDetails?.branchId) {
+        // Regular users can see all tickets from their branch
+        canAccess = ticket.branchId === userWithDetails.branchId;
+      } else {
+        // Users without branch can only see their own tickets
+        canAccess = ticket.createdById === userId;
+      }
     }
 
     if (!canAccess) {

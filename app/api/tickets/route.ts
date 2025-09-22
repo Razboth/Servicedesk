@@ -509,11 +509,26 @@ export async function GET(request: NextRequest) {
     }
 
     if (search) {
-      where.OR = [
+      // Combine search conditions with existing role-based filters
+      const searchConditions = [
         { title: { contains: search, mode: 'insensitive' } },
         { description: { contains: search, mode: 'insensitive' } },
         { ticketNumber: { contains: search, mode: 'insensitive' } }
       ];
+
+      // If there are existing OR conditions (from role-based filtering),
+      // we need to combine them with search using AND
+      if (where.OR) {
+        const existingConditions = where.OR;
+        where.AND = [
+          { OR: existingConditions }, // Role-based visibility
+          { OR: searchConditions }    // Search filter
+        ];
+        delete where.OR; // Remove the OR since we're using AND now
+      } else {
+        // If no existing OR conditions, just add search conditions
+        where.OR = searchConditions;
+      }
     }
 
     // If stats are requested, return stats instead of tickets

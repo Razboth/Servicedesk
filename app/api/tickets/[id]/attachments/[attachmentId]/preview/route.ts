@@ -39,26 +39,96 @@ export async function GET(
     // Get user's details for access control
     const userWithDetails = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { 
-        branchId: true, 
-        role: true, 
-        supportGroupId: true
+      select: {
+        branchId: true,
+        role: true,
+        supportGroupId: true,
+        supportGroup: {
+          select: { code: true }
+        }
       }
     });
 
-    // Check access permissions (same logic as ticket access)
+    // Check access permissions (matching ticket visibility logic)
     let canAccess = false;
-    
-    if (session.user.role === 'ADMIN') {
+
+    if (session.user.role === 'ADMIN' || session.user.role === 'SUPER_ADMIN') {
       canAccess = true;
+    } else if (session.user.role === 'SECURITY_ANALYST') {
+      // Security analysts can access their own tickets and tickets in their support group
+      canAccess = ticket.createdById === session.user.id ||
+                  ticket.assignedToId === session.user.id ||
+                  (userWithDetails?.supportGroupId && ticket.service?.supportGroupId === userWithDetails.supportGroupId);
     } else if (session.user.role === 'MANAGER') {
+      // Managers can access tickets from their branch
       canAccess = userWithDetails?.branchId === ticket.branchId;
     } else if (session.user.role === 'TECHNICIAN') {
-      const isCreatorOrAssignee = ticket.createdById === session.user.id || ticket.assignedToId === session.user.id;
-      const isSupportGroupMatch = !!(userWithDetails?.supportGroupId && ticket.service?.supportGroupId === userWithDetails.supportGroupId);
-      canAccess = isCreatorOrAssignee || isSupportGroupMatch;
+      const isCallCenterTech = userWithDetails?.supportGroup?.code === 'CALL_CENTER';
+      const isTransactionClaimsSupport = userWithDetails?.supportGroup?.code === 'TRANSACTION_CLAIMS_SUPPORT';
+      const isITHelpdeskTech = userWithDetails?.supportGroup?.code === 'IT_HELPDESK';
+
+      if (isCallCenterTech || isTransactionClaimsSupport) {
+        // These technicians have broader access to transaction-related tickets
+        const TRANSACTION_CLAIMS_CATEGORY_ID = 'cmekrqi45001qhluspcsta20x';
+        const ATM_SERVICES_CATEGORY_ID = 'cmekrqi3t001ghlusklheksqz';
+
+        // Get the full ticket with category info
+        const fullTicket = await prisma.ticket.findUnique({
+          where: { id: ticketId },
+          select: {
+            categoryId: true,
+            service: {
+              select: {
+                tier1CategoryId: true
+              }
+            }
+          }
+        });
+
+        canAccess = ticket.createdById === session.user.id ||
+                    ticket.assignedToId === session.user.id ||
+                    fullTicket?.categoryId === TRANSACTION_CLAIMS_CATEGORY_ID ||
+                    fullTicket?.service?.tier1CategoryId === TRANSACTION_CLAIMS_CATEGORY_ID ||
+                    fullTicket?.categoryId === ATM_SERVICES_CATEGORY_ID ||
+                    fullTicket?.service?.tier1CategoryId === ATM_SERVICES_CATEGORY_ID;
+      } else if (isITHelpdeskTech) {
+        // IT Helpdesk has broad access
+        canAccess = true;
+      } else {
+        // Regular technicians: access to tickets they created, are assigned to, or in their support group
+        const isCreatorOrAssignee = ticket.createdById === session.user.id || ticket.assignedToId === session.user.id;
+        const isSupportGroupMatch = !!(userWithDetails?.supportGroupId && ticket.service?.supportGroupId === userWithDetails.supportGroupId);
+        canAccess = isCreatorOrAssignee || isSupportGroupMatch;
+      }
     } else if (session.user.role === 'USER') {
-      canAccess = ticket.createdById === session.user.id;
+      const isCallCenterUser = userWithDetails?.supportGroup?.code === 'CALL_CENTER';
+
+      if (isCallCenterUser) {
+        // Call Center users can see transaction claims
+        const TRANSACTION_CLAIMS_CATEGORY_ID = 'cmekrqi45001qhluspcsta20x';
+
+        const fullTicket = await prisma.ticket.findUnique({
+          where: { id: ticketId },
+          select: {
+            categoryId: true,
+            service: {
+              select: {
+                tier1CategoryId: true
+              }
+            }
+          }
+        });
+
+        canAccess = ticket.createdById === session.user.id ||
+                    fullTicket?.categoryId === TRANSACTION_CLAIMS_CATEGORY_ID ||
+                    fullTicket?.service?.tier1CategoryId === TRANSACTION_CLAIMS_CATEGORY_ID;
+      } else if (userWithDetails?.branchId) {
+        // Regular users can see all tickets from their branch
+        canAccess = ticket.branchId === userWithDetails.branchId;
+      } else {
+        // Users without branch can only see their own tickets
+        canAccess = ticket.createdById === session.user.id;
+      }
     }
 
     if (!canAccess) {
