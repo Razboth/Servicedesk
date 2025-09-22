@@ -55,6 +55,7 @@ export function DataTable<TData, TValue>({
   categoryOptions = [],
   serviceOptions = [],
   technicianOptions = [],
+  onServerSearch,
 }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})

@@ -401,18 +401,34 @@ export function TicketsDataTable({
     // Don't extract technicians here - it's handled by loadTechnicians
   }
 
+  // Handle server search with debounce
+  const handleServerSearch = useCallback((query: string) => {
+    setServerSearchQuery(query)
+  }, [])
+
+  // Debounced search effect
+  useEffect(() => {
+    if (serverSearchQuery !== undefined) {
+      const timer = setTimeout(() => {
+        loadTickets(false, serverSearchQuery)
+      }, 300) // 300ms debounce
+
+      return () => clearTimeout(timer)
+    }
+  }, [serverSearchQuery])
+
   // Memoize loadTickets to prevent unnecessary re-renders
   const handleRealtimeUpdate = useCallback(() => {
     // Only refresh if we should be listening for updates
-    const shouldRefresh = 
-      session?.user?.role && 
+    const shouldRefresh =
+      session?.user?.role &&
       ['TECHNICIAN', 'SECURITY_ANALYST', 'ADMIN', 'MANAGER', 'USER'].includes(session.user.role)
 
     if (shouldRefresh && !isLoading) {
       console.log('🔄 Real-time update received, refreshing tickets...')
-      loadTickets(false) // Not initial load
+      loadTickets(false, serverSearchQuery) // Not initial load
     }
-  }, [session])
+  }, [session, serverSearchQuery])
 
   // Use Socket.io for real-time updates instead of interval
   useTicketListUpdates(handleRealtimeUpdate)
@@ -668,7 +684,7 @@ export function TicketsDataTable({
             <Button 
               variant="outline" 
               size="sm"
-              onClick={loadTickets}
+              onClick={() => loadTickets(false, serverSearchQuery)}
               disabled={isLoading}
               className="hover:bg-cream-100 dark:hover:bg-warm-dark-200/50 transition-colors"
             >
@@ -684,7 +700,7 @@ export function TicketsDataTable({
         columns={tableColumns}
         data={tickets}
         onRowClick={handleRowClick}
-        onRefresh={loadTickets}
+        onRefresh={() => loadTickets(false, serverSearchQuery)}
         isLoading={isLoading}
         enableBulkActions={enableBulkClaim || enableBulkStatusUpdate}
         onBulkAction={handleBulkAction}
@@ -693,6 +709,7 @@ export function TicketsDataTable({
         categoryOptions={categoryOptions}
         serviceOptions={serviceOptions}
         technicianOptions={technicianOptions}
+        onServerSearch={handleServerSearch}
       />
     </div>
   )

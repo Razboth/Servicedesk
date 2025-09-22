@@ -63,6 +63,7 @@ interface DataTableToolbarProps<TData> {
   categoryOptions?: { value: string; label: string }[]
   serviceOptions?: { value: string; label: string }[]
   technicianOptions?: { value: string; label: string }[]
+  onServerSearch?: (query: string) => void
 }
 
 export function DataTableToolbar<TData>({
@@ -78,6 +79,7 @@ export function DataTableToolbar<TData>({
   categoryOptions = [],
   serviceOptions = [],
   technicianOptions = [],
+  onServerSearch,
 }: DataTableToolbarProps<TData>) {
   const [selectedStatus, setSelectedStatus] = useState<string>('')
   const isFiltered = table.getState().columnFilters.length > 0 || globalFilter !== ''
@@ -166,10 +168,17 @@ export function DataTableToolbar<TData>({
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Input
-              placeholder="Search tickets..."
+              placeholder="Search tickets (ID, title, description)..."
               value={globalFilter ?? ''}
-              onChange={(event) => setGlobalFilter(event.target.value)}
-              className="h-8 w-[150px] lg:w-[250px]"
+              onChange={(event) => {
+                const value = event.target.value
+                setGlobalFilter(value)
+                // Also trigger server-side search if available
+                if (onServerSearch) {
+                  onServerSearch(value)
+                }
+              }}
+              className="h-8 w-[150px] lg:w-[350px]"
             />
             {onRefresh && (
               <Button
