@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import { getTicketUrlId } from '@/lib/utils/ticket-utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Button } from '@/components/ui/button'
@@ -1126,7 +1127,13 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
         }
         
         onSuccess()
-        router.push(`/tickets/${result.id}`)
+        // Extract numeric part from ticket number for cleaner URLs
+        let ticketNum = result.ticketNumber || result.id;
+        if (ticketNum && ticketNum.includes('-')) {
+          const parts = ticketNum.split('-');
+          ticketNum = parseInt(parts[parts.length - 1]).toString();
+        }
+        router.push(`/tickets/${ticketNum}`)
       } else {
         const error = await response.json()
         toast.error(error.message || 'Failed to create ticket')

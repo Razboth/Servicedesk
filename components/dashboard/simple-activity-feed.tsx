@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { getTicketUrlId } from '@/lib/utils/ticket-utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { motion } from 'framer-motion';
@@ -170,7 +171,10 @@ export function SimpleActivityFeed() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.05 }}
                 className="group flex items-start gap-3 p-3 rounded-lg hover:bg-accent/50 transition-colors cursor-pointer"
-                onClick={() => router.push(`/tickets/${activity.id}`)}
+                onClick={() => {
+                  const ticketUrlId = getTicketUrlId(activity.ticketNumber) || activity.id;
+                  router.push(`/tickets/${ticketUrlId}`)
+                }}
               >
                 <div className={cn(
                   "mt-0.5 p-1.5 rounded-md bg-background",

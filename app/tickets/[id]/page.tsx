@@ -152,7 +152,7 @@ export default function TicketDetailPage() {
   const params = useParams();
   const router = useRouter();
   const ticketId = params.id as string;
-  
+
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [tasks, setTasks] = useState<TicketTask[]>([]);
   const [loading, setLoading] = useState(true);
@@ -178,6 +178,7 @@ export default function TicketDetailPage() {
   const [showPreview, setShowPreview] = useState(false);
   const [userSupportGroup, setUserSupportGroup] = useState<{ code?: string; name?: string } | null>(null);
   const [showVendorDialog, setShowVendorDialog] = useState(false);
+  const [shouldRedirect, setShouldRedirect] = useState(false);
 
   // Helper function to check if file is previewable
   const isPreviewable = (mimeType: string) => {
@@ -286,7 +287,7 @@ export default function TicketDetailPage() {
     try {
       setLoading(true);
       const response = await fetch(`/api/tickets/${ticketId}`);
-      
+
       if (!response.ok) {
         if (response.status === 404) {
           setError('Ticket not found');
@@ -297,9 +298,26 @@ export default function TicketDetailPage() {
         }
         return;
       }
-      
+
       const data = await response.json();
       setTicket(data);
+
+      // Check if we accessed via CUID and should redirect to ticket number
+      // CUIDs typically start with 'c' and are 25 characters long
+      const isCuid = ticketId.startsWith('c') && ticketId.length > 20;
+      if (isCuid && data.ticketNumber) {
+        // Extract just the numeric part from ticket number
+        let numericId = data.ticketNumber;
+        // Handle various formats: "50", "TKT-2025-000050", etc.
+        if (numericId.includes('-')) {
+          const parts = numericId.split('-');
+          numericId = parseInt(parts[parts.length - 1]).toString();
+        }
+        // Replace the current URL without adding to history
+        router.replace(`/tickets/${numericId}`);
+        setShouldRedirect(true);
+        return;
+      }
     } catch (err) {
       setError('Failed to load ticket');
       console.error('Error fetching ticket:', err);

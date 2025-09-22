@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import { getTicketUrlId } from '@/lib/utils/ticket-utils'
 import { DataTable } from './data-table'
 import { getColumns, type Ticket, type TicketWithMeta } from './columns'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -443,7 +444,8 @@ export function TicketsDataTable({
   }, [ticketFilter, initialFilters])
 
   const handleRowClick = (ticket: Ticket) => {
-    router.push(`/tickets/${ticket.id}`)
+    const ticketUrlId = getTicketUrlId(ticket.ticketNumber);
+    router.push(`/tickets/${ticketUrlId}`)
   }
 
   const handleBulkAction = async (action: string, selectedTickets: Ticket[], additionalData?: any, table?: any) => {

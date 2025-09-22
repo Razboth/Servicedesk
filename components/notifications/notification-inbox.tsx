@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
+import { getTicketUrlId } from '@/lib/utils/ticket-utils';
 import {
   Sheet,
   SheetContent,
@@ -194,7 +195,17 @@ export function NotificationInbox({ trigger, open: controlledOpen, onOpenChange 
     // Navigate to relevant page based on notification data
     if (notification.data?.ticketId) {
       setOpen(false);
-      router.push(`/tickets/${notification.data.ticketId}`);
+      // Check if we have ticketNumber in the data
+      let ticketIdentifier = notification.data.ticketNumber || notification.data.ticketId;
+      // Extract numeric part if it's a formatted ticket number
+      if (ticketIdentifier && ticketIdentifier.includes('-')) {
+        const parts = ticketIdentifier.split('-');
+        ticketIdentifier = parseInt(parts[parts.length - 1]).toString();
+      } else if (ticketIdentifier && ticketIdentifier.startsWith('c')) {
+        // If it's still a CUID, use it as is (will redirect on the ticket page)
+        ticketIdentifier = notification.data.ticketId;
+      }
+      router.push(`/tickets/${ticketIdentifier}`);
     }
   };
 
