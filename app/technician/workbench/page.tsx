@@ -274,26 +274,28 @@ export default function TechnicianWorkbenchPage() {
                 
                 <TabsContent value="my-tickets" className="mt-0">
                   {viewMode === 'table' ? (
-                    <TicketsDataTable 
+                    <TicketsDataTable
                       ticketFilter="my-tickets"
                       hideHeader={true}
+                      enableBulkStatusUpdate={true}
                     />
                   ) : (
-                    <TicketCards 
+                    <TicketCards
                       ticketFilter="my-tickets"
                     />
                   )}
                 </TabsContent>
-                
+
                 <TabsContent value="available-tickets" className="mt-0">
                   {viewMode === 'table' ? (
-                    <TicketsDataTable 
+                    <TicketsDataTable
                       ticketFilter="available-tickets"
                       hideHeader={true}
                       showClaimButton={true}
+                      enableBulkClaim={true}
                     />
                   ) : (
-                    <TicketCards 
+                    <TicketCards
                       ticketFilter="available-tickets"
                       showClaimButton={true}
                     />

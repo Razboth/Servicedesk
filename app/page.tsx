@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { PageHeader } from '@/components/ui/page-header'
 import { ModernStatsCards } from '@/components/dashboard/modern-stats-cards'
 import { SimpleActivityFeed } from '@/components/dashboard/simple-activity-feed'
+import { AnnouncementCarousel } from '@/components/announcements/announcement-carousel'
 import { CalendarDays, Clock, Users, AlertTriangle, CheckCircle, XCircle, Pause, Play, Shield, LayoutDashboard } from 'lucide-react'
 // Simple SVG icons as components
 const TicketIcon = ({ className }: { className?: string }) => (
@@ -154,6 +155,9 @@ export default function Dashboard() {
           }
         />
 
+        {/* Announcement Carousel */}
+        <AnnouncementCarousel />
+
         {/* Modern Stats Cards */}
         <div className="mb-8">
           <ModernStatsCards />
@@ -163,6 +167,98 @@ export default function Dashboard() {
         {/* Activity Feed - Full width */}
         <div className="mb-8">
           <SimpleActivityFeed />
+        </div>
+
+        {/* Quick Actions */}
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold mb-4 text-brown-900 dark:text-cream-100">Quick Actions</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="bg-card/50 backdrop-blur-sm border shadow-sm hover:shadow-md transition-all duration-300">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">Create Ticket</CardTitle>
+                  <TicketIcon className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <CardDescription className="text-sm">
+                  Report an issue or request
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button
+                  variant="default"
+                  className="w-full"
+                  onClick={() => router.push('/tickets/create')}
+                >
+                  New Ticket
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-card/50 backdrop-blur-sm border shadow-sm hover:shadow-md transition-all duration-300">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">Knowledge Base</CardTitle>
+                  <svg className="h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
+                </div>
+                <CardDescription className="text-sm">
+                  Browse solutions and guides
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button
+                  variant="secondary"
+                  className="w-full"
+                  onClick={() => router.push('/knowledge')}
+                >
+                  Browse Articles
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-card/50 backdrop-blur-sm border shadow-sm hover:shadow-md transition-all duration-300">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">My Tickets</CardTitle>
+                  <ClockIcon className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <CardDescription className="text-sm">
+                  View your open tickets
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => router.push('/tickets')}
+                >
+                  View Tickets
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-card/50 backdrop-blur-sm border shadow-sm hover:shadow-md transition-all duration-300">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">Reports</CardTitle>
+                  <ChartBarIcon className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <CardDescription className="text-sm">
+                  View analytics and insights
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => router.push('/reports')}
+                >
+                  View Reports
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
         {/* Security Actions - Only visible for Security Analysts */}

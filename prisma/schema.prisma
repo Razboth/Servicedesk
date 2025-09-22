@@ -81,6 +81,19 @@ model User {
   createdOfficeProducts  OfficeProduct[]        @relation("OfficeCreatedBy")
   passwordResetTokens    PasswordResetToken[]
   dailyTaskLists         DailyTaskList[]
+
+  // Knowledge base collaboration
+  knowledgeCollaborations KnowledgeCollaborator[] @relation("CollaboratorUser")
+  invitedCollaborators    KnowledgeCollaborator[] @relation("InvitedByUser")
+  knowledgeActivities     KnowledgeActivity[]
+  knowledgeCommentAttachments KnowledgeCommentAttachment[]
+  knowledgeServiceLinks   KnowledgeServiceLink[]  @relation("KnowledgeLinkUser")
+
+  // Announcements
+  createdAnnouncements   Announcement[]         @relation("AnnouncementCreator")
+  updatedAnnouncements   Announcement[]         @relation("AnnouncementUpdater")
+  viewedAnnouncements    AnnouncementView[]
+
   branch                 Branch?                @relation(fields: [branchId], references: [id])
   supportGroup           SupportGroup?          @relation(fields: [supportGroupId], references: [id])
 
@@ -154,6 +167,7 @@ model Branch {
   osLicenses             OSLicense[]
   officeLicenses         OfficeLicense[]
   antivirusLicenses      AntivirusLicense[]
+  announcements          AnnouncementBranch[]
 
   @@map("branches")
 }
@@ -171,6 +185,7 @@ model ServiceCategory {
   children    ServiceCategory[]      @relation("CategoryHierarchy")
   services    Service[]
   favoritedBy UserFavoriteCategory[]
+  knowledgeLinks KnowledgeServiceLink[]
 
   @@map("service_categories")
 }
@@ -208,6 +223,7 @@ model Service {
   fieldTemplates             ServiceFieldTemplate[]
   fields                     ServiceField[]
   usage                      ServiceUsage[]
+  knowledgeLinks             KnowledgeServiceLink[]
   category                   ServiceCategory        @relation(fields: [categoryId], references: [id])
   supportGroup               SupportGroup?          @relation(fields: [supportGroupId], references: [id])
   tier1Category              Category?              @relation(fields: [tier1CategoryId], references: [id])
@@ -690,6 +706,11 @@ model KnowledgeArticle {
   versions       KnowledgeVersion[]
   relatedTickets TicketKnowledge[]
 
+  // New relations
+  collaborators  KnowledgeCollaborator[]
+  serviceLinks   KnowledgeServiceLink[]
+  activities     KnowledgeActivity[]
+
   @@index([status, isActive])
   @@index([categoryId, subcategoryId, itemId])
   @@index([publishedAt])
@@ -982,6 +1003,9 @@ model KnowledgeComment {
   parent     KnowledgeComment?  @relation("CommentReplies", fields: [parentId], references: [id])
   replies    KnowledgeComment[] @relation("CommentReplies")
   user       User               @relation(fields: [userId], references: [id])
+
+  // File attachments
+  attachments KnowledgeCommentAttachment[]
 
   @@index([articleId, parentId])
   @@index([userId])
@@ -2027,4 +2051,177 @@ enum DailyTaskStatus {
   COMPLETED
   CANCELLED
   DEFERRED
+}
+
+// Knowledge Base Collaborators
+model KnowledgeCollaborator {
+  id          String           @id @default(cuid())
+  articleId   String
+  userId      String
+  role        CollaboratorRole @default(EDITOR)
+  invitedBy   String
+  invitedAt   DateTime         @default(now())
+  acceptedAt  DateTime?
+
+  article     KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  user        User             @relation("CollaboratorUser", fields: [userId], references: [id])
+  inviter     User             @relation("InvitedByUser", fields: [invitedBy], references: [id])
+
+  @@unique([articleId, userId])
+  @@index([userId])
+  @@map("knowledge_collaborators")
+}
+
+enum CollaboratorRole {
+  VIEWER
+  EDITOR
+  OWNER
+}
+
+// Knowledge Service Linking
+model KnowledgeServiceLink {
+  id            String           @id @default(cuid())
+  articleId     String
+  serviceId     String?
+  categoryId    String?
+  linkedBy      String
+  linkedAt      DateTime         @default(now())
+
+  article       KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  service       Service?         @relation(fields: [serviceId], references: [id])
+  category      ServiceCategory? @relation(fields: [categoryId], references: [id])
+  user          User             @relation("KnowledgeLinkUser", fields: [linkedBy], references: [id])
+
+  @@unique([articleId, serviceId])
+  @@unique([articleId, categoryId])
+  @@index([serviceId])
+  @@index([categoryId])
+  @@map("knowledge_service_links")
+}
+
+// Knowledge Activity Timeline
+model KnowledgeActivity {
+  id          String       @id @default(cuid())
+  articleId   String
+  userId      String
+  action      String       // created, edited, commented, linked_service, added_collaborator, etc
+  details     Json?        // Store action-specific details
+  metadata    Json?        // Store old/new values for edits
+  createdAt   DateTime     @default(now())
+
+  article     KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  user        User             @relation(fields: [userId], references: [id])
+
+  @@index([articleId, createdAt])
+  @@index([userId])
+  @@map("knowledge_activities")
+}
+
+// Comment Attachments
+model KnowledgeCommentAttachment {
+  id           String           @id @default(cuid())
+  commentId    String
+  filename     String
+  originalName String
+  mimeType     String
+  size         Int
+  path         String
+  uploadedBy   String
+  createdAt    DateTime         @default(now())
+
+  comment      KnowledgeComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  uploader     User             @relation(fields: [uploadedBy], references: [id])
+
+  @@index([commentId])
+  @@map("knowledge_comment_attachments")
+}
+
+// Announcement System
+model Announcement {
+  id           String               @id @default(cuid())
+  title        String
+  content      String?              @db.Text
+  type         AnnouncementType     @default(GENERAL)
+  priority     AnnouncementPriority @default(NORMAL)
+  startDate    DateTime
+  endDate      DateTime
+  isActive     Boolean              @default(true)
+  isGlobal     Boolean              @default(true) // If true, shown to all branches
+  createdBy    String
+  updatedBy    String?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  creator      User                 @relation("AnnouncementCreator", fields: [createdBy], references: [id])
+  updater      User?                @relation("AnnouncementUpdater", fields: [updatedBy], references: [id])
+  images       AnnouncementImage[]
+  views        AnnouncementView[]
+  branches     AnnouncementBranch[] // Branch-specific targeting
+
+  @@index([isActive, startDate, endDate])
+  @@index([createdBy])
+  @@index([isGlobal])
+  @@map("announcements")
+}
+
+enum AnnouncementType {
+  GENERAL
+  MAINTENANCE
+  UPDATE
+  ALERT
+  PROMOTION
+}
+
+enum AnnouncementPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+model AnnouncementImage {
+  id             String       @id @default(cuid())
+  announcementId String
+  filename       String
+  originalName   String
+  mimeType       String
+  size           Int
+  path           String
+  order          Int          @default(0)
+  caption        String?
+  createdAt      DateTime     @default(now())
+
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+
+  @@index([announcementId])
+  @@map("announcement_images")
+}
+
+model AnnouncementView {
+  id             String       @id @default(cuid())
+  announcementId String
+  userId         String
+  viewedAt       DateTime     @default(now())
+
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id])
+
+  @@unique([announcementId, userId])
+  @@index([userId])
+  @@map("announcement_views")
+}
+
+// Branch-specific announcements
+model AnnouncementBranch {
+  id             String       @id @default(cuid())
+  announcementId String
+  branchId       String
+  createdAt      DateTime     @default(now())
+
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  branch         Branch       @relation(fields: [branchId], references: [id])
+
+  @@unique([announcementId, branchId])
+  @@index([branchId])
+  @@map("announcement_branches")
 }

@@ -1,8 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Card } from '@/components/ui/card';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Tooltip,
@@ -25,7 +28,10 @@ import {
   Clock,
   Star,
   GitPullRequest,
-  FileText
+  FileText,
+  Shield,
+  Lock,
+  Home
 } from 'lucide-react';
 
 interface GitHubContributor {
@@ -58,36 +64,46 @@ interface SystemFeature {
 }
 
 export default function AboutPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const [contributors, setContributors] = useState<GitHubContributor[]>([]);
   const [recentCommits, setRecentCommits] = useState<GitHubCommit[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Check if user is admin (ADMIN or SUPER_ADMIN)
+  const isAdmin = session?.user?.role === 'ADMIN' || session?.user?.role === 'SUPER_ADMIN';
+
   useEffect(() => {
-    // Fetch local git data
-    const fetchGitData = async () => {
-      try {
-        // Fetch contributors from local git
-        const contribResponse = await fetch('/api/about/contributors');
-        if (contribResponse.ok) {
-          const contribData = await contribResponse.json();
-          setContributors(contribData);
-        }
+    // Only fetch data if user is admin
+    if (status === 'authenticated' && isAdmin) {
+      // Fetch local git data
+      const fetchGitData = async () => {
+        try {
+          // Fetch contributors from local git
+          const contribResponse = await fetch('/api/about/contributors');
+          if (contribResponse.ok) {
+            const contribData = await contribResponse.json();
+            setContributors(contribData);
+          }
 
-        // Fetch recent commits from local git
-        const commitsResponse = await fetch('/api/about/commits');
-        if (commitsResponse.ok) {
-          const commitsData = await commitsResponse.json();
-          setRecentCommits(commitsData);
+          // Fetch recent commits from local git
+          const commitsResponse = await fetch('/api/about/commits');
+          if (commitsResponse.ok) {
+            const commitsData = await commitsResponse.json();
+            setRecentCommits(commitsData);
+          }
+        } catch (error) {
+          console.error('Error fetching git data:', error);
+        } finally {
+          setLoading(false);
         }
-      } catch (error) {
-        console.error('Error fetching git data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+      };
 
-    fetchGitData();
-  }, []);
+      fetchGitData();
+    } else if (status === 'authenticated') {
+      setLoading(false);
+    }
+  }, [status, isAdmin]);
 
   const systemFeatures: SystemFeature[] = [
     {
@@ -194,6 +210,80 @@ export default function AboutPage() {
     return <Badge variant="outline">Commit</Badge>;
   };
 
+  // Show loading state
+  if (status === 'loading') {
+    return (
+      <div className="container mx-auto p-6 max-w-7xl">
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show unauthorized message for non-admin users
+  if (status === 'authenticated' && !isAdmin) {
+    return (
+      <div className="container mx-auto p-6 max-w-2xl">
+        <Card className="p-8">
+          <CardContent className="text-center space-y-6">
+            <div className="flex justify-center">
+              <div className="p-4 bg-red-100 dark:bg-red-900/20 rounded-full">
+                <Lock className="w-12 h-12 text-red-600 dark:text-red-400" />
+              </div>
+            </div>
+            <h1 className="text-2xl font-bold">Access Restricted</h1>
+            <p className="text-muted-foreground">
+              This page is only accessible to administrators. You don't have the necessary permissions to view this content.
+            </p>
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Shield className="w-4 h-4" />
+              <span>Required Role: Admin or Super Admin</span>
+            </div>
+            <Button
+              onClick={() => router.push('/')}
+              className="mt-4"
+            >
+              <Home className="w-4 h-4 mr-2" />
+              Return to Dashboard
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show sign-in prompt for unauthenticated users
+  if (status === 'unauthenticated') {
+    return (
+      <div className="container mx-auto p-6 max-w-2xl">
+        <Card className="p-8">
+          <CardContent className="text-center space-y-6">
+            <div className="flex justify-center">
+              <div className="p-4 bg-yellow-100 dark:bg-yellow-900/20 rounded-full">
+                <AlertCircle className="w-12 h-12 text-yellow-600 dark:text-yellow-400" />
+              </div>
+            </div>
+            <h1 className="text-2xl font-bold">Authentication Required</h1>
+            <p className="text-muted-foreground">
+              Please sign in to access this page.
+            </p>
+            <Button
+              onClick={() => router.push('/auth/signin')}
+              className="mt-4"
+            >
+              Sign In
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Main content for admin users
   return (
     <div className="container mx-auto p-6 max-w-7xl">
       {/* Header */}
@@ -207,6 +297,12 @@ export default function AboutPage() {
         <p className="text-gray-600 dark:text-gray-400 text-lg">
           ITIL v4-compliant service management system for multi-branch banking operations
         </p>
+        <div className="mt-2 flex items-center gap-2">
+          <Badge variant="secondary" className="flex items-center gap-1">
+            <Shield className="w-3 h-3" />
+            Admin Access Only
+          </Badge>
+        </div>
       </div>
 
       {/* Version Info Card */}

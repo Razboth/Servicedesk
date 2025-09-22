@@ -20,30 +20,55 @@ interface AttachmentPreviewProps {
   onClose: () => void
   attachment: {
     id: string
-    filename: string
+    filename?: string
     originalName: string
     mimeType: string
     size: number
     ticketId?: string
+    commentId?: string
   }
+  attachments?: Array<{
+    id: string
+    filename?: string
+    originalName: string
+    mimeType: string
+    size: number
+    ticketId?: string
+    commentId?: string
+  }>
+  currentIndex?: number
+  onNavigate?: (index: number) => void
   ticketTitle?: string
 }
 
-export function AttachmentPreview({ isOpen, onClose, attachment, ticketTitle }: AttachmentPreviewProps) {
+export function AttachmentPreview({
+  isOpen,
+  onClose,
+  attachment,
+  attachments,
+  currentIndex = 0,
+  onNavigate,
+  ticketTitle
+}: AttachmentPreviewProps) {
   const [rotation, setRotation] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [pdfUrl, setPdfUrl] = useState<string | null>(null)
+  const [localCurrentIndex, setLocalCurrentIndex] = useState(currentIndex)
   const transformRef = useRef<any>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
-  const isImage = attachment.mimeType?.startsWith('image/')
-  const isPDF = attachment.mimeType === 'application/pdf'
+  // Use current attachment from array if available
+  const currentAttachment = attachments?.[localCurrentIndex] || attachment
+
+  const isImage = currentAttachment.mimeType?.startsWith('image/')
+  const isPDF = currentAttachment.mimeType === 'application/pdf'
+  const hasMultiple = attachments && attachments.length > 1
 
   // Get ticket ID from the URL if not provided
   const getTicketId = () => {
-    if (attachment.ticketId) return attachment.ticketId
+    if (currentAttachment.ticketId) return currentAttachment.ticketId
     // Extract from current URL path
     const pathParts = window.location.pathname.split('/')
     const ticketIndex = pathParts.indexOf('tickets')
@@ -53,8 +78,32 @@ export function AttachmentPreview({ isOpen, onClose, attachment, ticketTitle }: 
     return null
   }
 
+  // Handle navigation
+  const handleNavigate = (direction: 'prev' | 'next') => {
+    if (!attachments) return
+
+    let newIndex: number
+    if (direction === 'next') {
+      newIndex = (localCurrentIndex + 1) % attachments.length
+    } else {
+      newIndex = localCurrentIndex === 0 ? attachments.length - 1 : localCurrentIndex - 1
+    }
+
+    setLocalCurrentIndex(newIndex)
+    setRotation(0) // Reset rotation on navigation
+    if (onNavigate) {
+      onNavigate(newIndex)
+    }
+  }
+
   useEffect(() => {
-    if (isOpen && attachment) {
+    if (attachments && currentIndex !== localCurrentIndex) {
+      setLocalCurrentIndex(currentIndex)
+    }
+  }, [currentIndex, attachments])
+
+  useEffect(() => {
+    if (isOpen && currentAttachment) {
       loadAttachment()
     }
     return () => {
@@ -65,26 +114,34 @@ export function AttachmentPreview({ isOpen, onClose, attachment, ticketTitle }: 
         URL.revokeObjectURL(pdfUrl)
       }
     }
-  }, [isOpen, attachment])
+  }, [isOpen, currentAttachment, localCurrentIndex])
 
   const loadAttachment = async () => {
     setLoading(true)
     setError(null)
-    
+
     try {
-      const ticketId = getTicketId()
+      const ticketId = currentAttachment.ticketId || getTicketId()
       if (!ticketId) {
         throw new Error('Could not determine ticket ID')
       }
 
-      const response = await fetch(`/api/tickets/${ticketId}/attachments/${attachment.id}/download`)
+      // Build the correct API URL based on whether it's a comment attachment or ticket attachment
+      let apiUrl: string
+      if (currentAttachment.commentId) {
+        apiUrl = `/api/tickets/${ticketId}/comments/${currentAttachment.commentId}/attachments/${currentAttachment.id}/download`
+      } else {
+        apiUrl = `/api/tickets/${ticketId}/attachments/${currentAttachment.id}/download`
+      }
+
+      const response = await fetch(apiUrl)
       if (!response.ok) {
         throw new Error('Failed to load attachment')
       }
 
       const blob = await response.blob()
       const url = URL.createObjectURL(blob)
-      
+
       if (isImage) {
         setImageUrl(url)
       } else if (isPDF) {
@@ -115,7 +172,7 @@ export function AttachmentPreview({ isOpen, onClose, attachment, ticketTitle }: 
         <!DOCTYPE html>
         <html>
           <head>
-            <title>Print ${attachment.originalName}</title>
+            <title>Print ${currentAttachment.originalName}</title>
             <style>
               body {
                 margin: 0;
@@ -136,7 +193,7 @@ export function AttachmentPreview({ isOpen, onClose, attachment, ticketTitle }: 
             </style>
           </head>
           <body>
-            <img src="${imageUrl}" alt="${attachment.originalName}" />
+            <img src="${imageUrl}" alt="${currentAttachment.originalName}" />
           </body>
         </html>
       `
@@ -157,22 +214,30 @@ export function AttachmentPreview({ isOpen, onClose, attachment, ticketTitle }: 
 
   const handleDownload = async () => {
     try {
-      const ticketId = getTicketId()
+      const ticketId = currentAttachment.ticketId || getTicketId()
       if (!ticketId) {
         throw new Error('Could not determine ticket ID')
       }
 
-      const response = await fetch(`/api/tickets/${ticketId}/attachments/${attachment.id}/download`)
+      // Build the correct API URL based on whether it's a comment attachment or ticket attachment
+      let apiUrl: string
+      if (currentAttachment.commentId) {
+        apiUrl = `/api/tickets/${ticketId}/comments/${currentAttachment.commentId}/attachments/${currentAttachment.id}/download`
+      } else {
+        apiUrl = `/api/tickets/${ticketId}/attachments/${currentAttachment.id}/download`
+      }
+
+      const response = await fetch(apiUrl)
       const blob = await response.blob()
       const url = URL.createObjectURL(blob)
-      
+
       const link = document.createElement('a')
       link.href = url
-      link.download = attachment.originalName
+      link.download = currentAttachment.originalName
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
-      
+
       URL.revokeObjectURL(url)
     } catch (err) {
       console.error('Download failed:', err)
@@ -310,7 +375,7 @@ export function AttachmentPreview({ isOpen, onClose, attachment, ticketTitle }: 
                 }}>
                   <img
                     src={imageUrl}
-                    alt={attachment.originalName}
+                    alt={currentAttachment.originalName}
                     style={{ 
                       maxWidth: '100%',
                       maxHeight: '100%',
@@ -355,7 +420,7 @@ export function AttachmentPreview({ isOpen, onClose, attachment, ticketTitle }: 
             ref={iframeRef}
             src={`${pdfUrl}#toolbar=1&navpanes=0&scrollbar=1&zoom=page-width`}
             className="w-full flex-1 border-0"
-            title={attachment.originalName}
+            title={currentAttachment.originalName}
             style={{ minHeight: '600px' }}
           />
         </div>
@@ -367,7 +432,7 @@ export function AttachmentPreview({ isOpen, onClose, attachment, ticketTitle }: 
         <div className="text-center text-gray-600">
           <FileText className="h-16 w-16 mx-auto mb-4 text-gray-400" />
           <p className="mb-2">Preview not available for this file type</p>
-          <p className="text-sm mb-4">{attachment.mimeType}</p>
+          <p className="text-sm mb-4">{currentAttachment.mimeType}</p>
           <Button onClick={handleDownload}>
             <Download className="h-4 w-4 mr-2" />
             Download File
@@ -392,15 +457,47 @@ export function AttachmentPreview({ isOpen, onClose, attachment, ticketTitle }: 
         {/* Header */}
         <div className="px-6 py-4 border-b bg-white dark:bg-gray-900 relative">
           <div className="pr-12">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              {attachment.originalName}
-            </h2>
+            <div className="flex items-center gap-4">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                {currentAttachment.originalName}
+              </h2>
+              {hasMultiple && (
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  ({localCurrentIndex + 1} of {attachments.length})
+                </span>
+              )}
+            </div>
             {ticketTitle && (
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                 Ticket: {ticketTitle}
               </p>
             )}
           </div>
+
+          {/* Navigation buttons */}
+          {hasMultiple && (
+            <div className="absolute right-16 top-4 flex gap-1">
+              <button
+                onClick={() => handleNavigate('prev')}
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                title="Previous attachment"
+              >
+                <svg className="h-5 w-5 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <button
+                onClick={() => handleNavigate('next')}
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                title="Next attachment"
+              >
+                <svg className="h-5 w-5 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          )}
+
           <button
             onClick={onClose}
             className="absolute right-4 top-4 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"

@@ -6,7 +6,13 @@ import { z } from 'zod';
 // Schema for creating comments
 const createCommentSchema = z.object({
   content: z.string().min(1, 'Comment content is required').max(2000),
-  parentId: z.string().optional()
+  parentId: z.string().optional(),
+  attachments: z.array(z.object({
+    filename: z.string(),
+    url: z.string(),
+    mimeType: z.string(),
+    size: z.number()
+  })).optional()
 });
 
 // GET: Get comments for an article
@@ -69,10 +75,12 @@ export async function GET(
                 name: true,
                 role: true
               }
-            }
+            },
+            attachments: true
           },
           orderBy: { createdAt: 'asc' }
-        }
+        },
+        attachments: true
       },
       orderBy: { createdAt: 'desc' }
     });
@@ -105,7 +113,7 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { content, parentId } = createCommentSchema.parse(body);
+    const { content, parentId, attachments } = createCommentSchema.parse(body);
 
     // Check if article exists and user can access it
     const article = await prisma.knowledgeArticle.findUnique({
@@ -145,13 +153,22 @@ export async function POST(
       }
     }
 
-    // Create the comment
+    // Create the comment with attachments
     const comment = await prisma.knowledgeComment.create({
       data: {
         articleId: id,
         userId: session.user.id,
         content,
-        parentId
+        parentId,
+        attachments: attachments?.length ? {
+          create: attachments.map(att => ({
+            filename: att.filename,
+            url: att.url,
+            mimeType: att.mimeType,
+            size: att.size,
+            uploadedById: session.user.id
+          }))
+        } : undefined
       },
       include: {
         user: {
@@ -160,6 +177,20 @@ export async function POST(
             name: true,
             role: true
           }
+        },
+        attachments: true
+      }
+    });
+
+    // Log activity
+    await prisma.knowledgeActivity.create({
+      data: {
+        articleId: id,
+        userId: session.user.id,
+        action: 'COMMENT_ADDED',
+        details: {
+          commentId: comment.id,
+          hasAttachments: attachments?.length > 0
         }
       }
     });

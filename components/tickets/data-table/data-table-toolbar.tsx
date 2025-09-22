@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { useState } from 'react'
 import { Cross2Icon } from '@radix-ui/react-icons'
 import { Table } from '@tanstack/react-table'
 import { Button } from '@/components/ui/button'
@@ -8,14 +9,15 @@ import { Input } from '@/components/ui/input'
 import { DataTableViewOptions } from './data-table-view-options'
 import { DataTableFacetedFilter } from './data-table-faceted-filter'
 import { DataTableDateRangeFilter } from './data-table-date-range-filter'
-import { 
-  RefreshCw, 
+import {
+  RefreshCw,
   Filter,
   Download,
   UserPlus,
   CheckSquare,
   User,
-  UserCheck
+  UserCheck,
+  CheckCircle
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 
@@ -55,7 +57,8 @@ interface DataTableToolbarProps<TData> {
   setGlobalFilter: (value: string) => void
   enableBulkActions?: boolean
   selectedRows?: TData[]
-  onBulkAction?: (action: string, selectedRows: TData[]) => void
+  onBulkAction?: (action: string, selectedRows: TData[], additionalData?: any, table?: any) => void
+  bulkActionType?: 'claim' | 'status'
   branchOptions?: { value: string; label: string }[]
   categoryOptions?: { value: string; label: string }[]
   serviceOptions?: { value: string; label: string }[]
@@ -70,11 +73,13 @@ export function DataTableToolbar<TData>({
   enableBulkActions,
   selectedRows = [],
   onBulkAction,
+  bulkActionType,
   branchOptions = [],
   categoryOptions = [],
   serviceOptions = [],
   technicianOptions = [],
 }: DataTableToolbarProps<TData>) {
+  const [selectedStatus, setSelectedStatus] = useState<string>('')
   const isFiltered = table.getState().columnFilters.length > 0 || globalFilter !== ''
   
   // Debug: Log available columns
@@ -100,15 +105,50 @@ export function DataTableToolbar<TData>({
             <Badge variant="secondary">
               {selectedRows.length} selected
             </Badge>
-            <Button
-              size="sm"
-              variant="default"
-              onClick={() => onBulkAction?.('claim', selectedRows)}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              <UserPlus className="h-4 w-4 mr-2" />
-              Claim Selected
-            </Button>
+            {bulkActionType === 'claim' ? (
+              <Button
+                size="sm"
+                variant="default"
+                onClick={() => onBulkAction?.('claim', selectedRows, undefined, table)}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <UserPlus className="h-4 w-4 mr-2" />
+                Claim Selected
+              </Button>
+            ) : bulkActionType === 'status' ? (
+              <>
+                <select
+                  id="bulk-status"
+                  className="h-8 px-3 py-1 text-sm border rounded-md bg-white dark:bg-gray-900"
+                  value={selectedStatus}
+                  onChange={(e) => {
+                    setSelectedStatus(e.target.value)
+                  }}
+                >
+                  <option value="">Select Status...</option>
+                  <option value="IN_PROGRESS">In Progress</option>
+                  <option value="PENDING">Pending</option>
+                  <option value="RESOLVED">Resolved</option>
+                  <option value="CLOSED">Closed</option>
+                  <option value="CANCELLED">Cancelled</option>
+                </select>
+                <Button
+                  size="sm"
+                  variant="default"
+                  onClick={() => {
+                    if (selectedStatus) {
+                      onBulkAction?.('updateStatus', selectedRows, { status: selectedStatus }, table)
+                      setSelectedStatus('') // Reset selection after update
+                    }
+                  }}
+                  disabled={!selectedStatus}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Update Status
+                </Button>
+              </>
+            ) : null}
           </div>
           <Button
             size="sm"

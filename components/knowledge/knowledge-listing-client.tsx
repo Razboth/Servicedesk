@@ -144,9 +144,9 @@ export default function KnowledgeListingClient() {
     if (selectedStatus) params.append('status', selectedStatus)
     if (sortBy !== 'updatedAt') params.append('sortBy', sortBy)
     if (sortOrder !== 'desc') params.append('sortOrder', sortOrder)
-    
-    const newURL = params.toString() ? `?${params}` : '/knowledge'
-    router.replace(newURL, { scroll: false })
+
+    const newURL = params.toString() ? `/knowledge?${params}` : '/knowledge'
+    router.push(newURL)
   }, [search, selectedCategory, selectedSubcategory, selectedItem, selectedStatus, sortBy, sortOrder, router])
 
   // Reset to first page when filters change
@@ -205,12 +205,12 @@ export default function KnowledgeListingClient() {
               Search & Filters
             </CardTitle>
             {canCreateArticle && (
-              <Button asChild>
-                <Link href="/knowledge/create" className="flex items-center gap-2">
+              <Link href="/knowledge/create">
+                <Button className="flex items-center gap-2">
                   <Plus className="h-4 w-4" />
                   Create Article
-                </Link>
-              </Button>
+                </Button>
+              </Link>
             )}
           </div>
         </CardHeader>
@@ -363,9 +363,9 @@ export default function KnowledgeListingClient() {
                 : 'No knowledge articles have been created yet.'}
             </p>
             {canCreateArticle && (
-              <Button asChild className="mt-4">
-                <Link href="/knowledge/create">Create First Article</Link>
-              </Button>
+              <Link href="/knowledge/create">
+                <Button className="mt-4">Create First Article</Button>
+              </Link>
             )}
           </CardContent>
         </Card>

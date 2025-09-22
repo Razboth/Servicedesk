@@ -169,11 +169,24 @@ export const getColumns = (options?: {
         />
       ),
       cell: ({ row }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Select row"
-        />
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+          }}
+          className="flex items-center justify-center"
+        >
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(value) => {
+              row.toggleSelected(!!value);
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+            aria-label="Select row"
+          />
+        </div>
       ),
       enableSorting: false,
       enableHiding: false,

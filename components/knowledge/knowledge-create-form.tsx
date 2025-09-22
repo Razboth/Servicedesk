@@ -174,12 +174,12 @@ export default function KnowledgeCreateForm() {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       {/* Header Actions */}
       <div className="flex items-center justify-between">
-        <Button variant="outline" asChild>
-          <Link href="/knowledge" className="flex items-center gap-2">
+        <Link href="/knowledge">
+          <Button variant="outline" className="flex items-center gap-2">
             <ArrowLeft className="h-4 w-4" />
             Back to Knowledge Base
-          </Link>
-        </Button>
+          </Button>
+        </Link>
         
         <div className="flex gap-2">
           <Button

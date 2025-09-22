@@ -81,6 +81,16 @@ const standardReports: Report[] = [
   },
   // Service Reports - NEW
   {
+    title: 'Service Status Breakdown',
+    description: 'Ticket count by status for each service per category with totals and subtotals',
+    href: '/reports/services/status-breakdown',
+    icon: PieChart,
+    type: 'standard',
+    roles: ['TECHNICIAN', 'MANAGER', 'ADMIN'],
+    badge: 'New',
+    lastRun: 'Live'
+  },
+  {
     title: 'Service Performance Analytics',
     description: 'Comprehensive service metrics, resolution rates, and performance trends',
     href: '/reports/services/performance',

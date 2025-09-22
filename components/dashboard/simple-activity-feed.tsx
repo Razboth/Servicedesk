@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { motion } from 'framer-motion';
@@ -76,6 +77,7 @@ const getRelativeTime = (date: string | Date) => {
 };
 
 export function SimpleActivityFeed() {
+  const router = useRouter();
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -168,6 +170,7 @@ export function SimpleActivityFeed() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.05 }}
                 className="group flex items-start gap-3 p-3 rounded-lg hover:bg-accent/50 transition-colors cursor-pointer"
+                onClick={() => router.push(`/tickets/${activity.id}`)}
               >
                 <div className={cn(
                   "mt-0.5 p-1.5 rounded-md bg-background",

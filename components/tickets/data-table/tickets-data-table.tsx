@@ -29,6 +29,8 @@ interface TicketsDataTableProps {
   ticketFilter?: 'my-tickets' | 'available-tickets'
   hideHeader?: boolean
   showClaimButton?: boolean
+  enableBulkClaim?: boolean
+  enableBulkStatusUpdate?: boolean
   initialFilters?: {
     status?: string
     priority?: string
@@ -39,12 +41,14 @@ interface TicketsDataTableProps {
   }
 }
 
-export function TicketsDataTable({ 
+export function TicketsDataTable({
   onCreateTicket,
   ticketFilter,
   hideHeader = false,
   showClaimButton = false,
-  initialFilters 
+  enableBulkClaim = false,
+  enableBulkStatusUpdate = false,
+  initialFilters
 }: TicketsDataTableProps) {
   const { data: session } = useSession()
   const router = useRouter()
@@ -426,7 +430,7 @@ export function TicketsDataTable({
     router.push(`/tickets/${ticket.id}`)
   }
 
-  const handleBulkAction = async (action: string, selectedTickets: Ticket[]) => {
+  const handleBulkAction = async (action: string, selectedTickets: Ticket[], additionalData?: any, table?: any) => {
     switch (action) {
       case 'claim':
         // Handle bulk claim
@@ -434,41 +438,93 @@ export function TicketsDataTable({
           toast.error('You must be logged in to claim tickets')
           return
         }
-        
+
         toast.info(`Claiming ${selectedTickets.length} tickets...`)
-        
+
         try {
-          // Claim tickets one by one (can be optimized with a bulk API endpoint)
-          const promises = selectedTickets.map(ticket => 
-            fetch(`/api/tickets/${ticket.id}`, {
-              method: 'PUT',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                assignedToId: session.user.id,
-              }),
-            })
-          )
-          
-          const results = await Promise.allSettled(promises)
-          const successful = results.filter(r => r.status === 'fulfilled' && (r.value as Response).ok).length
-          const failed = results.length - successful
-          
-          if (successful > 0) {
-            toast.success(`Successfully claimed ${successful} ticket${successful > 1 ? 's' : ''}`)
+          // Use bulk claim endpoint
+          const response = await fetch('/api/tickets/bulk-claim', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              ticketIds: selectedTickets.map(t => t.id),
+            }),
+          })
+
+          if (response.ok) {
+            const result = await response.json()
+            toast.success(`Successfully claimed ${result.successful || selectedTickets.length} ticket${selectedTickets.length > 1 ? 's' : ''}`)
+            // Clear selection
+            if (table) table.toggleAllPageRowsSelected(false)
             // Reload tickets to reflect the changes
-            loadTickets(false)
-          }
-          
-          if (failed > 0) {
-            toast.error(`Failed to claim ${failed} ticket${failed > 1 ? 's' : ''}`)
+            await loadTickets(false)
+          } else {
+            const error = await response.json()
+            toast.error(error.message || 'Failed to claim tickets')
           }
         } catch (error) {
           console.error('Error claiming tickets:', error)
           toast.error('Failed to claim tickets')
         }
         break
+
+      case 'updateStatus':
+        // Handle bulk status update
+        const newStatus = additionalData?.status
+        if (!newStatus) {
+          toast.error('Please select a status')
+          return
+        }
+
+        toast.info(`Updating ${selectedTickets.length} tickets...`)
+
+        try {
+          const response = await fetch('/api/tickets/bulk/status', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              ticketIds: selectedTickets.map(t => t.id),
+              status: newStatus,
+            }),
+          })
+
+          if (response.ok) {
+            const data = await response.json()
+
+            // Check for success in response
+            if (data.success || data.successful) {
+              toast.success(`Successfully updated ${data.successful || selectedTickets.length} ticket${selectedTickets.length > 1 ? 's' : ''}`)
+              // Clear selection
+              if (table) table.toggleAllPageRowsSelected(false)
+              // Reload tickets to reflect the changes - use setTimeout to avoid race condition
+              setTimeout(() => {
+                loadTickets(false)
+              }, 100)
+            } else {
+              // Response is OK but operation failed
+              toast.error(data.error || data.message || 'Failed to update tickets')
+            }
+          } else {
+            // Response is not OK
+            try {
+              const errorData = await response.json()
+              toast.error(errorData.error || errorData.message || 'Failed to update tickets')
+            } catch {
+              toast.error('Failed to update tickets')
+            }
+          }
+        } catch (error) {
+          console.error('Error updating tickets:', error)
+          // Don't show error toast if the tickets were actually updated
+          // Check by reloading the data
+          loadTickets(false)
+        }
+        break
+
       case 'assign':
         // Handle bulk assign
         toast.info(`Assigning ${selectedTickets.length} tickets...`)
@@ -518,9 +574,9 @@ export function TicketsDataTable({
     () => getColumns({
       showClaimButton,
       onClaimTicket: handleClaimTicket,
-      enableBulkActions: ticketFilter === 'available-tickets',
+      enableBulkActions: enableBulkClaim || enableBulkStatusUpdate,
     }),
-    [showClaimButton, ticketFilter]
+    [showClaimButton, enableBulkClaim, enableBulkStatusUpdate]
   )
 
   const scrollToTop = () => {
@@ -630,8 +686,9 @@ export function TicketsDataTable({
         onRowClick={handleRowClick}
         onRefresh={loadTickets}
         isLoading={isLoading}
-        enableBulkActions={ticketFilter === 'available-tickets'}
+        enableBulkActions={enableBulkClaim || enableBulkStatusUpdate}
         onBulkAction={handleBulkAction}
+        bulkActionType={enableBulkClaim ? 'claim' : enableBulkStatusUpdate ? 'status' : undefined}
         branchOptions={branchOptions}
         categoryOptions={categoryOptions}
         serviceOptions={serviceOptions}

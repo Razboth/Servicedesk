@@ -34,7 +34,8 @@ interface DataTableProps<TData, TValue> {
   onRefresh?: () => void
   isLoading?: boolean
   enableBulkActions?: boolean
-  onBulkAction?: (action: string, selectedRows: TData[]) => void
+  onBulkAction?: (action: string, selectedRows: TData[], additionalData?: any, table?: any) => void
+  bulkActionType?: 'claim' | 'status'
   branchOptions?: { value: string; label: string }[]
   categoryOptions?: { value: string; label: string }[]
   serviceOptions?: { value: string; label: string }[]
@@ -49,6 +50,7 @@ export function DataTable<TData, TValue>({
   isLoading = false,
   enableBulkActions = false,
   onBulkAction,
+  bulkActionType,
   branchOptions = [],
   categoryOptions = [],
   serviceOptions = [],
@@ -165,6 +167,7 @@ export function DataTable<TData, TValue>({
             enableBulkActions={enableBulkActions}
             selectedRows={selectedRows}
             onBulkAction={onBulkAction}
+            bulkActionType={bulkActionType}
             branchOptions={branchOptions}
             categoryOptions={categoryOptions}
             serviceOptions={serviceOptions}
@@ -212,19 +215,43 @@ export function DataTable<TData, TValue>({
                         key={row.id}
                         data-state={row.getIsSelected() && "selected"}
                         className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted cursor-pointer"
-                        onClick={() => onRowClick?.(row.original)}
+                        onClick={(e) => {
+                          // Don't trigger row click if clicking on a checkbox, button, or link
+                          const target = e.target as HTMLElement;
+                          const isInteractiveElement =
+                            target.closest('input[type="checkbox"]') ||
+                            target.closest('button') ||
+                            target.closest('a') ||
+                            target.closest('[role="checkbox"]') ||
+                            target.closest('[role="button"]');
+
+                          if (!isInteractiveElement && onRowClick) {
+                            onRowClick(row.original);
+                          }
+                        }}
                       >
-                        {row.getVisibleCells().map((cell) => (
-                          <td
-                            key={cell.id}
-                            className="px-2 py-2 align-middle [&:has([role=checkbox])]:pr-0"
-                          >
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext()
-                            )}
-                          </td>
-                        ))}
+                        {row.getVisibleCells().map((cell) => {
+                          const isSelectCell = cell.column.id === 'select';
+                          return (
+                            <td
+                              key={cell.id}
+                              className="px-2 py-2 align-middle [&:has([role=checkbox])]:pr-0"
+                              onClick={(e) => {
+                                // Stop propagation for select cells
+                                if (isSelectCell) {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                }
+                              }}
+                              style={isSelectCell ? { cursor: 'default' } : {}}
+                            >
+                              {flexRender(
+                                cell.column.columnDef.cell,
+                                cell.getContext()
+                              )}
+                            </td>
+                          );
+                        })}
                       </tr>
                     ))
                   ) : (

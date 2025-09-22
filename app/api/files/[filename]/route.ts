@@ -8,6 +8,37 @@ export async function GET(
   { params }: { params: Promise<{ filename: string }> }
 ) {
   try {
+    const { filename } = await params;
+
+    // First check if this is an announcement image (public access allowed)
+    const announcementImageCheck = await prisma.announcementImage.findFirst({
+      where: {
+        filename: filename
+      }
+    });
+
+    if (announcementImageCheck) {
+      // Announcement images are publicly accessible
+      const fileResult = await readFile(filename);
+
+      if (!fileResult.success || !fileResult.data) {
+        return NextResponse.json(
+          { error: fileResult.error || 'Failed to read file' },
+          { status: 500 }
+        );
+      }
+
+      const contentType = announcementImageCheck.mimeType || 'image/jpeg';
+      const headers = new Headers({
+        'Content-Type': contentType,
+        'Cache-Control': 'public, max-age=3600',
+        'Content-Disposition': 'inline'
+      });
+
+      return new NextResponse(fileResult.data as any, { headers });
+    }
+
+    // For all other files, require authentication
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json(
@@ -16,10 +47,63 @@ export async function GET(
       );
     }
 
-    const { filename } = await params;
+    // Check if file is a knowledge article attachment
+    const knowledgeAttachment = await prisma.knowledgeAttachment.findFirst({
+      where: {
+        filename: filename
+      }
+    });
 
-    // Security check: Verify user has access to this file
-    // Check if file is attached to a ticket the user can access
+    if (knowledgeAttachment) {
+      // For knowledge attachments, allow access if user is authenticated
+      const fileResult = await readFile(filename);
+
+      if (!fileResult.success || !fileResult.data) {
+        return NextResponse.json(
+          { error: fileResult.error || 'Failed to read file' },
+          { status: 500 }
+        );
+      }
+
+      const contentType = knowledgeAttachment.mimeType || 'application/octet-stream';
+      const headers = new Headers({
+        'Content-Type': contentType,
+        'Cache-Control': 'public, max-age=3600',
+        'Content-Disposition': `inline; filename="${knowledgeAttachment.originalName || filename}"`
+      });
+
+      return new NextResponse(fileResult.data as any, { headers });
+    }
+
+    // Check if file is a comment attachment
+    const commentAttachment = await prisma.commentAttachment.findFirst({
+      where: {
+        filename: filename
+      }
+    });
+
+    if (commentAttachment) {
+      // For comment attachments, allow access if user is authenticated
+      const fileResult = await readFile(filename);
+
+      if (!fileResult.success || !fileResult.data) {
+        return NextResponse.json(
+          { error: fileResult.error || 'Failed to read file' },
+          { status: 500 }
+        );
+      }
+
+      const contentType = commentAttachment.mimeType || 'application/octet-stream';
+      const headers = new Headers({
+        'Content-Type': contentType,
+        'Cache-Control': 'private, no-cache',
+        'Content-Disposition': `inline; filename="${commentAttachment.originalName || filename}"`
+      });
+
+      return new NextResponse(fileResult.data as any, { headers });
+    }
+
+    // Finally, check if file is attached to a ticket
     const attachment = await prisma.ticketAttachment.findFirst({
       where: {
         path: filename // In our system, 'path' stores the secure filename
@@ -107,7 +191,7 @@ export async function GET(
     const headers = new Headers({
       'Content-Type': contentType,
       'Content-Length': fileResult.data.length.toString(),
-      'Content-Disposition': `attachment; filename="${attachment.originalName || attachment.filename}"`,
+      'Content-Disposition': `inline; filename="${attachment.originalName || attachment.filename}"`,
       'X-Content-Type-Options': 'nosniff',
       'Cache-Control': 'private, no-cache, no-store, must-revalidate',
       'Expires': '0',

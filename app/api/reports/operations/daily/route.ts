@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
         OR: [
           {
             service: {
-              slaResponseHours: { gt: 0 }
+              responseHours: { gt: 0 }
             },
             firstResponseAt: null,
             createdAt: {
@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
           },
           {
             service: {
-              slaResolutionHours: { gt: 0 }
+              resolutionHours: { gt: 0 }
             },
             resolvedAt: null,
             createdAt: {
@@ -119,8 +119,8 @@ export async function GET(request: NextRequest) {
         service: {
           select: {
             name: true,
-            slaResponseHours: true,
-            slaResolutionHours: true
+            responseHours: true,
+            resolutionHours: true
           }
         }
       },
@@ -131,7 +131,7 @@ export async function GET(request: NextRequest) {
     // Technician workload
     const technicianWorkload = await prisma.user.findMany({
       where: {
-        role: { in: ['TECHNICIAN', 'SECURITY_ANALYST'] },
+        role: 'TECHNICIAN',
         isActive: true
       },
       select: {
@@ -153,7 +153,7 @@ export async function GET(request: NextRequest) {
       email: tech.email,
       openTickets: tech.assignedTickets.filter(t => t.status === 'OPEN').length,
       inProgressTickets: tech.assignedTickets.filter(t => t.status === 'IN_PROGRESS').length,
-      urgentTickets: tech.assignedTickets.filter(t => t.priority === 'CRITICAL').length,
+      urgentTickets: tech.assignedTickets.filter(t => t.priority === 'CRITICAL' || t.priority === 'EMERGENCY').length,
       highTickets: tech.assignedTickets.filter(t => t.priority === 'HIGH').length,
       totalActive: tech.assignedTickets.length
     })).sort((a, b) => b.totalActive - a.totalActive);
@@ -161,7 +161,7 @@ export async function GET(request: NextRequest) {
     // Critical incidents
     const criticalIncidents = await prisma.ticket.findMany({
       where: {
-        priority: 'CRITICAL',
+        priority: { in: ['CRITICAL', 'EMERGENCY'] },
         status: { in: ['OPEN', 'IN_PROGRESS'] }
       },
       include: {
@@ -270,7 +270,7 @@ export async function GET(request: NextRequest) {
         code: branch.code,
         totalTickets: tickets.length,
         openTickets: tickets.filter(t => t.status === 'OPEN').length,
-        urgentTickets: tickets.filter(t => t.priority === 'CRITICAL').length
+        urgentTickets: tickets.filter(t => t.priority === 'CRITICAL' || t.priority === 'EMERGENCY').length
       };
     }).filter(b => b.totalTickets > 0)
       .sort((a, b) => b.totalTickets - a.totalTickets);
@@ -282,7 +282,7 @@ export async function GET(request: NextRequest) {
       changePercent: yesterdaysCount > 0 
         ? Math.round(((todaysTickets.length - yesterdaysCount) / yesterdaysCount) * 100)
         : 0,
-      openUrgent: openTickets.filter(t => t.priority === 'CRITICAL').length,
+      openUrgent: openTickets.filter(t => t.priority === 'CRITICAL' || t.priority === 'EMERGENCY').length,
       openHigh: openTickets.filter(t => t.priority === 'HIGH').length,
       overdueCount: overdueTickets.length,
       criticalCount: criticalIncidents.length,

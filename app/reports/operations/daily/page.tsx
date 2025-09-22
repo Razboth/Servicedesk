@@ -64,7 +64,8 @@ const STATUS_COLORS: Record<string, string> = {
 }
 
 const PRIORITY_COLORS: Record<string, string> = {
-  CRITICAL: '#dc2626',
+  EMERGENCY: '#dc2626',
+  CRITICAL: '#ef4444',
   HIGH: '#ea580c',
   MEDIUM: '#eab308',
   LOW: '#22c55e'

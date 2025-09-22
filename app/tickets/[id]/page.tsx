@@ -164,6 +164,7 @@ export default function TicketDetailPage() {
   const [deleteCommentId, setDeleteCommentId] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<{ url: string; name: string } | null>(null);
   const [pdfPreview, setPdfPreview] = useState<{ url: string; name: string } | null>(null);
+  const [commentAttachmentPreview, setCommentAttachmentPreview] = useState<any | null>(null);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState('');
   const [uploadProgress, setUploadProgress] = useState<number>(0);
@@ -1266,7 +1267,26 @@ export default function TicketDetailPage() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => {
-                                  setPreviewAttachment(attachment);
+                                  // Prepare all ticket attachments
+                                  const allTicketAttachments = ticket.attachments.map((att: any) => ({
+                                    id: att.id,
+                                    filename: att.filename,
+                                    originalName: att.originalName,
+                                    mimeType: att.mimeType,
+                                    size: att.size,
+                                    ticketId: ticket.id
+                                  }));
+
+                                  // Find current attachment index
+                                  const currentAttachmentIndex = ticket.attachments.findIndex(
+                                    (att: any) => att.id === attachment.id
+                                  );
+
+                                  setPreviewAttachment({
+                                    current: attachment,
+                                    attachments: allTicketAttachments,
+                                    currentIndex: currentAttachmentIndex >= 0 ? currentAttachmentIndex : 0
+                                  });
                                   setShowPreview(true);
                                 }}
                                 className="flex items-center gap-2"
@@ -1501,11 +1521,35 @@ export default function TicketDetailPage() {
                                               variant="ghost"
                                               size="sm"
                                               onClick={() => {
-                                                if (isImage) {
-                                                  setImagePreview({ url: downloadUrl, name: attachment.originalName });
-                                                } else if (isPdf) {
-                                                  setPdfPreview({ url: downloadUrl, name: attachment.originalName });
-                                                }
+                                                // Prepare all attachments from this comment
+                                                const allCommentAttachments = comment.attachments.map((att: any) => ({
+                                                  id: att.id,
+                                                  filename: att.filename,
+                                                  originalName: att.originalName,
+                                                  mimeType: att.mimeType,
+                                                  size: att.size,
+                                                  ticketId: ticket.id,
+                                                  commentId: comment.id
+                                                }));
+
+                                                // Find current attachment index
+                                                const currentAttachmentIndex = comment.attachments.findIndex(
+                                                  (att: any) => att.id === attachment.id
+                                                );
+
+                                                setCommentAttachmentPreview({
+                                                  current: {
+                                                    id: attachment.id,
+                                                    filename: attachment.filename,
+                                                    originalName: attachment.originalName,
+                                                    mimeType: attachment.mimeType,
+                                                    size: attachment.size,
+                                                    ticketId: ticket.id,
+                                                    commentId: comment.id
+                                                  },
+                                                  attachments: allCommentAttachments,
+                                                  currentIndex: currentAttachmentIndex >= 0 ? currentAttachmentIndex : 0
+                                                });
                                               }}
                                               className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-800"
                                               title="Preview"
@@ -2079,7 +2123,18 @@ export default function TicketDetailPage() {
             setShowPreview(false);
             setPreviewAttachment(null);
           }}
-          attachment={previewAttachment}
+          attachment={previewAttachment.current || previewAttachment}
+          attachments={previewAttachment.attachments}
+          currentIndex={previewAttachment.currentIndex}
+          onNavigate={(index) => {
+            if (previewAttachment.attachments) {
+              setPreviewAttachment({
+                ...previewAttachment,
+                currentIndex: index,
+                current: previewAttachment.attachments[index]
+              });
+            }
+          }}
           ticketTitle={ticket?.title}
         />
       )}
@@ -2188,6 +2243,30 @@ export default function TicketDetailPage() {
         ticketNumber={ticket?.ticketNumber || ''}
         onAssign={handleVendorAssignment}
       />
+
+      {/* Comment Attachment Preview Modal */}
+      {commentAttachmentPreview && (
+        <AttachmentPreview
+          isOpen={!!commentAttachmentPreview}
+          onClose={() => setCommentAttachmentPreview(null)}
+          attachment={commentAttachmentPreview.current || {
+            ...commentAttachmentPreview,
+            ticketId: ticket?.id
+          }}
+          attachments={commentAttachmentPreview.attachments}
+          currentIndex={commentAttachmentPreview.currentIndex}
+          onNavigate={(index) => {
+            if (commentAttachmentPreview.attachments) {
+              setCommentAttachmentPreview({
+                ...commentAttachmentPreview,
+                currentIndex: index,
+                current: commentAttachmentPreview.attachments[index]
+              });
+            }
+          }}
+          ticketTitle={ticket?.title}
+        />
+      )}
     </div>
   );
 }
