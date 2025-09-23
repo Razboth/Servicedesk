@@ -241,7 +241,11 @@ export function RichTextEditor({
             uploadImageToServer(file).then((url) => {
               setUploading(false);
               if (url) {
-                editor?.chain().focus().setImage({ src: url }).run();
+                // Use view to insert image at current position
+                const { schema } = view.state;
+                const node = schema.nodes.image.create({ src: url });
+                const transaction = view.state.tr.replaceSelectionWith(node);
+                view.dispatch(transaction);
               }
             });
             return true;
