@@ -65,6 +65,7 @@ interface Service {
   name: string;
   description: string;
   helpText?: string;
+  defaultTitle?: string;
   categoryId: string;
   subcategoryId?: string;
   itemId?: string;
@@ -95,6 +96,7 @@ interface NewService {
   name: string;
   description: string;
   helpText: string;
+  defaultTitle?: string;
   categoryId: string;
   subcategoryId: string;
   itemId: string;
@@ -194,6 +196,7 @@ export default function ServicesPage() {
     name: '',
     description: '',
     helpText: '',
+    defaultTitle: '',
     categoryId: '',
     subcategoryId: '',
     itemId: '',
@@ -520,6 +523,7 @@ export default function ServicesPage() {
       name: service.name || '',
       description: service.description || '',
       helpText: service.helpText || '',
+      defaultTitle: service.defaultTitle || '',
       categoryId: service.categoryId || undefined,
       subcategoryId: service.subcategoryId || undefined,
       itemId: service.itemId || undefined,
@@ -912,6 +916,16 @@ export default function ServicesPage() {
               />
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="defaultTitle">Default Title (Optional)</Label>
+              <Input
+                id="defaultTitle"
+                value={newService.defaultTitle || ''}
+                onChange={(e) => setNewService(prev => ({ ...prev, defaultTitle: e.target.value }))}
+                placeholder="Enter default title for tickets (optional)"
+              />
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="supportGroupId">Support Group</Label>
@@ -1080,6 +1094,16 @@ export default function ServicesPage() {
                 value={editService.helpText || ''}
                 onChange={(e) => setEditService(prev => ({ ...prev, helpText: e.target.value }))}
                 rows={2}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-defaultTitle">Default Title</Label>
+              <Input
+                id="edit-defaultTitle"
+                value={editService.defaultTitle || ''}
+                onChange={(e) => setEditService(prev => ({ ...prev, defaultTitle: e.target.value }))}
+                placeholder="Enter default title for tickets (optional)"
               />
             </div>
 
