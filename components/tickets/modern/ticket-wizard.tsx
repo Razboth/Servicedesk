@@ -17,17 +17,18 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { LockedInput } from '@/components/ui/locked-input'
 import { 
   X, 
-  ChevronLeft, 
+  ChevronLeft,
   ChevronRight,
   ChevronDown,
-  ChevronUp, 
-  Check, 
+  ChevronUp,
+  Check,
   Search,
   Star,
   StarOff,
   Eye,
   Clock,
   AlertTriangle,
+  AlertCircle,
   FileText,
   Building2,
   Tag,
@@ -267,6 +268,10 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
   const [tierCategories, setTierCategories] = useState<any[]>([])
   const [tierSubcategories, setTierSubcategories] = useState<any[]>([])
   const [tierItems, setTierItems] = useState<any[]>([])
+
+  // Validation state
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+  const [showValidationWarnings, setShowValidationWarnings] = useState(false)
   
   // UI state
   const [searchTerm, setSearchTerm] = useState('')
@@ -955,15 +960,71 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
     }
   }
 
+  // Validation function for current step
+  const validateCurrentStep = () => {
+    const errors: Record<string, string> = {}
+
+    if (currentStep === 3) {
+      // Validate required fields on details step
+      if (!formData.title || formData.title.trim() === '') {
+        errors.title = 'Title is required'
+      }
+      if (!formData.description || formData.description.trim() === '') {
+        errors.description = 'Description is required'
+      }
+
+      // Validate custom fields
+      if (selectedService?.fields) {
+        for (const field of selectedService.fields) {
+          if (field.isRequired && field.isUserVisible) {
+            const fieldValue = formData.fieldValues[field.name]
+            if (!fieldValue || (typeof fieldValue === 'string' && fieldValue.trim() === '')) {
+              errors[field.name] = `${field.label || field.name} is required`
+            }
+          }
+        }
+      }
+
+      // Validate template fields
+      if (selectedService?.fieldTemplates) {
+        for (const template of selectedService.fieldTemplates) {
+          if (template.fieldTemplate.isRequired && template.isVisible) {
+            const fieldValue = formData.fieldValues[template.fieldTemplate.name]
+            if (!fieldValue || (typeof fieldValue === 'string' && fieldValue.trim() === '')) {
+              errors[template.fieldTemplate.name] = `${template.fieldTemplate.label || template.fieldTemplate.name} is required`
+            }
+          }
+        }
+      }
+    }
+
+    return errors
+  }
+
   const handleNextStep = () => {
+    if (currentStep === 3) {
+      // Validate before moving to review
+      const errors = validateCurrentStep()
+      setValidationErrors(errors)
+
+      if (Object.keys(errors).length > 0) {
+        setShowValidationWarnings(true)
+        toast.error('Please fill in all required fields before proceeding')
+        return
+      }
+    }
+
     if (currentStep < steps.length) {
       setCurrentStep(currentStep + 1)
+      setShowValidationWarnings(false)
     }
   }
 
   const handlePrevStep = () => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1)
+      setShowValidationWarnings(false)
+      setValidationErrors({})
     }
   }
 
@@ -1767,43 +1828,107 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                   </p>
                 </div>
 
+                {/* Validation Warning Alert */}
+                {showValidationWarnings && Object.keys(validationErrors).length > 0 && (
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                    <div className="flex">
+                      <div className="flex-shrink-0">
+                        <AlertTriangle className="h-5 w-5 text-red-400" />
+                      </div>
+                      <div className="ml-3">
+                        <h3 className="text-sm font-medium text-red-800 dark:text-red-200">
+                          Required fields are missing
+                        </h3>
+                        <p className="mt-1 text-sm text-red-700 dark:text-red-300">
+                          Please fill in all required fields marked with a red asterisk (*) before proceeding.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-6">
                   {/* Basic Information */}
-                  <Card className="border-emerald-200 dark:border-emerald-800">
+                  <Card className={cn(
+                    "border-emerald-200 dark:border-emerald-800",
+                    showValidationWarnings && (validationErrors.title || validationErrors.description) && "border-red-500"
+                  )}>
                     <CardHeader>
-                      <CardTitle className="text-base">Basic Information</CardTitle>
+                      <CardTitle className="text-base flex items-center justify-between">
+                        <span>Basic Information</span>
+                        {showValidationWarnings && (validationErrors.title || validationErrors.description) && (
+                          <span className="text-sm text-red-500 flex items-center gap-1">
+                            <AlertTriangle className="h-4 w-4" />
+                            Required fields missing
+                          </span>
+                        )}
+                      </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <LockedInput
-                        label="Title"
-                        value={formData.title}
-                        onChange={(value) => setFormData({ ...formData, title: value })}
-                        placeholder="Brief description of your issue or request"
-                        isLocked={lockedFields.title?.isLocked}
-                        source={lockedFields.title?.source}
-                        canOverride={lockedFields.title?.canOverride}
-                        onUnlock={() => setLockedFields({ 
-                          ...lockedFields, 
-                          title: { ...lockedFields.title!, isLocked: false } 
-                        })}
-                        required={true}
-                      />
+                      <div>
+                        <LockedInput
+                          label="Title"
+                          value={formData.title}
+                          onChange={(value) => {
+                            setFormData({ ...formData, title: value })
+                            if (showValidationWarnings && value.trim()) {
+                              setValidationErrors(prev => {
+                                const newErrors = { ...prev }
+                                delete newErrors.title
+                                return newErrors
+                              })
+                            }
+                          }}
+                          placeholder="Brief description of your issue or request"
+                          isLocked={lockedFields.title?.isLocked}
+                          source={lockedFields.title?.source}
+                          canOverride={lockedFields.title?.canOverride}
+                          onUnlock={() => setLockedFields({
+                            ...lockedFields,
+                            title: { ...lockedFields.title!, isLocked: false }
+                          })}
+                          required={true}
+                        />
+                        {showValidationWarnings && validationErrors.title && (
+                          <p className="text-sm text-red-500 mt-1 flex items-center gap-1">
+                            <AlertCircle className="h-3 w-3" />
+                            {validationErrors.title}
+                          </p>
+                        )}
+                      </div>
 
-                      <LockedInput
-                        type="textarea"
-                        label="Description"
-                        value={formData.description}
-                        onChange={(value) => setFormData({ ...formData, description: value })}
-                        placeholder="Provide detailed information about your request..."
-                        isLocked={lockedFields.description?.isLocked}
-                        source={lockedFields.description?.source}
-                        canOverride={lockedFields.description?.canOverride}
-                        onUnlock={() => setLockedFields({ 
-                          ...lockedFields, 
-                          description: { ...lockedFields.description!, isLocked: false } 
-                        })}
-                        required={true}
-                      />
+                      <div>
+                        <LockedInput
+                          type="textarea"
+                          label="Description"
+                          value={formData.description}
+                          onChange={(value) => {
+                            setFormData({ ...formData, description: value })
+                            if (showValidationWarnings && value.trim()) {
+                              setValidationErrors(prev => {
+                                const newErrors = { ...prev }
+                                delete newErrors.description
+                                return newErrors
+                              })
+                            }
+                          }}
+                          placeholder="Provide detailed information about your request..."
+                          isLocked={lockedFields.description?.isLocked}
+                          source={lockedFields.description?.source}
+                          canOverride={lockedFields.description?.canOverride}
+                          onUnlock={() => setLockedFields({
+                            ...lockedFields,
+                            description: { ...lockedFields.description!, isLocked: false }
+                          })}
+                          required={true}
+                        />
+                        {showValidationWarnings && validationErrors.description && (
+                          <p className="text-sm text-red-500 mt-1 flex items-center gap-1">
+                            <AlertCircle className="h-3 w-3" />
+                            {validationErrors.description}
+                          </p>
+                        )}
+                      </div>
                     </CardContent>
                   </Card>
 
@@ -1826,15 +1951,27 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                               {field.type === 'TEXT' && (
                                 <Input
                                   value={formData.fieldValues[field.name] || ''}
-                                  onChange={(e) => setFormData({
-                                    ...formData,
-                                    fieldValues: {
-                                      ...formData.fieldValues,
-                                      [field.name]: e.target.value
+                                  onChange={(e) => {
+                                    setFormData({
+                                      ...formData,
+                                      fieldValues: {
+                                        ...formData.fieldValues,
+                                        [field.name]: e.target.value
+                                      }
+                                    })
+                                    if (showValidationWarnings && e.target.value.trim()) {
+                                      setValidationErrors(prev => {
+                                        const newErrors = { ...prev }
+                                        delete newErrors[field.name]
+                                        return newErrors
+                                      })
                                     }
-                                  })}
+                                  }}
                                   placeholder={field.placeholder || ''}
-                                  className="mt-2"
+                                  className={cn(
+                                    "mt-2",
+                                    showValidationWarnings && validationErrors[field.name] && "border-red-500"
+                                  )}
                                 />
                               )}
                               {field.type === 'TEXTAREA' && (
@@ -1946,6 +2083,12 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                               )}
                               {field.helpText && (
                                 <p className="text-sm text-gray-500 mt-1">{field.helpText}</p>
+                              )}
+                              {showValidationWarnings && validationErrors[field.name] && (
+                                <p className="text-sm text-red-500 mt-1 flex items-center gap-1">
+                                  <AlertCircle className="h-3 w-3" />
+                                  {validationErrors[field.name]}
+                                </p>
                               )}
                             </div>
                           ))}
