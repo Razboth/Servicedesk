@@ -82,6 +82,14 @@ export interface OmnichannelTicketRequest {
       claimReason?: string;
       referenceNumber?: string;
 
+      // Transaction claim fields for KLAIM-OMNI
+      namaNasabah?: string;
+      mediaTransaksi?: 'ATM' | 'QRIS' | 'DEBIT' | 'TOUCH' | 'SMS';
+      jenisTransaksi?: 'PEMBELIAN' | 'PEMBAYARAN' | 'TRANSFER';
+      nominal?: number;
+      nomorRekening?: string;
+      nomorKartu?: string;
+
       // Technical support
       errorCode?: string;
       deviceType?: string;

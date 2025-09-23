@@ -300,3 +300,109 @@ export function calculatePriority(
 
   return priority;
 }
+
+/**
+ * Map media and transaction type to the correct Transaction Claims subcategory
+ */
+export async function mapClaimToSubcategory(
+  mediaTransaksi: string,
+  jenisTransaksi?: string
+): Promise<{ categoryId: string | null; subcategoryId: string | null; subcategoryName: string }> {
+  try {
+    // First find the Transaction Claims category
+    const transactionClaimCategory = await prisma.serviceCategory.findFirst({
+      where: {
+        name: {
+          contains: 'Transaction Claim',
+          mode: 'insensitive'
+        }
+      }
+    });
+
+    if (!transactionClaimCategory) {
+      console.error('Transaction Claims category not found');
+      return { categoryId: null, subcategoryId: null, subcategoryName: 'Unknown' };
+    }
+
+    // Map media + transaction type to subcategory name
+    let subcategorySearchName = '';
+
+    switch (mediaTransaksi) {
+      case 'ATM':
+        if (jenisTransaksi === 'PEMBELIAN') {
+          subcategorySearchName = 'ATM - Prepaid'; // or 'ATM - Prepaid Services'
+        } else if (jenisTransaksi === 'PEMBAYARAN') {
+          subcategorySearchName = 'ATM - Bill'; // or 'ATM - Bill Payments'
+        } else if (jenisTransaksi === 'TRANSFER') {
+          subcategorySearchName = 'ATM - Inter-bank';
+        }
+        break;
+
+      case 'QRIS':
+        subcategorySearchName = 'BSGQRIS';
+        break;
+
+      case 'DEBIT':
+        subcategorySearchName = 'BSGDebit'; // or 'BSGDebit/EDC'
+        break;
+
+      case 'TOUCH':
+        if (jenisTransaksi === 'PEMBELIAN') {
+          subcategorySearchName = 'BSGTouch - Prepaid';
+        } else if (jenisTransaksi === 'PEMBAYARAN') {
+          subcategorySearchName = 'BSGTouch - Payment';
+        } else if (jenisTransaksi === 'TRANSFER') {
+          subcategorySearchName = 'BSGTouch - Transfer';
+        }
+        break;
+
+      case 'SMS':
+        if (jenisTransaksi === 'PEMBELIAN') {
+          subcategorySearchName = 'SMS Banking - Prepaid';
+        } else if (jenisTransaksi === 'PEMBAYARAN') {
+          subcategorySearchName = 'SMS Banking - Payment';
+        } else if (jenisTransaksi === 'TRANSFER') {
+          subcategorySearchName = 'SMS Banking - Transfer';
+        }
+        break;
+
+      default:
+        console.warn(`Unknown media transaksi: ${mediaTransaksi}`);
+        subcategorySearchName = 'General Transaction Claim';
+    }
+
+    // Find the subcategory
+    if (subcategorySearchName) {
+      const subcategory = await prisma.serviceSubcategory.findFirst({
+        where: {
+          categoryId: transactionClaimCategory.id,
+          name: {
+            contains: subcategorySearchName,
+            mode: 'insensitive'
+          }
+        }
+      });
+
+      if (subcategory) {
+        return {
+          categoryId: transactionClaimCategory.id,
+          subcategoryId: subcategory.id,
+          subcategoryName: subcategory.name
+        };
+      } else {
+        console.warn(`Subcategory not found for: ${subcategorySearchName}`);
+      }
+    }
+
+    // Return defaults if not found
+    return {
+      categoryId: transactionClaimCategory.id,
+      subcategoryId: null,
+      subcategoryName: subcategorySearchName || 'General Transaction Claim'
+    };
+
+  } catch (error) {
+    console.error('Error mapping claim to subcategory:', error);
+    return { categoryId: null, subcategoryId: null, subcategoryName: 'Unknown' };
+  }
+}

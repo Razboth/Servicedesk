@@ -51,19 +51,55 @@ const baseTicketSchema = z.object({
 const validationRules: Record<OmnichannelServiceType, ValidationRule> = {
   [OmnichannelServiceType.CLAIM]: {
     serviceType: OmnichannelServiceType.CLAIM,
-    requiredFields: ['customer.name', 'customer.email', 'ticket.metadata.claimType', 'ticket.metadata.claimAmount'],
-    optionalFields: ['customer.phone', 'ticket.metadata.claimDate', 'ticket.metadata.claimReason', 'ticket.metadata.referenceNumber'],
+    requiredFields: [
+      'customer.name',
+      'ticket.metadata.mediaTransaksi',
+      'ticket.metadata.nominal'
+    ],
+    optionalFields: [
+      'customer.email',
+      'customer.phone',
+      'ticket.metadata.jenisTransaksi',
+      'ticket.metadata.claimDate',
+      'ticket.metadata.claimReason',
+      'ticket.metadata.referenceNumber',
+      'ticket.metadata.nomorRekening',
+      'ticket.metadata.nomorKartu'
+    ],
     customValidation: (data) => {
       const errors: string[] = [];
-      if (!data.ticket.metadata?.claimType) {
-        errors.push('Claim type is required');
+
+      // Validate media transaksi
+      if (!data.ticket.metadata?.mediaTransaksi) {
+        errors.push('Media transaksi is required');
+      } else if (!['ATM', 'QRIS', 'DEBIT', 'TOUCH', 'SMS'].includes(data.ticket.metadata.mediaTransaksi)) {
+        errors.push('Invalid media transaksi. Must be: ATM, QRIS, DEBIT, TOUCH, or SMS');
       }
-      if (!data.ticket.metadata?.claimAmount || data.ticket.metadata.claimAmount <= 0) {
-        errors.push('Valid claim amount is required');
+
+      // Validate jenis transaksi (required for ATM, TOUCH, SMS only)
+      const mediaType = data.ticket.metadata?.mediaTransaksi;
+      const needsJenisTransaksi = ['ATM', 'TOUCH', 'SMS'].includes(mediaType);
+
+      if (needsJenisTransaksi && !data.ticket.metadata?.jenisTransaksi) {
+        errors.push(`Jenis transaksi is required for ${mediaType}`);
+      } else if (data.ticket.metadata?.jenisTransaksi &&
+                 !['PEMBELIAN', 'PEMBAYARAN', 'TRANSFER'].includes(data.ticket.metadata.jenisTransaksi)) {
+        errors.push('Invalid jenis transaksi. Must be: PEMBELIAN, PEMBAYARAN, or TRANSFER');
       }
-      if (data.ticket.metadata?.claimAmount && data.ticket.metadata.claimAmount > 1000000000) {
-        errors.push('Claim amount exceeds maximum limit');
+
+      // Validate nominal
+      if (!data.ticket.metadata?.nominal || data.ticket.metadata.nominal <= 0) {
+        errors.push('Valid nominal amount is required');
       }
+      if (data.ticket.metadata?.nominal && data.ticket.metadata.nominal > 1000000000) {
+        errors.push('Nominal amount exceeds maximum limit');
+      }
+
+      // Set namaNasabah from customer name if not provided
+      if (!data.ticket.metadata?.namaNasabah && data.customer.name) {
+        data.ticket.metadata = { ...data.ticket.metadata, namaNasabah: data.customer.name };
+      }
+
       return { valid: errors.length === 0, errors };
     }
   },

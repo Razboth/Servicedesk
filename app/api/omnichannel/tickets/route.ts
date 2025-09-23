@@ -246,6 +246,166 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Create KLAIM-OMNI ticket if this is a claim
+    if (validatedRequest.serviceType === 'CLAIM' && validatedRequest.ticket.metadata) {
+      try {
+        const { mapClaimToSubcategory } = await import('@/lib/omnichannel/service-mapper');
+
+        // Get the correct subcategory
+        const { categoryId, subcategoryId, subcategoryName } = await mapClaimToSubcategory(
+          validatedRequest.ticket.metadata.mediaTransaksi || '',
+          validatedRequest.ticket.metadata.jenisTransaksi
+        );
+
+        // Generate ticket number for KLAIM-OMNI
+        const klaimTicketCount = await prisma.ticket.count({
+          where: {
+            createdAt: {
+              gte: yearStart,
+              lt: yearEnd
+            }
+          }
+        });
+        const klaimTicketNumber = String(klaimTicketCount + 1);
+
+        // Create KLAIM-OMNI title
+        const mediaText = validatedRequest.ticket.metadata.mediaTransaksi || 'UNKNOWN';
+        const jenisText = validatedRequest.ticket.metadata.jenisTransaksi || '';
+        const klaimTitle = `KLAIM - OMNI - ${mediaText}${jenisText ? ' - ' + jenisText : ''}`;
+
+        // Build KLAIM-OMNI description
+        const klaimDescription = `
+=== KLAIM OMNI TICKET ===
+Original Ticket: #${ticket.ticketNumber}
+
+=== DETAIL KLAIM ===
+Nama Nasabah: ${validatedRequest.ticket.metadata.namaNasabah || validatedRequest.customer.name}
+Media Transaksi: ${mediaText}
+Jenis Transaksi: ${jenisText || 'N/A'}
+Nominal: Rp ${(validatedRequest.ticket.metadata.nominal || 0).toLocaleString('id-ID')}
+Nomor Rekening: ${validatedRequest.ticket.metadata.nomorRekening || 'Tidak tersedia'}
+Nomor Kartu: ${validatedRequest.ticket.metadata.nomorKartu || 'Tidak tersedia'}
+
+=== INFORMASI TAMBAHAN ===
+Tanggal Klaim: ${validatedRequest.ticket.metadata.claimDate || new Date().toISOString()}
+Alasan Klaim: ${validatedRequest.ticket.metadata.claimReason || 'Lihat deskripsi ticket utama'}
+
+=== DESKRIPSI ORIGINAL ===
+${validatedRequest.ticket.description}
+        `.trim();
+
+        // Find a service in the Transaction Claims category
+        let klaimService = null;
+        if (categoryId && subcategoryId) {
+          klaimService = await prisma.service.findFirst({
+            where: {
+              tier1CategoryId: categoryId,
+              tier2SubcategoryId: subcategoryId,
+              isActive: true
+            }
+          });
+        }
+
+        // If no specific service found, try to find any Transaction Claims service
+        if (!klaimService && categoryId) {
+          klaimService = await prisma.service.findFirst({
+            where: {
+              tier1CategoryId: categoryId,
+              isActive: true
+            }
+          });
+        }
+
+        // Create the KLAIM-OMNI ticket
+        const klaimTicket = await prisma.ticket.create({
+          data: {
+            ticketNumber: klaimTicketNumber,
+            title: klaimTitle,
+            description: klaimDescription,
+            serviceId: klaimService?.id || ticket.serviceId, // Fallback to original service
+            categoryId: categoryId || undefined,
+            subcategoryId: subcategoryId || undefined,
+            priority: ticket.priority,
+            status: 'OPEN',
+            createdById: user.id,
+            branchId: branch?.id || user.branchId!,
+            category: 'SERVICE_REQUEST',
+            isConfidential: false,
+
+            // Link to original ticket via metadata
+            metadata: {
+              type: 'KLAIM_OMNI',
+              originalTicketId: ticket.id,
+              originalTicketNumber: ticket.ticketNumber,
+              mediaTransaksi: mediaText,
+              jenisTransaksi: jenisText,
+              nominal: validatedRequest.ticket.metadata.nominal,
+              namaNasabah: validatedRequest.ticket.metadata.namaNasabah || validatedRequest.customer.name,
+              nomorRekening: validatedRequest.ticket.metadata.nomorRekening,
+              nomorKartu: validatedRequest.ticket.metadata.nomorKartu,
+              subcategoryName: subcategoryName
+            },
+
+            // Copy omnichannel tracking info
+            sourceChannel: validatedRequest.channel,
+            channelReferenceId: `KLAIM-${validatedRequest.channelReferenceId}`,
+            customerName: validatedRequest.customer.name,
+            customerEmail: validatedRequest.customer.email,
+            customerPhone: validatedRequest.customer.phone,
+            customerIdentifier: validatedRequest.customer.identifier
+          }
+        });
+
+        // Create SLA tracking for KLAIM-OMNI ticket
+        const klaimSlaTemplate = await prisma.sLATemplate.findUnique({
+          where: {
+            serviceId: klaimService?.id || ticket.serviceId
+          }
+        });
+
+        if (!klaimSlaTemplate) {
+          await prisma.sLATemplate.create({
+            data: {
+              serviceId: klaimService?.id || ticket.serviceId,
+              responseHours: 24,
+              resolutionHours: 72, // 3 days for claims
+              escalationHours: 48,
+              businessHoursOnly: true,
+              isActive: true
+            }
+          });
+        }
+
+        await prisma.sLATracking.create({
+          data: {
+            ticketId: klaimTicket.id,
+            slaTemplateId: klaimSlaTemplate?.id || slaTemplate.id,
+            responseDeadline: new Date(Date.now() + 24 * 60 * 60 * 1000),
+            resolutionDeadline: new Date(Date.now() + 72 * 60 * 60 * 1000),
+            escalationDeadline: new Date(Date.now() + 48 * 60 * 60 * 1000),
+            isResponseBreached: false,
+            isResolutionBreached: false
+          }
+        });
+
+        // Add a comment linking the tickets
+        await prisma.ticketComment.create({
+          data: {
+            ticketId: ticket.id,
+            userId: user.id,
+            content: `KLAIM-OMNI ticket created: #${klaimTicket.ticketNumber} for transaction claims processing`,
+            isInternal: true
+          }
+        });
+
+        console.log(`Created KLAIM-OMNI ticket #${klaimTicket.ticketNumber} for original ticket #${ticket.ticketNumber}`);
+
+      } catch (error) {
+        console.error('Failed to create KLAIM-OMNI ticket:', error);
+        // Don't fail the main request if KLAIM-OMNI creation fails
+      }
+    }
+
     // Update omnichannel log
     await prisma.omnichannelLog.update({
       where: { id: omnichannelLog.id },

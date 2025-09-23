@@ -146,6 +146,9 @@ function buildDescription(request: OmnichannelTicketRequest): string {
     if (metadata.claimAmount) {
       parts.push(`Claim Amount: ${formatCurrency(metadata.claimAmount, metadata.claimCurrency)}`);
     }
+    if (metadata.nominal) {
+      parts.push(`Nominal: ${formatCurrency(metadata.nominal, 'IDR')}`);
+    }
     if (metadata.claimType) parts.push(`Claim Type: ${metadata.claimType}`);
     if (metadata.claimDate) parts.push(`Claim Date: ${metadata.claimDate}`);
     if (metadata.claimReason) parts.push(`Claim Reason: ${metadata.claimReason}`);
@@ -160,9 +163,16 @@ function buildDescription(request: OmnichannelTicketRequest): string {
     if (metadata.applicationVersion) parts.push(`App Version: ${metadata.applicationVersion}`);
     if (metadata.browser) parts.push(`Browser: ${metadata.browser}`);
 
+    // Transaction claim specific fields
+    if (metadata.namaNasabah) parts.push(`Nama Nasabah: ${metadata.namaNasabah}`);
+    if (metadata.mediaTransaksi) parts.push(`Media Transaksi: ${metadata.mediaTransaksi}`);
+    if (metadata.jenisTransaksi) parts.push(`Jenis Transaksi: ${metadata.jenisTransaksi}`);
+    if (metadata.nomorRekening) parts.push(`Nomor Rekening: ${metadata.nomorRekening}`);
+    if (metadata.nomorKartu) parts.push(`Nomor Kartu: ${metadata.nomorKartu}`);
+
     // ATM/Card information
     if (metadata.atmId) parts.push(`ATM ID: ${metadata.atmId}`);
-    if (metadata.cardNumber) parts.push(`Card Number: ${metadata.cardNumber}`);
+    if (metadata.cardNumber && !metadata.nomorKartu) parts.push(`Card Number: ${metadata.cardNumber}`);
 
     // Custom fields
     if (metadata.customFields) {
