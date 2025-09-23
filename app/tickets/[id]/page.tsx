@@ -329,7 +329,7 @@ export default function TicketDetailPage() {
   const handleClaimTicket = async () => {
     try {
       setIsUpdatingStatus(true);
-      const response = await fetch(`/api/tickets/${ticketId}/claim`, {
+      const response = await fetch(`/api/tickets/${ticket?.id || ticketId}/claim`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -352,10 +352,10 @@ export default function TicketDetailPage() {
 
   const handleReleaseTicket = async () => {
     if (!confirm('Are you sure you want to release this ticket?')) return;
-    
+
     try {
       setIsUpdatingStatus(true);
-      const response = await fetch(`/api/tickets/${ticketId}/claim`, {
+      const response = await fetch(`/api/tickets/${ticket?.id || ticketId}/claim`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -378,7 +378,7 @@ export default function TicketDetailPage() {
 
   const fetchTasks = async () => {
     try {
-      const response = await fetch(`/api/tickets/${ticketId}/tasks`);
+      const response = await fetch(`/api/tickets/${ticket?.id || ticketId}/tasks`);
       if (response.ok) {
         const data = await response.json();
         setTasks(data);
@@ -436,7 +436,7 @@ export default function TicketDetailPage() {
       
       setUploadProgress(90); // 90% before submitting comment
       
-      const response = await fetch(`/api/tickets/${ticketId}/comments`, {
+      const response = await fetch(`/api/tickets/${ticket?.id || ticketId}/comments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -501,7 +501,7 @@ export default function TicketDetailPage() {
   
   const deleteComment = async (commentId: string) => {
     try {
-      const response = await fetch(`/api/tickets/${ticketId}/comments/${commentId}`, {
+      const response = await fetch(`/api/tickets/${ticket?.id || ticketId}/comments/${commentId}`, {
         method: 'DELETE',
       });
       
@@ -564,7 +564,7 @@ export default function TicketDetailPage() {
   const updateTicketStatus = async (newStatus: string) => {
     try {
       setIsUpdatingStatus(true);
-      const response = await fetch(`/api/tickets/${ticketId}`, {
+      const response = await fetch(`/api/tickets/${ticket?.id || ticketId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -601,7 +601,7 @@ export default function TicketDetailPage() {
       
       // First add the resolution comment if provided
       if (resolutionComment.trim()) {
-        const commentResponse = await fetch(`/api/tickets/${ticketId}/comments`, {
+        const commentResponse = await fetch(`/api/tickets/${ticket?.id || ticketId}/comments`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -619,7 +619,7 @@ export default function TicketDetailPage() {
       }
       
       // Then update the ticket status
-      const statusResponse = await fetch(`/api/tickets/${ticketId}`, {
+      const statusResponse = await fetch(`/api/tickets/${ticket?.id || ticketId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -655,7 +655,7 @@ export default function TicketDetailPage() {
     reason?: string;
   }) => {
     try {
-      const response = await fetch(`/api/tickets/${ticketId}/status`, {
+      const response = await fetch(`/api/tickets/${ticket?.id || ticketId}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -687,7 +687,7 @@ export default function TicketDetailPage() {
       setIsUpdatingStatus(true);
       
       // First update to RESOLVED
-      const resolveResponse = await fetch(`/api/tickets/${ticketId}`, {
+      const resolveResponse = await fetch(`/api/tickets/${ticket?.id || ticketId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -701,7 +701,7 @@ export default function TicketDetailPage() {
       }
       
       // Then immediately update to CLOSED
-      const closeResponse = await fetch(`/api/tickets/${ticketId}`, {
+      const closeResponse = await fetch(`/api/tickets/${ticket?.id || ticketId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -723,7 +723,7 @@ export default function TicketDetailPage() {
 
   const updateTaskStatus = async (taskId: string, status: string, actualMinutes?: number, notes?: string) => {
     try {
-      const response = await fetch(`/api/tickets/${ticketId}/tasks/${taskId}`, {
+      const response = await fetch(`/api/tickets/${ticket?.id || ticketId}/tasks/${taskId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
