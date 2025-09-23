@@ -247,10 +247,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create the service
+    // Create the service - set defaultTitle to name if not provided
     const service = await prisma.service.create({
       data: {
         ...validatedData,
+        defaultTitle: validatedData.defaultTitle || validatedData.name, // Use provided defaultTitle or fallback to name
         categoryId: finalCategoryId,
         isActive: true,
         createdAt: new Date(),

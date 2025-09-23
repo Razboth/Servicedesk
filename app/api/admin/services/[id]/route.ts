@@ -7,6 +7,7 @@ const updateServiceSchema = z.object({
   name: z.string().min(1).optional(),
   description: z.string().min(1).optional(),
   helpText: z.string().optional(),
+  defaultTitle: z.string().optional(),
   categoryId: z.string().optional(),
   subcategoryId: z.string().optional(),
   itemId: z.string().optional(),
@@ -152,13 +153,21 @@ export async function PUT(
       }
     }
 
+    // Prepare update data - if name is being updated, also update defaultTitle
+    const updateData: any = {
+      ...validatedData,
+      updatedAt: new Date()
+    };
+
+    // If name is being updated, also update defaultTitle to match
+    if (validatedData.name) {
+      updateData.defaultTitle = validatedData.name;
+    }
+
     // Update the service
     const updatedService = await prisma.service.update({
       where: { id },
-      data: {
-        ...validatedData,
-        updatedAt: new Date()
-      },
+      data: updateData,
       include: {
         category: true,
         tier1Category: true,
