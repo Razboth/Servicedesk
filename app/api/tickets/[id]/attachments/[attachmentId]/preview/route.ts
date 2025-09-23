@@ -168,11 +168,21 @@ export async function GET(
       return NextResponse.json({ error: 'Attachment not found' }, { status: 404 });
     }
 
+    // Check if attachment has valid data
+    if (!attachment.path && attachment.size === 0) {
+      console.error('Attachment has no data:', {
+        id: attachment.id,
+        filename: attachment.filename,
+        size: attachment.size
+      });
+      return NextResponse.json({ error: 'Attachment data is missing or corrupted' }, { status: 500 });
+    }
+
     // Check if the file type is previewable
     const previewableMimeTypes = [
       'application/pdf',
       'image/jpeg',
-      'image/jpg', 
+      'image/jpg',
       'image/png'
     ];
 
@@ -191,9 +201,15 @@ export async function GET(
         return NextResponse.json({ error: 'Invalid data URI format' }, { status: 400 });
       }
       fileBuffer = Buffer.from(base64Data, 'base64');
-    } else if (pathValue.length > 100 && /^[A-Za-z0-9+/=]+$/.test(pathValue)) {
-      // Handle pure base64 data
-      fileBuffer = Buffer.from(pathValue, 'base64');
+    } else if (pathValue && pathValue.length > 100 && /^[A-Za-z0-9+/=]+$/.test(pathValue.substring(0, 1000))) {
+      // Handle pure base64 data (check first 1000 chars for performance)
+      try {
+        fileBuffer = Buffer.from(pathValue, 'base64');
+        console.log('Successfully decoded base64 data, buffer size:', fileBuffer.length);
+      } catch (err) {
+        console.error('Failed to decode base64:', err);
+        return NextResponse.json({ error: 'Failed to decode attachment data' }, { status: 500 });
+      }
     } else {
       // Handle file path - try different path combinations
       const possiblePaths = [
@@ -222,10 +238,11 @@ export async function GET(
 
     // Return the file with appropriate headers for inline display
     const response = new NextResponse(fileBuffer as any);
-    
+
     response.headers.set('Content-Type', attachment.mimeType);
     response.headers.set('Content-Disposition', `inline; filename="${attachment.originalName}"`);
-    response.headers.set('Content-Length', attachment.size.toString());
+    // Use actual buffer size instead of stored size (which might be wrong for base64 data)
+    response.headers.set('Content-Length', fileBuffer.length.toString());
     response.headers.set('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
 
     return response;
