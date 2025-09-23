@@ -61,7 +61,8 @@
     "version:bump": "node scripts/bump-version.js",
     "migrate:tickets": "npx tsx scripts/migrate-ticket-numbers.ts",
     "migrate:tickets:dry": "npx tsx scripts/migrate-ticket-numbers.ts --dry-run",
-    "migrate:tickets:rollback": "npx tsx scripts/migrate-ticket-numbers.ts --rollback"
+    "migrate:tickets:rollback": "npx tsx scripts/migrate-ticket-numbers.ts --rollback",
+    "sync:service-titles": "npx tsx scripts/sync-service-default-titles.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.7.2",
