@@ -60,11 +60,24 @@ export async function GET(
       userRole = session.user.role;
     }
 
-    // Check if the id is a ticket number (e.g., TKT-2025-001402) or a regular ID
-    const isTicketNumber = /^[A-Z]+-\d{4}-\d+$/.test(id);
+    // Check if the id is a ticket number (e.g., TKT-2025-001402, or just 1402) or a regular ID
+    const isFullTicketNumber = /^[A-Z]+-\d{4}-\d+$/.test(id);
+    const isNumericOnly = /^\d+$/.test(id);
+
+    let whereClause: any;
+    if (isFullTicketNumber) {
+      // Full format like TKT-2025-001402
+      whereClause = { ticketNumber: id };
+    } else if (isNumericOnly) {
+      // Just the numeric part like 1402
+      whereClause = { ticketNumber: id };
+    } else {
+      // Assume it's a CUID
+      whereClause = { id };
+    }
 
     const ticket = await prisma.ticket.findUnique({
-      where: isTicketNumber ? { ticketNumber: id } : { id },
+      where: whereClause,
       include: {
         service: {
           select: {
