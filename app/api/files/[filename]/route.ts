@@ -103,7 +103,7 @@ export async function GET(
       return new NextResponse(fileResult.data as any, { headers });
     }
 
-    // Finally, check if file is attached to a ticket
+    // Check if file is attached to a ticket
     const attachment = await prisma.ticketAttachment.findFirst({
       where: {
         path: filename // In our system, 'path' stores the secure filename
@@ -119,10 +119,44 @@ export async function GET(
     });
 
     if (!attachment) {
-      return NextResponse.json(
-        { error: 'File not found' },
-        { status: 404 }
-      );
+      // For files not tracked in database (e.g., pasted images in editor),
+      // allow authenticated users to access them if the file exists
+      const fileResult = await readFile(filename);
+
+      if (!fileResult.success || !fileResult.data) {
+        return NextResponse.json(
+          { error: 'File not found' },
+          { status: 404 }
+        );
+      }
+
+      // Try to determine content type from filename extension
+      let contentType = 'application/octet-stream';
+      const ext = filename.split('.').pop()?.toLowerCase();
+      if (ext) {
+        const mimeTypes: { [key: string]: string } = {
+          'jpg': 'image/jpeg',
+          'jpeg': 'image/jpeg',
+          'png': 'image/png',
+          'gif': 'image/gif',
+          'webp': 'image/webp',
+          'svg': 'image/svg+xml',
+          'pdf': 'application/pdf',
+          'doc': 'application/msword',
+          'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'xls': 'application/vnd.ms-excel',
+          'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        };
+        contentType = mimeTypes[ext] || contentType;
+      }
+
+      const headers = new Headers({
+        'Content-Type': contentType,
+        'Cache-Control': 'public, max-age=3600',
+        'Content-Disposition': 'inline'
+      });
+
+      return new NextResponse(fileResult.data as any, { headers });
     }
 
     // Check access permissions based on user role and ticket ownership
