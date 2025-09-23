@@ -586,7 +586,7 @@ export default function ServicesPage() {
               </Button>
               <Button 
                 onClick={() => setIsNewServiceOpen(true)}
-                className="bg-gray-900 hover:bg-gray-800 text-white"
+                variant="default"
               >
                 <Plus className="mr-2 h-4 w-4" />
                 New Service
@@ -1023,7 +1023,7 @@ export default function ServicesPage() {
               <Button variant="outline" onClick={() => setIsNewServiceOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleCreateService} className="bg-gray-900 hover:bg-gray-800 text-white">
+              <Button onClick={handleCreateService} variant="default">
                 Create Service
               </Button>
             </div>
@@ -1272,7 +1272,7 @@ export default function ServicesPage() {
               <Button variant="outline" onClick={() => setIsEditServiceOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleUpdateService} className="bg-gray-900 hover:bg-gray-800 text-white">
+              <Button onClick={handleUpdateService} variant="default">
                 Update Service
               </Button>
             </div>

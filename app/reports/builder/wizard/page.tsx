@@ -414,7 +414,7 @@ function ReportWizardContent() {
                         <ChevronLeft className="w-4 h-4 mr-1" />
                         Previous
                       </Button>
-                      <Button onClick={handleSave} className="bg-green-600 hover:bg-green-700">
+                      <Button onClick={handleSave} variant="default">
                         <Save className="w-4 h-4 mr-1" />
                         Complete & Save
                       </Button>

@@ -287,7 +287,7 @@ export default function TechnicianInboxPage() {
                   </div>
 
                   <div className="flex gap-2 pt-4">
-                    <Button className="bg-blue-600 hover:bg-blue-700">
+                    <Button variant="default">
                       Take Action
                     </Button>
                     <Button variant="outline">
