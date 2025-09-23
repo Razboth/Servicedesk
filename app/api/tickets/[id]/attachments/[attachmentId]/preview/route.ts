@@ -8,17 +8,30 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; attachmentId: string }> }
 ) {
-  const { id: ticketId, attachmentId } = await params;
-  
+  const { id: ticketIdParam, attachmentId } = await params;
+
   try {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Check if the id is a ticket number (numeric or full format) or a CUID
+    const isFullTicketNumber = /^[A-Z]+-\d{4}-\d+$/.test(ticketIdParam);
+    const isNumericOnly = /^\d+$/.test(ticketIdParam);
+
+    let whereClause: any;
+    if (isFullTicketNumber || isNumericOnly) {
+      // Ticket number format (e.g., "712" or "TKT-2025-712")
+      whereClause = { ticketNumber: ticketIdParam };
+    } else {
+      // Assume it's a CUID
+      whereClause = { id: ticketIdParam };
+    }
+
     // First check if user has access to the ticket
     const ticket = await prisma.ticket.findUnique({
-      where: { id: ticketId },
+      where: whereClause,
       select: {
         id: true,
         createdById: true,
@@ -74,7 +87,7 @@ export async function GET(
 
         // Get the full ticket with category info
         const fullTicket = await prisma.ticket.findUnique({
-          where: { id: ticketId },
+          where: { id: ticket.id },
           select: {
             categoryId: true,
             service: {
@@ -108,7 +121,7 @@ export async function GET(
         const TRANSACTION_CLAIMS_CATEGORY_ID = 'cmekrqi45001qhluspcsta20x';
 
         const fullTicket = await prisma.ticket.findUnique({
-          where: { id: ticketId },
+          where: { id: ticket.id },
           select: {
             categoryId: true,
             service: {
@@ -135,11 +148,11 @@ export async function GET(
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    // Find the attachment
+    // Find the attachment (use the actual ticket.id from the database)
     const attachment = await prisma.ticketAttachment.findUnique({
-      where: { 
+      where: {
         id: attachmentId,
-        ticketId: ticketId
+        ticketId: ticket.id
       },
       select: {
         id: true,
