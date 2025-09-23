@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
       branch?.id || user.branchId!
     );
 
-    // Generate ticket number (using OMNI prefix for omnichannel tickets)
+    // Generate ticket number (same as main API - just sequential numbers)
     const currentYear = new Date().getFullYear();
     const yearStart = new Date(currentYear, 0, 1);
     const yearEnd = new Date(currentYear + 1, 0, 1);
@@ -124,7 +124,8 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    const ticketNumber = `OMNI-${currentYear}-${String(yearTicketCount + 1).padStart(6, '0')}`;
+    // Use the same simple sequential numbering as the main ticket API
+    const ticketNumber = String(yearTicketCount + 1);
 
     // Create the ticket
     const ticket = await prisma.ticket.create({
