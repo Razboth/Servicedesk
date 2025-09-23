@@ -100,29 +100,36 @@ export async function authenticateApiKey(request: NextRequest): Promise<{
 
 export function checkApiPermission(apiKey: ApiKeyData, requiredPermission: string): boolean {
   if (!apiKey.permissions) return false;
-  
-  const permissions = Array.isArray(apiKey.permissions) ? apiKey.permissions : [];
-  
+
+  // Handle both array format and object format with actions property
+  let permissions: string[] = [];
+  if (Array.isArray(apiKey.permissions)) {
+    permissions = apiKey.permissions;
+  } else if (apiKey.permissions.actions && Array.isArray(apiKey.permissions.actions)) {
+    permissions = apiKey.permissions.actions;
+  }
+
   // Check for wildcard permission
   if (permissions.includes('*')) return true;
-  
+
   // Check for specific permission
   if (permissions.includes(requiredPermission)) return true;
-  
+
   // Check for partial wildcard (e.g., 'tickets:*' for 'tickets:create')
   const permissionParts = requiredPermission.split(':');
   if (permissionParts.length > 1) {
     const wildcardPermission = `${permissionParts[0]}:*`;
     if (permissions.includes(wildcardPermission)) return true;
   }
-  
+
   return false;
 }
 
-export function createApiErrorResponse(message: string, status: number = 400) {
+export function createApiErrorResponse(message: string, status: number = 400, errors?: any) {
   return NextResponse.json(
     {
       error: message,
+      errors: errors || undefined,
       timestamp: new Date().toISOString(),
       status
     },
@@ -132,9 +139,9 @@ export function createApiErrorResponse(message: string, status: number = 400) {
 
 export function createApiSuccessResponse(data: any, status: number = 200) {
   return NextResponse.json(
-    {
+    data.success ? data : {
       success: true,
-      data,
+      ...data,
       timestamp: new Date().toISOString()
     },
     { status }

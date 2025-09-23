@@ -335,6 +335,15 @@ model Ticket {
   legacyData             Json?
   legacySystem           String?
   legacyTicketId         String?
+
+  // Omnichannel fields
+  sourceChannel          String?               // WhatsApp, Email, Chat, etc.
+  channelReferenceId     String?               // External reference from channel
+  customerName           String?
+  customerEmail          String?
+  customerPhone          String?
+  customerIdentifier     String?               // CIF, Account number, etc.
+  metadata               Json?                 // Additional omnichannel data
   atmClaimVerification   ATMClaimVerification?
   ATMIncident            ATMIncident[]
   auditLogs              AuditLog[]
@@ -342,6 +351,7 @@ model Ticket {
   branchCommunications   BranchCommunication[]
   legacyTicketMapping    LegacyTicket?         @relation("LegacyTicketMapping")
   networkIncidents       NetworkIncident[]
+  omnichannelLogs        OmnichannelLog[]
   serviceUsage           ServiceUsage[]
   slaTracking            SLATracking[]
   approvals              TicketApproval[]
@@ -851,22 +861,23 @@ model Notification {
 }
 
 model ApiKey {
-  id           String    @id @default(cuid())
-  name         String
-  key          String    @unique
-  hashedKey    String    @unique
-  description  String?
-  permissions  Json?
-  isActive     Boolean   @default(true)
-  expiresAt    DateTime?
-  lastUsedAt   DateTime?
-  usageCount   Int       @default(0)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  createdById  String
-  linkedUserId String?
-  createdBy    User      @relation("ApiKeyCreatedBy", fields: [createdById], references: [id])
-  linkedUser   User?     @relation("ApiKeyLinkedUser", fields: [linkedUserId], references: [id])
+  id              String           @id @default(cuid())
+  name            String
+  key             String           @unique
+  hashedKey       String           @unique
+  description     String?
+  permissions     Json?
+  isActive        Boolean          @default(true)
+  expiresAt       DateTime?
+  lastUsedAt      DateTime?
+  usageCount      Int              @default(0)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  createdById     String
+  linkedUserId    String?
+  createdBy       User             @relation("ApiKeyCreatedBy", fields: [createdById], references: [id])
+  linkedUser      User?            @relation("ApiKeyLinkedUser", fields: [linkedUserId], references: [id])
+  omnichannelLogs OmnichannelLog[]
 
   @@index([key])
   @@index([hashedKey])
@@ -2224,4 +2235,53 @@ model AnnouncementBranch {
   @@unique([announcementId, branchId])
   @@index([branchId])
   @@map("announcement_branches")
+}
+
+// Omnichannel Integration Tracking
+model OmnichannelLog {
+  id               String    @id @default(cuid())
+  apiKeyId         String
+  channel          String    // WhatsApp, Email, Chat, etc.
+  serviceType      String    // CLAIM, COMPLAINT, INQUIRY, etc.
+  requestData      Json      // Full request payload
+  responseData     Json?     // Response sent back
+  ticketId         String?   // Created ticket ID if successful
+  status           String    // PROCESSING, SUCCESS, FAILED, DUPLICATE, ERROR
+  errorMessage     String?
+  ipAddress        String?
+  responseTime     Int?      // Response time in milliseconds
+  createdAt        DateTime  @default(now())
+
+  apiKey           ApiKey    @relation(fields: [apiKeyId], references: [id])
+  ticket           Ticket?   @relation(fields: [ticketId], references: [id])
+
+  @@index([apiKeyId])
+  @@index([ticketId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("omnichannel_logs")
+}
+
+// Webhook Queue for async callbacks
+model WebhookQueue {
+  id               String    @id @default(cuid())
+  url              String
+  method           String    @default("POST")
+  headers          Json?
+  payload          Json
+  status           String    @default("PENDING") // PENDING, PROCESSING, SUCCESS, FAILED
+  retryCount       Int       @default(0)
+  maxRetries       Int       @default(3)
+  lastAttemptAt    DateTime?
+  nextRetryAt      DateTime?
+  responseStatus   Int?
+  responseBody     String?
+  error            String?
+  scheduledFor     DateTime
+  processedAt      DateTime?
+  createdAt        DateTime  @default(now())
+
+  @@index([status, scheduledFor])
+  @@index([createdAt])
+  @@map("webhook_queue")
 }
