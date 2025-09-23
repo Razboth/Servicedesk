@@ -196,7 +196,7 @@ export default function ServicesPage() {
     name: '',
     description: '',
     helpText: '',
-    defaultTitle: '',
+    defaultTitle: '',  // Will be auto-synced with name
     categoryId: '',
     subcategoryId: '',
     itemId: '',
@@ -523,7 +523,7 @@ export default function ServicesPage() {
       name: service.name || '',
       description: service.description || '',
       helpText: service.helpText || '',
-      defaultTitle: service.defaultTitle || '',
+      defaultTitle: service.defaultTitle || service.name || '',  // Use existing defaultTitle or fall back to name
       categoryId: service.categoryId || undefined,
       subcategoryId: service.subcategoryId || undefined,
       itemId: service.itemId || undefined,
@@ -788,7 +788,11 @@ export default function ServicesPage() {
                 <Input
                   id="name"
                   value={newService.name}
-                  onChange={(e) => setNewService(prev => ({ ...prev, name: e.target.value }))}
+                  onChange={(e) => setNewService(prev => ({
+                    ...prev,
+                    name: e.target.value,
+                    defaultTitle: e.target.value  // Auto-sync defaultTitle with name
+                  }))}
                   placeholder="e.g., Password Reset"
                 />
               </div>
@@ -913,16 +917,6 @@ export default function ServicesPage() {
                 onChange={(e) => setNewService(prev => ({ ...prev, helpText: e.target.value }))}
                 placeholder="Additional help or instructions for users"
                 rows={2}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="defaultTitle">Default Title (Optional)</Label>
-              <Input
-                id="defaultTitle"
-                value={newService.defaultTitle || ''}
-                onChange={(e) => setNewService(prev => ({ ...prev, defaultTitle: e.target.value }))}
-                placeholder="Enter default title for tickets (optional)"
               />
             </div>
 
@@ -1053,7 +1047,11 @@ export default function ServicesPage() {
                 <Input
                   id="edit-name"
                   value={editService.name || ''}
-                  onChange={(e) => setEditService(prev => ({ ...prev, name: e.target.value }))}
+                  onChange={(e) => setEditService(prev => ({
+                    ...prev,
+                    name: e.target.value,
+                    defaultTitle: e.target.value  // Auto-sync defaultTitle with name
+                  }))}
                 />
               </div>
               <div className="space-y-2">
@@ -1094,16 +1092,6 @@ export default function ServicesPage() {
                 value={editService.helpText || ''}
                 onChange={(e) => setEditService(prev => ({ ...prev, helpText: e.target.value }))}
                 rows={2}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="edit-defaultTitle">Default Title</Label>
-              <Input
-                id="edit-defaultTitle"
-                value={editService.defaultTitle || ''}
-                onChange={(e) => setEditService(prev => ({ ...prev, defaultTitle: e.target.value }))}
-                placeholder="Enter default title for tickets (optional)"
               />
             </div>
 
