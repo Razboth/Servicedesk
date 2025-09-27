@@ -740,6 +740,14 @@ export default function ServicesPage() {
                       <Button
                         variant="ghost"
                         size="sm"
+                        onClick={() => router.push(`/services/${service.id}`)}
+                        title="View Service Details"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => openEditDialog(service)}
                       >
                         <Edit className="h-4 w-4" />
@@ -757,7 +765,7 @@ export default function ServicesPage() {
                       {(!service._count?.tickets || service._count.tickets === 0) && (
                         <Button
                           variant="ghost"
-                          size="sm"
+                        size="sm"
                           onClick={() => handleDeleteService(service)}
                         >
                           <Trash2 className="h-4 w-4" />

@@ -155,8 +155,8 @@ export async function GET(request: NextRequest) {
         createdAt: true,
         resolvedAt: true,
         priority: true,
-        assignedAt: true,
-        firstResponseAt: true
+        updatedAt: true,
+        status: true
       },
       take: 500 // Increased sample for better accuracy
     });
@@ -176,10 +176,6 @@ export async function GET(request: NextRequest) {
 
     if (resolvedTicketsWithTime.length > 0) {
       let totalResolutionHours = 0;
-      let totalFirstResponseHours = 0;
-      let totalAssignmentHours = 0;
-      let responseCount = 0;
-      let assignmentCount = 0;
 
       // Reset priority counters
       Object.keys(resolutionStats.byPriority).forEach(priority => {
@@ -199,25 +195,15 @@ export async function GET(request: NextRequest) {
             resolutionStats.byPriority[priority].avgHours += resolutionHours;
           }
 
-          // First response time
-          if (ticket.firstResponseAt) {
-            const responseHours = (ticket.firstResponseAt.getTime() - ticket.createdAt.getTime()) / (1000 * 60 * 60);
-            totalFirstResponseHours += responseHours;
-            responseCount++;
-          }
-
-          // Assignment time
-          if (ticket.assignedAt) {
-            const assignmentHours = (ticket.assignedAt.getTime() - ticket.createdAt.getTime()) / (1000 * 60 * 60);
-            totalAssignmentHours += assignmentHours;
-            assignmentCount++;
-          }
+          // Note: firstResponseAt and assignedAt fields don't exist in current schema
+          // These metrics would need to be tracked via audit logs or separate tracking
         }
       });
 
       avgResolutionHours = totalResolutionHours / resolvedTicketsWithTime.length;
-      avgFirstResponseHours = responseCount > 0 ? totalFirstResponseHours / responseCount : 0;
-      avgAssignmentHours = assignmentCount > 0 ? totalAssignmentHours / assignmentCount : 0;
+      // These metrics are not available without tracking fields
+      avgFirstResponseHours = 0;
+      avgAssignmentHours = 0;
 
       // Calculate average by priority
       Object.keys(resolutionStats.byPriority).forEach(priority => {

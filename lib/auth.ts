@@ -137,14 +137,43 @@ async function recordLoginAttempt(username: string, success: boolean, ipAddress?
   })
 }
 
+// Generate unique cookie name based on port or instance
+const getCookieName = () => {
+  const port = process.env.PORT || '3000'
+  const instanceId = process.env.INSTANCE_ID || port
+  const baseToken = process.env.NODE_ENV === 'production'
+    ? '__Secure-bsg-auth.session-token'
+    : 'bsg-auth.session-token'
+  return `${baseToken}-${instanceId}`
+}
+
 const authOptions = {
-  // Use secure cookies in production
+  // Use secure cookies in production with unique names per instance
   cookies: {
     sessionToken: {
-      name: process.env.NODE_ENV === 'production' ? '__Secure-next-auth.session-token' : 'next-auth.session-token',
+      name: getCookieName(),
       options: {
         httpOnly: true,
-        sameSite: 'strict' as const,
+        sameSite: 'lax' as const, // Changed from 'strict' to allow cross-origin navigation
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+        domain: undefined // Let browser handle domain to prevent cross-domain sharing
+      }
+    },
+    callbackUrl: {
+      name: `bsg-auth.callback-url-${process.env.PORT || '3000'}`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax' as const,
+        path: '/',
+        secure: process.env.NODE_ENV === 'production'
+      }
+    },
+    csrfToken: {
+      name: `bsg-auth.csrf-token-${process.env.PORT || '3000'}`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax' as const,
         path: '/',
         secure: process.env.NODE_ENV === 'production'
       }
@@ -248,7 +277,12 @@ const authOptions = {
     })
   ],
   session: {
-    strategy: 'jwt' as const
+    strategy: 'jwt' as const,
+    maxAge: 8 * 60 * 60, // 8 hours session lifetime
+    updateAge: 60 * 60, // Update session every hour if active
+  },
+  jwt: {
+    maxAge: 8 * 60 * 60, // JWT expires in 8 hours
   },
   callbacks: {
     async jwt({ token, user, trigger, session }: any) {

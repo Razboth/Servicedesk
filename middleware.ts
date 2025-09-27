@@ -3,9 +3,17 @@ import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 
 export async function middleware(request: NextRequest) {
-  const token = await getToken({ 
+  // Use the same cookie name as configured in auth.ts
+  const port = process.env.PORT || '3000';
+  const instanceId = process.env.INSTANCE_ID || port;
+  const cookieName = process.env.NODE_ENV === 'production'
+    ? `__Secure-bsg-auth.session-token-${instanceId}`
+    : `bsg-auth.session-token-${instanceId}`;
+
+  const token = await getToken({
     req: request,
-    secret: process.env.NEXTAUTH_SECRET || process.env.JWT_SECRET
+    secret: process.env.NEXTAUTH_SECRET || process.env.JWT_SECRET,
+    cookieName: cookieName
   });
   const isAuthPage = request.nextUrl.pathname.startsWith('/auth/');
   const isChangePasswordPage = request.nextUrl.pathname === '/auth/change-password';
