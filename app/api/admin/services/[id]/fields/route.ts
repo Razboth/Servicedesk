@@ -67,10 +67,39 @@ export async function PUT(
 
     // Use transaction to update fields
     const result = await prisma.$transaction(async (tx) => {
-      // Delete existing fields
+      // Get existing fields for audit logging
+      const existingFields = await tx.serviceField.findMany({
+        where: { serviceId: id },
+        select: {
+          id: true,
+          name: true,
+          _count: {
+            select: {
+              fieldValues: true
+            }
+          }
+        }
+      });
+
+      // Count total ticket field values that will be deleted
+      const totalTicketFieldValues = existingFields.reduce(
+        (sum, field) => sum + field._count.fieldValues,
+        0
+      );
+
+      // Delete existing fields (CASCADE will automatically delete related TicketFieldValues)
       await tx.serviceField.deleteMany({
         where: { serviceId: id }
       });
+
+      // Verify all fields are deleted
+      const remainingFields = await tx.serviceField.count({
+        where: { serviceId: id }
+      });
+
+      if (remainingFields > 0) {
+        throw new Error(`Failed to delete all existing fields. ${remainingFields} fields remain.`);
+      }
 
       // Create new fields
       const createdFields = [];
@@ -103,12 +132,43 @@ export async function PUT(
         data: { updatedAt: new Date() }
       });
 
-      return createdFields;
+      return {
+        createdFields,
+        deletedFields: existingFields,
+        deletedTicketFieldValues: totalTicketFieldValues
+      };
     });
+
+    // Create audit log for bulk field update
+    try {
+      const { createAuditLog } = await import('@/lib/audit-logger');
+      await createAuditLog({
+        action: 'service_fields_bulk_update',
+        userId: session.user.id,
+        resourceType: 'service',
+        resourceId: id,
+        details: {
+          serviceName: existingService.name,
+          deletedFieldsCount: result.deletedFields.length,
+          createdFieldsCount: result.createdFields.length,
+          deletedTicketFieldValues: result.deletedTicketFieldValues,
+          deletedFields: result.deletedFields.map(f => f.name),
+          createdFields: result.createdFields.map(f => f.name)
+        }
+      });
+    } catch (auditError) {
+      console.error('Failed to create audit log:', auditError);
+    }
 
     return NextResponse.json({
       message: 'Service fields updated successfully',
-      fields: result
+      fields: result.createdFields,
+      deletedFieldsCount: result.deletedFields.length,
+      deletedTicketFieldValues: result.deletedTicketFieldValues,
+      summary: {
+        deleted: result.deletedFields.map(f => f.name),
+        created: result.createdFields.map(f => f.name)
+      }
     });
   } catch (error) {
     console.error('Error updating service fields:', error);

@@ -77,11 +77,25 @@ export async function DELETE(
 
     const { id: serviceId, linkId } = await params;
 
-    // Check if link exists
+    // Check if link exists and get detailed info
     const existingLink = await prisma.serviceFieldTemplate.findFirst({
       where: {
         id: linkId,
         serviceId: serviceId
+      },
+      include: {
+        fieldTemplate: {
+          select: {
+            id: true,
+            name: true,
+            label: true
+          }
+        },
+        service: {
+          select: {
+            name: true
+          }
+        }
       }
     });
 
@@ -94,7 +108,46 @@ export async function DELETE(
       where: { id: linkId }
     });
 
-    return NextResponse.json({ message: 'Field template unlinked successfully' });
+    // Verify complete removal
+    const remainingLink = await prisma.serviceFieldTemplate.findUnique({
+      where: { id: linkId }
+    });
+
+    if (remainingLink) {
+      console.error(`Warning: Field template link ${linkId} still exists after deletion`);
+    }
+
+    // Update service timestamp
+    await prisma.service.update({
+      where: { id: serviceId },
+      data: { updatedAt: new Date() }
+    });
+
+    // Create audit log for the deletion
+    try {
+      const { createAuditLog } = await import('@/lib/audit-logger');
+      await createAuditLog({
+        action: 'service_field_template_unlink',
+        userId: session.user.id,
+        resourceType: 'serviceFieldTemplate',
+        resourceId: linkId,
+        details: {
+          fieldTemplateName: existingLink.fieldTemplate.name,
+          fieldTemplateLabel: existingLink.fieldTemplate.label,
+          fieldTemplateId: existingLink.fieldTemplate.id,
+          serviceName: existingLink.service.name,
+          serviceId: serviceId
+        }
+      });
+    } catch (auditError) {
+      console.error('Failed to create audit log:', auditError);
+    }
+
+    return NextResponse.json({
+      message: 'Field template unlinked successfully',
+      templateName: existingLink.fieldTemplate.name,
+      serviceName: existingLink.service.name
+    });
   } catch (error) {
     console.error('Error deleting field template link:', error);
     return NextResponse.json(

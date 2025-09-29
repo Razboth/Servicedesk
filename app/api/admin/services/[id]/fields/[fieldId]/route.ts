@@ -23,6 +23,16 @@ export async function DELETE(
       where: {
         id: fieldId,
         serviceId: serviceId
+      },
+      select: {
+        id: true,
+        name: true,
+        serviceId: true,
+        _count: {
+          select: {
+            fieldValues: true
+          }
+        }
       }
     });
 
@@ -33,10 +43,28 @@ export async function DELETE(
       );
     }
 
-    // Delete the field
+    // Check for existing ticket field values
+    const hasTicketData = existingField._count.fieldValues > 0;
+
+    // Get service info for audit logging
+    const service = await prisma.service.findUnique({
+      where: { id: serviceId },
+      select: { name: true }
+    });
+
+    // Delete the field (CASCADE will automatically delete related TicketFieldValues)
     await prisma.serviceField.delete({
       where: { id: fieldId }
     });
+
+    // Verify complete removal
+    const remainingField = await prisma.serviceField.findUnique({
+      where: { id: fieldId }
+    });
+
+    if (remainingField) {
+      console.error(`Warning: Field ${fieldId} still exists after deletion`);
+    }
 
     // Update service updated timestamp
     await prisma.service.update({
@@ -44,7 +72,31 @@ export async function DELETE(
       data: { updatedAt: new Date() }
     });
 
-    return NextResponse.json({ message: 'Field deleted successfully' });
+    // Create audit log for the deletion
+    try {
+      const { createAuditLog } = await import('@/lib/audit-logger');
+      await createAuditLog({
+        action: 'service_field_delete',
+        userId: session.user.id,
+        resourceType: 'serviceField',
+        resourceId: fieldId,
+        details: {
+          fieldName: existingField.name,
+          serviceName: service?.name || 'Unknown Service',
+          serviceId: serviceId,
+          hadTicketData: hasTicketData,
+          ticketFieldValuesDeleted: existingField._count.fieldValues
+        }
+      });
+    } catch (auditError) {
+      console.error('Failed to create audit log:', auditError);
+    }
+
+    return NextResponse.json({
+      message: 'Field deleted successfully',
+      deletedFieldValues: existingField._count.fieldValues,
+      fieldName: existingField.name
+    });
   } catch (error) {
     console.error('Error deleting service field:', error);
     return NextResponse.json(

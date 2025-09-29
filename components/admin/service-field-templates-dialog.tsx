@@ -260,6 +260,65 @@ export function ServiceFieldTemplatesDialog({
 
   const [editingField, setEditingField] = useState<ServiceField | null>(null);
   const [editForm, setEditForm] = useState<Partial<ServiceField>>({});
+  const [cleanupLoading, setCleanupLoading] = useState(false);
+  const [cleanupPreview, setCleanupPreview] = useState<any>(null);
+
+  const handleCleanupPreview = async () => {
+    try {
+      setCleanupLoading(true);
+      const response = await fetch(`/api/admin/services/${serviceId}/fields/cleanup`);
+      if (response.ok) {
+        const data = await response.json();
+        setCleanupPreview(data);
+      } else {
+        toast.error('Failed to load cleanup preview');
+      }
+    } catch (error) {
+      console.error('Error loading cleanup preview:', error);
+      toast.error('Failed to load cleanup preview');
+    } finally {
+      setCleanupLoading(false);
+    }
+  };
+
+  const handleCleanupFields = async (type: 'all' | 'fields' | 'templates' = 'all') => {
+    const confirmMessage = type === 'all'
+      ? 'This will remove ALL custom fields (both direct fields and field templates) from this service. This action cannot be undone.'
+      : type === 'fields'
+      ? 'This will remove all DIRECT custom fields from this service. Field templates will remain.'
+      : 'This will remove all FIELD TEMPLATE links from this service. Direct custom fields will remain.';
+
+    if (!confirm(confirmMessage + '\n\nContinue?')) {
+      return;
+    }
+
+    try {
+      setCleanupLoading(true);
+      const response = await fetch(`/api/admin/services/${serviceId}/fields/cleanup?type=${type}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        toast.success(result.message);
+        setCleanupPreview(null);
+        fetchData(); // Refresh the data
+        onUpdate(); // Update parent component
+      } else {
+        const error = await response.json();
+        if (error.hasTicketData) {
+          toast.error('Cannot delete fields with existing ticket data. Use the cleanup script for this operation.');
+        } else {
+          toast.error(error.error || 'Failed to cleanup fields');
+        }
+      }
+    } catch (error) {
+      console.error('Error during cleanup:', error);
+      toast.error('Failed to cleanup fields');
+    } finally {
+      setCleanupLoading(false);
+    }
+  };
 
   const handleEditCustomField = (field: ServiceField) => {
     setEditingField(field);
@@ -353,6 +412,7 @@ export function ServiceFieldTemplatesDialog({
             <TabsTrigger value="templates">Active Fields</TabsTrigger>
             <TabsTrigger value="custom">Custom Fields</TabsTrigger>
             <TabsTrigger value="all">All Fields</TabsTrigger>
+            <TabsTrigger value="cleanup" className="text-red-600">🧹 Cleanup</TabsTrigger>
           </TabsList>
 
           <TabsContent value="templates" className="space-y-4">
@@ -374,7 +434,7 @@ export function ServiceFieldTemplatesDialog({
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
-                                <Badge variant="secondary" className="text-xs">Custom</Badge>
+                                <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800">📝 Direct Field</Badge>
                                 <Badge variant="outline">{field.type}</Badge>
                                 <span className="font-medium">{field.label}</span>
                                 <Badge variant={field.isRequired ? "destructive" : "secondary"} className="text-xs">
@@ -433,7 +493,7 @@ export function ServiceFieldTemplatesDialog({
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
-                                <Badge variant="default" className="text-xs">Template</Badge>
+                                <Badge variant="default" className="text-xs bg-purple-100 text-purple-800">📋 Template Field</Badge>
                                 <Badge variant="outline">{template.fieldTemplate.type}</Badge>
                                 <span className="font-medium">{template.fieldTemplate.label}</span>
                                 <Badge variant={template.isRequired ? "destructive" : "secondary"} className="text-xs">
@@ -671,7 +731,7 @@ export function ServiceFieldTemplatesDialog({
                       <CardContent className="p-3">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <Badge variant="secondary" className="text-xs">Custom</Badge>
+                            <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800">📝 Direct</Badge>
                             <Badge variant="outline" className="text-xs">{field.type}</Badge>
                             <span className="text-sm font-medium">{field.label}</span>
                             {field.isRequired && (
@@ -693,7 +753,7 @@ export function ServiceFieldTemplatesDialog({
                       <CardContent className="p-3">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <Badge variant="default" className="text-xs">Template</Badge>
+                            <Badge variant="default" className="text-xs bg-purple-100 text-purple-800">📋 Template</Badge>
                             <Badge variant="outline" className="text-xs">{template.fieldTemplate.type}</Badge>
                             <span className="text-sm font-medium">{template.fieldTemplate.label}</span>
                             {(template.isRequired ?? template.fieldTemplate.isRequired) && (
@@ -710,6 +770,170 @@ export function ServiceFieldTemplatesDialog({
                   ))}
                 </div>
               )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="cleanup">
+            <div className="space-y-6">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-yellow-800 mb-2">⚠️ Field Cleanup Tool</h3>
+                <p className="text-yellow-700 text-sm mb-4">
+                  This service has <strong>TWO TYPES</strong> of custom fields that might be causing confusion:
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div className="bg-white p-3 rounded border">
+                    <h4 className="font-medium text-blue-800">📝 Direct Custom Fields</h4>
+                    <p className="text-gray-600">Fields created directly for this service</p>
+                    <p className="text-sm text-gray-500">Count: {customFields.length}</p>
+                  </div>
+                  <div className="bg-white p-3 rounded border">
+                    <h4 className="font-medium text-purple-800">📋 Field Templates</h4>
+                    <p className="text-gray-600">Reusable field templates linked to this service</p>
+                    <p className="text-sm text-gray-500">Count: {serviceFieldTemplates.length}</p>
+                  </div>
+                </div>
+                <p className="text-yellow-700 text-sm mt-3">
+                  <strong>Problem:</strong> When you delete fields through the normal UI, only one type gets removed,
+                  so fields from the other system "come back" and appear to regenerate.
+                </p>
+              </div>
+
+              {/* Cleanup Preview */}
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h4 className="text-md font-medium">Cleanup Preview</h4>
+                  <Button
+                    variant="outline"
+                    onClick={handleCleanupPreview}
+                    disabled={cleanupLoading}
+                  >
+                    {cleanupLoading ? 'Loading...' : 'Preview Cleanup'}
+                  </Button>
+                </div>
+
+                {cleanupPreview && (
+                  <div className="bg-gray-50 border rounded-lg p-4">
+                    <h5 className="font-medium mb-3">Service: {cleanupPreview.service.name}</h5>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                      <div className="bg-white p-3 rounded border">
+                        <div className="text-lg font-bold text-blue-600">
+                          {cleanupPreview.currentFields.counts.serviceFields}
+                        </div>
+                        <div className="text-sm text-gray-600">Direct Custom Fields</div>
+                      </div>
+                      <div className="bg-white p-3 rounded border">
+                        <div className="text-lg font-bold text-purple-600">
+                          {cleanupPreview.currentFields.counts.serviceFieldTemplates}
+                        </div>
+                        <div className="text-sm text-gray-600">Field Templates</div>
+                      </div>
+                      <div className="bg-white p-3 rounded border">
+                        <div className="text-lg font-bold text-gray-700">
+                          {cleanupPreview.currentFields.counts.total}
+                        </div>
+                        <div className="text-sm text-gray-600">Total Fields</div>
+                      </div>
+                    </div>
+
+                    {cleanupPreview.riskAssessment.hasTicketData && (
+                      <div className="bg-red-50 border border-red-200 rounded p-3 mb-4">
+                        <p className="text-red-800 text-sm">
+                          <strong>⚠️ Warning:</strong> This service has {cleanupPreview.riskAssessment.affectedTicketFieldValues}
+                          ticket field values that may be affected by cleanup.
+                        </p>
+                        <p className="text-red-700 text-xs mt-1">
+                          Recommendation: Use the command-line cleanup script for services with ticket data.
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="text-sm text-gray-600">
+                      <strong>Recommendation:</strong> {cleanupPreview.riskAssessment.recommendation}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Cleanup Actions */}
+              <div className="space-y-4">
+                <h4 className="text-md font-medium">Cleanup Actions</h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm">Remove All Fields</CardTitle>
+                      <CardDescription className="text-xs">
+                        Removes both direct custom fields AND field templates
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleCleanupFields('all')}
+                        disabled={cleanupLoading}
+                        className="w-full"
+                      >
+                        🧹 Clean All
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm">Remove Direct Fields Only</CardTitle>
+                      <CardDescription className="text-xs">
+                        Keeps field templates, removes direct custom fields
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleCleanupFields('fields')}
+                        disabled={cleanupLoading || customFields.length === 0}
+                        className="w-full"
+                      >
+                        📝 Clean Direct Fields
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm">Remove Templates Only</CardTitle>
+                      <CardDescription className="text-xs">
+                        Keeps direct fields, removes field template links
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleCleanupFields('templates')}
+                        disabled={cleanupLoading || serviceFieldTemplates.length === 0}
+                        className="w-full"
+                      >
+                        📋 Clean Templates
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h5 className="font-medium text-blue-800 mb-2">💡 Alternative: Command Line Tool</h5>
+                  <p className="text-blue-700 text-sm mb-2">
+                    For services with existing ticket data, use the command-line cleanup tool:
+                  </p>
+                  <code className="text-xs bg-blue-100 p-2 rounded block">
+                    npx tsx scripts/cleanup-service-fields.ts --service-name "{serviceName}" --dry-run
+                  </code>
+                  <p className="text-blue-600 text-xs mt-2">
+                    Remove --dry-run flag to execute actual cleanup
+                  </p>
+                </div>
+              </div>
             </div>
           </TabsContent>
         </Tabs>
