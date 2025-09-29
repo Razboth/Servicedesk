@@ -12,6 +12,10 @@ import { getDeviceInfo, formatDeviceInfo } from '@/lib/utils/device-utils';
 import { PriorityValidator, type PriorityValidationContext } from '@/lib/priority-validation';
 import { createAuditLog } from '@/lib/audit-logger';
 
+// Configure maximum body size for this route (10MB)
+export const maxDuration = 30; // Maximum function duration: 30 seconds
+export const dynamic = 'force-dynamic';
+
 // Helper function to determine sort order
 function getSortOrder(sortBy: string, sortOrder: string) {
   const order: 'asc' | 'desc' = sortOrder === 'asc' ? 'asc' : 'desc';
@@ -759,26 +763,94 @@ export async function POST(request: NextRequest) {
     // Debug logging for session
     console.log('Session user ID:', session.user.id);
     console.log('Session user:', JSON.stringify(session.user, null, 2));
-    
+
     // Verify user exists in database
     const userExists = await prisma.user.findUnique({
       where: { id: session.user.id },
       select: { id: true, email: true, name: true }
     });
     console.log('User exists in DB:', userExists);
-    
+
     if (!userExists) {
       console.error('User not found in database:', session.user.id);
       return NextResponse.json({ error: 'User not found' }, { status: 400 });
     }
 
-    const body = await request.json();
+    // Check content length before parsing
+    const contentLength = request.headers.get('content-length');
+    const MAX_SIZE = 10 * 1024 * 1024; // 10MB limit
+
+    if (contentLength && parseInt(contentLength) > MAX_SIZE) {
+      console.error('Request too large:', {
+        size: contentLength,
+        maxSize: MAX_SIZE,
+        user: session.user.email
+      });
+      return NextResponse.json(
+        { error: 'Request too large. Maximum size is 10MB. Please reduce file sizes.' },
+        { status: 413 }
+      );
+    }
+
+    let body;
+    try {
+      body = await request.json();
+    } catch (parseError) {
+      console.error('Failed to parse request body:', parseError);
+      return NextResponse.json(
+        { error: 'Invalid request format. Please check your data and try again.' },
+        { status: 400 }
+      );
+    }
     
     // Extract device information for troubleshooting
     const deviceInfo = getDeviceInfo(request);
     const clientIp = getClientIp(request);
     const deviceDescription = formatDeviceInfo(deviceInfo);
     
+    // Check attachment sizes before processing
+    if (body.attachments && body.attachments.length > 0) {
+      const MAX_ATTACHMENT_SIZE = 5 * 1024 * 1024; // 5MB per file
+      const MAX_TOTAL_SIZE = 10 * 1024 * 1024; // 10MB total
+      let totalSize = 0;
+
+      for (const attachment of body.attachments) {
+        const fileSize = attachment.size || 0;
+        totalSize += fileSize;
+
+        if (fileSize > MAX_ATTACHMENT_SIZE) {
+          console.error('Attachment too large:', {
+            filename: attachment.filename,
+            size: fileSize,
+            maxSize: MAX_ATTACHMENT_SIZE,
+            user: session.user.email
+          });
+          return NextResponse.json(
+            {
+              error: `File "${attachment.filename}" is too large. Maximum file size is 5MB.`,
+              maxFileSize: '5MB'
+            },
+            { status: 413 }
+          );
+        }
+      }
+
+      if (totalSize > MAX_TOTAL_SIZE) {
+        console.error('Total attachments size too large:', {
+          totalSize,
+          maxSize: MAX_TOTAL_SIZE,
+          user: session.user.email
+        });
+        return NextResponse.json(
+          {
+            error: 'Total attachment size exceeds 10MB. Please reduce the number or size of files.',
+            maxTotalSize: '10MB'
+          },
+          { status: 413 }
+        );
+      }
+    }
+
     // Log device info for troubleshooting client issues
     console.log('Ticket creation attempt:', {
       userId: session.user.id,
@@ -789,9 +861,10 @@ export async function POST(request: NextRequest) {
       os: `${deviceInfo.os.name} ${deviceInfo.os.version}`,
       deviceType: deviceInfo.device.type,
       isSupported: deviceInfo.compatibility.isSupported,
-      warnings: deviceInfo.compatibility.warnings
+      warnings: deviceInfo.compatibility.warnings,
+      attachmentCount: body.attachments?.length || 0
     });
-    
+
     // Check if browser is compatible
     if (!deviceInfo.compatibility.isSupported) {
       console.error('Unsupported browser detected:', {
@@ -1106,25 +1179,41 @@ export async function POST(request: NextRequest) {
     }
 
     // Create ticket with processed field values and attachments within a transaction
+    console.log('Starting ticket creation transaction...');
     const ticket = await prisma.$transaction(async (tx) => {
-      // Generate ticket number - count tickets for current year only (within transaction)
-      const currentYear = new Date().getFullYear();
-      const yearStart = new Date(currentYear, 0, 1); // January 1st of current year
-      const yearEnd = new Date(currentYear + 1, 0, 1); // January 1st of next year
-      
-      const yearTicketCount = await tx.ticket.count({
-        where: {
-          createdAt: {
-            gte: yearStart,
-            lt: yearEnd
-          }
-        }
-      });
-      
-      // New simplified ticket numbering - just sequential numbers
-      const ticketNumber = String(yearTicketCount + 1);
+      try {
+        console.log('Inside transaction - generating ticket number...');
+        // Generate ticket number - count tickets for current year only (within transaction)
+        const currentYear = new Date().getFullYear();
+        const yearStart = new Date(currentYear, 0, 1); // January 1st of current year
+        const yearEnd = new Date(currentYear + 1, 0, 1); // January 1st of next year
 
-      const createdTicket = await tx.ticket.create({
+        const yearTicketCount = await tx.ticket.count({
+          where: {
+            createdAt: {
+              gte: yearStart,
+              lt: yearEnd
+            }
+          }
+        });
+
+        // New simplified ticket numbering - just sequential numbers
+        const ticketNumber = String(yearTicketCount + 1);
+        console.log(`Generated ticket number: ${ticketNumber}`);
+
+        console.log('Creating ticket with data:', {
+          ticketNumber,
+          title: validatedData.title,
+          serviceId: validatedData.serviceId,
+          userId: session.user.id,
+          branchId: targetBranchId,
+          priority: finalPriority,
+          status: initialStatus,
+          fieldValuesCount: processedFieldValues.length,
+          attachmentsCount: attachmentData.length
+        });
+
+        const createdTicket = await tx.ticket.create({
       data: {
         ticketNumber,
         title: validatedData.title,
@@ -1210,7 +1299,12 @@ export async function POST(request: NextRequest) {
         }
       });
 
+      console.log('Ticket created successfully in transaction:', createdTicket.id);
       return createdTicket;
+      } catch (txError) {
+        console.error('Transaction error:', txError);
+        throw txError;
+      }
     });
 
     // Check if service requires approval and create approval entry
@@ -1370,19 +1464,32 @@ export async function POST(request: NextRequest) {
     // Log failed ticket creation with device info for troubleshooting
     const deviceInfo = getDeviceInfo(request);
     const clientIp = getClientIp(request);
-    
-    console.error('Ticket creation failed:', {
-      error: error instanceof Error ? error.message : 'Unknown error',
+
+    console.error('=== TICKET CREATION FAILED ===');
+    console.error('Error Type:', error?.constructor?.name);
+    console.error('Error Message:', error instanceof Error ? error.message : 'Unknown error');
+    console.error('Error Stack:', error instanceof Error ? error.stack : 'No stack trace');
+    console.error('User Info:', {
       userId: session?.user?.id,
+      userName: session?.user?.name,
       userEmail: session?.user?.email,
+      userRole: session?.user?.role
+    });
+    console.error('Request Data:', {
+      serviceId: validatedData?.serviceId,
+      title: validatedData?.title,
+      priority: validatedData?.priority,
+      category: validatedData?.category
+    });
+    console.error('Device Info:', {
       clientIp,
-      device: formatDeviceInfo(deviceInfo),
       browser: `${deviceInfo.browser.name} ${deviceInfo.browser.version}`,
       os: `${deviceInfo.os.name} ${deviceInfo.os.version}`,
       deviceType: deviceInfo.device.type,
       isSupported: deviceInfo.compatibility.isSupported,
       warnings: deviceInfo.compatibility.warnings
     });
+    console.error('=== END ERROR DETAILS ===');
     
     // Log to audit for failure tracking
     if (session?.user?.id) {
@@ -1419,11 +1526,44 @@ export async function POST(request: NextRequest) {
     }
     
     console.error('Error creating ticket:', error);
-    // Provide more detailed error message
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+
+    // Provide user-friendly error messages
+    let errorMessage = 'Failed to create ticket. Please try again.';
+    let statusCode = 500;
+
+    if (error instanceof Error) {
+      // Check for specific database errors
+      if (error.message.includes('P2002')) {
+        errorMessage = 'A similar ticket already exists. Please check your open tickets.';
+        statusCode = 409;
+      } else if (error.message.includes('P2003')) {
+        errorMessage = 'Invalid service or category selected. Please refresh and try again.';
+        statusCode = 400;
+      } else if (error.message.includes('timeout') || error.message.includes('ETIMEDOUT')) {
+        errorMessage = 'Request timed out. This might be due to large attachments. Please try with smaller files.';
+        statusCode = 408;
+      } else if (error.message.includes('ECONNRESET')) {
+        errorMessage = 'Connection was reset. Please check your internet connection and try again.';
+        statusCode = 503;
+      } else if (error.message.includes('payload too large')) {
+        errorMessage = 'The request is too large. Please reduce the size of attachments.';
+        statusCode = 413;
+      }
+
+      // Log the full error for debugging
+      console.error('Full error details:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
+    }
+
     return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
+      {
+        error: errorMessage,
+        details: process.env.NODE_ENV === 'development' ? error instanceof Error ? error.message : 'Unknown error' : undefined
+      },
+      { status: statusCode }
     );
   }
 }
