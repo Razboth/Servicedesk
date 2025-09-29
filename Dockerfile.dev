@@ -1,0 +1,39 @@
+# Development Dockerfile for Bank SulutGo ServiceDesk
+# Optimized for hot-reloading and debugging
+
+FROM node:20-alpine
+
+# Install necessary packages
+RUN apk add --no-cache libc6-compat openssl curl bash
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+COPY prisma ./prisma/
+
+# Install all dependencies (including devDependencies)
+RUN npm ci
+
+# Generate Prisma Client
+RUN npx prisma generate
+
+# Copy the rest of the application
+COPY . .
+
+# Create necessary directories
+RUN mkdir -p uploads logs certificates
+
+# Set environment variables
+ENV NODE_ENV development
+ENV NEXT_TELEMETRY_DISABLED 1
+ENV WATCHPACK_POLLING true
+ENV CHOKIDAR_USEPOLLING true
+ENV PORT 3000
+ENV HOSTNAME "0.0.0.0"
+
+# Expose ports
+EXPOSE 3000 9229 5555
+
+# Start the development server
+CMD ["npm", "run", "dev"]

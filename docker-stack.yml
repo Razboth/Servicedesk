@@ -1,0 +1,194 @@
+version: '3.8'
+
+# Docker Stack configuration for Swarm mode deployment
+# Deploy with: docker stack deploy -c docker-stack.yml servicedesk
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER_FILE: /run/secrets/postgres_user
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_DB: servicedesk
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend
+    secrets:
+      - postgres_user
+      - postgres_password
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+
+  app:
+    image: bsg-servicedesk:latest
+    environment:
+      DATABASE_URL_FILE: /run/secrets/database_url
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-https://localhost}
+      NEXTAUTH_SECRET_FILE: /run/secrets/nextauth_secret
+      NODE_ENV: production
+      PORT: 4000
+    volumes:
+      - uploads:/app/uploads
+      - logs:/app/logs
+    networks:
+      - frontend
+      - backend
+    secrets:
+      - database_url
+      - nextauth_secret
+      - encryption_key
+      - jwt_secret
+    deploy:
+      replicas: 3
+      update_config:
+        parallelism: 1
+        delay: 10s
+        failure_action: rollback
+        monitor: 30s
+        max_failure_ratio: 0.3
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.app.rule=Host(`servicedesk.local`)"
+        - "traefik.http.services.app.loadbalancer.server.port=4000"
+
+  nginx:
+    image: nginx:alpine
+    configs:
+      - source: nginx_config
+        target: /etc/nginx/nginx.conf
+    volumes:
+      - uploads:/var/www/uploads:ro
+      - nginx_logs:/var/log/nginx
+    networks:
+      - frontend
+    ports:
+      - target: 80
+        published: 80
+        protocol: tcp
+        mode: host
+      - target: 443
+        published: 443
+        protocol: tcp
+        mode: host
+    deploy:
+      replicas: 2
+      placement:
+        preferences:
+          - spread: node.id
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --requirepass_file /run/secrets/redis_password
+    volumes:
+      - redis_data:/data
+    networks:
+      - backend
+    secrets:
+      - redis_password
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  backup:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER_FILE: /run/secrets/postgres_user
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_DB: servicedesk
+      BACKUP_SCHEDULE: "0 2 * * *"
+    volumes:
+      - backup_data:/backup
+      - ./docker/scripts/backup.sh:/usr/local/bin/backup.sh:ro
+    networks:
+      - backend
+    secrets:
+      - postgres_user
+      - postgres_password
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+networks:
+  frontend:
+    driver: overlay
+    attachable: true
+  backend:
+    driver: overlay
+    internal: true
+    attachable: true
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  uploads:
+    driver: local
+  logs:
+    driver: local
+  nginx_logs:
+    driver: local
+  backup_data:
+    driver: local
+
+configs:
+  nginx_config:
+    file: ./docker/nginx/nginx-prod.conf
+
+secrets:
+  postgres_user:
+    external: true
+  postgres_password:
+    external: true
+  database_url:
+    external: true
+  nextauth_secret:
+    external: true
+  encryption_key:
+    external: true
+  jwt_secret:
+    external: true
+  redis_password:
+    external: true

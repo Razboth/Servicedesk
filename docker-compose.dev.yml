@@ -1,0 +1,180 @@
+version: '3.8'
+
+# Development Docker Compose Configuration
+# This configuration is optimized for local development with hot-reloading
+
+services:
+  # PostgreSQL Database - Development Configuration
+  postgres-dev:
+    image: postgres:16-alpine
+    container_name: bsg-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: servicedesk
+      POSTGRES_PASSWORD: servicedesk_dev
+      POSTGRES_DB: servicedesk_dev
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+      - ./docker/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
+    ports:
+      - "5433:5432"
+    networks:
+      - servicedesk_dev_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U servicedesk"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Next.js Application - Development Configuration with Hot Reload
+  app-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      args:
+        NODE_ENV: development
+    image: bsg-servicedesk:dev
+    container_name: bsg-app-dev
+    restart: unless-stopped
+    depends_on:
+      postgres-dev:
+        condition: service_healthy
+    environment:
+      # Database
+      DATABASE_URL: postgresql://servicedesk:servicedesk_dev@postgres-dev:5432/servicedesk_dev
+
+      # NextAuth
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: development-secret-key-change-in-production
+
+      # Application
+      NODE_ENV: development
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+
+      # Development
+      NEXT_TELEMETRY_DISABLED: 1
+      WATCHPACK_POLLING: true
+
+      # Email (using Mailhog for development)
+      EMAIL_SERVER_HOST: mailhog
+      EMAIL_SERVER_PORT: 1025
+      EMAIL_SERVER_USER: ""
+      EMAIL_SERVER_PASSWORD: ""
+      EMAIL_FROM: noreply@localhost
+
+      # Security (development keys)
+      ENCRYPTION_KEY: development-encryption-key-32char
+      JWT_SECRET: development-jwt-secret
+
+      # Upload
+      UPLOAD_MAX_SIZE: 52428800
+      UPLOAD_ALLOWED_TYPES: image/jpeg,image/png,image/gif,application/pdf,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+
+      # Monitoring
+      MONITORING_ENABLED: true
+      LOG_LEVEL: debug
+      DEBUG: true
+    volumes:
+      # Mount source code for hot-reloading
+      - ./app:/app/app
+      - ./components:/app/components
+      - ./lib:/app/lib
+      - ./prisma:/app/prisma
+      - ./public:/app/public
+      - ./scripts:/app/scripts
+      - ./styles:/app/styles
+      - ./types:/app/types
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+      - ./certificates:/app/certificates
+      # Exclude node_modules to use container's dependencies
+      - /app/node_modules
+      - /app/.next
+    ports:
+      - "3000:3000"
+      - "9229:9229" # Node.js debugger port
+    networks:
+      - servicedesk_dev_network
+    command: npm run dev
+
+  # Prisma Studio for Database Management
+  prisma-studio:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: bsg-prisma-studio
+    restart: unless-stopped
+    depends_on:
+      postgres-dev:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://servicedesk:servicedesk_dev@postgres-dev:5432/servicedesk_dev
+    ports:
+      - "5555:5555"
+    networks:
+      - servicedesk_dev_network
+    command: npx prisma studio
+
+  # Mailhog - Email Testing Service
+  mailhog:
+    image: mailhog/mailhog
+    container_name: bsg-mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025" # SMTP server
+      - "8025:8025" # Web UI
+    networks:
+      - servicedesk_dev_network
+
+  # Redis Cache - Development
+  redis-dev:
+    image: redis:7-alpine
+    container_name: bsg-redis-dev
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data_dev:/data
+    ports:
+      - "6380:6379"
+    networks:
+      - servicedesk_dev_network
+
+  # Adminer - Database Management UI
+  adminer:
+    image: adminer
+    container_name: bsg-adminer
+    restart: unless-stopped
+    depends_on:
+      - postgres-dev
+    ports:
+      - "8080:8080"
+    networks:
+      - servicedesk_dev_network
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres-dev
+      ADMINER_DESIGN: pepa-linha
+
+  # Node Exporter for monitoring
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: bsg-node-exporter
+    restart: unless-stopped
+    ports:
+      - "9100:9100"
+    networks:
+      - servicedesk_dev_network
+
+networks:
+  servicedesk_dev_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.22.0.0/16
+
+volumes:
+  postgres_data_dev:
+    driver: local
+  redis_data_dev:
+    driver: local
