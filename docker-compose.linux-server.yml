@@ -1,0 +1,254 @@
+# Production Docker Compose for Linux Server Deployment
+# Bank SulutGo ServiceDesk - Optimized for Ubuntu/Debian servers
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: servicedesk-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-servicedesk}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Database password required}
+      POSTGRES_DB: ${DB_NAME:-servicedesk}
+      PGDATA: /var/lib/postgresql/data/pgdata
+      TZ: Asia/Makassar
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups:/backups
+      - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
+    networks:
+      - servicedesk-network
+    ports:
+      - "127.0.0.1:5432:5432"  # Only accessible from localhost
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-servicedesk} -d ${DB_NAME:-servicedesk}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+
+  # ServiceDesk Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NODE_ENV: production
+    image: servicedesk:latest
+    container_name: servicedesk-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Database
+      DATABASE_URL: postgresql://${DB_USER:-servicedesk}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-servicedesk}?schema=public
+
+      # Application
+      NODE_ENV: production
+      PORT: 4000
+      NEXT_TELEMETRY_DISABLED: 1
+
+      # NextAuth
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-https://servicedesk.banksulutgo.co.id}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?NextAuth secret required}
+
+      # Encryption
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?Encryption key required}
+      JWT_SECRET: ${JWT_SECRET:?JWT secret required}
+
+      # Email (Optional)
+      EMAIL_SERVER_HOST: ${EMAIL_SERVER_HOST:-}
+      EMAIL_SERVER_PORT: ${EMAIL_SERVER_PORT:-587}
+      EMAIL_SERVER_USER: ${EMAIL_SERVER_USER:-}
+      EMAIL_SERVER_PASSWORD: ${EMAIL_SERVER_PASSWORD:-}
+      EMAIL_FROM: ${EMAIL_FROM:-noreply@banksulutgo.co.id}
+
+      # Upload Configuration
+      UPLOAD_MAX_SIZE: ${UPLOAD_MAX_SIZE:-10485760}
+      UPLOAD_ALLOWED_TYPES: ${UPLOAD_ALLOWED_TYPES:-image/jpeg,image/png,image/gif,application/pdf}
+
+      # Monitoring
+      MONITORING_ENABLED: ${MONITORING_ENABLED:-true}
+
+      # Timezone
+      TZ: Asia/Makassar
+    volumes:
+      - uploads:/app/uploads
+      - logs:/app/logs
+      - certificates:/app/certificates
+    networks:
+      - servicedesk-network
+    ports:
+      - "127.0.0.1:4000:4000"  # Only accessible from localhost (nginx will proxy)
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+      replicas: 2  # Run 2 instances for high availability
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: servicedesk-nginx
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./public:/usr/share/nginx/html:ro
+      - nginx_cache:/var/cache/nginx
+      - certbot_data:/var/www/certbot:ro
+      - letsencrypt:/etc/letsencrypt:ro
+    networks:
+      - servicedesk-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Certbot for SSL Certificates (Let's Encrypt)
+  certbot:
+    image: certbot/certbot:latest
+    container_name: servicedesk-certbot
+    volumes:
+      - certbot_data:/var/www/certbot
+      - letsencrypt:/etc/letsencrypt
+    command: certonly --webroot --webroot-path=/var/www/certbot --email ${SSL_EMAIL:-admin@banksulutgo.co.id} --agree-tos --no-eff-email --force-renewal -d ${DOMAIN:-servicedesk.banksulutgo.co.id}
+    networks:
+      - servicedesk-network
+    profiles:
+      - ssl-setup  # Only run when explicitly requested
+
+  # Redis for Caching and Sessions
+  redis:
+    image: redis:7-alpine
+    container_name: servicedesk-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-changeme}
+    volumes:
+      - redis_data:/data
+    networks:
+      - servicedesk-network
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  # Database Backup Service (Automated)
+  backup:
+    image: postgres:15-alpine
+    container_name: servicedesk-backup
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGUSER: ${DB_USER:-servicedesk}
+      PGPASSWORD: ${DB_PASSWORD}
+      PGDATABASE: ${DB_NAME:-servicedesk}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
+    volumes:
+      - ./backups:/backups
+      - ./scripts/backup-cron.sh:/backup-cron.sh:ro
+    networks:
+      - servicedesk-network
+    command: sh -c "crond -f -l 2"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+networks:
+  servicedesk-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+volumes:
+  postgres_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/lib/servicedesk/postgres
+  uploads:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/lib/servicedesk/uploads
+  logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/log/servicedesk
+  certificates:
+    driver: local
+  redis_data:
+    driver: local
+  nginx_cache:
+    driver: local
+  certbot_data:
+    driver: local
+  letsencrypt:
+    driver: local
