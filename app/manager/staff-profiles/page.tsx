@@ -145,17 +145,18 @@ export default function StaffProfilesPage() {
   const fetchUsers = async () => {
     try {
       setLoadingUsers(true);
-      const response = await fetch(`/api/users?branchId=${session?.user?.branchId}`);
+      // Fetch technicians from manager users endpoint for shift scheduling
+      const response = await fetch(`/api/manager/users?role=TECHNICIAN&status=active&limit=1000`);
       if (!response.ok) throw new Error('Failed to fetch users');
 
       const data = await response.json();
       // Filter out users who already have profiles
       const existingUserIds = profiles.map(p => p.userId);
-      const availableUsers = data.data?.filter((u: User) => !existingUserIds.includes(u.id)) || [];
+      const availableUsers = data.users?.filter((u: User) => !existingUserIds.includes(u.id)) || [];
       setUsers(availableUsers);
     } catch (error) {
       console.error('Error fetching users:', error);
-      toast.error('Failed to load users');
+      toast.error('Failed to load technicians');
     } finally {
       setLoadingUsers(false);
     }
@@ -240,12 +241,12 @@ export default function StaffProfilesPage() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Staff Shift Profiles</h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Manage staff preferences and constraints for shift scheduling
+            Manage technician shift preferences and constraints for scheduling
           </p>
         </div>
         <Button onClick={handleCreate}>
           <Plus className="w-4 h-4 mr-2" />
-          Add Staff Profile
+          Add Technician Profile
         </Button>
       </div>
 
@@ -396,23 +397,32 @@ export default function StaffProfilesPage() {
             {/* User Selection */}
             {!editingProfile && (
               <div className="space-y-2">
-                <Label>Staff Member *</Label>
+                <Label>Technician *</Label>
                 <Select
                   value={formData.userId}
                   onValueChange={(value) => setFormData({ ...formData, userId: value })}
                   disabled={loadingUsers}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a user" />
+                    <SelectValue placeholder="Select a technician" />
                   </SelectTrigger>
                   <SelectContent>
-                    {users.map(user => (
-                      <SelectItem key={user.id} value={user.id}>
-                        {user.name} ({user.email})
-                      </SelectItem>
-                    ))}
+                    {loadingUsers ? (
+                      <SelectItem value="loading" disabled>Loading technicians...</SelectItem>
+                    ) : users.length === 0 ? (
+                      <SelectItem value="none" disabled>No available technicians</SelectItem>
+                    ) : (
+                      users.map(user => (
+                        <SelectItem key={user.id} value={user.id}>
+                          {user.name} ({user.email})
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Only active technicians are shown. Staff profiles are for IT technicians who work shifts.
+                </p>
               </div>
             )}
 

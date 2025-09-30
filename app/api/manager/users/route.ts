@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
   try {
     const session = await auth();
     
-    if (!session || !['MANAGER', 'ADMIN'].includes(session.user.role)) {
+    if (!session || !['MANAGER', 'MANAGER_IT', 'ADMIN'].includes(session.user.role)) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -36,9 +36,12 @@ export async function GET(request: NextRequest) {
     // Build where clause - exclude high-privilege roles for managers
     const where: any = {
       branchId: user.branch.id,
-      // Managers cannot see high-privilege roles (managed by admin only)
-      role: session.user.role === 'MANAGER' ? { 
-        notIn: ['TECHNICIAN', 'ADMIN', 'SECURITY_ANALYST'] 
+      // Regular managers cannot see high-privilege roles (managed by admin only)
+      // IT managers can see technicians for shift scheduling
+      role: session.user.role === 'MANAGER' ? {
+        notIn: ['TECHNICIAN', 'ADMIN', 'SECURITY_ANALYST']
+      } : session.user.role === 'MANAGER_IT' ? {
+        notIn: ['ADMIN', 'SECURITY_ANALYST']
       } : undefined
     };
 
@@ -51,13 +54,24 @@ export async function GET(request: NextRequest) {
 
     if (role && role !== 'all') {
       // Prevent managers from filtering for high-privilege roles
-      const restrictedRoles = ['TECHNICIAN', 'ADMIN', 'SECURITY_ANALYST'];
-      if (session.user.role === 'MANAGER' && restrictedRoles.includes(role)) {
+      // IT managers can filter for technicians
+      const restrictedForManager = ['TECHNICIAN', 'ADMIN', 'SECURITY_ANALYST'];
+      const restrictedForITManager = ['ADMIN', 'SECURITY_ANALYST'];
+
+      if (session.user.role === 'MANAGER' && restrictedForManager.includes(role)) {
         return NextResponse.json(
           { error: 'This role can only be managed by administrators' },
           { status: 403 }
         );
       }
+
+      if (session.user.role === 'MANAGER_IT' && restrictedForITManager.includes(role)) {
+        return NextResponse.json(
+          { error: 'This role can only be managed by administrators' },
+          { status: 403 }
+        );
+      }
+
       where.role = role;
     }
 
