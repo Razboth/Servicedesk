@@ -514,16 +514,16 @@ export default function StaffProfilesPage() {
               <div className="space-y-2">
                 <Label>Preferred Shift Type</Label>
                 <Select
-                  value={formData.preferredShiftType}
+                  value={formData.preferredShiftType || "NONE"}
                   onValueChange={(value) =>
-                    setFormData({ ...formData, preferredShiftType: value })
+                    setFormData({ ...formData, preferredShiftType: value === "NONE" ? "" : value })
                   }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="No preference" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No preference</SelectItem>
+                    <SelectItem value="NONE">No preference</SelectItem>
                     <SelectItem value="DAY">Day Shift</SelectItem>
                     <SelectItem value="NIGHT">Night Shift</SelectItem>
                   </SelectContent>
