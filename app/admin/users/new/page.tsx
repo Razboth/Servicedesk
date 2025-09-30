@@ -155,6 +155,8 @@ export default function CreateUserPage() {
         return 'Full system access, can manage all settings and users';
       case 'MANAGER':
         return 'Can manage branch operations and approve tickets';
+      case 'MANAGER_IT':
+        return 'IT manager with shift management and staff scheduling access';
       case 'TECHNICIAN':
         return 'Can handle and resolve assigned tickets';
       case 'AGENT':
@@ -332,6 +334,7 @@ export default function CreateUserPage() {
                       <SelectItem value="AGENT">Agent</SelectItem>
                       <SelectItem value="TECHNICIAN">Technician</SelectItem>
                       <SelectItem value="MANAGER">Manager</SelectItem>
+                      <SelectItem value="MANAGER_IT">IT Manager</SelectItem>
                       <SelectItem value="SECURITY_ANALYST">Security Analyst</SelectItem>
                       <SelectItem value="ADMIN">Admin</SelectItem>
                     </SelectContent>

@@ -145,6 +145,7 @@ const USER_ROLES = [
   { value: 'USER', label: 'User', description: 'Regular branch employee' },
   { value: 'TECHNICIAN', label: 'Technician', description: 'IT support technician' },
   { value: 'MANAGER', label: 'Manager', description: 'Branch manager with approval rights' },
+  { value: 'MANAGER_IT', label: 'IT Manager', description: 'IT manager with shift management access' },
   { value: 'ADMIN', label: 'Super Admin', description: 'Full system administrator' },
   { value: 'SECURITY_ANALYST', label: 'Security Analyst', description: 'Security specialist with confidential access' }
 ];
@@ -488,6 +489,7 @@ export default function AdminUsersPage() {
     switch (role) {
       case 'ADMIN': return 'destructive';
       case 'MANAGER': return 'warning';
+      case 'MANAGER_IT': return 'warning';
       case 'TECHNICIAN': return 'default';
       case 'AGENT': return 'secondary';
       case 'SECURITY_ANALYST': return 'outline';
@@ -501,6 +503,7 @@ export default function AdminUsersPage() {
       case 'SECURITY_ANALYST':
         return <Shield className="h-3 w-3" />;
       case 'MANAGER':
+      case 'MANAGER_IT':
       case 'USER':
       case 'AGENT':
         return <Building2 className="h-3 w-3" />;
@@ -694,6 +697,7 @@ export default function AdminUsersPage() {
                 <SelectItem value="all">All Roles</SelectItem>
                 <SelectItem value="ADMIN">Admin</SelectItem>
                 <SelectItem value="MANAGER">Manager</SelectItem>
+                <SelectItem value="MANAGER_IT">IT Manager</SelectItem>
                 <SelectItem value="TECHNICIAN">Technician</SelectItem>
                 <SelectItem value="AGENT">Agent</SelectItem>
                 <SelectItem value="USER">User</SelectItem>

@@ -239,6 +239,7 @@ export default function ManagerUsersPage() {
               <SelectContent>
                 <SelectItem value="all">All Roles</SelectItem>
                 <SelectItem value="MANAGER">Manager</SelectItem>
+                <SelectItem value="MANAGER_IT">IT Manager</SelectItem>
                 {/* High-privilege roles can only be managed by admins */}
                 {session?.user.role === 'ADMIN' && (
                   <>
@@ -444,6 +445,7 @@ export default function ManagerUsersPage() {
                     </>
                   )}
                   <SelectItem value="MANAGER">Manager</SelectItem>
+                  <SelectItem value="MANAGER_IT">IT Manager</SelectItem>
                 </SelectContent>
               </Select>
             </div>
