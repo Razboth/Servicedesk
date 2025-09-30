@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (!['MANAGER', 'ADMIN'].includes(session.user.role)) {
+    if (!['MANAGER', 'MANAGER_IT', 'ADMIN'].includes(session.user.role)) {
       return NextResponse.json(
         { error: 'Insufficient permissions' },
         { status: 403 }

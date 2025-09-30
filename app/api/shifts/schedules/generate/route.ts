@@ -19,9 +19,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Check role permissions
-    if (!['MANAGER', 'ADMIN'].includes(session.user.role)) {
+    if (!['MANAGER', 'MANAGER_IT', 'ADMIN'].includes(session.user.role)) {
       return NextResponse.json(
-        { error: 'Insufficient permissions. Manager or Admin role required.' },
+        { error: 'Insufficient permissions. Manager, IT Manager, or Admin role required.' },
         { status: 403 }
       );
     }

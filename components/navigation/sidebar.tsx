@@ -266,7 +266,7 @@ export function Sidebar() {
           </div>
         )}
 
-        {session.user?.role === 'MANAGER' && (
+        {(session.user?.role === 'MANAGER' || session.user?.role === 'MANAGER_IT') && (
           <div className="space-y-1">
             {(!isCollapsed || isMobile) && <div className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider px-3 py-2">Manager</div>}
             <Link href="/manager/dashboard" className={linkClass('/manager/dashboard')} onClick={handleLinkClick}>
@@ -299,6 +299,38 @@ export function Sidebar() {
               </svg>
               {(!isCollapsed || isMobile) && 'ATMs'}
             </Link>
+
+            {/* Shift Management - Only for MANAGER_IT */}
+            {session.user?.role === 'MANAGER_IT' && (
+              <>
+                {(!isCollapsed || isMobile) && <div className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider px-3 py-2 mt-2">Shift Management</div>}
+                <Link href="/manager/shift-schedules" className={linkClass('/manager/shift-schedules')} onClick={handleLinkClick}>
+                  <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  {(!isCollapsed || isMobile) && 'Shift Schedules'}
+                </Link>
+                <Link href="/manager/staff-profiles" className={linkClass('/manager/staff-profiles')} onClick={handleLinkClick}>
+                  <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                  </svg>
+                  {(!isCollapsed || isMobile) && 'Staff Shift Profiles'}
+                </Link>
+                <Link href="/manager/leave-requests" className={linkClass('/manager/leave-requests')} onClick={handleLinkClick}>
+                  <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {(!isCollapsed || isMobile) && 'Leave Requests'}
+                </Link>
+                <Link href="/manager/shift-swaps" className={linkClass('/manager/shift-swaps')} onClick={handleLinkClick}>
+                  <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                  </svg>
+                  {(!isCollapsed || isMobile) && 'Shift Swaps'}
+                </Link>
+              </>
+            )}
+
             <Link href="/tickets/legacy" className={linkClass('/tickets/legacy')} onClick={handleLinkClick}>
               <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />

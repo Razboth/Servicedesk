@@ -1347,6 +1347,7 @@ enum UserRole {
   USER
   TECHNICIAN
   MANAGER
+  MANAGER_IT      // IT Manager with shift management access
   ADMIN
   SECURITY_ANALYST
 }
