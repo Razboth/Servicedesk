@@ -70,12 +70,11 @@ export default function ChangePasswordPage() {
         setError(data.error || 'Failed to change password');
       } else {
         setSuccess(true);
-        // Update session to reflect password change
-        await update();
-        // Redirect to home page after 2 seconds
+        // Redirect to home page after 1 second
         setTimeout(() => {
           router.push('/');
-        }, 2000);
+          router.refresh();
+        }, 1000);
       }
     } catch (error) {
       setError('An error occurred while changing password');
