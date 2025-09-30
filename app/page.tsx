@@ -11,6 +11,7 @@ import { PageHeader } from '@/components/ui/page-header'
 import { ModernStatsCards } from '@/components/dashboard/modern-stats-cards'
 import { SimpleActivityFeed } from '@/components/dashboard/simple-activity-feed'
 import { AnnouncementCarousel } from '@/components/announcements/announcement-carousel'
+import { ShiftScheduleNotification } from '@/components/dashboard/shift-schedule-notification'
 import { CalendarDays, Clock, Users, AlertTriangle, CheckCircle, XCircle, Pause, Play, Shield, LayoutDashboard } from 'lucide-react'
 // Simple SVG icons as components
 const TicketIcon = ({ className }: { className?: string }) => (
@@ -157,6 +158,9 @@ export default function Dashboard() {
 
         {/* Announcement Carousel */}
         <AnnouncementCarousel />
+
+        {/* Shift Schedule Notification - Shows today's shift and upcoming schedule */}
+        <ShiftScheduleNotification />
 
         {/* Modern Stats Cards */}
         <div className="mb-8">
