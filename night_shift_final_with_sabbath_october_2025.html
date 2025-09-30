@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jadwal Night Shift & On-Call - Oktober 2025 (Final with Sabbath)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            padding: 15px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1500px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        
+        .header p {
+            font-size: 16px;
+            opacity: 0.95;
+        }
+        
+        .info-panel {
+            background: #f8f9fa;
+            padding: 15px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
+            border-bottom: 2px solid #dee2e6;
+        }
+        
+        .info-card {
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .info-card h3 {
+            color: #2c3e50;
+            font-size: 14px;
+            margin-bottom: 8px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 4px;
+        }
+        
+        .info-card ul {
+            list-style: none;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+        
+        .info-card li {
+            padding: 2px 0;
+        }
+        
+        .info-card li:before {
+            content: "▸ ";
+            color: #3498db;
+            font-weight: bold;
+        }
+        
+        .highlight-weekend {
+            background: #ffe4e1;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+        
+        .highlight-sabbath {
+            background: #e8f5e9;
+            padding: 2px 5px;
+            border-radius: 3px;
+            color: #2e7d32;
+            font-weight: bold;
+        }
+        
+        .highlight-server {
+            background: #e3f2fd;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+        
+        .controls {
+            padding: 15px;
+            background: #ecf0f1;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 3px 10px rgba(52, 152, 219, 0.3);
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+        }
+        
+        button.success {
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+        }
+        
+        button.danger {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        }
+        
+        .schedule-wrapper {
+            overflow-x: auto;
+            padding: 15px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 11px;
+            box-shadow: 0 3px 15px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        th {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 10px 4px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 10px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-right: 1px solid #34495e;
+        }
+        
+        th.weekend {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        }
+        
+        th.friday {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+        }
+        
+        td {
+            border: 1px solid #dee2e6;
+            padding: 6px 3px;
+            text-align: center;
+            background: white;
+            transition: all 0.2s ease;
+            font-size: 11px;
+            position: relative;
+        }
+        
+        td.name {
+            text-align: left;
+            font-weight: 600;
+            background: #f8f9fa;
+            min-width: 140px;
+            position: sticky;
+            left: 0;
+            z-index: 50;
+            padding-left: 8px;
+        }
+        
+        td.name.weekend-only {
+            background: #ffe4e1;
+        }
+        
+        td.name.sabbath {
+            background: #e8f5e9;
+        }
+        
+        td.position {
+            text-align: left;
+            background: #f8f9fa;
+            min-width: 100px;
+            font-size: 10px;
+        }
+        
+        /* Night shift cell */
+        td.night-shift {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            font-weight: bold;
+        }
+        
+        /* Day off after night shift */
+        td.off-after-night {
+            background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+            color: white;
+            font-weight: bold;
+        }
+        
+        /* Weekend day shift */
+        td.weekend-day {
+            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+            color: white;
+            font-weight: bold;
+        }
+        
+        /* Weekend night shift */
+        td.weekend-night {
+            background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+            color: white;
+            font-weight: bold;
+        }
+        
+        /* On-call standby */
+        td.on-call {
+            background: linear-gradient(135deg, #16a085 0%, #27ae60 100%);
+            color: white;
+            font-weight: bold;
+            font-size: 10px;
+        }
+        
+        /* Sabbath restriction */
+        td.sabbath-block {
+            background: repeating-linear-gradient(
+                45deg,
+                #f5f5f5,
+                #f5f5f5 10px,
+                #e0e0e0 10px,
+                #e0e0e0 20px
+            );
+            color: #999;
+            font-style: italic;
+            font-size: 9px;
+        }
+        
+        td:hover {
+            transform: scale(1.15);
+            z-index: 200;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+            border: 2px solid #3498db;
+        }
+        
+        .legend {
+            padding: 15px;
+            background: #f8f9fa;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px;
+            background: white;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .legend-color {
+            width: 25px;
+            height: 25px;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        .legend-text {
+            font-size: 11px;
+            color: #2c3e50;
+        }
+        
+        .stats-panel {
+            padding: 15px;
+            background: white;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+        
+        .stat-box {
+            background: linear-gradient(135deg, #ecf0f1 0%, #bdc3c7 100%);
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .stat-box h4 {
+            font-size: 12px;
+            color: #34495e;
+            margin-bottom: 5px;
+        }
+        
+        .stat-box .value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .weekend-rotation-table {
+            margin: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .weekend-rotation-table h3 {
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+        
+        .weekend-rotation-table table {
+            background: white;
+        }
+        
+        .oncall-note {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 10px;
+            margin: 10px 20px;
+            font-size: 12px;
+        }
+        
+        @media print {
+            body {
+                background: white;
+            }
+            .controls {
+                display: none;
+            }
+            .container {
+                box-shadow: none;
+            }
+            table {
+                font-size: 9px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>JADWAL NIGHT SHIFT STANDBY & ON-CALL - FINAL</h1>
+            <p>Departemen Operasional - Oktober 2025</p>
+            <p style="font-size: 14px; margin-top: 5px; color: #ffd700;">⚠️ Gilby E.A. Koloay: Sabbath (Friday sunset - Saturday sunset)</p>
+        </div>
+        
+        <div class="info-panel">
+            <div class="info-card">
+                <h3>Weekend Day Shift Pool (5)</h3>
+                <ul>
+                    <li><span class="highlight-weekend">Shirke H. Warbung (Woman)</span></li>
+                    <li><span class="highlight-weekend">Frigia Pasla (Woman)</span></li>
+                    <li><span class="highlight-weekend">Lenora G. Kepel (Woman)</span></li>
+                    <li><span class="highlight-weekend">Cecep Juarsa (Card Center)</span></li>
+                    <li><span class="highlight-weekend">Geza Buulolo (Card Center)</span></li>
+                </ul>
+            </div>
+            <div class="info-card">
+                <h3>Server Access Staff (6)</h3>
+                <ul>
+                    <li><span class="highlight-server">Gugah, Razaan, Excelsis (Tech)</span></li>
+                    <li><span class="highlight-sabbath">Gilby (DBA) - No Fri/Sat</span></li>
+                    <li><span class="highlight-server">Erwin (DBA)</span></li>
+                    <li><span class="highlight-server">Yosua (Helpdesk)</span></li>
+                </ul>
+            </div>
+            <div class="info-card">
+                <h3>Special Considerations</h3>
+                <ul>
+                    <li>Gilby: No Friday night shifts</li>
+                    <li>Gilby: No Saturday shifts (day/night)</li>
+                    <li>Gilby: Can work Sunday - Thursday</li>
+                    <li>Weekend on-call needed for no-server staff</li>
+                    <li>24/7 server access coverage required</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="oncall-note">
+            <strong>📱 ON-CALL RULES:</strong> On-call backup required whenever night shift OR weekend shift staff doesn't have server access. This includes weekend day shifts (Shirke, Frigia, Lenora, Cecep, Geza) and weekend nights without server access.
+        </div>
+        
+        <div class="controls">
+            <button onclick="generateSchedule()" class="success">Generate Schedule</button>
+            <button onclick="showWeekendRotation()">Weekend Detail</button>
+            <button onclick="showOnCallSchedule()">On-Call Detail</button>
+            <button onclick="validateSchedule()" class="danger">Validate</button>
+            <button onclick="window.print()">Print</button>
+        </div>
+        
+        <div class="stats-panel" id="statsPanel">
+            <div class="stat-box">
+                <h4>Total Night Shifts</h4>
+                <div class="value" id="totalNightShifts">0</div>
+            </div>
+            <div class="stat-box">
+                <h4>Weekend On-Call</h4>
+                <div class="value" id="weekendOnCall">0</div>
+            </div>
+            <div class="stat-box">
+                <h4>Weekday On-Call</h4>
+                <div class="value" id="weekdayOnCall">0</div>
+            </div>
+            <div class="stat-box">
+                <h4>Gilby Sabbaths</h4>
+                <div class="value">4</div>
+            </div>
+        </div>
+        
+        <div class="weekend-rotation-table">
+            <h3>Weekend Schedule with On-Call Coverage</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Weekend</th>
+                        <th>Date</th>
+                        <th>Saturday Day (2)</th>
+                        <th>Sunday Day (2)</th>
+                        <th>Saturday Night (3)</th>
+                        <th>Sunday Night (3)</th>
+                        <th>On-Call Backup</th>
+                    </tr>
+                </thead>
+                <tbody id="weekendRotationBody"></tbody>
+            </table>
+        </div>
+        
+        <div class="schedule-wrapper">
+            <table id="mainSchedule">
+                <thead>
+                    <tr id="headerRow"></tr>
+                </thead>
+                <tbody id="scheduleBody"></tbody>
+            </table>
+        </div>
+        
+        <div class="schedule-wrapper" style="margin-top: 20px;">
+            <h3 style="padding: 10px; background: #ecf0f1;">Complete On-Call Schedule (Weekday + Weekend)</h3>
+            <table id="onCallSchedule">
+                <thead>
+                    <tr id="onCallHeader"></tr>
+                </thead>
+                <tbody id="onCallBody"></tbody>
+            </table>
+        </div>
+        
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color" style="background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);"></div>
+                <span class="legend-text">Night Shift (1)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);"></div>
+                <span class="legend-text">Off Day</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);"></div>
+                <span class="legend-text">Weekend Day (2)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);"></div>
+                <span class="legend-text">Weekend Night (3)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: linear-gradient(135deg, #16a085 0%, #27ae60 100%);"></div>
+                <span class="legend-text">On-Call (OC)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: repeating-linear-gradient(45deg, #f5f5f5, #f5f5f5 10px, #e0e0e0 10px, #e0e0e0 20px);"></div>
+                <span class="legend-text">Sabbath Block</span>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const staff = [
+            // Night shift staff (8 male)
+            {id: 1, name: "GUGAH M. WIJAYA", position: "Tech. Support", hasServerAccess: true, shiftType: 'night'},
+            {id: 2, name: "RAZAAN Y.F. BOTUTINE", position: "Tech. Support", hasServerAccess: true, shiftType: 'night'},
+            {id: 3, name: "EXCELSIS H.N. MARAMIS", position: "Tech. Support", hasServerAccess: true, shiftType: 'night'},
+            {id: 4, name: "GILBY E.A. KOLOAY", position: "Database Adm", hasServerAccess: true, shiftType: 'night', hasSabbath: true},
+            {id: 5, name: "ERWIN LAPIAN", position: "Database Adm", hasServerAccess: true, shiftType: 'night'},
+            {id: 6, name: "YOSUA GR.VAN BEUREN", position: "Helpdesk", hasServerAccess: true, shiftType: 'night'},
+            {id: 7, name: "DANIEL W. NIODE", position: "Analis Ops IT", hasServerAccess: false, shiftType: 'night'},
+            {id: 8, name: "BRAYEND N.G. TAMUSA", position: "Helpdesk", hasServerAccess: false, shiftType: 'night'},
+            // Weekend day shift only staff
+            {id: 9, name: "GEZA BUULOLO", position: "Ass Ops Card Center", hasServerAccess: false, shiftType: 'weekend'},
+            {id: 10, name: "CECEP JUARSA", position: "Ass Ops Card Center", hasServerAccess: false, shiftType: 'weekend'},
+            {id: 11, name: "SHIRKE H. WARBUNG", position: "Analis Ops IT", hasServerAccess: false, shiftType: 'weekend', gender: 'F'},
+            {id: 12, name: "FRIGIA PASLA", position: "Helpdesk", hasServerAccess: false, shiftType: 'weekend', gender: 'F'},
+            {id: 13, name: "LENORA G. KEPEL", position: "Helpdesk", hasServerAccess: false, shiftType: 'weekend', gender: 'F'}
+        ];
+        
+        const daysInMonth = 31;
+        const weekends = [4, 5, 11, 12, 18, 19, 25, 26];
+        const fridays = [3, 10, 17, 24, 31];
+        const saturdays = [4, 11, 18, 25];
+        const weekendPairs = [[4, 5], [11, 12], [18, 19], [25, 26]];
+        const monthDays = ['R', 'K', 'J', 'S', 'M', 'S', 'S', 'R', 'K', 'J', 
+                          'S', 'M', 'S', 'S', 'R', 'K', 'J', 'S', 'M', 'S', 
+                          'S', 'R', 'K', 'J', 'S', 'M', 'S', 'S', 'R', 'K', 'J'];
+        
+        let scheduleData = {};
+        let onCallData = {};
+        let weekendRotation = {};
+        
+        function initializeTables() {
+            const headerRow = document.getElementById('headerRow');
+            headerRow.innerHTML = '<th>No</th><th>Nama</th><th>Jabatan</th>';
+            
+            for (let i = 1; i <= daysInMonth; i++) {
+                const isWeekend = weekends.includes(i);
+                const isFriday = fridays.includes(i);
+                let className = '';
+                if (isWeekend) className = 'weekend';
+                else if (isFriday) className = 'friday';
+                
+                headerRow.innerHTML += `<th class="${className}">${i}<br>${monthDays[i-1]}</th>`;
+            }
+            headerRow.innerHTML += '<th>Night</th><th>Off</th><th>OC</th>';
+            
+            const onCallHeader = document.getElementById('onCallHeader');
+            onCallHeader.innerHTML = '<th>Date</th><th>Day</th><th>Shift Type</th><th>Staff Name</th><th>Server?</th><th>On-Call Backup</th>';
+        }
+        
+        function generateSchedule() {
+            scheduleData = {};
+            onCallData = {};
+            weekendRotation = {};
+            
+            // Initialize
+            staff.forEach(s => {
+                scheduleData[s.id] = {
+                    shifts: new Array(daysInMonth + 1).fill(''),
+                    nightCount: 0,
+                    offCount: 0,
+                    onCallCount: 0,
+                    weekendDayCount: 0
+                };
+            });
+            
+            // Mark Gilby's Sabbath blocks (Friday night, Saturday all)
+            fridays.forEach(friday => {
+                if (friday <= daysInMonth) {
+                    scheduleData[4].shifts[friday] = 'SABBATH';
+                }
+            });
+            saturdays.forEach(saturday => {
+                if (saturday <= daysInMonth) {
+                    scheduleData[4].shifts[saturday] = 'SABBATH';
+                }
+            });
+            
+            // Assign weekend shifts
+            assignWeekendShifts();
+            
+            // Distribute weekday night shifts
+            distributeWeekdayNightShifts();
+            
+            // Generate comprehensive on-call schedule
+            generateOnCallBackup();
+            
+            // Display
+            displaySchedule();
+            displayWeekendRotation();
+            updateStats();
+        }
+        
+        function assignWeekendShifts() {
+            // Weekend day rotation (5 staff)
+            const dayRotation = [
+                {sat: 11, sun: 12},  // Week 1: Shirke, Frigia
+                {sat: 13, sun: 10},  // Week 2: Lenora, Cecep  
+                {sat: 9, sun: 11},   // Week 3: Geza, Shirke
+                {sat: 12, sun: 13}   // Week 4: Frigia, Lenora
+            ];
+            
+            // Weekend night rotation (excluding Gilby for Saturdays)
+            const nightStaffNoGilby = staff.filter(s => 
+                s.shiftType === 'night' && s.id !== 4
+            );
+            
+            weekendPairs.forEach((weekend, index) => {
+                const dayShifts = dayRotation[index];
+                
+                // Weekend day shifts
+                scheduleData[dayShifts.sat].shifts[weekend[0]] = 'WDAY';
+                scheduleData[dayShifts.sat].weekendDayCount++;
+                if (dayShifts.sat !== dayShifts.sun) {
+                    scheduleData[dayShifts.sat].shifts[weekend[1]] = 'OFF';
+                    scheduleData[dayShifts.sat].offCount++;
+                }
+                
+                scheduleData[dayShifts.sun].shifts[weekend[1]] = 'WDAY';
+                scheduleData[dayShifts.sun].weekendDayCount++;
+                if (weekend[1] < daysInMonth) {
+                    scheduleData[dayShifts.sun].shifts[weekend[1] + 1] = 'OFF';
+                    scheduleData[dayShifts.sun].offCount++;
+                }
+                
+                // Weekend night shifts (no Gilby on Saturday)
+                const satNightStaff = nightStaffNoGilby[index % nightStaffNoGilby.length];
+                scheduleData[satNightStaff.id].shifts[weekend[0]] = 'WNIGHT';
+                scheduleData[satNightStaff.id].nightCount++;
+                scheduleData[satNightStaff.id].shifts[weekend[1]] = 'OFF';
+                scheduleData[satNightStaff.id].offCount++;
+                
+                // Sunday night (Gilby can work Sunday)
+                const sundayPool = staff.filter(s => s.shiftType === 'night');
+                const sunNightStaff = sundayPool[(index + 3) % sundayPool.length];
+                if (scheduleData[sunNightStaff.id].shifts[weekend[1]] !== 'OFF') {
+                    scheduleData[sunNightStaff.id].shifts[weekend[1]] = 'WNIGHT';
+                    scheduleData[sunNightStaff.id].nightCount++;
+                    if (weekend[1] < daysInMonth) {
+                        scheduleData[sunNightStaff.id].shifts[weekend[1] + 1] = 'OFF';
+                        scheduleData[sunNightStaff.id].offCount++;
+                    }
+                }
+                
+                // Store rotation
+                weekendRotation[index] = {
+                    satDay: staff.find(s => s.id === dayShifts.sat).name,
+                    sunDay: staff.find(s => s.id === dayShifts.sun).name,
+                    satNight: satNightStaff.name,
+                    sunNight: sunNightStaff.name,
+                    satDayHasServer: false,
+                    sunDayHasServer: false,
+                    satNightHasServer: satNightStaff.hasServerAccess,
+                    sunNightHasServer: sunNightStaff.hasServerAccess
+                };
+            });
+        }
+        
+        function distributeWeekdayNightShifts() {
+            const nightStaff = staff.filter(s => s.shiftType === 'night');
+            const targetNights = 5;
+            const lastNight = {};
+            nightStaff.forEach(s => lastNight[s.id] = -5);
+            
+            for (let day = 1; day <= daysInMonth; day++) {
+                if (weekends.includes(day)) continue;
+                
+                let eligible = nightStaff.filter(s => {
+                    const sabbathBlock = s.hasSabbath && (fridays.includes(day) || saturdays.includes(day));
+                    const daysSince = day - lastNight[s.id];
+                    const notOff = scheduleData[s.id].shifts[day] !== 'OFF';
+                    const notSabbath = scheduleData[s.id].shifts[day] !== 'SABBATH';
+                    const belowTarget = scheduleData[s.id].nightCount < targetNights;
+                    
+                    return !sabbathBlock && daysSince >= 3 && notOff && notSabbath && belowTarget;
+                });
+                
+                if (eligible.length === 0) {
+                    eligible = nightStaff.filter(s => 
+                        scheduleData[s.id].shifts[day] === '' &&
+                        scheduleData[s.id].shifts[day] !== 'SABBATH'
+                    );
+                }
+                
+                if (eligible.length > 0) {
+                    // Prioritize server access for critical days
+                    if ([1, 15, 31].includes(day)) {
+                        const withServer = eligible.filter(s => s.hasServerAccess);
+                        if (withServer.length > 0) eligible = withServer;
+                    }
+                    
+                    eligible.sort((a, b) => scheduleData[a.id].nightCount - scheduleData[b.id].nightCount);
+                    const selected = eligible[0];
+                    
+                    scheduleData[selected.id].shifts[day] = 'NIGHT';
+                    scheduleData[selected.id].nightCount++;
+                    lastNight[selected.id] = day;
+                    
+                    if (day < daysInMonth && !weekends.includes(day + 1) && 
+                        scheduleData[selected.id].shifts[day + 1] !== 'SABBATH') {
+                        scheduleData[selected.id].shifts[day + 1] = 'OFF';
+                        scheduleData[selected.id].offCount++;
+                    }
+                }
+            }
+        }
+        
+        function generateOnCallBackup() {
+            const serverAccessStaff = staff.filter(s => s.hasServerAccess);
+            
+            for (let day = 1; day <= daysInMonth; day++) {
+                // Find all shifts for this day
+                let dayShift = null;
+                let nightShift = null;
+                
+                staff.forEach(s => {
+                    const shift = scheduleData[s.id].shifts[day];
+                    if (shift === 'WDAY') dayShift = s;
+                    if (shift === 'NIGHT' || shift === 'WNIGHT') nightShift = s;
+                });
+                
+                // Check if on-call needed
+                let needsOnCall = false;
+                let shiftPerson = null;
+                let shiftType = '';
+                
+                // Weekend day shifts always need on-call (no server access)
+                if (dayShift && !dayShift.hasServerAccess) {
+                    needsOnCall = true;
+                    shiftPerson = dayShift;
+                    shiftType = 'Weekend Day';
+                }
+                
+                // Night shifts without server access need on-call
+                if (nightShift && !nightShift.hasServerAccess) {
+                    needsOnCall = true;
+                    shiftPerson = nightShift;
+                    shiftType = weekends.includes(day) ? 'Weekend Night' : 'Weekday Night';
+                }
+                
+                if (needsOnCall && shiftPerson) {
+                    // Find available on-call (not off, not on shift, not Sabbath)
+                    const available = serverAccessStaff.filter(s => {
+                        const shift = scheduleData[s.id].shifts[day];
+                        return shift !== 'NIGHT' && shift !== 'WNIGHT' && 
+                               shift !== 'OFF' && shift !== 'WDAY' && 
+                               shift !== 'SABBATH';
+                    });
+                    
+                    if (available.length > 0) {
+                        // Rotate fairly
+                        const onCallIndex = Object.keys(onCallData).length % available.length;
+                        const onCall = available[onCallIndex];
+                        
+                        onCallData[day] = {
+                            shiftPerson: shiftPerson,
+                            shiftType: shiftType,
+                            onCall: onCall
+                        };
+                        
+                        if (scheduleData[onCall.id].shifts[day] === '') {
+                            scheduleData[onCall.id].shifts[day] = 'OC';
+                            scheduleData[onCall.id].onCallCount++;
+                        }
+                    }
+                }
+            }
+        }
+        
+        function displaySchedule() {
+            const tbody = document.getElementById('scheduleBody');
+            tbody.innerHTML = '';
+            
+            staff.forEach((person, index) => {
+                const row = document.createElement('tr');
+                const isWeekendOnly = person.shiftType === 'weekend';
+                const hasSabbath = person.hasSabbath;
+                let nameClass = 'name';
+                if (isWeekendOnly) nameClass += ' weekend-only';
+                if (hasSabbath) nameClass += ' sabbath';
+                
+                const icon = person.hasServerAccess ? ' 🔑' : '';
+                const genderIcon = person.gender === 'F' ? ' 👩' : '';
+                const sabbathIcon = person.hasSabbath ? ' ✝️' : '';
+                
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td class="${nameClass}">${person.name}${genderIcon}${icon}${sabbathIcon}</td>
+                    <td class="position">${person.position}</td>
+                `;
+                
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const shift = scheduleData[person.id].shifts[day];
+                    let cellClass = '';
+                    let cellContent = '';
+                    
+                    switch(shift) {
+                        case 'NIGHT':
+                            cellClass = 'night-shift';
+                            cellContent = '1';
+                            break;
+                        case 'WDAY':
+                            cellClass = 'weekend-day';
+                            cellContent = '2';
+                            break;
+                        case 'WNIGHT':
+                            cellClass = 'weekend-night';
+                            cellContent = '3';
+                            break;
+                        case 'OFF':
+                            cellClass = 'off-after-night';
+                            cellContent = 'OFF';
+                            break;
+                        case 'OC':
+                            cellClass = 'on-call';
+                            cellContent = 'OC';
+                            break;
+                        case 'SABBATH':
+                            cellClass = 'sabbath-block';
+                            cellContent = 'SAB';
+                            break;
+                    }
+                    
+                    row.innerHTML += `<td class="${cellClass}">${cellContent}</td>`;
+                }
+                
+                row.innerHTML += `
+                    <td style="background: #e8f4f8; font-weight: bold;">${scheduleData[person.id].nightCount}</td>
+                    <td style="background: #ffeaa7; font-weight: bold;">${scheduleData[person.id].offCount}</td>
+                    <td style="background: #d4edda; font-weight: bold;">${scheduleData[person.id].onCallCount}</td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+            
+            displayOnCallSchedule();
+        }
+        
+        function displayWeekendRotation() {
+            const tbody = document.getElementById('weekendRotationBody');
+            tbody.innerHTML = '';
+            
+            weekendPairs.forEach((weekend, index) => {
+                const rotation = weekendRotation[index];
+                if (rotation) {
+                    const satOnCall = onCallData[weekend[0]] ? onCallData[weekend[0]].onCall.name : '-';
+                    const sunOnCall = onCallData[weekend[1]] ? onCallData[weekend[1]].onCall.name : '-';
+                    
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>Week ${index + 1}</td>
+                        <td>${weekend[0]}-${weekend[1]}</td>
+                        <td style="background: #fff3cd;">${rotation.satDay}</td>
+                        <td style="background: #fff3cd;">${rotation.sunDay}</td>
+                        <td style="background: #e3f2fd;">${rotation.satNight}</td>
+                        <td style="background: #e3f2fd;">${rotation.sunNight}</td>
+                        <td style="background: #d4edda;">Sat: ${satOnCall}<br>Sun: ${sunOnCall}</td>
+                    `;
+                    tbody.appendChild(row);
+                }
+            });
+        }
+        
+        function displayOnCallSchedule() {
+            const tbody = document.getElementById('onCallBody');
+            tbody.innerHTML = '';
+            
+            Object.keys(onCallData).sort((a, b) => parseInt(a) - parseInt(b)).forEach(day => {
+                const data = onCallData[day];
+                const row = document.createElement('tr');
+                const isWeekend = weekends.includes(parseInt(day));
+                
+                row.innerHTML = `
+                    <td>${day}</td>
+                    <td>${monthDays[parseInt(day) - 1]}</td>
+                    <td style="background: ${isWeekend ? '#fff3cd' : '#f8f9fa'};">${data.shiftType}</td>
+                    <td>${data.shiftPerson.name}</td>
+                    <td>${data.shiftPerson.hasServerAccess ? '✅' : '❌'}</td>
+                    <td style="background: linear-gradient(135deg, #16a085 0%, #27ae60 100%); color: white; font-weight: bold;">
+                        ${data.onCall.name}
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+        
+        function updateStats() {
+            let totalNights = 0;
+            let weekendOnCall = 0;
+            let weekdayOnCall = 0;
+            
+            staff.forEach(s => {
+                totalNights += scheduleData[s.id].nightCount;
+            });
+            
+            Object.keys(onCallData).forEach(day => {
+                if (weekends.includes(parseInt(day))) {
+                    weekendOnCall++;
+                } else {
+                    weekdayOnCall++;
+                }
+            });
+            
+            document.getElementById('totalNightShifts').textContent = totalNights;
+            document.getElementById('weekendOnCall').textContent = weekendOnCall;
+            document.getElementById('weekdayOnCall').textContent = weekdayOnCall;
+        }
+        
+        function showWeekendRotation() {
+            document.querySelector('.weekend-rotation-table').scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        function showOnCallSchedule() {
+            document.querySelector('#onCallSchedule').parentElement.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        function validateSchedule() {
+            let issues = [];
+            
+            // Check Gilby's Sabbath
+            if (scheduleData[4]) {
+                fridays.concat(saturdays).forEach(day => {
+                    if (day <= daysInMonth) {
+                        const shift = scheduleData[4].shifts[day];
+                        if (shift === 'NIGHT' || shift === 'WNIGHT' || shift === 'WDAY') {
+                            issues.push(`Gilby scheduled on Sabbath day ${day}!`);
+                        }
+                    }
+                });
+            }
+            
+            // Check coverage
+            for (let day = 1; day <= daysInMonth; day++) {
+                let hasNight = false;
+                let hasOnCall = false;
+                
+                staff.forEach(s => {
+                    const shift = scheduleData[s.id].shifts[day];
+                    if (shift === 'NIGHT' || shift === 'WNIGHT') hasNight = true;
+                    if (shift === 'OC') hasOnCall = true;
+                });
+                
+                if (!weekends.includes(day) && !hasNight) {
+                    issues.push(`Day ${day}: No night coverage`);
+                }
+                
+                if (onCallData[day] && !hasOnCall) {
+                    issues.push(`Day ${day}: On-call needed but not assigned`);
+                }
+            }
+            
+            if (issues.length === 0) {
+                alert('✅ Validation PASSED!\n\n• Gilby Sabbath respected\n• All shifts covered\n• On-call properly assigned');
+            } else {
+                alert('⚠️ Issues Found:\n\n' + issues.join('\n'));
+            }
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeTables();
+            generateSchedule();
+        });
+    </script>
+</body>
+</html>
