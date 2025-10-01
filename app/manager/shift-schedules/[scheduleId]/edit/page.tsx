@@ -356,17 +356,19 @@ export default function EditSchedulePage() {
               const sourceStaffProfile = updated[sourceIndex].staffProfile;
               const targetStaffProfile = updated[targetIndex].staffProfile;
 
-              // Calculate next day dates for OFF day lookup
-              const sourceDate = new Date(updated[sourceIndex].date);
-              const targetDate = new Date(updated[targetIndex].date);
+              // Calculate next day dates for OFF day lookup (avoid timezone issues)
+              const getNextDayString = (dateStr: string): string => {
+                const [year, month, day] = dateStr.split('-').map(Number);
+                const date = new Date(year, month - 1, day);
+                date.setDate(date.getDate() + 1);
+                const nextYear = date.getFullYear();
+                const nextMonth = String(date.getMonth() + 1).padStart(2, '0');
+                const nextDay = String(date.getDate()).padStart(2, '0');
+                return `${nextYear}-${nextMonth}-${nextDay}`;
+              };
 
-              const sourceNextDay = new Date(sourceDate);
-              sourceNextDay.setDate(sourceNextDay.getDate() + 1);
-              const sourceNextDayStr = sourceNextDay.toISOString().split('T')[0];
-
-              const targetNextDay = new Date(targetDate);
-              targetNextDay.setDate(targetNextDay.getDate() + 1);
-              const targetNextDayStr = targetNextDay.toISOString().split('T')[0];
+              const sourceNextDayStr = getNextDayString(updated[sourceIndex].date);
+              const targetNextDayStr = getNextDayString(updated[targetIndex].date);
 
               // Find OFF days BEFORE swapping (using original staff IDs)
               const sourceOffIndex = updated.findIndex(a =>
