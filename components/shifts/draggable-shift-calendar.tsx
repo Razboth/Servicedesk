@@ -267,26 +267,32 @@ export function DraggableShiftCalendar({
 
                 <div className="space-y-1">
                   {/* Render shift drop zones */}
-                  {shiftSlots.map((slot, index) => {
-                    const assignment = dayAssignments.find(a => a.shiftType === slot.type);
-                    const dropZoneId = `${dateStr}-${slot.type}-${index}`;
+                  {shiftSlots.map((slot, slotIndex) => {
+                    // Get all assignments for this shift type
+                    const slotAssignments = dayAssignments.filter(a => a.shiftType === slot.type);
                     const validationKey = `${dateStr}-${slot.type}`;
 
-                    return (
-                      <ShiftDropZone
-                        key={dropZoneId}
-                        id={dropZoneId}
-                        shiftType={slot.type}
-                        date={date.toDateString()}
-                        dateStr={dateStr}
-                        assignment={assignment}
-                        editable={editable && isCurrentMonth}
-                        maxSlots={slot.maxSlots}
-                        isRequired={slot.isRequired}
-                        validationError={validationErrors[validationKey]}
-                      />
-                    );
-                  })}
+                    // Create multiple drop zones for shifts with maxSlots > 1
+                    return Array.from({ length: slot.maxSlots }).map((_, dropZoneIndex) => {
+                      const assignment = slotAssignments[dropZoneIndex];
+                      const dropZoneId = `${dateStr}-${slot.type}-${dropZoneIndex}`;
+
+                      return (
+                        <ShiftDropZone
+                          key={dropZoneId}
+                          id={dropZoneId}
+                          shiftType={slot.type}
+                          date={date.toDateString()}
+                          dateStr={dateStr}
+                          assignment={assignment}
+                          editable={editable && isCurrentMonth}
+                          maxSlots={slot.maxSlots}
+                          isRequired={slot.isRequired}
+                          validationError={validationErrors[validationKey]}
+                        />
+                      );
+                    });
+                  }).flat()}
 
                   {/* Render other assignments (OFF, LEAVE, HOLIDAY) */}
                   {dayAssignments
