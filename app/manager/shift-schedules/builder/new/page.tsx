@@ -214,6 +214,11 @@ export default function ShiftBuilderPage() {
     try {
       setSaving(true);
 
+      console.log('💾 Starting save process...');
+      console.log('Branch ID:', session.user.branchId);
+      console.log('Month:', month, 'Year:', year);
+      console.log('Assignments to save:', assignments);
+
       // Step 1: Create the blank schedule
       const createScheduleResponse = await fetch('/api/shifts/schedules/builder', {
         method: 'POST',
@@ -226,8 +231,10 @@ export default function ShiftBuilderPage() {
       });
 
       const scheduleData = await createScheduleResponse.json();
+      console.log('Schedule creation response:', scheduleData);
 
       if (!createScheduleResponse.ok) {
+        console.error('Failed to create schedule:', scheduleData);
         throw new Error(scheduleData.error || 'Failed to create schedule');
       }
 
@@ -241,6 +248,8 @@ export default function ShiftBuilderPage() {
         shiftType: assignment.shiftType,
       }));
 
+      console.log('Sending batch assignments:', assignmentsData);
+
       const batchResponse = await fetch(`/api/shifts/schedules/${scheduleId}/assignments/batch`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -250,15 +259,21 @@ export default function ShiftBuilderPage() {
       });
 
       const batchData = await batchResponse.json();
+      console.log('Batch assignment response:', batchData);
 
       if (!batchResponse.ok) {
+        console.error('Failed to create assignments:', batchData);
         throw new Error(batchData.error || 'Failed to create assignments');
       }
 
-      const { created, updated, failed } = batchData.data;
+      const { created, updated, failed, errors } = batchData.data;
+
+      if (errors && errors.length > 0) {
+        console.error('Assignment errors:', errors);
+      }
 
       if (failed > 0) {
-        toast.warning(`Schedule saved: ${created} created, ${updated} updated, ${failed} failed`);
+        toast.warning(`Schedule saved: ${created} created, ${updated} updated, ${failed} failed. Check console for details.`);
       } else {
         toast.success(`Schedule saved successfully! ${created} assignments created, ${updated} updated`);
       }
