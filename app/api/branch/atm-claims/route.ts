@@ -526,7 +526,7 @@ export async function POST(request: NextRequest) {
       }
     });
     
-    const ticketNumber = `TKT-${currentYear}-${String(yearTicketCount + 1).padStart(6, '0')}`;
+    const ticketNumber = String(yearTicketCount + 1);
 
     // Create ticket
     const ticket = await prisma.ticket.create({

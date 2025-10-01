@@ -111,7 +111,7 @@ export async function POST(
 
     // Generate ticket number
     const ticketCount = await prisma.ticket.count();
-    const ticketNumber = `TKT-${(ticketCount + 1).toString().padStart(6, '0')}`;
+    const ticketNumber = String(ticketCount + 1);
 
     // Create the ticket
     const ticket = await prisma.ticket.create({

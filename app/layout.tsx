@@ -10,6 +10,7 @@ import { Toaster } from 'sonner'
 import IdleTimer from '@/components/auth/idle-timer'
 import { TicketNotifications } from '@/components/notifications/ticket-notifications'
 import { BrowserCompatibilityWarning } from '@/components/browser-compatibility-warning'
+import ChunkErrorHandler from './chunk-error-handler'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -37,6 +38,7 @@ export default function RootLayout({
         >
           <Providers>
             <SocketProvider>
+              <ChunkErrorHandler />
               <BrowserCompatibilityWarning />
               <SidebarProvider>
                 <SidebarLayout>

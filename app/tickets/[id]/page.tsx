@@ -1106,21 +1106,122 @@ export default function TicketDetailPage() {
                               
                             case 'FILE':
                               if (!value) return <span className="text-gray-400 italic">No file attached</span>;
+
+                              // Parse file information
+                              let fileName = 'Document';
+                              let fileMimeType = 'application/octet-stream';
+
+                              if (value.includes('|')) {
+                                const parts = value.split('|');
+                                if (parts.length >= 2) {
+                                  fileName = parts[0];
+                                  fileMimeType = parts[1];
+                                }
+                              } else if (!value.startsWith('data:')) {
+                                // If it's just a filename
+                                fileName = value;
+                              }
+
+                              // Determine file icon based on mime type
+                              const isImage = fileMimeType?.startsWith('image/');
+                              const isPdf = fileMimeType?.includes('pdf') || fileName?.toLowerCase().endsWith('.pdf');
+                              const FileIcon = isImage ? ImageIcon : isPdf ? FileText : File;
+                              const iconColor = isImage ? 'text-green-500' : isPdf ? 'text-red-500' : 'text-amber-500';
+
                               return (
-                                <div className="inline-flex items-center gap-2 p-2 bg-cream-50 dark:bg-warm-dark-200 rounded-lg">
-                                  <FileText className="h-4 w-4 text-emerald-500" />
-                                  <span className="text-sm font-medium">{value}</span>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 px-2"
-                                    onClick={() => {
-                                      // Handle file download
-                                      console.log('Download file:', value);
-                                    }}
-                                  >
-                                    <Download className="h-3 w-3" />
-                                  </Button>
+                                <div className="inline-flex items-center gap-2 p-2 bg-cream-50 dark:bg-warm-dark-200 rounded-lg border border-cream-200 dark:border-warm-dark-300">
+                                  <FileIcon className={`h-4 w-4 ${iconColor}`} />
+                                  <span className="text-sm font-medium max-w-[200px] truncate" title={fileName}>
+                                    {fileName}
+                                  </span>
+                                  <div className="flex items-center gap-1">
+                                    {(isImage || isPdf) && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 px-2 hover:bg-cream-100 dark:hover:bg-warm-dark-300"
+                                        onClick={async () => {
+                                          try {
+                                            // Fetch preview data
+                                            const response = await fetch(`/api/tickets/${ticket.id}/fields/${fieldValue.id}/download`, {
+                                              method: 'POST'
+                                            });
+
+                                            if (response.ok) {
+                                              const previewData = await response.json();
+
+                                              // Open preview in new window
+                                              if (isImage) {
+                                                const previewWindow = window.open('', '_blank');
+                                                if (previewWindow) {
+                                                  previewWindow.document.write(`
+                                                    <html>
+                                                      <head>
+                                                        <title>${fileName}</title>
+                                                        <style>
+                                                          body {
+                                                            margin: 0;
+                                                            display: flex;
+                                                            justify-content: center;
+                                                            align-items: center;
+                                                            min-height: 100vh;
+                                                            background: #f3f4f6;
+                                                          }
+                                                          img {
+                                                            max-width: 90%;
+                                                            max-height: 90vh;
+                                                            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                                                          }
+                                                        </style>
+                                                      </head>
+                                                      <body>
+                                                        <img src="${previewData.data}" alt="${fileName}" />
+                                                      </body>
+                                                    </html>
+                                                  `);
+                                                }
+                                              } else if (isPdf) {
+                                                // For PDFs, open in new tab
+                                                const pdfWindow = window.open(previewData.data, '_blank');
+                                              }
+                                            } else if (response.status === 404) {
+                                              const error = await response.json();
+                                              if (error.isLegacy) {
+                                                alert(`File not available: ${error.filename}\n\nThis file was referenced but the actual file data was not uploaded. Please re-upload the file when editing this ticket.`);
+                                              } else {
+                                                alert('File not found');
+                                              }
+                                            } else {
+                                              const error = await response.json();
+                                              alert(error.message || 'Failed to preview file');
+                                            }
+                                          } catch (error) {
+                                            console.error('Preview error:', error);
+                                          }
+                                        }}
+                                        title="Preview file"
+                                      >
+                                        <Eye className="h-3 w-3" />
+                                      </Button>
+                                    )}
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 px-2 hover:bg-cream-100 dark:hover:bg-warm-dark-300"
+                                      onClick={() => {
+                                        // Download file
+                                        const link = document.createElement('a');
+                                        link.href = `/api/tickets/${ticket.id}/fields/${fieldValue.id}/download`;
+                                        link.download = fileName;
+                                        document.body.appendChild(link);
+                                        link.click();
+                                        document.body.removeChild(link);
+                                      }}
+                                      title="Download file"
+                                    >
+                                      <Download className="h-3 w-3" />
+                                    </Button>
+                                  </div>
                                 </div>
                               );
                               

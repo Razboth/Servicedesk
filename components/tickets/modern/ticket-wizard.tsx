@@ -2341,26 +2341,58 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                                 <div className="mt-2">
                                   <Input
                                     type="file"
-                                    onChange={(e) => {
+                                    onChange={async (e) => {
                                       const file = e.target.files?.[0];
                                       if (file) {
-                                        // Store file name for now, actual upload would happen on submit
-                                        setFormData({
-                                          ...formData,
-                                          fieldValues: {
-                                            ...formData.fieldValues,
-                                            [template.fieldTemplate.name]: file.name
-                                          }
-                                        });
+                                        // Check file size (5MB limit for custom fields)
+                                        const maxSize = 5 * 1024 * 1024; // 5MB
+                                        if (file.size > maxSize) {
+                                          toast.error(`File is too large. Maximum size is 5MB.`);
+                                          e.target.value = '';
+                                          return;
+                                        }
+
+                                        // Convert file to base64
+                                        const reader = new FileReader();
+                                        reader.onload = () => {
+                                          const base64 = reader.result as string;
+                                          // Store as "filename|mimetype|base64data" format
+                                          const fileData = `${file.name}|${file.type}|${base64.split(',')[1]}`;
+
+                                          setFormData({
+                                            ...formData,
+                                            fieldValues: {
+                                              ...formData.fieldValues,
+                                              [template.fieldTemplate.name]: fileData
+                                            }
+                                          });
+                                        };
+                                        reader.readAsDataURL(file);
                                       }
                                     }}
                                     className="mt-2"
                                     accept={template.fieldTemplate.validation || '*'}
                                   />
                                   {formData.fieldValues[template.fieldTemplate.name] && (
-                                    <p className="text-sm text-gray-500 mt-1">
-                                      Selected: {formData.fieldValues[template.fieldTemplate.name]}
-                                    </p>
+                                    <div className="flex items-center gap-2 mt-2 p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                                      <FileText className="h-4 w-4 text-emerald-500" />
+                                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                                        Selected: {formData.fieldValues[template.fieldTemplate.name].split('|')[0]}
+                                      </p>
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => {
+                                          // Remove file
+                                          const newFieldValues = { ...formData.fieldValues };
+                                          delete newFieldValues[template.fieldTemplate.name];
+                                          setFormData({ ...formData, fieldValues: newFieldValues });
+                                        }}
+                                      >
+                                        <X className="h-3 w-3" />
+                                      </Button>
+                                    </div>
                                   )}
                                 </div>
                               )}

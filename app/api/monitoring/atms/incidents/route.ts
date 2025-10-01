@@ -290,7 +290,7 @@ export async function POST(request: NextRequest) {
           }
         });
         
-        const ticketNumber = `TKT-${currentYear}-${String(yearTicketCount + 1).padStart(6, '0')}`;
+        const ticketNumber = String(yearTicketCount + 1);
 
         // Determine priority based on severity (use service default if available)
         const priority = validatedData.severity === 'CRITICAL' ? 'CRITICAL' : 
