@@ -213,8 +213,58 @@ export default function ShiftBuilderPage() {
 
     try {
       setSaving(true);
-      // TODO: Implement API call to save manually created schedule
-      toast.info('Manual schedule save functionality coming soon');
+
+      // Step 1: Create the blank schedule
+      const createScheduleResponse = await fetch('/api/shifts/schedules/builder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          branchId: session.user.branchId,
+          month: parseInt(month),
+          year: parseInt(year),
+        }),
+      });
+
+      const scheduleData = await createScheduleResponse.json();
+
+      if (!createScheduleResponse.ok) {
+        throw new Error(scheduleData.error || 'Failed to create schedule');
+      }
+
+      const scheduleId = scheduleData.data.scheduleId;
+      toast.success('Schedule created successfully');
+
+      // Step 2: Create all assignments in batch
+      const assignmentsData = assignments.map(assignment => ({
+        staffProfileId: assignment.staffProfile.id,
+        date: assignment.date,
+        shiftType: assignment.shiftType,
+      }));
+
+      const batchResponse = await fetch(`/api/shifts/schedules/${scheduleId}/assignments/batch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          assignments: assignmentsData,
+        }),
+      });
+
+      const batchData = await batchResponse.json();
+
+      if (!batchResponse.ok) {
+        throw new Error(batchData.error || 'Failed to create assignments');
+      }
+
+      const { created, updated, failed } = batchData.data;
+
+      if (failed > 0) {
+        toast.warning(`Schedule saved: ${created} created, ${updated} updated, ${failed} failed`);
+      } else {
+        toast.success(`Schedule saved successfully! ${created} assignments created, ${updated} updated`);
+      }
+
+      // Navigate to the schedule view
+      router.push(`/manager/shift-schedules/${scheduleId}`);
     } catch (error: any) {
       console.error('Error saving schedule:', error);
       toast.error(error.message || 'Failed to save schedule');
