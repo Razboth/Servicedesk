@@ -1,21 +1,30 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { signIn, getSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { getVersionString, APP_VERSION } from '@/lib/version';
-import { LogIn, Mail, Lock, AlertCircle } from 'lucide-react';
+import { LogIn, Mail, Lock, AlertCircle, CheckCircle2 } from 'lucide-react';
 
-export default function SignInPage() {
+function SignInForm() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const message = searchParams.get('message');
+    if (message) {
+      setSuccessMessage(message);
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -131,6 +140,13 @@ export default function SignInPage() {
           {/* Sign In Form */}
           <div className="bg-white/80 dark:bg-warm-dark-300/80 backdrop-blur-xl rounded-2xl shadow-xl ring-1 ring-brown-200/50 dark:ring-warm-dark-200/50 p-8">
             <form onSubmit={handleSubmit} className="space-y-6">
+              {successMessage && (
+                <div className="flex items-start gap-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 px-4 py-3 rounded-lg text-sm">
+                  <CheckCircle2 className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <span>{successMessage}</span>
+                </div>
+              )}
+
               {error && (
                 <div className="flex items-start gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg text-sm">
                   <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
@@ -243,5 +259,13 @@ export default function SignInPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <SignInForm />
+    </Suspense>
   );
 }

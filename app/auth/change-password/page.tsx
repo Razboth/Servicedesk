@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useSession, signOut } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, CheckCircle2, Eye, EyeOff, Lock } from 'lucide-react';
@@ -70,12 +70,12 @@ export default function ChangePasswordPage() {
         setError(data.error || 'Failed to change password');
       } else {
         setSuccess(true);
-        // Update session to refresh JWT token with new mustChangePassword value
-        await update();
-        // Hard redirect to home page after 1 second to ensure session refresh
-        setTimeout(() => {
-          window.location.href = '/';
-        }, 1000);
+        // Sign out and redirect to login to get fresh JWT token
+        setTimeout(async () => {
+          await signOut({
+            callbackUrl: '/auth/signin?message=Password changed successfully. Please sign in again.'
+          });
+        }, 1500);
       }
     } catch (error) {
       setError('An error occurred while changing password');
