@@ -22,6 +22,8 @@ import {
   Loader2,
   ChevronLeft,
   ChevronRight,
+  LayoutGrid,
+  List,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -71,6 +73,7 @@ export default function TechnicianShiftsPage() {
   const currentDate = new Date();
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
+  const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
 
   useEffect(() => {
     fetchMySchedule();
@@ -123,14 +126,10 @@ export default function TechnicianShiftsPage() {
         if (assignmentsResponse.ok) {
           const assignmentsData = await assignmentsResponse.json();
 
-          // Filter assignments for current user only
-          const myAssignments = assignmentsData.data.filter(
-            (a: any) => a.staffProfile.user.id === session.user.id
-          );
-
+          // Show all staff assignments (not filtered to current user)
           setMonthlySchedule({
             ...schedule,
-            shiftAssignments: myAssignments,
+            shiftAssignments: assignmentsData.data,
           });
         }
       } else {
@@ -164,6 +163,86 @@ export default function TechnicianShiftsPage() {
     return date.toLocaleDateString('en-US', { weekday: 'short' });
   };
 
+  const renderListView = () => {
+    if (!monthlySchedule) return null;
+
+    // Group assignments by staff member
+    const assignmentsByStaff: Record<string, { name: string; email: string; shifts: ShiftAssignment[] }> = {};
+
+    monthlySchedule.shiftAssignments.forEach(assignment => {
+      const staffId = assignment.staffProfile.user.id;
+      if (!assignmentsByStaff[staffId]) {
+        assignmentsByStaff[staffId] = {
+          name: assignment.staffProfile.user.name,
+          email: assignment.staffProfile.user.email,
+          shifts: [],
+        };
+      }
+      assignmentsByStaff[staffId].shifts.push(assignment);
+    });
+
+    // Sort staff alphabetically
+    const sortedStaff = Object.entries(assignmentsByStaff).sort((a, b) =>
+      a[1].name.localeCompare(b[1].name)
+    );
+
+    return (
+      <div className="space-y-3">
+        {sortedStaff.map(([staffId, staffData]) => {
+          const isCurrentUser = staffId === session?.user?.id;
+          // Sort shifts by date
+          const sortedShifts = staffData.shifts.sort((a, b) =>
+            new Date(a.date).getTime() - new Date(b.date).getTime()
+          );
+
+          return (
+            <div
+              key={staffId}
+              className={`border rounded-lg p-4 ${
+                isCurrentUser
+                  ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700'
+                  : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h3 className="font-semibold text-lg">
+                    {staffData.name}
+                    {isCurrentUser && <span className="ml-2 text-blue-600 dark:text-blue-400">(You)</span>}
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{staffData.email}</p>
+                </div>
+                <Badge variant="outline">{sortedShifts.length} shifts</Badge>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                {sortedShifts.map(shift => {
+                  const config = shiftTypeConfig[shift.shiftType as keyof typeof shiftTypeConfig];
+                  const Icon = config?.icon;
+                  const date = new Date(shift.date + 'T00:00:00');
+
+                  return (
+                    <div
+                      key={shift.id}
+                      className={`flex items-center gap-2 p-2 rounded ${config?.color || ''}`}
+                    >
+                      {Icon && <Icon className="w-4 h-4 flex-shrink-0" />}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-semibold truncate">{config?.label || shift.shiftType}</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">
+                          {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   const renderCalendar = () => {
     if (!monthlySchedule) {
       return (
@@ -179,10 +258,13 @@ export default function TechnicianShiftsPage() {
     const daysInMonth = new Date(selectedYear, selectedMonth, 0).getDate();
     const firstDay = new Date(selectedYear, selectedMonth - 1, 1).getDay();
 
-    // Group assignments by date
-    const assignmentsByDate: Record<string, ShiftAssignment> = {};
+    // Group assignments by date (allow multiple per date)
+    const assignmentsByDate: Record<string, ShiftAssignment[]> = {};
     monthlySchedule.shiftAssignments.forEach(assignment => {
-      assignmentsByDate[assignment.date] = assignment;
+      if (!assignmentsByDate[assignment.date]) {
+        assignmentsByDate[assignment.date] = [];
+      }
+      assignmentsByDate[assignment.date].push(assignment);
     });
 
     return (
@@ -205,19 +287,25 @@ export default function TechnicianShiftsPage() {
           {Array.from({ length: daysInMonth }).map((_, i) => {
             const day = i + 1;
             const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-            const assignment = assignmentsByDate[dateStr];
+            const dayAssignments = assignmentsByDate[dateStr] || [];
             const isToday = dateStr === new Date().toISOString().split('T')[0];
             const isWeekend = new Date(selectedYear, selectedMonth - 1, day).getDay() === 0 ||
                             new Date(selectedYear, selectedMonth - 1, day).getDay() === 6;
 
-            const config = assignment ? shiftTypeConfig[assignment.shiftType as keyof typeof shiftTypeConfig] : null;
-            const Icon = config?.icon;
+            // Group assignments by shift type
+            const assignmentsByType: Record<string, ShiftAssignment[]> = {};
+            dayAssignments.forEach(assignment => {
+              if (!assignmentsByType[assignment.shiftType]) {
+                assignmentsByType[assignment.shiftType] = [];
+              }
+              assignmentsByType[assignment.shiftType].push(assignment);
+            });
 
             return (
               <div
                 key={day}
                 className={`
-                  min-h-20 p-2 border rounded-lg
+                  min-h-32 p-2 border rounded-lg overflow-hidden
                   ${isWeekend ? 'bg-blue-50 dark:bg-blue-900/20' : 'bg-white dark:bg-gray-800'}
                   ${isToday ? 'border-blue-500 border-2' : 'border-gray-200 dark:border-gray-700'}
                 `}
@@ -225,12 +313,38 @@ export default function TechnicianShiftsPage() {
                 <div className={`font-semibold text-sm mb-1 ${isToday ? 'text-blue-600 dark:text-blue-400' : ''}`}>
                   {day}
                 </div>
-                {assignment && config && Icon && (
-                  <div className={`text-xs p-1 rounded flex items-center gap-1 ${config.color}`}>
-                    <Icon className="w-3 h-3 flex-shrink-0" />
-                    <span className="truncate font-medium">{config.label}</span>
-                  </div>
-                )}
+                <div className="space-y-1 text-xs">
+                  {Object.entries(assignmentsByType).map(([shiftType, assignments]) => {
+                    const config = shiftTypeConfig[shiftType as keyof typeof shiftTypeConfig];
+                    const Icon = config?.icon;
+
+                    return (
+                      <div key={shiftType} className="space-y-0.5">
+                        <div className={`p-1 rounded ${config?.color || ''}`}>
+                          <div className="flex items-center gap-1 mb-0.5">
+                            {Icon && <Icon className="w-3 h-3 flex-shrink-0" />}
+                            <span className="font-semibold">{config?.label || shiftType}</span>
+                          </div>
+                          <div className="pl-4 space-y-0.5">
+                            {assignments.map((assignment, idx) => {
+                              const isCurrentUser = assignment.staffProfile.user.id === session?.user?.id;
+                              return (
+                                <div
+                                  key={assignment.id}
+                                  className={`text-xs ${isCurrentUser ? 'font-bold underline' : ''}`}
+                                  title={assignment.staffProfile.user.email}
+                                >
+                                  {assignment.staffProfile.user.name.split(' ')[0]}
+                                  {isCurrentUser && ' (You)'}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             );
           })}
@@ -362,12 +476,35 @@ export default function TechnicianShiftsPage() {
         </CardContent>
       </Card>
 
-      {/* Monthly Calendar */}
+      {/* Monthly Schedule */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Monthly Schedule</CardTitle>
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <CardTitle>Monthly Schedule - All Staff</CardTitle>
             <div className="flex items-center gap-2">
+              {/* View Mode Toggle */}
+              <div className="flex border rounded-lg overflow-hidden">
+                <Button
+                  variant={viewMode === 'calendar' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('calendar')}
+                  className="rounded-none"
+                >
+                  <LayoutGrid className="w-4 h-4 mr-1" />
+                  Calendar
+                </Button>
+                <Button
+                  variant={viewMode === 'list' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('list')}
+                  className="rounded-none"
+                >
+                  <List className="w-4 h-4 mr-1" />
+                  List
+                </Button>
+              </div>
+
+              {/* Month Navigation */}
               <Button
                 variant="outline"
                 size="sm"
@@ -388,11 +525,13 @@ export default function TechnicianShiftsPage() {
             </div>
           </div>
           <CardDescription>
-            {monthlySchedule ? `Status: ${monthlySchedule.status}` : 'Select a month to view'}
+            {monthlySchedule
+              ? `${monthlySchedule.status} • Showing all staff assignments`
+              : 'Select a month to view'}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {renderCalendar()}
+          {viewMode === 'calendar' ? renderCalendar() : renderListView()}
         </CardContent>
       </Card>
 
