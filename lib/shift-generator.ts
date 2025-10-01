@@ -68,6 +68,7 @@ export class ShiftGenerator {
   private assignments: ShiftAssignmentData[] = [];
   private onCallAssignments: OnCallAssignmentData[] = [];
   private leaveRequests: Map<string, Date[]> = new Map(); // staffId -> array of leave dates
+  private previousMonthLastAssignments: Map<string, { date: Date; shiftType: string }> = new Map(); // staffId -> last assignment from previous month
   private month: number;
   private year: number;
   private daysInMonth: number;
@@ -111,6 +112,9 @@ export class ShiftGenerator {
 
     // Load approved leave requests for this month
     await this.loadLeaveRequests(branchId);
+
+    // Load previous month's assignments for continuity
+    await this.loadPreviousMonthAssignments(branchId);
 
     // Initialize statistics
     this.initializeStats();
@@ -220,6 +224,72 @@ export class ShiftGenerator {
         leaveDate.getMonth() === this.month - 1 &&
         leaveDate.getFullYear() === this.year
     );
+  }
+
+  /**
+   * Load previous month's last 3 days of assignments for continuity
+   * This ensures patterns carry over (e.g., night shift on 31st = day 1 off)
+   */
+  private async loadPreviousMonthAssignments(branchId: string): Promise<void> {
+    const prevMonth = this.month === 1 ? 12 : this.month - 1;
+    const prevYear = this.month === 1 ? this.year - 1 : this.year;
+    const prevMonthDays = new Date(prevYear, prevMonth, 0).getDate();
+
+    // Get last 3 days of previous month
+    const startDate = new Date(prevYear, prevMonth - 1, prevMonthDays - 2);
+    const endDate = new Date(prevYear, prevMonth - 1, prevMonthDays);
+
+    try {
+      const previousSchedule = await this.prisma.shiftSchedule.findFirst({
+        where: {
+          branchId,
+          month: prevMonth,
+          year: prevYear,
+        },
+        include: {
+          shiftAssignments: {
+            where: {
+              date: {
+                gte: startDate,
+                lte: endDate,
+              },
+            },
+            orderBy: {
+              date: 'desc',
+            },
+            include: {
+              staffProfile: true,
+            },
+          },
+        },
+      });
+
+      this.previousMonthLastAssignments.clear();
+
+      if (previousSchedule?.shiftAssignments) {
+        // Group by staff and get their most recent assignment
+        const staffLastAssignments = new Map<string, typeof previousSchedule.shiftAssignments[0]>();
+
+        for (const assignment of previousSchedule.shiftAssignments) {
+          const staffId = assignment.staffProfileId;
+          if (!staffLastAssignments.has(staffId)) {
+            staffLastAssignments.set(staffId, assignment);
+          }
+        }
+
+        // Store for continuity checks
+        for (const [staffId, assignment] of staffLastAssignments.entries()) {
+          this.previousMonthLastAssignments.set(staffId, {
+            date: assignment.date,
+            shiftType: assignment.shiftType,
+          });
+        }
+
+        console.log(`Loaded ${this.previousMonthLastAssignments.size} staff assignments from previous month for continuity`);
+      }
+    } catch (error) {
+      console.log('No previous month schedule found, starting fresh');
+    }
   }
 
   /**
@@ -445,6 +515,23 @@ export class ShiftGenerator {
   private distributeWeekdayNightShifts(): void {
     const nightStaff = this.staff.filter((s) => s.canWorkNightShift);
     const targetNights = 5; // Target nights per month per staff
+
+    // MONTH CONTINUITY: Check previous month's last day for night shifts
+    // If staff worked night shift on last day of previous month, give them day 1 OFF
+    for (const [staffId, lastAssignment] of this.previousMonthLastAssignments.entries()) {
+      const lastDayOfPrevMonth = lastAssignment.date.getDate();
+      const prevMonthDays = new Date(lastAssignment.date.getFullYear(), lastAssignment.date.getMonth() + 1, 0).getDate();
+
+      // If they worked night shift on the very last day of previous month
+      if (lastDayOfPrevMonth === prevMonthDays && lastAssignment.shiftType === 'NIGHT') {
+        // Give them OFF on day 1 (mandatory off after night shift)
+        if (!this.isAssigned(staffId, 1) && !this.isHoliday(1)) {
+          this.addAssignment(staffId, 1, ShiftType.OFF);
+          this.stats[staffId].offCount++;
+          console.log(`Continuity: Staff ${staffId} gets day 1 OFF (worked night on ${prevMonthDays} of previous month)`);
+        }
+      }
+    }
 
     for (let day = 1; day <= this.daysInMonth; day++) {
       // Skip weekends and holidays

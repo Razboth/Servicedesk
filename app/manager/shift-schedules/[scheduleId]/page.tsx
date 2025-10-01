@@ -28,6 +28,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import Link from 'next/link';
+import { DraggableShiftCalendar } from '@/components/shifts/draggable-shift-calendar';
 
 interface ShiftAssignment {
   id: string;
@@ -147,6 +148,26 @@ export default function ScheduleDetailPage() {
   const handleExport = () => {
     // Export functionality can be added here
     toast.info('Export functionality coming soon');
+  };
+
+  const handleAssignmentUpdate = async (assignmentId: string, newStaffProfileId: string) => {
+    try {
+      const response = await fetch(`/api/shifts/schedules/${scheduleId}/assignments`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assignmentId, newStaffProfileId }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update assignment');
+      }
+
+      // Refresh schedule after update
+      await fetchSchedule();
+    } catch (error: any) {
+      throw error;
+    }
   };
 
   if (!session) {
@@ -326,68 +347,14 @@ export default function ScheduleDetailPage() {
         </CardHeader>
         <CardContent>
           {viewMode === 'calendar' ? (
-            <div className="space-y-4">
-              {/* Calendar Grid */}
-              <div className="grid grid-cols-7 gap-2">
-                {/* Day headers */}
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                  <div key={day} className="text-center font-semibold text-sm text-gray-600 dark:text-gray-400 p-2">
-                    {day}
-                  </div>
-                ))}
-
-                {/* Empty cells for first week */}
-                {Array.from({ length: firstDay }).map((_, i) => (
-                  <div key={`empty-${i}`} className="p-2" />
-                ))}
-
-                {/* Days */}
-                {Array.from({ length: daysInMonth }).map((_, i) => {
-                  const day = i + 1;
-                  const date = new Date(schedule.year, schedule.month - 1, day);
-                  const dateStr = date.toISOString().split('T')[0];
-                  const assignments = assignmentsByDate[dateStr] || [];
-                  const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-                  const holiday = schedule.holidays.find(h =>
-                    new Date(h.date).toISOString().split('T')[0] === dateStr
-                  );
-
-                  return (
-                    <div
-                      key={day}
-                      className={`min-h-24 p-2 border rounded-lg ${
-                        isWeekend ? 'bg-blue-50 dark:bg-blue-900/20' : 'bg-white dark:bg-gray-800'
-                      } ${holiday ? 'border-red-300 dark:border-red-700' : 'border-gray-200 dark:border-gray-700'}`}
-                    >
-                      <div className="font-semibold text-sm mb-1">{day}</div>
-                      {holiday && (
-                        <div className="text-xs text-red-600 dark:text-red-400 mb-1">
-                          {holiday.name}
-                        </div>
-                      )}
-                      <div className="space-y-1">
-                        {assignments.map(assignment => {
-                          const config = shiftTypeConfig[assignment.shiftType as keyof typeof shiftTypeConfig];
-                          const Icon = config?.icon || Clock;
-                          return (
-                            <div
-                              key={assignment.id}
-                              className={`text-xs p-1 rounded ${config?.color}`}
-                              title={`${assignment.staffProfile.user.name} - ${config?.label}`}
-                            >
-                              <div className="flex items-center gap-1">
-                                <Icon className="w-3 h-3 flex-shrink-0" />
-                                <span className="truncate">{assignment.staffProfile.user.name.split(' ')[0]}</span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            <DraggableShiftCalendar
+              year={schedule.year}
+              month={schedule.month}
+              assignments={schedule.shiftAssignments}
+              holidays={schedule.holidays}
+              onAssignmentUpdate={handleAssignmentUpdate}
+              editable={schedule.status === 'GENERATED'}
+            />
           ) : (
             <div className="space-y-4">
               {/* List View - By Staff */}
