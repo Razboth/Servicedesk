@@ -2,6 +2,70 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { scheduleId: string } }
+) {
+  try {
+    const session = await auth();
+
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Check role permissions
+    if (!['MANAGER', 'MANAGER_IT', 'ADMIN'].includes(session.user.role)) {
+      return NextResponse.json(
+        { error: 'Insufficient permissions. Manager, IT Manager, or Admin role required.' },
+        { status: 403 }
+      );
+    }
+
+    const { scheduleId } = params;
+
+    // Verify the schedule exists
+    const schedule = await prisma.shiftSchedule.findUnique({
+      where: { id: scheduleId },
+    });
+
+    if (!schedule) {
+      return NextResponse.json({ error: 'Schedule not found' }, { status: 404 });
+    }
+
+    // Don't allow clearing published or archived schedules
+    if (schedule.status === 'PUBLISHED' || schedule.status === 'ARCHIVED') {
+      return NextResponse.json(
+        { error: 'Cannot modify published or archived schedules' },
+        { status: 400 }
+      );
+    }
+
+    // Delete all non-LEAVE assignments for this schedule
+    const deleteResult = await prisma.shiftAssignment.deleteMany({
+      where: {
+        scheduleId,
+        shiftType: {
+          not: 'LEAVE',
+        },
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        deleted: deleteResult.count,
+      },
+      message: `Deleted ${deleteResult.count} assignments`,
+    });
+  } catch (error) {
+    console.error('Error deleting shift assignments:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { scheduleId: string } }

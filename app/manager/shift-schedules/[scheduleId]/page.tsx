@@ -25,7 +25,8 @@ import {
   Sun,
   Coffee,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Edit
 } from 'lucide-react';
 import Link from 'next/link';
 import { DraggableShiftCalendar } from '@/components/shifts/draggable-shift-calendar';
@@ -263,19 +264,27 @@ export default function ScheduleDetailPage() {
           </Button>
 
           {schedule.status === 'GENERATED' && (
-            <Button onClick={handlePublish} disabled={publishing}>
-              {publishing ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Publishing...
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  Publish Schedule
-                </>
-              )}
-            </Button>
+            <>
+              <Link href={`/manager/shift-schedules/${scheduleId}/edit`}>
+                <Button variant="outline">
+                  <Edit className="w-4 h-4 mr-2" />
+                  Edit Schedule
+                </Button>
+              </Link>
+              <Button onClick={handlePublish} disabled={publishing}>
+                {publishing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Publishing...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Publish Schedule
+                  </>
+                )}
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -354,9 +363,7 @@ export default function ScheduleDetailPage() {
               month={schedule.month}
               assignments={schedule.shiftAssignments}
               holidays={schedule.holidays}
-              onAssignmentUpdate={handleAssignmentUpdate}
-              onRefresh={fetchSchedule}
-              editable={schedule.status === 'GENERATED'}
+              editable={false}
               showWeekendNights={false}
             />
           ) : (
