@@ -142,9 +142,15 @@ export default function EditSchedulePage() {
     try {
       // Fetch approved leave requests for the selected month and branch
       const response = await fetch(`/api/manager/leaves?status=APPROVED`);
+
+      if (!response.ok) {
+        console.error('Failed to fetch leaves:', response.status, response.statusText);
+        return; // Silently fail - leaves are optional
+      }
+
       const data = await response.json();
 
-      if (response.ok && data.leaves) {
+      if (data.leaves) {
         const selectedMonth = parseInt(month);
         const selectedYear = parseInt(year);
         const monthStart = new Date(selectedYear, selectedMonth - 1, 1);
@@ -313,14 +319,11 @@ export default function EditSchedulePage() {
             const targetIndex = updated.findIndex(a => a.id === targetAssignment.id);
 
             if (sourceIndex !== -1 && targetIndex !== -1) {
-              // Swap staff profiles
+              // Store original staff profiles BEFORE swap
               const sourceStaffProfile = updated[sourceIndex].staffProfile;
               const targetStaffProfile = updated[targetIndex].staffProfile;
 
-              updated[sourceIndex].staffProfile = targetStaffProfile;
-              updated[targetIndex].staffProfile = sourceStaffProfile;
-
-              // Handle OFF days swap (H+1 rule)
+              // Calculate next day dates for OFF day lookup
               const sourceDate = new Date(updated[sourceIndex].date);
               const targetDate = new Date(updated[targetIndex].date);
 
@@ -332,24 +335,29 @@ export default function EditSchedulePage() {
               targetNextDay.setDate(targetNextDay.getDate() + 1);
               const targetNextDayStr = targetNextDay.toISOString().split('T')[0];
 
+              // Find OFF days BEFORE swapping (using original staff IDs)
               const sourceOffIndex = updated.findIndex(a =>
                 a.date === sourceNextDayStr &&
-                a.staffProfile.id === targetStaffProfile.id &&
+                a.staffProfile.id === sourceStaffProfile.id &&
                 a.shiftType === 'OFF'
               );
 
               const targetOffIndex = updated.findIndex(a =>
                 a.date === targetNextDayStr &&
-                a.staffProfile.id === sourceStaffProfile.id &&
+                a.staffProfile.id === targetStaffProfile.id &&
                 a.shiftType === 'OFF'
               );
 
+              // NOW swap the main assignments
+              updated[sourceIndex].staffProfile = targetStaffProfile;
+              updated[targetIndex].staffProfile = sourceStaffProfile;
+
               // Swap OFF days if they exist
               if (sourceOffIndex !== -1) {
-                updated[sourceOffIndex].staffProfile = sourceStaffProfile;
+                updated[sourceOffIndex].staffProfile = targetStaffProfile;
               }
               if (targetOffIndex !== -1) {
-                updated[targetOffIndex].staffProfile = targetStaffProfile;
+                updated[targetOffIndex].staffProfile = sourceStaffProfile;
               }
 
               const offDayMsg = (sourceOffIndex !== -1 || targetOffIndex !== -1) ? ' (including OFF days)' : '';
@@ -426,9 +434,11 @@ export default function EditSchedulePage() {
 
       console.log('Valid assignments:', `${validAssignments.length} of ${assignments.length}`);
 
-      // Step 3: Create all assignments in batch
-      if (validAssignments.length > 0) {
-        const assignmentsData = validAssignments.map(assignment => ({
+      // Step 3: Create all assignments in batch (exclude LEAVE - they already exist)
+      const assignmentsToCreate = validAssignments.filter(a => a.shiftType !== 'LEAVE');
+
+      if (assignmentsToCreate.length > 0) {
+        const assignmentsData = assignmentsToCreate.map(assignment => ({
           staffProfileId: assignment.staffProfile.id,
           date: assignment.date,
           shiftType: assignment.shiftType,
