@@ -30,7 +30,8 @@ import {
   CheckCircle,
   Clock,
   FileText,
-  Users
+  Users,
+  Hammer
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -162,12 +163,20 @@ export default function ShiftSchedulesPage() {
             Manage monthly shift schedules for your branch
           </p>
         </div>
-        <Link href="/manager/shift-schedules/new">
-          <Button>
-            <Plus className="w-4 h-4 mr-2" />
-            Generate Schedule
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link href="/manager/shift-schedules/builder/new">
+            <Button variant="outline">
+              <Hammer className="w-4 h-4 mr-2" />
+              Shift Builder
+            </Button>
+          </Link>
+          <Link href="/manager/shift-schedules/new">
+            <Button>
+              <Plus className="w-4 h-4 mr-2" />
+              Generate Schedule
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}
