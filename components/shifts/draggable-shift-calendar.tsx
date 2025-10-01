@@ -296,6 +296,7 @@ export function DraggableShiftCalendar({
                           assignment={assignment}
                           editable={editable && isCurrentMonth}
                           maxSlots={slot.maxSlots}
+                          slotIndex={dropZoneIndex}
                           isRequired={slot.isRequired}
                           validationError={validationErrors[validationKey]}
                         />

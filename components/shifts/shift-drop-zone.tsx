@@ -99,6 +99,7 @@ interface ShiftDropZoneProps {
   assignment?: ShiftAssignment;
   editable: boolean;
   maxSlots?: number;
+  slotIndex?: number;
   isRequired?: boolean;
   validationError?: string;
   onAssign?: (staffId: string, shiftType: string, date: string) => void;
@@ -112,6 +113,7 @@ export function ShiftDropZone({
   assignment,
   editable,
   maxSlots = 1,
+  slotIndex = 0,
   isRequired = false,
   validationError,
 }: ShiftDropZoneProps) {
@@ -170,7 +172,10 @@ export function ShiftDropZone({
       {isEmpty ? (
         <div className="flex items-center justify-center gap-1 text-xs text-gray-400 dark:text-gray-600">
           <Icon className="w-3 h-3" />
-          <span className="hidden sm:inline">{config?.label}</span>
+          <span className="hidden sm:inline">
+            {config?.label}
+            {maxSlots > 1 && ` #${slotIndex + 1}`}
+          </span>
         </div>
       ) : (
         <DraggableAssignmentChip
