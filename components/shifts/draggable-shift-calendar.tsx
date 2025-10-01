@@ -88,9 +88,13 @@ function DraggableShiftChip({ assignment, editable }: { assignment: ShiftAssignm
   const config = shiftTypeConfig[assignment.shiftType as keyof typeof shiftTypeConfig];
   const Icon = config?.icon || Clock;
 
+  const isDraggable = editable && assignment.shiftType !== 'OFF' && assignment.shiftType !== 'LEAVE' && assignment.shiftType !== 'HOLIDAY';
+
   return (
     <div
-      draggable={editable && assignment.shiftType !== 'OFF' && assignment.shiftType !== 'LEAVE' && assignment.shiftType !== 'HOLIDAY'}
+      data-assignment-id={assignment.id}
+      data-staff-id={assignment.staffProfile.id}
+      draggable={isDraggable}
       onDragStart={(e) => {
         if (!editable) {
           e.preventDefault();
@@ -101,16 +105,16 @@ function DraggableShiftChip({ assignment, editable }: { assignment: ShiftAssignm
           staffProfileId: assignment.staffProfile.id,
           staffName: assignment.staffProfile.user.name,
           shiftType: assignment.shiftType,
-          sourceDate: assignment.date,
+          sourceDate: new Date(assignment.date).toISOString().split('T')[0],
         }));
         e.dataTransfer.effectAllowed = 'move';
       }}
       className={`text-xs p-1.5 rounded ${config?.color} ${
-        editable && assignment.shiftType !== 'OFF' && assignment.shiftType !== 'LEAVE' && assignment.shiftType !== 'HOLIDAY'
-          ? 'cursor-move hover:opacity-80 transition-opacity'
+        isDraggable
+          ? 'cursor-move hover:opacity-80 transition-opacity hover:ring-2 hover:ring-blue-400'
           : 'cursor-default'
       }`}
-      title={`${assignment.staffProfile.user.name} - ${config?.label}${editable ? ' (Drag to reassign)' : ''}`}
+      title={`${assignment.staffProfile.user.name} - ${config?.label}${editable ? ' (Drag to swap or reassign)' : ''}`}
     >
       <div className="flex items-center gap-1">
         <Icon className="w-3 h-3 flex-shrink-0" />
@@ -155,29 +159,50 @@ export function DraggableShiftCalendar({
     }
 
     e.preventDefault();
-    const data = JSON.parse(e.dataTransfer.getData('application/json'));
 
-    if (data.sourceDate === targetDateStr) {
-      toast.info('Staff is already assigned to this date');
-      return;
-    }
-
-    // Find target assignment with same shift type on target date
-    const targetAssignments = assignmentsByDate[targetDateStr] || [];
-    const targetAssignment = targetAssignments.find(a => a.shiftType === data.shiftType);
-
-    if (!targetAssignment) {
-      toast.error('No matching shift type found on target date');
-      return;
-    }
-
-    // Swap: update both assignments
-    setUpdating(true);
     try {
-      // Update target to source's staff
-      await onAssignmentUpdate(targetAssignment.id, data.staffProfileId);
-      toast.success(`Swapped ${data.staffName} to ${targetDateStr}`);
+      const data = JSON.parse(e.dataTransfer.getData('application/json'));
+
+      if (data.sourceDate === targetDateStr) {
+        toast.info('Staff is already assigned to this date');
+        return;
+      }
+
+      // Find the assignment being dropped on (if clicking on a specific staff)
+      const targetElement = e.target as HTMLElement;
+      const clickedAssignmentElement = targetElement.closest('[data-assignment-id]');
+
+      if (clickedAssignmentElement) {
+        // Dropped on a specific staff member - swap with them
+        const targetAssignmentId = clickedAssignmentElement.getAttribute('data-assignment-id');
+        const targetStaffId = clickedAssignmentElement.getAttribute('data-staff-id');
+
+        if (targetAssignmentId && targetStaffId && data.assignmentId) {
+          setUpdating(true);
+
+          // Perform swap: update both assignments
+          await onAssignmentUpdate(data.assignmentId, targetStaffId);
+          await onAssignmentUpdate(targetAssignmentId, data.staffProfileId);
+
+          toast.success(`Swapped ${data.staffName} with staff on ${targetDateStr}`);
+        }
+      } else {
+        // Dropped on empty space or day header - just check if there's a matching shift type
+        const targetAssignments = assignmentsByDate[targetDateStr] || [];
+        const targetAssignment = targetAssignments.find(a => a.shiftType === data.shiftType);
+
+        if (!targetAssignment) {
+          toast.error(`No ${data.shiftType} shift slot available on ${targetDateStr}`);
+          return;
+        }
+
+        setUpdating(true);
+        // Just reassign this shift to the dragged staff
+        await onAssignmentUpdate(targetAssignment.id, data.staffProfileId);
+        toast.success(`Moved ${data.staffName} to ${targetDateStr}`);
+      }
     } catch (error: any) {
+      console.error('Drop error:', error);
       toast.error(error.message || 'Failed to update assignment');
     } finally {
       setUpdating(false);
@@ -189,9 +214,13 @@ export function DraggableShiftCalendar({
       {editable && (
         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
           <p className="text-sm text-blue-700 dark:text-blue-300">
-            <strong>Drag & Drop:</strong> Drag a staff name to another date with the same shift type to swap assignments.
-            OFF, LEAVE, and HOLIDAY shifts cannot be moved.
+            <strong>Drag & Drop Editing:</strong> Drag a staff member's name and drop it on:
           </p>
+          <ul className="text-xs text-blue-600 dark:text-blue-400 mt-2 ml-4 space-y-1">
+            <li>• <strong>Another staff member</strong> on a different date = swap their assignments</li>
+            <li>• <strong>Empty space</strong> in a day = reassign to that day (same shift type)</li>
+            <li>• OFF, LEAVE, and HOLIDAY shifts cannot be moved</li>
+          </ul>
         </div>
       )}
 
