@@ -111,7 +111,7 @@ export async function PATCH(
     }
 
     // Check for conflicts (staff already assigned on this date)
-    // Allow if different shift type (e.g., assigning NIGHT when staff has OFF)
+    // If they have a different shift type, delete it (swap will handle it)
     const existingAssignment = await prisma.shiftAssignment.findFirst({
       where: {
         scheduleId,
@@ -123,15 +123,18 @@ export async function PATCH(
     });
 
     if (existingAssignment) {
-      // Allow conflict if the existing assignment is a different shift type
-      // This handles cases like swapping to a date where staff has OFF
+      // If same shift type, it's an error
       if (existingAssignment.shiftType === assignment.shiftType) {
         return NextResponse.json(
           { error: 'Staff already has a ' + assignment.shiftType + ' assignment on this date' },
           { status: 400 }
         );
       }
-      // Different shift types - allow it (swap logic will handle OFF days separately)
+      // Different shift types - delete the existing one to allow the swap
+      // (e.g., staff has OFF, we're assigning them NIGHT - delete the OFF first)
+      await prisma.shiftAssignment.delete({
+        where: { id: existingAssignment.id },
+      });
     }
 
     // Update the assignment
