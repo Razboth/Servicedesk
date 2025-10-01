@@ -54,10 +54,12 @@ function getDayShiftSlots(date: Date, isWeekend: boolean): Array<{ type: string;
     // Saturday
     if (dayOfWeek === 6) {
       slots.push({ type: 'SATURDAY_DAY', maxSlots: 2, isRequired: true });
+      slots.push({ type: 'SATURDAY_NIGHT', maxSlots: 1, isRequired: false });
     }
     // Sunday
     else if (dayOfWeek === 0) {
       slots.push({ type: 'SUNDAY_DAY', maxSlots: 2, isRequired: true });
+      slots.push({ type: 'SUNDAY_NIGHT', maxSlots: 1, isRequired: false });
     }
   } else {
     // Weekday night shift (only one slot)

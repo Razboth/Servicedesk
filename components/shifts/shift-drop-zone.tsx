@@ -19,7 +19,9 @@ interface ShiftAssignment {
 const shiftTypeConfig = {
   NIGHT: { label: 'Night', icon: Moon, color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300', borderColor: 'border-indigo-300 dark:border-indigo-700' },
   SATURDAY_DAY: { label: 'Sat Day', icon: Sun, color: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300', borderColor: 'border-blue-300 dark:border-blue-700' },
+  SATURDAY_NIGHT: { label: 'Sat Night', icon: Moon, color: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300', borderColor: 'border-purple-300 dark:border-purple-700' },
   SUNDAY_DAY: { label: 'Sun Day', icon: Sun, color: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300', borderColor: 'border-orange-300 dark:border-orange-700' },
+  SUNDAY_NIGHT: { label: 'Sun Night', icon: Moon, color: 'bg-pink-100 text-pink-700 dark:bg-pink-900 dark:text-pink-300', borderColor: 'border-pink-300 dark:border-pink-700' },
   OFF: { label: 'Off', icon: Coffee, color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300', borderColor: 'border-gray-300 dark:border-gray-700' },
   LEAVE: { label: 'Leave', icon: Calendar, color: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300', borderColor: 'border-red-300 dark:border-red-700' },
   HOLIDAY: { label: 'Holiday', icon: Calendar, color: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300', borderColor: 'border-green-300 dark:border-green-700' },
