@@ -29,6 +29,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import {
@@ -38,7 +39,8 @@ import {
   Clock,
   Loader2,
   AlertCircle,
-  User
+  User,
+  Plus
 } from 'lucide-react';
 
 interface LeaveRequest {
@@ -85,20 +87,41 @@ const statusConfig = {
   CANCELLED: { label: 'Cancelled', color: 'bg-gray-500', icon: XCircle },
 };
 
+interface StaffProfile {
+  id: string;
+  userId: string;
+  user: {
+    name: string;
+    email: string;
+  };
+}
+
 export default function LeaveRequestsPage() {
   const { data: session } = useSession();
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
+  const [staffProfiles, setStaffProfiles] = useState<StaffProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedRequest, setSelectedRequest] = useState<LeaveRequest | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [processing, setProcessing] = useState(false);
   const [actionType, setActionType] = useState<'approve' | 'reject' | null>(null);
+  const [newLeaveForm, setNewLeaveForm] = useState({
+    staffProfileId: '',
+    leaveType: 'ANNUAL',
+    startDate: '',
+    endDate: '',
+    reason: '',
+    contactNumber: '',
+    emergencyContact: ''
+  });
 
   useEffect(() => {
     if (session?.user?.branchId) {
       fetchRequests();
+      fetchStaffProfiles();
     }
   }, [session, statusFilter]);
 
@@ -120,6 +143,57 @@ export default function LeaveRequestsPage() {
       toast.error('Failed to load leave requests');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchStaffProfiles = async () => {
+    try {
+      const response = await fetch('/api/shifts/staff-profiles');
+      if (!response.ok) throw new Error('Failed to fetch staff profiles');
+
+      const data = await response.json();
+      setStaffProfiles(data.profiles || []);
+    } catch (error) {
+      console.error('Error fetching staff profiles:', error);
+    }
+  };
+
+  const handleCreateLeave = async () => {
+    if (!newLeaveForm.staffProfileId || !newLeaveForm.startDate || !newLeaveForm.endDate) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    try {
+      setProcessing(true);
+      const response = await fetch('/api/manager/leaves', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newLeaveForm)
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create leave request');
+      }
+
+      toast.success('Leave request created successfully');
+      setIsCreateDialogOpen(false);
+      setNewLeaveForm({
+        staffProfileId: '',
+        leaveType: 'ANNUAL',
+        startDate: '',
+        endDate: '',
+        reason: '',
+        contactNumber: '',
+        emergencyContact: ''
+      });
+      fetchRequests();
+    } catch (error: any) {
+      console.error('Error creating leave:', error);
+      toast.error(error.message || 'Failed to create leave request');
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -184,6 +258,10 @@ export default function LeaveRequestsPage() {
             Review and manage staff leave requests
           </p>
         </div>
+        <Button onClick={() => setIsCreateDialogOpen(true)}>
+          <Plus className="w-4 h-4 mr-2" />
+          New Leave Request
+        </Button>
       </div>
 
       {/* Stats */}
@@ -482,6 +560,130 @@ export default function LeaveRequestsPage() {
                 )}
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Leave Dialog */}
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Create New Leave Request</DialogTitle>
+            <DialogDescription>
+              Create a leave request for a staff member
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Staff Member *</Label>
+                <Select
+                  value={newLeaveForm.staffProfileId}
+                  onValueChange={(value) => setNewLeaveForm({ ...newLeaveForm, staffProfileId: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select staff member" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {staffProfiles.map((profile) => (
+                      <SelectItem key={profile.id} value={profile.id}>
+                        {profile.user.name} - {profile.user.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Leave Type *</Label>
+                <Select
+                  value={newLeaveForm.leaveType}
+                  onValueChange={(value) => setNewLeaveForm({ ...newLeaveForm, leaveType: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ANNUAL">Annual Leave</SelectItem>
+                    <SelectItem value="SICK">Sick Leave</SelectItem>
+                    <SelectItem value="EMERGENCY">Emergency Leave</SelectItem>
+                    <SelectItem value="UNPAID">Unpaid Leave</SelectItem>
+                    <SelectItem value="OTHER">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Start Date *</Label>
+                <Input
+                  type="date"
+                  value={newLeaveForm.startDate}
+                  onChange={(e) => setNewLeaveForm({ ...newLeaveForm, startDate: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>End Date *</Label>
+                <Input
+                  type="date"
+                  value={newLeaveForm.endDate}
+                  onChange={(e) => setNewLeaveForm({ ...newLeaveForm, endDate: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Contact Number</Label>
+                <Input
+                  type="tel"
+                  placeholder="+62 xxx xxxx xxxx"
+                  value={newLeaveForm.contactNumber}
+                  onChange={(e) => setNewLeaveForm({ ...newLeaveForm, contactNumber: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Emergency Contact</Label>
+                <Input
+                  type="tel"
+                  placeholder="+62 xxx xxxx xxxx"
+                  value={newLeaveForm.emergencyContact}
+                  onChange={(e) => setNewLeaveForm({ ...newLeaveForm, emergencyContact: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Reason</Label>
+              <Textarea
+                placeholder="Optional reason for leave..."
+                value={newLeaveForm.reason}
+                onChange={(e) => setNewLeaveForm({ ...newLeaveForm, reason: e.target.value })}
+                rows={3}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateLeave}
+              disabled={processing || !newLeaveForm.staffProfileId || !newLeaveForm.startDate || !newLeaveForm.endDate}
+            >
+              {processing ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Leave Request
+                </>
+              )}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
