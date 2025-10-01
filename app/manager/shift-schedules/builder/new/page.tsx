@@ -101,9 +101,15 @@ export default function ShiftBuilderPage() {
     try {
       // Fetch approved leave requests for the selected month and branch
       const response = await fetch(`/api/manager/leaves?status=APPROVED`);
+
+      if (!response.ok) {
+        console.error('Failed to fetch leaves:', response.status, response.statusText);
+        return; // Silently fail - leaves are optional
+      }
+
       const data = await response.json();
 
-      if (response.ok && data.leaves) {
+      if (data.leaves) {
         const selectedMonth = parseInt(month);
         const selectedYear = parseInt(year);
         const monthStart = new Date(selectedYear, selectedMonth - 1, 1);
@@ -241,7 +247,14 @@ export default function ShiftBuilderPage() {
         };
 
         setAssignments([...assignments, tempAssignment]);
-        toast.success(`Assigned ${activeData.staffName} to ${overData.shiftType} on ${overData.date}`);
+
+        // Format date properly for display (parse ISO string with explicit timezone)
+        const displayDate = new Date(overData.date + 'T00:00:00').toLocaleDateString('en-US', {
+          month: 'long',
+          day: 'numeric',
+          year: 'numeric'
+        });
+        toast.success(`Assigned ${activeData.staffName} to ${overData.shiftType} on ${displayDate}`);
       }
 
       // Case 2: Swapping assignments (future enhancement)

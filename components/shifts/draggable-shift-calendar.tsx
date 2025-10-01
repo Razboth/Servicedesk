@@ -255,7 +255,8 @@ export function DraggableShiftCalendar({
           {Array.from({ length: daysInMonth }).map((_, i) => {
             const day = i + 1;
             const date = new Date(year, month - 1, day);
-            const dateStr = date.toISOString().split('T')[0];
+            // Create date string directly to avoid timezone conversion issues
+            const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
             const dayAssignments = assignmentsByDate[dateStr] || [];
             const isWeekend = date.getDay() === 0 || date.getDay() === 6;
             const holiday = holidays.find(h =>
