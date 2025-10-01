@@ -118,14 +118,11 @@ export class ShiftGenerator {
     // Step 1: Mark holidays
     this.markHolidays(holidays);
 
-    // Step 2: Assign weekend shifts
+    // Step 2: Assign weekend shifts (includes on-call backup for weekends)
     this.assignWeekendShifts();
 
     // Step 3: Distribute weekday night shifts
     this.distributeWeekdayNightShifts();
-
-    // Step 4: Generate on-call backup assignments
-    this.generateOnCallBackup();
 
     return {
       assignments: this.assignments,
@@ -525,103 +522,10 @@ export class ShiftGenerator {
   }
 
   /**
-   * Generate on-call backup for shifts without server access
-   * Pattern from HTML: Rotate fairly among server access staff
+   * NOTE: On-call backup is now handled directly in assignWeekendShifts()
+   * This method has been removed as on-call is only needed for weekend day shifts
+   * when the assigned staff lack server access.
    */
-  private generateOnCallBackup(): void {
-    const serverAccessStaff = this.staff.filter((s) => s.hasServerAccess);
-
-    if (serverAccessStaff.length === 0) {
-      console.warn('No server access staff available for on-call rotation');
-      return;
-    }
-
-    for (let day = 1; day <= this.daysInMonth; day++) {
-      // Find all shifts for this day
-      const dayAssignments = this.assignments.filter((a) => {
-        const date = new Date(this.year, this.month - 1, day);
-        return a.date.getTime() === date.getTime();
-      });
-
-      // Check if any shift on this day needs on-call backup
-      let needsOnCall = false;
-      let reason = '';
-      let shiftStaff: typeof this.staff[0] | null = null;
-
-      for (const assignment of dayAssignments) {
-        const staff = this.staff.find((s) => s.id === assignment.staffProfileId);
-        if (!staff) continue;
-
-        // Weekend day shifts ALWAYS need on-call (staff don't have server access)
-        if (assignment.shiftType === ShiftType.WEEKEND_DAY && !staff.hasServerAccess) {
-          needsOnCall = true;
-          reason = 'Weekend day shift - no server access';
-          shiftStaff = staff;
-          break;
-        }
-
-        // Night shifts without server access need on-call
-        if ((assignment.shiftType === ShiftType.NIGHT || assignment.shiftType === ShiftType.WEEKEND_NIGHT) &&
-            !staff.hasServerAccess) {
-          needsOnCall = true;
-          reason = assignment.shiftType === ShiftType.WEEKEND_NIGHT
-            ? 'Weekend night shift - no server access'
-            : 'Weekday night shift - no server access';
-          shiftStaff = staff;
-          break;
-        }
-      }
-
-      if (needsOnCall && shiftStaff) {
-        // Find available on-call staff (not on shift, not off, not on leave, not Sabbath)
-        const available = serverAccessStaff.filter((s) => {
-          // Cannot be on any active shift
-          const isOnShift = dayAssignments.some(
-            (a) => a.staffProfileId === s.id &&
-            [ShiftType.NIGHT, ShiftType.WEEKEND_NIGHT, ShiftType.WEEKEND_DAY].includes(a.shiftType)
-          );
-          if (isOnShift) return false;
-
-          // Cannot be on off day
-          const isOff = dayAssignments.some(
-            (a) => a.staffProfileId === s.id && a.shiftType === ShiftType.OFF
-          );
-          if (isOff) return false;
-
-          // Cannot be on leave
-          if (this.isOnLeave(s.id, day)) return false;
-
-          // Sabbath check
-          if (s.hasSabbathRestriction) {
-            if (this.fridays.includes(day) || this.saturdays.includes(day)) {
-              return false;
-            }
-          }
-
-          return true;
-        });
-
-        if (available.length > 0) {
-          // Rotate fairly - pick the one with least on-call assignments
-          available.sort((a, b) =>
-            this.stats[a.id].onCallCount - this.stats[b.id].onCallCount
-          );
-
-          const onCall = available[0];
-
-          this.onCallAssignments.push({
-            staffProfileId: onCall.id,
-            date: new Date(this.year, this.month - 1, day),
-            reason,
-          });
-
-          this.stats[onCall.id].onCallCount++;
-        } else {
-          console.warn(`No available on-call staff for day ${day}`);
-        }
-      }
-    }
-  }
 
   /**
    * Check if staff can work night shift on given day
