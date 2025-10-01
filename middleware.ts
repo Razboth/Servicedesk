@@ -19,9 +19,10 @@ export async function middleware(request: NextRequest) {
   const isChangePasswordPage = request.nextUrl.pathname === '/auth/change-password';
   const isSignInPage = request.nextUrl.pathname === '/auth/signin';
   const isApiRoute = request.nextUrl.pathname.startsWith('/api/');
-  
-  // If user must change password, only allow access to change password page and auth API routes
-  if (token && token.mustChangePassword && !isChangePasswordPage && !isSignInPage) {
+  const isStaticAsset = request.nextUrl.pathname.match(/\.(jpg|jpeg|png|gif|svg|ico|css|js|woff|woff2|ttf|eot)$/i);
+
+  // If user must change password, only allow access to change password page, auth routes, and static assets
+  if (token && token.mustChangePassword && !isChangePasswordPage && !isSignInPage && !isStaticAsset) {
     // Allow API routes for change password and auth
     if (isApiRoute) {
       const isAuthApi = request.nextUrl.pathname.startsWith('/api/auth/');

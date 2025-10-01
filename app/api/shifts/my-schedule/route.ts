@@ -16,6 +16,24 @@ export async function GET(request: NextRequest) {
 
     const userId = session.user.id;
 
+    // First, get the user's staff profile
+    const staffProfile = await prisma.staffShiftProfile.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+
+    // If user doesn't have a staff profile, return empty data
+    if (!staffProfile) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          todayShift: null,
+          upcomingShifts: [],
+          todayOnCall: null,
+        },
+      });
+    }
+
     // Get today's date range
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -26,10 +44,10 @@ export async function GET(request: NextRequest) {
     const nextWeek = new Date(today);
     nextWeek.setDate(nextWeek.getDate() + 7);
 
-    // Fetch today's shift
+    // Fetch today's shift using staffProfileId
     const todayShift = await prisma.shiftAssignment.findFirst({
       where: {
-        userId,
+        staffProfileId: staffProfile.id,
         date: {
           gte: today,
           lt: tomorrow,
@@ -49,7 +67,7 @@ export async function GET(request: NextRequest) {
     // Fetch upcoming shifts (next 7 days, excluding today)
     const upcomingShifts = await prisma.shiftAssignment.findMany({
       where: {
-        userId,
+        staffProfileId: staffProfile.id,
         date: {
           gte: tomorrow,
           lte: nextWeek,
@@ -70,10 +88,10 @@ export async function GET(request: NextRequest) {
       take: 10,
     });
 
-    // Get on-call assignments for today
+    // Get on-call assignments for today using staffProfileId
     const todayOnCall = await prisma.onCallAssignment.findFirst({
       where: {
-        userId,
+        staffProfileId: staffProfile.id,
         startDate: {
           lte: today,
         },
