@@ -2,16 +2,15 @@
  * Shift Generation Algorithm
  *
  * Generates monthly shift schedules following complex rotation rules:
- * - Weekday night shifts: 1 staff per night
- * - Weekend shifts split into 4 types:
+ * - Weekday night shifts: 1 staff per night (MONDAY-FRIDAY ONLY)
+ * - Weekend day shifts (only staff with canWorkWeekendDay):
  *   * SATURDAY_DAY: 2 staff
- *   * SATURDAY_NIGHT: 1 staff
  *   * SUNDAY_DAY: 2 staff
- *   * SUNDAY_NIGHT: 1 staff (gets Monday off)
- * - Sunday night shift = Monday off (mandatory)
+ * - NO weekend night shifts (nights are weekdays only)
  * - Night shifts require off-day after
  * - Sabbath restrictions (no Friday night/Saturday for specific staff)
  * - Server access requirements with on-call backup
+ *   * If weekend day staff lack server access, backup on-call assigned
  * - Fair rotation distribution
  * - Minimum 3-day gap between night shifts
  * - Target 5 night shifts per person per month
@@ -288,12 +287,15 @@ export class ShiftGenerator {
 
   /**
    * Assign weekend shifts following rotation rules
-   * Pattern from HTML: Fixed rotation for day staff, balanced selection for night staff
+   * Pattern: Only staff with canWorkWeekendDay can work weekends
+   * Night shifts are WEEKDAYS ONLY - no weekend night shifts
    */
   private assignWeekendShifts(): void {
+    // Only staff who can work weekend days
     const weekendDayStaff = this.staff.filter((s) => s.canWorkWeekendDay);
-    const nightStaff = this.staff.filter((s) => s.canWorkNightShift);
-    const nightStaffNoSabbath = nightStaff.filter((s) => !s.hasSabbathRestriction);
+
+    // Server access staff for backup on-call
+    const serverAccessStaff = this.staff.filter((s) => s.hasServerAccess);
 
     if (weekendDayStaff.length < 2) {
       console.warn('Not enough weekend day staff (need at least 2)');
@@ -378,54 +380,62 @@ export class ShiftGenerator {
         }
       }
 
-      // === WEEKEND NIGHT SHIFTS ===
+      // === BACKUP ON-CALL FOR WEEKEND STAFF ===
+      // If assigned staff don't have server access, add backup on-call
 
-      // Saturday night - 1 staff (NO Sabbath restriction!)
-      const satNightAvailable = nightStaffNoSabbath
-        .filter(s => this.canWorkNightShift(s.id, saturday))
-        .sort((a, b) => {
-          // Sort by night count to balance workload
-          const countDiff = this.stats[a.id].nightCount - this.stats[b.id].nightCount;
-          if (countDiff !== 0) return countDiff;
-          // Then by last night shift (prefer more rest)
-          return this.stats[a.id].lastNightShift - this.stats[b.id].lastNightShift;
-        });
+      // Check Saturday day staff for server access
+      const satDayNeedsBackup = satDayAssigned.some(staffId => {
+        const staff = this.staff.find(s => s.id === staffId);
+        return staff && !staff.hasServerAccess;
+      });
 
-      if (satNightAvailable.length > 0) {
-        const staff = satNightAvailable[0];
-        this.addAssignment(staff.id, saturday, ShiftType.SATURDAY_NIGHT);
-        this.stats[staff.id].nightCount++;
-        this.stats[staff.id].lastNightShift = saturday;
+      if (satDayNeedsBackup) {
+        // Find server access staff not assigned on Saturday
+        const backupAvailable = serverAccessStaff.filter(s =>
+          !this.isAssigned(s.id, saturday) &&
+          !this.isOnLeave(s.id, saturday) &&
+          !satDayAssigned.includes(s.id)
+        );
 
-        // Off day on Sunday
-        if (sunday <= this.daysInMonth && !this.isAssigned(staff.id, sunday)) {
-          this.addAssignment(staff.id, sunday, ShiftType.OFF);
-          this.stats[staff.id].offCount++;
+        if (backupAvailable.length > 0) {
+          // Sort by on-call count to distribute fairly
+          backupAvailable.sort((a, b) => this.stats[a.id].onCallCount - this.stats[b.id].onCallCount);
+
+          const backupStaff = backupAvailable[0];
+          this.onCallAssignments.push({
+            staffProfileId: backupStaff.id,
+            date: new Date(this.year, this.month - 1, saturday),
+            reason: 'Backup on-call for weekend day shift (no server access on duty)'
+          });
+          this.stats[backupStaff.id].onCallCount++;
         }
       }
 
-      // Sunday night - 1 staff (Sabbath staff CAN work Sunday)
-      const sunNightAvailable = nightStaff
-        .filter(s => this.canWorkNightShift(s.id, sunday))
-        .sort((a, b) => {
-          // Sort by night count to balance workload
-          const countDiff = this.stats[a.id].nightCount - this.stats[b.id].nightCount;
-          if (countDiff !== 0) return countDiff;
-          // Then by last night shift (prefer more rest)
-          return this.stats[a.id].lastNightShift - this.stats[b.id].lastNightShift;
-        });
+      // Check Sunday day staff for server access
+      const sunDayNeedsBackup = sunDayAssigned.some(staffId => {
+        const staff = this.staff.find(s => s.id === staffId);
+        return staff && !staff.hasServerAccess;
+      });
 
-      if (sunNightAvailable.length > 0) {
-        const staff = sunNightAvailable[0];
-        this.addAssignment(staff.id, sunday, ShiftType.SUNDAY_NIGHT);
-        this.stats[staff.id].nightCount++;
-        this.stats[staff.id].lastNightShift = sunday;
+      if (sunDayNeedsBackup) {
+        // Find server access staff not assigned on Sunday
+        const backupAvailable = serverAccessStaff.filter(s =>
+          !this.isAssigned(s.id, sunday) &&
+          !this.isOnLeave(s.id, sunday) &&
+          !sunDayAssigned.includes(s.id)
+        );
 
-        // Sunday night = Monday off (MANDATORY)
-        const monday = sunday + 1;
-        if (monday <= this.daysInMonth && !this.isAssigned(staff.id, monday)) {
-          this.addAssignment(staff.id, monday, ShiftType.OFF);
-          this.stats[staff.id].offCount++;
+        if (backupAvailable.length > 0) {
+          // Sort by on-call count to distribute fairly
+          backupAvailable.sort((a, b) => this.stats[a.id].onCallCount - this.stats[b.id].onCallCount);
+
+          const backupStaff = backupAvailable[0];
+          this.onCallAssignments.push({
+            staffProfileId: backupStaff.id,
+            date: new Date(this.year, this.month - 1, sunday),
+            reason: 'Backup on-call for weekend day shift (no server access on duty)'
+          });
+          this.stats[backupStaff.id].onCallCount++;
         }
       }
     });

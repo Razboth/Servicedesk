@@ -20,7 +20,7 @@ import { format, isToday, isTomorrow } from 'date-fns';
 interface ShiftAssignment {
   id: string;
   date: string;
-  shiftType: 'NIGHT' | 'SATURDAY_DAY' | 'SATURDAY_NIGHT' | 'SUNDAY_DAY' | 'SUNDAY_NIGHT' | 'OFF' | 'LEAVE' | 'HOLIDAY';
+  shiftType: 'NIGHT' | 'SATURDAY_DAY' | 'SUNDAY_DAY' | 'OFF' | 'LEAVE' | 'HOLIDAY';
   isWeekend: boolean;
   schedule: {
     month: number;
@@ -92,10 +92,6 @@ export function ShiftScheduleNotification() {
         return <Sun className="w-4 h-4 text-orange-600 dark:text-orange-400" />;
       case 'NIGHT':
         return <Moon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />;
-      case 'SATURDAY_NIGHT':
-        return <Moon className="w-4 h-4 text-purple-600 dark:text-purple-400" />;
-      case 'SUNDAY_NIGHT':
-        return <Moon className="w-4 h-4 text-pink-600 dark:text-pink-400" />;
       default:
         return <Clock className="w-4 h-4 text-gray-600 dark:text-gray-400" />;
     }
@@ -104,15 +100,11 @@ export function ShiftScheduleNotification() {
   const getShiftTypeLabel = (shiftType: string) => {
     switch (shiftType) {
       case 'NIGHT':
-        return 'Night Shift (17:00 - 08:00)';
+        return 'Weekday Night Shift (17:00 - 08:00)';
       case 'SATURDAY_DAY':
         return 'Saturday Day Shift (08:00 - 17:00)';
-      case 'SATURDAY_NIGHT':
-        return 'Saturday Night Shift (17:00 - 08:00)';
       case 'SUNDAY_DAY':
         return 'Sunday Day Shift (08:00 - 17:00)';
-      case 'SUNDAY_NIGHT':
-        return 'Sunday Night Shift (17:00 - 08:00)';
       case 'OFF':
         return 'Day Off';
       case 'LEAVE':

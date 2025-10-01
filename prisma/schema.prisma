@@ -2584,11 +2584,9 @@ enum StaffShiftType {
 }
 
 enum ShiftType {
-  NIGHT                // Weekday night shift
-  SATURDAY_DAY         // Saturday day shift (2 staff)
-  SATURDAY_NIGHT       // Saturday night shift (1 staff)
-  SUNDAY_DAY           // Sunday day shift (2 staff)
-  SUNDAY_NIGHT         // Sunday night shift (1 staff, gets Monday off)
+  NIGHT                // Weekday night shift (Monday-Friday only)
+  SATURDAY_DAY         // Saturday day shift (2 staff, canWorkWeekendDay required)
+  SUNDAY_DAY           // Sunday day shift (2 staff, canWorkWeekendDay required)
   OFF                  // Mandatory off day (e.g., after night shift)
   LEAVE                // On leave
   HOLIDAY              // Public holiday
