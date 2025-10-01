@@ -148,13 +148,25 @@ export default function LeaveRequestsPage() {
 
   const fetchStaffProfiles = async () => {
     try {
-      const response = await fetch('/api/shifts/staff-profiles');
+      // Get user's branch ID
+      const userResponse = await fetch('/api/auth/session');
+      const userData = await userResponse.json();
+      const userBranchId = userData?.user?.branchId;
+
+      if (!userBranchId) {
+        console.error('User branch ID not found');
+        return;
+      }
+
+      // Fetch staff profiles for the user's branch
+      const response = await fetch(`/api/shifts/staff-profiles?branchId=${userBranchId}&isActive=true`);
       if (!response.ok) throw new Error('Failed to fetch staff profiles');
 
       const data = await response.json();
-      setStaffProfiles(data.profiles || []);
+      setStaffProfiles(data.data || []);
     } catch (error) {
       console.error('Error fetching staff profiles:', error);
+      toast.error('Failed to load staff profiles');
     }
   };
 
