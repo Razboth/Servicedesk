@@ -10,9 +10,11 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  DragOverEvent,
 } from '@dnd-kit/core';
-import { Moon, Sun, Coffee, Calendar, Clock } from 'lucide-react';
+import { Moon, Sun, Coffee, Calendar, Clock, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { ShiftDropZone, DraggableAssignmentChip } from './shift-drop-zone';
 
 interface ShiftAssignment {
   id: string;
@@ -35,94 +37,33 @@ interface DraggableShiftCalendarProps {
     date: string;
     name: string;
   }>;
-  onAssignmentUpdate: (assignmentId: string, newStaffProfileId: string, skipRefresh?: boolean) => Promise<void>;
+  onAssignmentUpdate?: (assignmentId: string, newStaffProfileId: string, skipRefresh?: boolean) => Promise<void>;
+  onAssignmentCreate?: (staffId: string, shiftType: string, date: string) => Promise<void>;
   onRefresh?: () => Promise<void>;
   editable?: boolean;
+  validationErrors?: Record<string, string>;
 }
 
-const shiftTypeConfig = {
-  NIGHT: { label: 'Night', icon: Moon, color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300' },
-  SATURDAY_DAY: { label: 'Sat Day', icon: Sun, color: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' },
-  SUNDAY_DAY: { label: 'Sun Day', icon: Sun, color: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300' },
-  OFF: { label: 'Off', icon: Coffee, color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' },
-  LEAVE: { label: 'Leave', icon: Calendar, color: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' },
-  HOLIDAY: { label: 'Holiday', icon: Calendar, color: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' },
-};
+// Helper function to get shift slots for a day
+function getDayShiftSlots(date: Date, isWeekend: boolean): Array<{ type: string; maxSlots: number; isRequired: boolean }> {
+  const dayOfWeek = date.getDay();
+  const slots: Array<{ type: string; maxSlots: number; isRequired: boolean }> = [];
 
-function DroppableDay({
-  day,
-  date,
-  dateStr,
-  assignments,
-  isWeekend,
-  holiday,
-  children,
-}: {
-  day: number;
-  date: Date;
-  dateStr: string;
-  assignments: ShiftAssignment[];
-  isWeekend: boolean;
-  holiday?: { name: string };
-  children: React.ReactNode;
-}) {
-  return (
-    <div
-      data-day={day}
-      data-date={dateStr}
-      className={`min-h-32 p-2 border rounded-lg ${
-        isWeekend ? 'bg-blue-50 dark:bg-blue-900/20' : 'bg-white dark:bg-gray-800'
-      } ${holiday ? 'border-red-300 dark:border-red-700' : 'border-gray-200 dark:border-gray-700'}`}
-    >
-      <div className="font-semibold text-sm mb-1">{day}</div>
-      {holiday && (
-        <div className="text-xs text-red-600 dark:text-red-400 mb-1">
-          {holiday.name}
-        </div>
-      )}
-      <div className="space-y-1">{children}</div>
-    </div>
-  );
-}
+  if (isWeekend) {
+    // Saturday
+    if (dayOfWeek === 6) {
+      slots.push({ type: 'SATURDAY_DAY', maxSlots: 2, isRequired: true });
+    }
+    // Sunday
+    else if (dayOfWeek === 0) {
+      slots.push({ type: 'SUNDAY_DAY', maxSlots: 2, isRequired: true });
+    }
+  } else {
+    // Weekday night shift (only one slot)
+    slots.push({ type: 'NIGHT', maxSlots: 1, isRequired: false });
+  }
 
-function DraggableShiftChip({ assignment, editable }: { assignment: ShiftAssignment; editable: boolean }) {
-  const config = shiftTypeConfig[assignment.shiftType as keyof typeof shiftTypeConfig];
-  const Icon = config?.icon || Clock;
-
-  const isDraggable = editable && assignment.shiftType !== 'OFF' && assignment.shiftType !== 'LEAVE' && assignment.shiftType !== 'HOLIDAY';
-
-  return (
-    <div
-      data-assignment-id={assignment.id}
-      data-staff-id={assignment.staffProfile.id}
-      draggable={isDraggable}
-      onDragStart={(e) => {
-        if (!editable) {
-          e.preventDefault();
-          return;
-        }
-        e.dataTransfer.setData('application/json', JSON.stringify({
-          assignmentId: assignment.id,
-          staffProfileId: assignment.staffProfile.id,
-          staffName: assignment.staffProfile.user.name,
-          shiftType: assignment.shiftType,
-          sourceDate: new Date(assignment.date).toISOString().split('T')[0],
-        }));
-        e.dataTransfer.effectAllowed = 'move';
-      }}
-      className={`text-xs p-1.5 rounded ${config?.color} ${
-        isDraggable
-          ? 'cursor-move hover:opacity-80 transition-opacity hover:ring-2 hover:ring-blue-400'
-          : 'cursor-default'
-      }`}
-      title={`${assignment.staffProfile.user.name} - ${config?.label}${editable ? ' (Drag to swap or reassign)' : ''}`}
-    >
-      <div className="flex items-center gap-1">
-        <Icon className="w-3 h-3 flex-shrink-0" />
-        <span className="truncate font-medium">{assignment.staffProfile.user.name.split(' ')[0]}</span>
-      </div>
-    </div>
-  );
+  return slots;
 }
 
 export function DraggableShiftCalendar({
@@ -131,11 +72,21 @@ export function DraggableShiftCalendar({
   assignments,
   holidays,
   onAssignmentUpdate,
+  onAssignmentCreate,
   onRefresh,
   editable = false,
+  validationErrors = {},
 }: DraggableShiftCalendarProps) {
-  const [draggedItem, setDraggedItem] = useState<any>(null);
+  const [activeItem, setActiveItem] = useState<any>(null);
   const [updating, setUpdating] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
 
   const daysInMonth = new Date(year, month, 0).getDate();
   const firstDay = new Date(year, month - 1, 1).getDay();
@@ -148,46 +99,45 @@ export function DraggableShiftCalendar({
     return acc;
   }, {} as Record<string, ShiftAssignment[]>);
 
-  const handleDragOver = (e: React.DragEvent) => {
-    if (!editable) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveItem(event.active.data.current);
   };
 
-  const handleDrop = async (e: React.DragEvent, targetDay: number, targetDateStr: string) => {
-    if (!editable || updating) {
-      e.preventDefault();
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveItem(null);
+
+    if (!over || !editable || updating) {
       return;
     }
 
-    e.preventDefault();
+    const activeData = active.data.current;
+    const overData = over.data.current;
+
+    if (!activeData || !overData) {
+      return;
+    }
 
     try {
-      const data = JSON.parse(e.dataTransfer.getData('application/json'));
+      setUpdating(true);
 
-      if (data.sourceDate === targetDateStr) {
-        toast.info('Staff is already assigned to this date');
-        return;
+      // Case 1: Dragging from staff pool to shift slot
+      if (activeData.type === 'staff' && overData.type === 'shift-slot') {
+        if (onAssignmentCreate) {
+          await onAssignmentCreate(activeData.staffId, overData.shiftType, overData.date);
+          toast.success(`Assigned ${activeData.staffName} to ${overData.shiftType} on ${overData.date}`);
+        } else {
+          toast.error('Assignment creation not available');
+        }
       }
 
-      // Find the assignment being dropped on (if clicking on a specific staff)
-      const targetElement = e.target as HTMLElement;
-      const clickedAssignmentElement = targetElement.closest('[data-assignment-id]');
+      // Case 2: Dragging existing assignment to another shift slot (swap or move)
+      else if (activeData.type === 'assignment' && overData.type === 'shift-slot') {
+        const targetAssignment = overData.currentAssignment;
 
-      if (clickedAssignmentElement) {
-        // Dropped on a specific staff member - swap with them
-        const targetAssignmentId = clickedAssignmentElement.getAttribute('data-assignment-id');
-
-        if (targetAssignmentId && data.assignmentId) {
-          // Find the target assignment from the data to get current staff ID
-          const targetAssignment = assignments.find(a => a.id === targetAssignmentId);
-
-          if (!targetAssignment) {
-            toast.error('Target assignment not found');
-            return;
-          }
-
-          const sourceStaffId = data.staffProfileId;
+        // If target has an assignment, swap them
+        if (targetAssignment && onAssignmentUpdate) {
+          const sourceStaffId = activeData.staffId;
           const targetStaffId = targetAssignment.staffProfile.id;
 
           if (sourceStaffId === targetStaffId) {
@@ -195,20 +145,14 @@ export function DraggableShiftCalendar({
             return;
           }
 
-          setUpdating(true);
+          // Perform swap including OFF days (H+1)
+          await onAssignmentUpdate(activeData.assignmentId, targetStaffId, true);
+          await onAssignmentUpdate(targetAssignment.id, sourceStaffId, true);
 
-          // Perform swap including OFF days (H+1):
-          // 1. Swap the main shift assignments
-          // @ts-ignore - skipRefresh parameter
-          await onAssignmentUpdate(data.assignmentId, targetStaffId, true);
-          // @ts-ignore - skipRefresh parameter
-          await onAssignmentUpdate(targetAssignmentId, sourceStaffId, true);
-
-          // 2. Find and swap associated OFF days (day after shift)
-          const sourceDate = new Date(data.sourceDate);
+          // Find and swap associated OFF days (day after shift)
+          const sourceDate = new Date(activeData.sourceDate);
           const targetDate = new Date(targetAssignment.date);
 
-          // Get next day for both
           const sourceNextDay = new Date(sourceDate);
           sourceNextDay.setDate(sourceNextDay.getDate() + 1);
           const sourceNextDayStr = sourceNextDay.toISOString().split('T')[0];
@@ -217,7 +161,6 @@ export function DraggableShiftCalendar({
           targetNextDay.setDate(targetNextDay.getDate() + 1);
           const targetNextDayStr = targetNextDay.toISOString().split('T')[0];
 
-          // Find OFF assignments on next days
           const sourceOffDay = assignments.find(a =>
             new Date(a.date).toISOString().split('T')[0] === sourceNextDayStr &&
             a.staffProfile.id === sourceStaffId &&
@@ -230,40 +173,26 @@ export function DraggableShiftCalendar({
             a.shiftType === 'OFF'
           );
 
-          // Swap OFF days if they exist
           if (sourceOffDay && targetOffDay) {
             await onAssignmentUpdate(sourceOffDay.id, targetStaffId, true);
             await onAssignmentUpdate(targetOffDay.id, sourceStaffId, true);
           }
 
-          // Refresh once after all updates
           if (onRefresh) {
             await onRefresh();
-          } else {
-            // Fallback: trigger one more update without skipRefresh
-            await onAssignmentUpdate(data.assignmentId, targetStaffId);
           }
 
           const offDayMsg = (sourceOffDay && targetOffDay) ? ' (including OFF days)' : '';
-          toast.success(`Swapped ${data.staffName} with ${targetAssignment.staffProfile.user.name}${offDayMsg}`);
+          toast.success(`Swapped ${activeData.staffName} with ${targetAssignment.staffProfile.user.name}${offDayMsg}`);
         }
-      } else {
-        // Dropped on empty space or day header - just check if there's a matching shift type
-        const targetAssignments = assignmentsByDate[targetDateStr] || [];
-        const targetAssignment = targetAssignments.find(a => a.shiftType === data.shiftType);
-
-        if (!targetAssignment) {
-          toast.error(`No ${data.shiftType} shift slot available on ${targetDateStr}`);
-          return;
+        // Empty slot - just reassign
+        else if (!targetAssignment && onAssignmentUpdate) {
+          await onAssignmentUpdate(activeData.assignmentId, activeData.staffId);
+          toast.success(`Moved ${activeData.staffName} to ${overData.date}`);
         }
-
-        setUpdating(true);
-        // Just reassign this shift to the dragged staff
-        await onAssignmentUpdate(targetAssignment.id, data.staffProfileId);
-        toast.success(`Moved ${data.staffName} to ${targetDateStr}`);
       }
     } catch (error: any) {
-      console.error('Drop error:', error);
+      console.error('Drag error:', error);
       toast.error(error.message || 'Failed to update assignment');
     } finally {
       setUpdating(false);
@@ -271,71 +200,122 @@ export function DraggableShiftCalendar({
   };
 
   return (
-    <div className="space-y-4">
-      {editable && (
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-          <p className="text-sm text-blue-700 dark:text-blue-300">
-            <strong>Drag & Drop Editing:</strong> Drag a staff member's name and drop it on:
-          </p>
-          <ul className="text-xs text-blue-600 dark:text-blue-400 mt-2 ml-4 space-y-1">
-            <li>• <strong>Another staff member</strong> on a different date = swap their assignments</li>
-            <li>• <strong>Empty space</strong> in a day = reassign to that day (same shift type)</li>
-            <li>• OFF, LEAVE, and HOLIDAY shifts cannot be moved</li>
-          </ul>
-        </div>
-      )}
-
-      {/* Calendar Grid */}
-      <div className="grid grid-cols-7 gap-2">
-        {/* Day headers */}
-        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-          <div key={day} className="text-center font-semibold text-sm text-gray-600 dark:text-gray-400 p-2">
-            {day}
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCorners}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      <div className="space-y-4">
+        {editable && (
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+            <p className="text-sm text-blue-700 dark:text-blue-300">
+              <strong>Drag & Drop Builder:</strong>
+            </p>
+            <ul className="text-xs text-blue-600 dark:text-blue-400 mt-2 ml-4 space-y-1">
+              <li>• <strong>Drag staff from pool</strong> to empty shift slots to assign</li>
+              <li>• <strong>Drag assignment to another</strong> to swap staff members</li>
+              <li>• <strong>OFF days are auto-managed</strong> when swapping</li>
+              <li>• OFF, LEAVE, and HOLIDAY shifts cannot be moved</li>
+            </ul>
           </div>
-        ))}
+        )}
 
-        {/* Empty cells for first week */}
-        {Array.from({ length: firstDay }).map((_, i) => (
-          <div key={`empty-${i}`} className="p-2" />
-        ))}
-
-        {/* Days */}
-        {Array.from({ length: daysInMonth }).map((_, i) => {
-          const day = i + 1;
-          const date = new Date(year, month - 1, day);
-          const dateStr = date.toISOString().split('T')[0];
-          const dayAssignments = assignmentsByDate[dateStr] || [];
-          const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-          const holiday = holidays.find(h =>
-            new Date(h.date).toISOString().split('T')[0] === dateStr
-          );
-
-          return (
-            <div
-              key={day}
-              onDragOver={handleDragOver}
-              onDrop={(e) => handleDrop(e, day, dateStr)}
-            >
-              <DroppableDay
-                day={day}
-                date={date}
-                dateStr={dateStr}
-                assignments={dayAssignments}
-                isWeekend={isWeekend}
-                holiday={holiday}
-              >
-                {dayAssignments.map(assignment => (
-                  <DraggableShiftChip
-                    key={assignment.id}
-                    assignment={assignment}
-                    editable={editable}
-                  />
-                ))}
-              </DroppableDay>
+        {/* Calendar Grid */}
+        <div className="grid grid-cols-7 gap-2">
+          {/* Day headers */}
+          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+            <div key={day} className="text-center font-semibold text-sm text-gray-600 dark:text-gray-400 p-2">
+              {day}
             </div>
-          );
-        })}
+          ))}
+
+          {/* Empty cells for first week */}
+          {Array.from({ length: firstDay }).map((_, i) => (
+            <div key={`empty-${i}`} className="p-2" />
+          ))}
+
+          {/* Days */}
+          {Array.from({ length: daysInMonth }).map((_, i) => {
+            const day = i + 1;
+            const date = new Date(year, month - 1, day);
+            const dateStr = date.toISOString().split('T')[0];
+            const dayAssignments = assignmentsByDate[dateStr] || [];
+            const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+            const holiday = holidays.find(h =>
+              new Date(h.date).toISOString().split('T')[0] === dateStr
+            );
+
+            // Get shift slots for this day
+            const shiftSlots = getDayShiftSlots(date, isWeekend);
+
+            return (
+              <div
+                key={day}
+                className={`min-h-32 p-2 border rounded-lg ${
+                  isWeekend ? 'bg-blue-50 dark:bg-blue-900/20' : 'bg-white dark:bg-gray-800'
+                } ${holiday ? 'border-red-300 dark:border-red-700' : 'border-gray-200 dark:border-gray-700'}`}
+              >
+                <div className="font-semibold text-sm mb-1">{day}</div>
+                {holiday && (
+                  <div className="text-xs text-red-600 dark:text-red-400 mb-1">
+                    {holiday.name}
+                  </div>
+                )}
+
+                <div className="space-y-1">
+                  {/* Render shift drop zones */}
+                  {shiftSlots.map((slot, index) => {
+                    const assignment = dayAssignments.find(a => a.shiftType === slot.type);
+                    const dropZoneId = `${dateStr}-${slot.type}-${index}`;
+                    const validationKey = `${dateStr}-${slot.type}`;
+
+                    return (
+                      <ShiftDropZone
+                        key={dropZoneId}
+                        id={dropZoneId}
+                        shiftType={slot.type}
+                        date={date.toDateString()}
+                        dateStr={dateStr}
+                        assignment={assignment}
+                        editable={editable}
+                        maxSlots={slot.maxSlots}
+                        isRequired={slot.isRequired}
+                        validationError={validationErrors[validationKey]}
+                      />
+                    );
+                  })}
+
+                  {/* Render other assignments (OFF, LEAVE, HOLIDAY) */}
+                  {dayAssignments
+                    .filter(a => ['OFF', 'LEAVE', 'HOLIDAY'].includes(a.shiftType))
+                    .map(assignment => (
+                      <DraggableAssignmentChip
+                        key={assignment.id}
+                        assignment={assignment}
+                        editable={false}
+                      />
+                    ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
-    </div>
+
+      {/* Drag Overlay */}
+      <DragOverlay>
+        {activeItem && (
+          <div className="bg-white dark:bg-gray-800 border-2 border-blue-500 rounded-lg p-3 shadow-2xl">
+            <p className="font-medium text-sm">
+              {activeItem.type === 'staff' ? activeItem.staffName : activeItem.staffName}
+            </p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              {activeItem.type === 'staff' ? 'New Assignment' : activeItem.shiftType}
+            </p>
+          </div>
+        )}
+      </DragOverlay>
+    </DndContext>
   );
 }
