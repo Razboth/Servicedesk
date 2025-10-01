@@ -111,6 +111,7 @@ export async function PATCH(
     }
 
     // Check for conflicts (staff already assigned on this date)
+    // Allow the conflict if we're swapping with that existing assignment
     const existingAssignment = await prisma.shiftAssignment.findFirst({
       where: {
         scheduleId,
@@ -121,10 +122,26 @@ export async function PATCH(
     });
 
     if (existingAssignment) {
-      return NextResponse.json(
-        { error: 'Staff already has an assignment on this date' },
-        { status: 400 }
-      );
+      // Get the current staff on the assignment we're updating
+      const currentAssignment = await prisma.shiftAssignment.findUnique({
+        where: { id: assignmentId },
+        select: { staffProfileId: true },
+      });
+
+      // Allow if this is a swap (the existing assignment has the current staff)
+      const existingAssignmentDetails = await prisma.shiftAssignment.findUnique({
+        where: { id: existingAssignment.id },
+        select: { staffProfileId: true },
+      });
+
+      const isSwap = existingAssignmentDetails?.staffProfileId === currentAssignment?.staffProfileId;
+
+      if (!isSwap) {
+        return NextResponse.json(
+          { error: 'Staff already has an assignment on this date' },
+          { status: 400 }
+        );
+      }
     }
 
     // Update the assignment
