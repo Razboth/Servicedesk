@@ -175,16 +175,33 @@ export function DraggableShiftCalendar({
       if (clickedAssignmentElement) {
         // Dropped on a specific staff member - swap with them
         const targetAssignmentId = clickedAssignmentElement.getAttribute('data-assignment-id');
-        const targetStaffId = clickedAssignmentElement.getAttribute('data-staff-id');
 
-        if (targetAssignmentId && targetStaffId && data.assignmentId) {
+        if (targetAssignmentId && data.assignmentId) {
+          // Find the target assignment from the data to get current staff ID
+          const targetAssignment = assignments.find(a => a.id === targetAssignmentId);
+
+          if (!targetAssignment) {
+            toast.error('Target assignment not found');
+            return;
+          }
+
+          const sourceStaffId = data.staffProfileId;
+          const targetStaffId = targetAssignment.staffProfile.id;
+
+          if (sourceStaffId === targetStaffId) {
+            toast.info('Cannot swap with the same staff member');
+            return;
+          }
+
           setUpdating(true);
 
-          // Perform swap: update both assignments
+          // Perform swap:
+          // 1. Update source assignment to have target's staff
           await onAssignmentUpdate(data.assignmentId, targetStaffId);
-          await onAssignmentUpdate(targetAssignmentId, data.staffProfileId);
+          // 2. Update target assignment to have source's staff
+          await onAssignmentUpdate(targetAssignmentId, sourceStaffId);
 
-          toast.success(`Swapped ${data.staffName} with staff on ${targetDateStr}`);
+          toast.success(`Swapped ${data.staffName} with ${targetAssignment.staffProfile.user.name}`);
         }
       } else {
         // Dropped on empty space or day header - just check if there's a matching shift type
