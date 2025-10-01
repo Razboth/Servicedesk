@@ -43,10 +43,11 @@ interface DraggableShiftCalendarProps {
   editable?: boolean;
   validationErrors?: Record<string, string>;
   skipDndContext?: boolean; // If true, assumes parent provides DndContext
+  showWeekendNights?: boolean; // If true, shows weekend night shift slots (for shift builder)
 }
 
 // Helper function to get shift slots for a day
-function getDayShiftSlots(date: Date, isWeekend: boolean): Array<{ type: string; maxSlots: number; isRequired: boolean }> {
+function getDayShiftSlots(date: Date, isWeekend: boolean, showWeekendNights: boolean = true): Array<{ type: string; maxSlots: number; isRequired: boolean }> {
   const dayOfWeek = date.getDay();
   const slots: Array<{ type: string; maxSlots: number; isRequired: boolean }> = [];
 
@@ -54,12 +55,16 @@ function getDayShiftSlots(date: Date, isWeekend: boolean): Array<{ type: string;
     // Saturday
     if (dayOfWeek === 6) {
       slots.push({ type: 'SATURDAY_DAY', maxSlots: 2, isRequired: true });
-      slots.push({ type: 'SATURDAY_NIGHT', maxSlots: 1, isRequired: false });
+      if (showWeekendNights) {
+        slots.push({ type: 'SATURDAY_NIGHT', maxSlots: 1, isRequired: false });
+      }
     }
     // Sunday
     else if (dayOfWeek === 0) {
       slots.push({ type: 'SUNDAY_DAY', maxSlots: 2, isRequired: true });
-      slots.push({ type: 'SUNDAY_NIGHT', maxSlots: 1, isRequired: false });
+      if (showWeekendNights) {
+        slots.push({ type: 'SUNDAY_NIGHT', maxSlots: 1, isRequired: false });
+      }
     }
   } else {
     // Weekday night shift (only one slot)
@@ -80,6 +85,7 @@ export function DraggableShiftCalendar({
   editable = false,
   validationErrors = {},
   skipDndContext = false,
+  showWeekendNights = true,
 }: DraggableShiftCalendarProps) {
   const [activeItem, setActiveItem] = useState<any>(null);
   const [updating, setUpdating] = useState(false);
@@ -177,8 +183,11 @@ export function DraggableShiftCalendar({
             a.shiftType === 'OFF'
           );
 
-          if (sourceOffDay && targetOffDay) {
+          // Swap OFF days independently
+          if (sourceOffDay) {
             await onAssignmentUpdate(sourceOffDay.id, targetStaffId, true);
+          }
+          if (targetOffDay) {
             await onAssignmentUpdate(targetOffDay.id, sourceStaffId, true);
           }
 
@@ -186,7 +195,7 @@ export function DraggableShiftCalendar({
             await onRefresh();
           }
 
-          const offDayMsg = (sourceOffDay && targetOffDay) ? ' (including OFF days)' : '';
+          const offDayMsg = (sourceOffDay || targetOffDay) ? ' (including OFF days)' : '';
           toast.success(`Swapped ${activeData.staffName} with ${targetAssignment.staffProfile.user.name}${offDayMsg}`);
         }
         // Empty slot - just reassign
@@ -248,7 +257,7 @@ export function DraggableShiftCalendar({
             const isCurrentMonth = date.getMonth() + 1 === month;
 
             // Get shift slots for this day
-            const shiftSlots = getDayShiftSlots(date, isWeekend);
+            const shiftSlots = getDayShiftSlots(date, isWeekend, showWeekendNights);
 
             return (
               <div

@@ -357,6 +357,7 @@ export default function ScheduleDetailPage() {
               onAssignmentUpdate={handleAssignmentUpdate}
               onRefresh={fetchSchedule}
               editable={schedule.status === 'GENERATED'}
+              showWeekendNights={false}
             />
           ) : (
             <div className="space-y-4">
