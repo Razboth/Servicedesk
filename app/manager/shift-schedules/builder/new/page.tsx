@@ -339,9 +339,10 @@ export default function ShiftBuilderPage() {
       const existingAssignmentIds = fetchAssignmentsData.data?.map((a: any) => a.id) || [];
 
       const validAssignments = assignments.filter(assignment => {
-        const assignmentDate = new Date(assignment.date);
-        const assignmentMonth = assignmentDate.getMonth() + 1;
-        const assignmentYear = assignmentDate.getFullYear();
+        // Parse date without timezone conversion issues
+        const [yearStr, monthStr, dayStr] = assignment.date.split('-');
+        const assignmentYear = parseInt(yearStr);
+        const assignmentMonth = parseInt(monthStr);
 
         const isValid = assignmentMonth === selectedMonth && assignmentYear === selectedYear;
         const isNew = !existingAssignmentIds.includes(assignment.id);

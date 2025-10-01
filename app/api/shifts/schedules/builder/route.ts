@@ -76,7 +76,8 @@ export async function POST(request: NextRequest) {
         branchId,
         month,
         year,
-        status: 'DRAFT',
+        status: 'GENERATED',
+        generatedAt: new Date(),
         createdBy: session.user.id,
         generationRules: {
           targetNightsPerMonth: 5,
