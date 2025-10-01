@@ -2363,7 +2363,7 @@ model ShiftSchedule {
   onCallAssignments     OnCallAssignment[]
   holidays              Holiday[]
 
-  @@unique([branchId, month, year])
+  @@index([branchId, month, year])
   @@index([branchId, status])
   @@index([month, year])
   @@map("shift_schedules")

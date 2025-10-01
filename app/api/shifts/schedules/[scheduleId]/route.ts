@@ -107,6 +107,36 @@ export async function PATCH(
     const body = await request.json();
     const { status, notes } = body;
 
+    // If publishing, check if another schedule is already published for this month
+    if (status === 'PUBLISHED') {
+      const currentSchedule = await prisma.shiftSchedule.findUnique({
+        where: { id: params.scheduleId },
+        select: { branchId: true, month: true, year: true },
+      });
+
+      if (currentSchedule) {
+        const existingPublished = await prisma.shiftSchedule.findFirst({
+          where: {
+            branchId: currentSchedule.branchId,
+            month: currentSchedule.month,
+            year: currentSchedule.year,
+            status: 'PUBLISHED',
+            id: { not: params.scheduleId }, // Exclude current schedule
+          },
+        });
+
+        if (existingPublished) {
+          return NextResponse.json(
+            {
+              error: 'Another schedule is already published for this month. Please unpublish it first.',
+              existingScheduleId: existingPublished.id
+            },
+            { status: 409 }
+          );
+        }
+      }
+    }
+
     const data: any = {};
     if (status) {
       data.status = status;
