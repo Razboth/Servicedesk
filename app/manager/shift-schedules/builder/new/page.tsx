@@ -91,8 +91,62 @@ export default function ShiftBuilderPage() {
   useEffect(() => {
     if (session?.user?.branchId) {
       fetchStaffProfiles();
+      fetchLeaveRequests();
     }
-  }, [session]);
+  }, [session, month, year]);
+
+  const fetchLeaveRequests = async () => {
+    if (!session?.user?.branchId) return;
+
+    try {
+      // Fetch approved leave requests for the selected month and branch
+      const response = await fetch(`/api/manager/leaves?status=APPROVED`);
+      const data = await response.json();
+
+      if (response.ok && data.leaves) {
+        const selectedMonth = parseInt(month);
+        const selectedYear = parseInt(year);
+        const monthStart = new Date(selectedYear, selectedMonth - 1, 1);
+        const monthEnd = new Date(selectedYear, selectedMonth, 0);
+
+        const leaveAssignments: ShiftAssignment[] = [];
+
+        for (const leave of data.leaves) {
+          const leaveStart = new Date(leave.startDate);
+          const leaveEnd = new Date(leave.endDate);
+
+          // Check if leave overlaps with selected month
+          if (leaveStart <= monthEnd && leaveEnd >= monthStart) {
+            // Create assignments for each day of leave within the month
+            const currentDate = new Date(Math.max(leaveStart.getTime(), monthStart.getTime()));
+            const endDate = new Date(Math.min(leaveEnd.getTime(), monthEnd.getTime()));
+
+            while (currentDate <= endDate) {
+              leaveAssignments.push({
+                id: `leave-${leave.id}-${currentDate.toISOString().split('T')[0]}`,
+                date: currentDate.toISOString().split('T')[0],
+                shiftType: 'LEAVE',
+                staffProfile: leave.staffProfile,
+              });
+              currentDate.setDate(currentDate.getDate() + 1);
+            }
+          }
+        }
+
+        // Add leave assignments to the state
+        if (leaveAssignments.length > 0) {
+          setAssignments(prev => {
+            // Filter out old leave assignments
+            const nonLeaveAssignments = prev.filter(a => a.shiftType !== 'LEAVE' && !a.id.startsWith('leave-'));
+            return [...nonLeaveAssignments, ...leaveAssignments];
+          });
+          console.log(`Loaded ${leaveAssignments.length} leave assignments for calendar display`);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching leave requests:', error);
+    }
+  };
 
   const fetchStaffProfiles = async () => {
     try {
@@ -239,12 +293,37 @@ export default function ShiftBuilderPage() {
       }
 
       const scheduleId = scheduleData.data.scheduleId;
-      toast.success('Schedule created successfully');
+      console.log('Created schedule ID:', scheduleId);
+
+      // Fetch any auto-created assignments (like LEAVE assignments)
+      const fetchAssignmentsResponse = await fetch(`/api/shifts/schedules/${scheduleId}/assignments`);
+      const fetchAssignmentsData = await fetchAssignmentsResponse.json();
+
+      if (fetchAssignmentsResponse.ok && fetchAssignmentsData.data) {
+        const existingAssignments = fetchAssignmentsData.data.map((a: any) => ({
+          id: a.id,
+          date: new Date(a.date).toISOString().split('T')[0],
+          shiftType: a.shiftType,
+          staffProfile: a.staffProfile,
+        }));
+        console.log(`Loaded ${existingAssignments.length} existing assignments (e.g., leaves)`);
+
+        // Merge with current assignments
+        setAssignments(prevAssignments => [...existingAssignments, ...prevAssignments]);
+
+        if (existingAssignments.length > 0) {
+          toast.info(`Schedule created with ${existingAssignments.length} leave assignments`);
+        } else {
+          toast.success('Schedule created successfully');
+        }
+      }
 
       // Step 2: Create all assignments in batch
       // Filter out assignments that don't belong to the selected month
+      // Also exclude assignments that already exist in the database (like LEAVE assignments)
       const selectedMonth = parseInt(month);
       const selectedYear = parseInt(year);
+      const existingAssignmentIds = fetchAssignmentsData.data?.map((a: any) => a.id) || [];
 
       const validAssignments = assignments.filter(assignment => {
         const assignmentDate = new Date(assignment.date);
@@ -252,53 +331,64 @@ export default function ShiftBuilderPage() {
         const assignmentYear = assignmentDate.getFullYear();
 
         const isValid = assignmentMonth === selectedMonth && assignmentYear === selectedYear;
+        const isNew = !existingAssignmentIds.includes(assignment.id);
 
         if (!isValid) {
           console.warn(`Filtering out assignment from ${assignment.date} (not in ${selectedMonth}/${selectedYear})`);
         }
 
-        return isValid;
+        if (!isNew) {
+          console.log(`Skipping existing assignment ${assignment.id} (already in database)`);
+        }
+
+        return isValid && isNew;
       });
-
-      if (validAssignments.length === 0) {
-        throw new Error('No valid assignments for the selected month. Please ensure you only assign shifts within the current month.');
-      }
-
-      const assignmentsData = validAssignments.map(assignment => ({
-        staffProfileId: assignment.staffProfile.id,
-        date: assignment.date,
-        shiftType: assignment.shiftType,
-      }));
 
       console.log('Filtered assignments:', `${validAssignments.length} of ${assignments.length}`);
-      console.log('Sending batch assignments:', assignmentsData);
 
-      const batchResponse = await fetch(`/api/shifts/schedules/${scheduleId}/assignments/batch`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          assignments: assignmentsData,
-        }),
-      });
+      // Only create batch assignments if there are new ones to create
+      if (validAssignments.length > 0) {
+        const assignmentsData = validAssignments.map(assignment => ({
+          staffProfileId: assignment.staffProfile.id,
+          date: assignment.date,
+          shiftType: assignment.shiftType,
+        }));
 
-      const batchData = await batchResponse.json();
-      console.log('Batch assignment response:', batchData);
+        console.log('Sending batch assignments:', assignmentsData);
 
-      if (!batchResponse.ok) {
-        console.error('Failed to create assignments:', batchData);
-        throw new Error(batchData.error || 'Failed to create assignments');
-      }
+        const batchResponse = await fetch(`/api/shifts/schedules/${scheduleId}/assignments/batch`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            assignments: assignmentsData,
+          }),
+        });
 
-      const { created, updated, failed, errors } = batchData.data;
+        const batchData = await batchResponse.json();
+        console.log('Batch assignment response:', batchData);
 
-      if (errors && errors.length > 0) {
-        console.error('Assignment errors:', errors);
-      }
+        if (!batchResponse.ok) {
+          console.error('Failed to create assignments:', batchData);
+          throw new Error(batchData.error || 'Failed to create assignments');
+        }
 
-      if (failed > 0) {
-        toast.warning(`Schedule saved: ${created} created, ${updated} updated, ${failed} failed. Check console for details.`);
+        const { created, updated, failed, errors } = batchData.data;
+
+        if (errors && errors.length > 0) {
+          console.error('Assignment errors:', errors);
+        }
+
+        if (failed > 0) {
+          toast.warning(`Schedule saved: ${created} created, ${updated} updated, ${failed} failed. Check console for details.`);
+        } else {
+          toast.success(`Schedule saved successfully! ${created} assignments created, ${updated} updated`);
+        }
       } else {
-        toast.success(`Schedule saved successfully! ${created} assignments created, ${updated} updated`);
+        // No new assignments to create, but schedule is valid with existing LEAVE assignments
+        const existingCount = existingAssignmentIds.length;
+        toast.success(existingCount > 0
+          ? `Schedule created with ${existingCount} leave assignment(s)`
+          : 'Blank schedule created successfully');
       }
 
       // Navigate to the schedule view
