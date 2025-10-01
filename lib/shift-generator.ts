@@ -2,13 +2,17 @@
  * Shift Generation Algorithm
  *
  * Generates monthly shift schedules following complex rotation rules:
+ * - Weekday night shifts: 1 staff per night
+ * - Weekend day shifts: 2 staff for Saturday, 2 for Sunday
+ * - Weekend night shifts: 1 staff for Saturday night, 1 for Sunday night
+ * - Sunday night shift = Monday off (mandatory)
  * - Night shifts require off-day after
- * - Weekend rotations: 2 staff for day, 3 for night
  * - Sabbath restrictions (no Friday night/Saturday for specific staff)
  * - Server access requirements with on-call backup
  * - Fair rotation distribution
  * - Minimum 3-day gap between night shifts
  * - Target 5 night shifts per person per month
+ * - Leave requests are respected (staff on leave cannot be assigned)
  */
 
 import { PrismaClient, ShiftType, StaffShiftType } from '@prisma/client';
@@ -61,6 +65,7 @@ export class ShiftGenerator {
   private stats: GenerationStats = {};
   private assignments: ShiftAssignmentData[] = [];
   private onCallAssignments: OnCallAssignmentData[] = [];
+  private leaveRequests: Map<string, Date[]> = new Map(); // staffId -> array of leave dates
   private month: number;
   private year: number;
   private daysInMonth: number;
@@ -101,6 +106,9 @@ export class ShiftGenerator {
     if (this.staff.length === 0) {
       throw new Error('No active staff members found for this branch');
     }
+
+    // Load approved leave requests for this month
+    await this.loadLeaveRequests(branchId);
 
     // Initialize statistics
     this.initializeStats();
@@ -153,6 +161,66 @@ export class ShiftGenerator {
       maxNightShiftsPerMonth: p.maxNightShiftsPerMonth,
       minDaysBetweenNightShifts: p.minDaysBetweenNightShifts,
     }));
+  }
+
+  /**
+   * Load approved leave requests for this month
+   */
+  private async loadLeaveRequests(branchId: string): Promise<void> {
+    const monthStart = new Date(this.year, this.month - 1, 1);
+    const monthEnd = new Date(this.year, this.month, 0);
+
+    const leaveRequests = await this.prisma.leaveRequest.findMany({
+      where: {
+        staffProfile: {
+          branchId,
+        },
+        status: 'APPROVED',
+        OR: [
+          {
+            AND: [
+              { startDate: { lte: monthEnd } },
+              { endDate: { gte: monthStart } },
+            ],
+          },
+        ],
+      },
+      include: {
+        staffProfile: true,
+      },
+    });
+
+    // Map staff IDs to their leave dates
+    this.leaveRequests.clear();
+    for (const leave of leaveRequests) {
+      const leaveDates: Date[] = [];
+      const currentDate = new Date(Math.max(leave.startDate.getTime(), monthStart.getTime()));
+      const endDate = new Date(Math.min(leave.endDate.getTime(), monthEnd.getTime()));
+
+      while (currentDate <= endDate) {
+        leaveDates.push(new Date(currentDate));
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+
+      const existingLeaves = this.leaveRequests.get(leave.staffProfileId) || [];
+      this.leaveRequests.set(leave.staffProfileId, [...existingLeaves, ...leaveDates]);
+    }
+  }
+
+  /**
+   * Check if staff is on leave on a specific day
+   */
+  private isOnLeave(staffId: string, day: number): boolean {
+    const leaveDates = this.leaveRequests.get(staffId);
+    if (!leaveDates) return false;
+
+    const checkDate = new Date(this.year, this.month - 1, day);
+    return leaveDates.some(
+      (leaveDate) =>
+        leaveDate.getDate() === day &&
+        leaveDate.getMonth() === this.month - 1 &&
+        leaveDate.getFullYear() === this.year
+    );
   }
 
   /**
@@ -243,7 +311,7 @@ export class ShiftGenerator {
         const staffIndex = (dayRotationIndex + i) % weekendDayStaff.length;
         const staff = weekendDayStaff[staffIndex];
 
-        if (!this.isAssigned(staff.id, saturday)) {
+        if (!this.isAssigned(staff.id, saturday) && !this.isOnLeave(staff.id, saturday)) {
           this.addAssignment(staff.id, saturday, ShiftType.WEEKEND_DAY);
           this.stats[staff.id].weekendDayCount++;
 
@@ -260,7 +328,7 @@ export class ShiftGenerator {
         const staffIndex = (dayRotationIndex + i + 2) % weekendDayStaff.length;
         const staff = weekendDayStaff[staffIndex];
 
-        if (!this.isAssigned(staff.id, sunday)) {
+        if (!this.isAssigned(staff.id, sunday) && !this.isOnLeave(staff.id, sunday)) {
           this.addAssignment(staff.id, sunday, ShiftType.WEEKEND_DAY);
           this.stats[staff.id].weekendDayCount++;
 
@@ -274,40 +342,38 @@ export class ShiftGenerator {
 
       dayRotationIndex += 2;
 
-      // Saturday night shift - 3 staff (NO SABBATH restriction!)
-      for (let i = 0; i < 3 && i < nightStaffNoSabbath.length; i++) {
-        const staffIndex = i % nightStaffNoSabbath.length;
-        const staff = nightStaffNoSabbath[staffIndex];
+      // Saturday night shift - 1 staff (NO SABBATH restriction!)
+      const satNightStaff = nightStaffNoSabbath.find(staff =>
+        !this.isAssigned(staff.id, saturday) && this.canWorkNightShift(staff.id, saturday)
+      );
 
-        if (!this.isAssigned(staff.id, saturday)) {
-          this.addAssignment(staff.id, saturday, ShiftType.WEEKEND_NIGHT);
-          this.stats[staff.id].nightCount++;
-          this.stats[staff.id].lastNightShift = saturday;
+      if (satNightStaff) {
+        this.addAssignment(satNightStaff.id, saturday, ShiftType.WEEKEND_NIGHT);
+        this.stats[satNightStaff.id].nightCount++;
+        this.stats[satNightStaff.id].lastNightShift = saturday;
 
-          // Add off day after night shift
-          if (sunday <= this.daysInMonth && !this.isAssigned(staff.id, sunday)) {
-            this.addAssignment(staff.id, sunday, ShiftType.OFF);
-            this.stats[staff.id].offCount++;
-          }
+        // Add off day after night shift
+        if (sunday <= this.daysInMonth && !this.isAssigned(satNightStaff.id, sunday)) {
+          this.addAssignment(satNightStaff.id, sunday, ShiftType.OFF);
+          this.stats[satNightStaff.id].offCount++;
         }
       }
 
-      // Sunday night shift - 3 staff (Sabbath staff CAN work Sunday)
-      let sundayNightAssigned = 0;
-      for (let i = 0; i < nightStaff.length && sundayNightAssigned < 3; i++) {
-        const staff = nightStaff[i];
+      // Sunday night shift - 1 staff (Sabbath staff CAN work Sunday)
+      const sunNightStaff = nightStaff.find(staff =>
+        !this.isAssigned(staff.id, sunday) && this.canWorkNightShift(staff.id, sunday)
+      );
 
-        if (!this.isAssigned(staff.id, sunday) && this.canWorkNightShift(staff.id, sunday)) {
-          this.addAssignment(staff.id, sunday, ShiftType.WEEKEND_NIGHT);
-          this.stats[staff.id].nightCount++;
-          this.stats[staff.id].lastNightShift = sunday;
-          sundayNightAssigned++;
+      if (sunNightStaff) {
+        this.addAssignment(sunNightStaff.id, sunday, ShiftType.WEEKEND_NIGHT);
+        this.stats[sunNightStaff.id].nightCount++;
+        this.stats[sunNightStaff.id].lastNightShift = sunday;
 
-          // Add off day after
-          if (sunday + 1 <= this.daysInMonth && !this.isAssigned(staff.id, sunday + 1)) {
-            this.addAssignment(staff.id, sunday + 1, ShiftType.OFF);
-            this.stats[staff.id].offCount++;
-          }
+        // Sunday night = Monday off (mandatory rule)
+        const monday = sunday + 1;
+        if (monday <= this.daysInMonth && !this.isAssigned(sunNightStaff.id, monday)) {
+          this.addAssignment(sunNightStaff.id, monday, ShiftType.OFF);
+          this.stats[sunNightStaff.id].offCount++;
         }
       }
     }
@@ -435,6 +501,9 @@ export class ShiftGenerator {
 
     // Check if already assigned
     if (this.isAssigned(staffId, day)) return false;
+
+    // Check if on leave
+    if (this.isOnLeave(staffId, day)) return false;
 
     // Check Sabbath restriction (Friday nights and Saturdays)
     if (staff.hasSabbathRestriction) {
