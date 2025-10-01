@@ -135,7 +135,7 @@ export function ShiftDropZone({
   // Check if dragging item is valid for this slot
   const canAcceptDrop = active && (
     active.data.current?.type === 'staff' ||
-    (active.data.current?.type === 'assignment' && active.data.current?.shiftType === shiftType)
+    active.data.current?.type === 'assignment'
   );
 
   const isEmpty = !assignment;
