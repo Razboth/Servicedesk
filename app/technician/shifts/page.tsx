@@ -1,0 +1,422 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Calendar,
+  Clock,
+  Moon,
+  Sun,
+  Coffee,
+  AlertTriangle,
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
+import { toast } from 'sonner';
+
+interface ShiftAssignment {
+  id: string;
+  date: string;
+  shiftType: string;
+  schedule: {
+    month: number;
+    year: number;
+    status: string;
+  };
+}
+
+interface MonthlySchedule {
+  id: string;
+  month: number;
+  year: number;
+  status: string;
+  shiftAssignments: ShiftAssignment[];
+}
+
+const shiftTypeConfig = {
+  NIGHT: { label: 'Night', icon: Moon, color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300', description: 'Weekday Night' },
+  SATURDAY_DAY: { label: 'Sat Day', icon: Sun, color: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300', description: 'Saturday Day Shift' },
+  SATURDAY_NIGHT: { label: 'Sat Night', icon: Moon, color: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300', description: 'Saturday Night' },
+  SUNDAY_DAY: { label: 'Sun Day', icon: Sun, color: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300', description: 'Sunday Day Shift' },
+  SUNDAY_NIGHT: { label: 'Sun Night', icon: Moon, color: 'bg-pink-100 text-pink-700 dark:bg-pink-900 dark:text-pink-300', description: 'Sunday Night' },
+  ON_CALL: { label: 'On-Call', icon: AlertTriangle, color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300', description: 'On-Call Standby' },
+  OFF: { label: 'Off', icon: Coffee, color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300', description: 'Day Off' },
+  LEAVE: { label: 'Leave', icon: Calendar, color: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300', description: 'On Leave' },
+  HOLIDAY: { label: 'Holiday', icon: Calendar, color: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300', description: 'Public Holiday' },
+};
+
+const monthNames = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+
+export default function TechnicianShiftsPage() {
+  const { data: session } = useSession();
+  const [loading, setLoading] = useState(true);
+  const [todayShift, setTodayShift] = useState<ShiftAssignment | null>(null);
+  const [upcomingShifts, setUpcomingShifts] = useState<ShiftAssignment[]>([]);
+  const [monthlySchedule, setMonthlySchedule] = useState<MonthlySchedule | null>(null);
+
+  const currentDate = new Date();
+  const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
+
+  useEffect(() => {
+    fetchMySchedule();
+  }, []);
+
+  useEffect(() => {
+    fetchMonthlySchedule();
+  }, [selectedMonth, selectedYear]);
+
+  const fetchMySchedule = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/shifts/my-schedule');
+      if (!response.ok) throw new Error('Failed to fetch schedule');
+
+      const data = await response.json();
+      setTodayShift(data.data.todayShift);
+      setUpcomingShifts(data.data.upcomingShifts || []);
+    } catch (error) {
+      console.error('Error fetching schedule:', error);
+      toast.error('Failed to load your shift schedule');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchMonthlySchedule = async () => {
+    if (!session?.user?.branchId) return;
+
+    try {
+      // Fetch published schedule for the selected month
+      const response = await fetch(
+        `/api/shifts/schedules?branchId=${session.user.branchId}&month=${selectedMonth}&year=${selectedYear}&status=PUBLISHED`
+      );
+
+      if (!response.ok) {
+        setMonthlySchedule(null);
+        return;
+      }
+
+      const data = await response.json();
+      if (data.schedules && data.schedules.length > 0) {
+        const schedule = data.schedules[0];
+
+        // Fetch assignments for this schedule
+        const assignmentsResponse = await fetch(
+          `/api/shifts/schedules/${schedule.id}/assignments`
+        );
+
+        if (assignmentsResponse.ok) {
+          const assignmentsData = await assignmentsResponse.json();
+
+          // Filter assignments for current user only
+          const myAssignments = assignmentsData.data.filter(
+            (a: any) => a.staffProfile.user.id === session.user.id
+          );
+
+          setMonthlySchedule({
+            ...schedule,
+            shiftAssignments: myAssignments,
+          });
+        }
+      } else {
+        setMonthlySchedule(null);
+      }
+    } catch (error) {
+      console.error('Error fetching monthly schedule:', error);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString + 'T00:00:00');
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  };
+
+  const formatShortDate = (dateString: string) => {
+    const date = new Date(dateString + 'T00:00:00');
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
+  const getDayOfWeek = (dateString: string) => {
+    const date = new Date(dateString + 'T00:00:00');
+    return date.toLocaleDateString('en-US', { weekday: 'short' });
+  };
+
+  const renderCalendar = () => {
+    if (!monthlySchedule) {
+      return (
+        <div className="text-center py-12">
+          <Calendar className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+          <p className="text-gray-500 dark:text-gray-400">
+            No published schedule for {monthNames[selectedMonth - 1]} {selectedYear}
+          </p>
+        </div>
+      );
+    }
+
+    const daysInMonth = new Date(selectedYear, selectedMonth, 0).getDate();
+    const firstDay = new Date(selectedYear, selectedMonth - 1, 1).getDay();
+
+    // Group assignments by date
+    const assignmentsByDate: Record<string, ShiftAssignment> = {};
+    monthlySchedule.shiftAssignments.forEach(assignment => {
+      assignmentsByDate[assignment.date] = assignment;
+    });
+
+    return (
+      <div>
+        <div className="grid grid-cols-7 gap-2 mb-2">
+          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+            <div key={day} className="text-center font-semibold text-sm text-gray-600 dark:text-gray-400 p-2">
+              {day}
+            </div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-7 gap-2">
+          {/* Empty cells for first week */}
+          {Array.from({ length: firstDay }).map((_, i) => (
+            <div key={`empty-${i}`} className="p-2" />
+          ))}
+
+          {/* Days */}
+          {Array.from({ length: daysInMonth }).map((_, i) => {
+            const day = i + 1;
+            const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const assignment = assignmentsByDate[dateStr];
+            const isToday = dateStr === new Date().toISOString().split('T')[0];
+            const isWeekend = new Date(selectedYear, selectedMonth - 1, day).getDay() === 0 ||
+                            new Date(selectedYear, selectedMonth - 1, day).getDay() === 6;
+
+            const config = assignment ? shiftTypeConfig[assignment.shiftType as keyof typeof shiftTypeConfig] : null;
+            const Icon = config?.icon;
+
+            return (
+              <div
+                key={day}
+                className={`
+                  min-h-20 p-2 border rounded-lg
+                  ${isWeekend ? 'bg-blue-50 dark:bg-blue-900/20' : 'bg-white dark:bg-gray-800'}
+                  ${isToday ? 'border-blue-500 border-2' : 'border-gray-200 dark:border-gray-700'}
+                `}
+              >
+                <div className={`font-semibold text-sm mb-1 ${isToday ? 'text-blue-600 dark:text-blue-400' : ''}`}>
+                  {day}
+                </div>
+                {assignment && config && Icon && (
+                  <div className={`text-xs p-1 rounded flex items-center gap-1 ${config.color}`}>
+                    <Icon className="w-3 h-3 flex-shrink-0" />
+                    <span className="truncate font-medium">{config.label}</span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  const navigateMonth = (direction: 'prev' | 'next') => {
+    if (direction === 'prev') {
+      if (selectedMonth === 1) {
+        setSelectedMonth(12);
+        setSelectedYear(selectedYear - 1);
+      } else {
+        setSelectedMonth(selectedMonth - 1);
+      }
+    } else {
+      if (selectedMonth === 12) {
+        setSelectedMonth(1);
+        setSelectedYear(selectedYear + 1);
+      } else {
+        setSelectedMonth(selectedMonth + 1);
+      }
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">My Shifts</h1>
+        <p className="text-gray-600 dark:text-gray-400 mt-1">
+          View your shift schedule and upcoming assignments
+        </p>
+      </div>
+
+      {/* Today's Shift */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="w-5 h-5" />
+            Today's Shift
+          </CardTitle>
+          <CardDescription>
+            {new Date().toLocaleDateString('en-US', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            })}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {todayShift ? (
+            <div className="flex items-center gap-4">
+              {(() => {
+                const config = shiftTypeConfig[todayShift.shiftType as keyof typeof shiftTypeConfig];
+                const Icon = config?.icon;
+                return (
+                  <>
+                    <div className={`p-4 rounded-lg ${config?.color}`}>
+                      {Icon && <Icon className="w-8 h-8" />}
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold">{config?.description}</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Schedule Status: <Badge className="ml-2">{todayShift.schedule.status}</Badge>
+                      </p>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          ) : (
+            <p className="text-gray-500 dark:text-gray-400">No shift assigned for today</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Upcoming Shifts */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="w-5 h-5" />
+            Upcoming Shifts
+          </CardTitle>
+          <CardDescription>Next 7 days</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {upcomingShifts.length > 0 ? (
+            <div className="space-y-2">
+              {upcomingShifts.map(shift => {
+                const config = shiftTypeConfig[shift.shiftType as keyof typeof shiftTypeConfig];
+                const Icon = config?.icon;
+                return (
+                  <div
+                    key={shift.id}
+                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      {Icon && (
+                        <div className={`p-2 rounded ${config?.color}`}>
+                          <Icon className="w-4 h-4" />
+                        </div>
+                      )}
+                      <div>
+                        <p className="font-medium">{config?.description}</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          {formatDate(shift.date)}
+                        </p>
+                      </div>
+                    </div>
+                    <Badge variant="outline">{getDayOfWeek(shift.date)}</Badge>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-gray-500 dark:text-gray-400">No upcoming shifts in the next 7 days</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Monthly Calendar */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Monthly Schedule</CardTitle>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigateMonth('prev')}
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <div className="text-lg font-semibold min-w-[180px] text-center">
+                {monthNames[selectedMonth - 1]} {selectedYear}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigateMonth('next')}
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+          <CardDescription>
+            {monthlySchedule ? `Status: ${monthlySchedule.status}` : 'Select a month to view'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {renderCalendar()}
+        </CardContent>
+      </Card>
+
+      {/* Legend */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Shift Types</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            {Object.entries(shiftTypeConfig).map(([key, config]) => {
+              const Icon = config.icon;
+              return (
+                <div key={key} className="flex items-center gap-2">
+                  <div className={`p-2 rounded ${config.color}`}>
+                    <Icon className="w-4 h-4" />
+                  </div>
+                  <span className="text-sm font-medium">{config.label}</span>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
