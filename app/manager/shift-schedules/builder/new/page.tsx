@@ -242,12 +242,35 @@ export default function ShiftBuilderPage() {
       toast.success('Schedule created successfully');
 
       // Step 2: Create all assignments in batch
-      const assignmentsData = assignments.map(assignment => ({
+      // Filter out assignments that don't belong to the selected month
+      const selectedMonth = parseInt(month);
+      const selectedYear = parseInt(year);
+
+      const validAssignments = assignments.filter(assignment => {
+        const assignmentDate = new Date(assignment.date);
+        const assignmentMonth = assignmentDate.getMonth() + 1;
+        const assignmentYear = assignmentDate.getFullYear();
+
+        const isValid = assignmentMonth === selectedMonth && assignmentYear === selectedYear;
+
+        if (!isValid) {
+          console.warn(`Filtering out assignment from ${assignment.date} (not in ${selectedMonth}/${selectedYear})`);
+        }
+
+        return isValid;
+      });
+
+      if (validAssignments.length === 0) {
+        throw new Error('No valid assignments for the selected month. Please ensure you only assign shifts within the current month.');
+      }
+
+      const assignmentsData = validAssignments.map(assignment => ({
         staffProfileId: assignment.staffProfile.id,
         date: assignment.date,
         shiftType: assignment.shiftType,
       }));
 
+      console.log('Filtered assignments:', `${validAssignments.length} of ${assignments.length}`);
       console.log('Sending batch assignments:', assignmentsData);
 
       const batchResponse = await fetch(`/api/shifts/schedules/${scheduleId}/assignments/batch`, {

@@ -242,6 +242,9 @@ export function DraggableShiftCalendar({
               new Date(h.date).toISOString().split('T')[0] === dateStr
             );
 
+            // Check if this date is actually in the current month (to handle calendar grid edge cases)
+            const isCurrentMonth = date.getMonth() + 1 === month;
+
             // Get shift slots for this day
             const shiftSlots = getDayShiftSlots(date, isWeekend);
 
@@ -250,7 +253,8 @@ export function DraggableShiftCalendar({
                 key={day}
                 className={`min-h-32 p-2 border rounded-lg ${
                   isWeekend ? 'bg-blue-50 dark:bg-blue-900/20' : 'bg-white dark:bg-gray-800'
-                } ${holiday ? 'border-red-300 dark:border-red-700' : 'border-gray-200 dark:border-gray-700'}`}
+                } ${holiday ? 'border-red-300 dark:border-red-700' : 'border-gray-200 dark:border-gray-700'}
+                ${!isCurrentMonth ? 'opacity-50' : ''}`}
               >
                 <div className="font-semibold text-sm mb-1">{day}</div>
                 {holiday && (
@@ -274,7 +278,7 @@ export function DraggableShiftCalendar({
                         date={date.toDateString()}
                         dateStr={dateStr}
                         assignment={assignment}
-                        editable={editable}
+                        editable={editable && isCurrentMonth}
                         maxSlots={slot.maxSlots}
                         isRequired={slot.isRequired}
                         validationError={validationErrors[validationKey]}
