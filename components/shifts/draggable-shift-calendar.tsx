@@ -71,6 +71,9 @@ function getDayShiftSlots(date: Date, isWeekend: boolean, showWeekendNights: boo
     slots.push({ type: 'NIGHT', maxSlots: 1, isRequired: false });
   }
 
+  // ON_CALL can be assigned any day (weekday or weekend)
+  slots.push({ type: 'ON_CALL', maxSlots: 1, isRequired: false });
+
   return slots;
 }
 
@@ -310,14 +313,14 @@ export function DraggableShiftCalendar({
                     });
                   }).flat()}
 
-                  {/* Render other assignments (OFF, LEAVE, HOLIDAY, ON_CALL) */}
+                  {/* Render other assignments (OFF, LEAVE, HOLIDAY) */}
                   {dayAssignments
-                    .filter(a => ['OFF', 'LEAVE', 'HOLIDAY', 'ON_CALL'].includes(a.shiftType))
+                    .filter(a => ['OFF', 'LEAVE', 'HOLIDAY'].includes(a.shiftType))
                     .map(assignment => (
                       <DraggableAssignmentChip
                         key={assignment.id}
                         assignment={assignment}
-                        editable={editable && isCurrentMonth && assignment.shiftType === 'ON_CALL'}
+                        editable={false}
                       />
                     ))}
                 </div>

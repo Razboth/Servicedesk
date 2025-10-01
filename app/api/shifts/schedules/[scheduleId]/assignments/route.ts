@@ -2,6 +2,60 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { scheduleId: string } }
+) {
+  try {
+    const session = await auth();
+
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { scheduleId } = params;
+
+    // Verify the schedule exists
+    const schedule = await prisma.shiftSchedule.findUnique({
+      where: { id: scheduleId },
+    });
+
+    if (!schedule) {
+      return NextResponse.json({ error: 'Schedule not found' }, { status: 404 });
+    }
+
+    // Fetch all assignments for this schedule
+    const assignments = await prisma.shiftAssignment.findMany({
+      where: { scheduleId },
+      include: {
+        staffProfile: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: [{ date: 'asc' }, { shiftType: 'asc' }],
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: assignments,
+    });
+  } catch (error) {
+    console.error('Error fetching shift assignments:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { scheduleId: string } }
