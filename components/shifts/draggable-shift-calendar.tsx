@@ -42,6 +42,7 @@ interface DraggableShiftCalendarProps {
   onRefresh?: () => Promise<void>;
   editable?: boolean;
   validationErrors?: Record<string, string>;
+  skipDndContext?: boolean; // If true, assumes parent provides DndContext
 }
 
 // Helper function to get shift slots for a day
@@ -76,6 +77,7 @@ export function DraggableShiftCalendar({
   onRefresh,
   editable = false,
   validationErrors = {},
+  skipDndContext = false,
 }: DraggableShiftCalendarProps) {
   const [activeItem, setActiveItem] = useState<any>(null);
   const [updating, setUpdating] = useState(false);
@@ -199,14 +201,8 @@ export function DraggableShiftCalendar({
     }
   };
 
-  return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCorners}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
-      <div className="space-y-4">
+  const calendarContent = (
+    <div className="space-y-4">
         {editable && (
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
             <p className="text-sm text-blue-700 dark:text-blue-300">
@@ -301,8 +297,23 @@ export function DraggableShiftCalendar({
             );
           })}
         </div>
-      </div>
+    </div>
+  );
 
+  // If parent provides DndContext, render without wrapping
+  if (skipDndContext) {
+    return calendarContent;
+  }
+
+  // Otherwise, provide our own DndContext (for backward compatibility)
+  return (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCorners}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      {calendarContent}
       {/* Drag Overlay */}
       <DragOverlay>
         {activeItem && (

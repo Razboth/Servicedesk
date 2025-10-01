@@ -75,6 +75,7 @@ export default function ShiftBuilderPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [buildMode, setBuildMode] = useState<'blank' | 'auto' | 'template'>('blank');
+  const [activeItem, setActiveItem] = useState<any>(null);
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 3 }, (_, i) => currentYear + i);
@@ -146,17 +147,57 @@ export default function ShiftBuilderPage() {
     }
   };
 
-  const handleAssignmentCreate = async (staffId: string, shiftType: string, date: string) => {
-    // Create a temporary assignment
-    const tempAssignment: ShiftAssignment = {
-      id: `temp-${Date.now()}`,
-      date,
-      shiftType,
-      staffProfile: staffProfiles.find(s => s.id === staffId)!,
-    };
+  const handleDragStart = (event: any) => {
+    setActiveItem(event.active.data.current);
+  };
 
-    setAssignments([...assignments, tempAssignment]);
-    toast.success('Assignment created (unsaved)');
+  const handleDragEnd = async (event: any) => {
+    const { active, over } = event;
+    setActiveItem(null);
+
+    if (!over) {
+      return;
+    }
+
+    const activeData = active.data.current;
+    const overData = over.data.current;
+
+    if (!activeData || !overData) {
+      return;
+    }
+
+    try {
+      // Case 1: Dragging from staff pool to shift slot
+      if (activeData.type === 'staff' && overData.type === 'shift-slot') {
+        const staffProfile = staffProfiles.find(s => s.id === activeData.staffId);
+        if (!staffProfile) {
+          toast.error('Staff profile not found');
+          return;
+        }
+
+        // Create a temporary assignment
+        const tempAssignment: ShiftAssignment = {
+          id: `temp-${Date.now()}`,
+          date: overData.date,
+          shiftType: overData.shiftType,
+          staffProfile: {
+            id: staffProfile.id,
+            user: staffProfile.user,
+          },
+        };
+
+        setAssignments([...assignments, tempAssignment]);
+        toast.success(`Assigned ${activeData.staffName} to ${overData.shiftType} on ${overData.date}`);
+      }
+
+      // Case 2: Swapping assignments (future enhancement)
+      else if (activeData.type === 'assignment' && overData.type === 'shift-slot') {
+        toast.info('Assignment swapping coming soon');
+      }
+    } catch (error: any) {
+      console.error('Drag error:', error);
+      toast.error(error.message || 'Failed to create assignment');
+    }
   };
 
   const handleSaveSchedule = async () => {
@@ -206,7 +247,12 @@ export default function ShiftBuilderPage() {
   }, {} as Record<string, any>);
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCorners}>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCorners}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
       <div className="p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -375,13 +421,27 @@ export default function ShiftBuilderPage() {
                   month={parseInt(month)}
                   assignments={assignments}
                   holidays={[]}
-                  onAssignmentCreate={handleAssignmentCreate}
                   editable={true}
+                  skipDndContext={true}
                 />
               </CardContent>
             </Card>
           </div>
         </div>
+
+        {/* Drag Overlay */}
+        <DragOverlay>
+          {activeItem && (
+            <div className="bg-white dark:bg-gray-800 border-2 border-blue-500 rounded-lg p-3 shadow-2xl">
+              <p className="font-medium text-sm">
+                {activeItem.staffName}
+              </p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                {activeItem.type === 'staff' ? 'New Assignment' : activeItem.shiftType}
+              </p>
+            </div>
+          )}
+        </DragOverlay>
       </div>
     </DndContext>
   );
