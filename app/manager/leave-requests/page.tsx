@@ -73,10 +73,14 @@ interface LeaveRequest {
 }
 
 const leaveTypeConfig = {
-  ANNUAL: { label: 'Annual Leave', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' },
-  SICK: { label: 'Sick Leave', color: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' },
-  EMERGENCY: { label: 'Emergency', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300' },
-  UNPAID: { label: 'Unpaid Leave', color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' },
+  ANNUAL_LEAVE: { label: 'Annual Leave', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' },
+  SICK_LEAVE: { label: 'Sick Leave', color: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' },
+  EMERGENCY_LEAVE: { label: 'Emergency Leave', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300' },
+  UNPAID_LEAVE: { label: 'Unpaid Leave', color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' },
+  MATERNITY_LEAVE: { label: 'Maternity Leave', color: 'bg-pink-100 text-pink-700 dark:bg-pink-900 dark:text-pink-300' },
+  PATERNITY_LEAVE: { label: 'Paternity Leave', color: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300' },
+  COMPASSIONATE_LEAVE: { label: 'Compassionate Leave', color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300' },
+  STUDY_LEAVE: { label: 'Study Leave', color: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' },
   OTHER: { label: 'Other', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300' },
 };
 
@@ -110,7 +114,7 @@ export default function LeaveRequestsPage() {
   const [actionType, setActionType] = useState<'approve' | 'reject' | null>(null);
   const [newLeaveForm, setNewLeaveForm] = useState({
     staffProfileId: '',
-    leaveType: 'ANNUAL',
+    leaveType: 'ANNUAL_LEAVE',
     startDate: '',
     endDate: '',
     reason: '',
@@ -193,7 +197,7 @@ export default function LeaveRequestsPage() {
       setIsCreateDialogOpen(false);
       setNewLeaveForm({
         staffProfileId: '',
-        leaveType: 'ANNUAL',
+        leaveType: 'ANNUAL_LEAVE',
         startDate: '',
         endDate: '',
         reason: '',
@@ -617,10 +621,14 @@ export default function LeaveRequestsPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ANNUAL">Annual Leave</SelectItem>
-                    <SelectItem value="SICK">Sick Leave</SelectItem>
-                    <SelectItem value="EMERGENCY">Emergency Leave</SelectItem>
-                    <SelectItem value="UNPAID">Unpaid Leave</SelectItem>
+                    <SelectItem value="ANNUAL_LEAVE">Annual Leave</SelectItem>
+                    <SelectItem value="SICK_LEAVE">Sick Leave</SelectItem>
+                    <SelectItem value="EMERGENCY_LEAVE">Emergency Leave</SelectItem>
+                    <SelectItem value="UNPAID_LEAVE">Unpaid Leave</SelectItem>
+                    <SelectItem value="MATERNITY_LEAVE">Maternity Leave</SelectItem>
+                    <SelectItem value="PATERNITY_LEAVE">Paternity Leave</SelectItem>
+                    <SelectItem value="COMPASSIONATE_LEAVE">Compassionate Leave</SelectItem>
+                    <SelectItem value="STUDY_LEAVE">Study Leave</SelectItem>
                     <SelectItem value="OTHER">Other</SelectItem>
                   </SelectContent>
                 </Select>
