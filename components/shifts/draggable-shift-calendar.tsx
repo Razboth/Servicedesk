@@ -135,7 +135,13 @@ export function DraggableShiftCalendar({
       if (activeData.type === 'staff' && overData.type === 'shift-slot') {
         if (onAssignmentCreate) {
           await onAssignmentCreate(activeData.staffId, overData.shiftType, overData.date);
-          toast.success(`Assigned ${activeData.staffName} to ${overData.shiftType} on ${overData.date}`);
+          // Format date properly for display (parse ISO string and format as locale date)
+          const displayDate = new Date(overData.date + 'T00:00:00').toLocaleDateString('en-US', {
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric'
+          });
+          toast.success(`Assigned ${activeData.staffName} to ${overData.shiftType} on ${displayDate}`);
         } else {
           toast.error('Assignment creation not available');
         }
@@ -304,14 +310,14 @@ export function DraggableShiftCalendar({
                     });
                   }).flat()}
 
-                  {/* Render other assignments (OFF, LEAVE, HOLIDAY) */}
+                  {/* Render other assignments (OFF, LEAVE, HOLIDAY, ON_CALL) */}
                   {dayAssignments
-                    .filter(a => ['OFF', 'LEAVE', 'HOLIDAY'].includes(a.shiftType))
+                    .filter(a => ['OFF', 'LEAVE', 'HOLIDAY', 'ON_CALL'].includes(a.shiftType))
                     .map(assignment => (
                       <DraggableAssignmentChip
                         key={assignment.id}
                         assignment={assignment}
-                        editable={false}
+                        editable={editable && isCurrentMonth && assignment.shiftType === 'ON_CALL'}
                       />
                     ))}
                 </div>
