@@ -111,7 +111,7 @@ export default function EditSchedulePage() {
       if (!response.ok) throw new Error('Failed to fetch schedule');
 
       const data = await response.json();
-      const scheduleData = data.schedule;
+      const scheduleData = data.data;
 
       setSchedule(scheduleData);
       setMonth(scheduleData.month.toString());
