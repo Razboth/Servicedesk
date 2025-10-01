@@ -282,7 +282,14 @@ export default function EditSchedulePage() {
         };
 
         setAssignments([...assignments, tempAssignment]);
-        toast.success(`Assigned ${activeData.staffName} to ${overData.shiftType} on ${overData.date}`);
+
+        // Format date properly for display (parse ISO string with explicit timezone)
+        const displayDate = new Date(overData.date + 'T00:00:00').toLocaleDateString('en-US', {
+          month: 'long',
+          day: 'numeric',
+          year: 'numeric'
+        });
+        toast.success(`Assigned ${activeData.staffName} to ${overData.shiftType} on ${displayDate}`);
       }
 
       // Case 2: Swapping or moving assignments
