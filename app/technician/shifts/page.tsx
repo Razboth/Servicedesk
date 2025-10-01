@@ -101,22 +101,30 @@ export default function TechnicianShiftsPage() {
   };
 
   const fetchMonthlySchedule = async () => {
-    if (!session?.user?.branchId) return;
+    if (!session?.user?.branchId) {
+      console.log('No branchId in session');
+      return;
+    }
 
     try {
       // Fetch published schedule for the selected month
-      const response = await fetch(
-        `/api/shifts/schedules?branchId=${session.user.branchId}&month=${selectedMonth}&year=${selectedYear}&status=PUBLISHED`
-      );
+      const url = `/api/shifts/schedules?branchId=${session.user.branchId}&month=${selectedMonth}&year=${selectedYear}&status=PUBLISHED`;
+      console.log('Fetching schedule from:', url);
+
+      const response = await fetch(url);
 
       if (!response.ok) {
+        console.error('Failed to fetch schedule:', response.status, response.statusText);
         setMonthlySchedule(null);
         return;
       }
 
       const data = await response.json();
+      console.log('Schedule data received:', data);
+
       if (data.schedules && data.schedules.length > 0) {
         const schedule = data.schedules[0];
+        console.log('Found schedule:', schedule.id, 'Status:', schedule.status);
 
         // Fetch assignments for this schedule
         const assignmentsResponse = await fetch(
@@ -125,6 +133,7 @@ export default function TechnicianShiftsPage() {
 
         if (assignmentsResponse.ok) {
           const assignmentsData = await assignmentsResponse.json();
+          console.log('Assignments loaded:', assignmentsData.data.length);
 
           // Show all staff assignments (not filtered to current user)
           setMonthlySchedule({
@@ -133,6 +142,7 @@ export default function TechnicianShiftsPage() {
           });
         }
       } else {
+        console.log('No published schedules found for', selectedMonth, selectedYear);
         setMonthlySchedule(null);
       }
     } catch (error) {

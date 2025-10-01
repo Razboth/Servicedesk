@@ -88,15 +88,13 @@ export async function GET(request: NextRequest) {
       take: 10,
     });
 
-    // Get on-call assignments for today using staffProfileId
+    // Get on-call assignment for today using staffProfileId
     const todayOnCall = await prisma.onCallAssignment.findFirst({
       where: {
         staffProfileId: staffProfile.id,
-        startDate: {
-          lte: today,
-        },
-        endDate: {
+        date: {
           gte: today,
+          lt: tomorrow,
         },
       },
       include: {
