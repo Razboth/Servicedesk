@@ -285,11 +285,16 @@ export class ShiftGenerator {
 
   /**
    * Assign weekend shifts following rotation rules
+   * Pattern from HTML: Fixed rotation for day staff, balanced selection for night staff
    */
   private assignWeekendShifts(): void {
     const weekendDayStaff = this.staff.filter((s) => s.canWorkWeekendDay);
     const nightStaff = this.staff.filter((s) => s.canWorkNightShift);
     const nightStaffNoSabbath = nightStaff.filter((s) => !s.hasSabbathRestriction);
+
+    if (weekendDayStaff.length < 2) {
+      console.warn('Not enough weekend day staff (need at least 2)');
+    }
 
     // Group weekends as Saturday-Sunday pairs
     const weekendPairs: [number, number][] = [];
@@ -301,21 +306,35 @@ export class ShiftGenerator {
       }
     }
 
-    // Rotate weekend day staff (2 per day)
-    let dayRotationIndex = 0;
-    for (const [saturday, sunday] of weekendPairs) {
-      if (this.isHoliday(saturday) || this.isHoliday(sunday)) continue;
+    // Process each weekend
+    weekendPairs.forEach((weekend, weekendIndex) => {
+      const [saturday, sunday] = weekend;
 
-      // Saturday day shift - 2 staff
-      for (let i = 0; i < 2 && i < weekendDayStaff.length; i++) {
-        const staffIndex = (dayRotationIndex + i) % weekendDayStaff.length;
-        const staff = weekendDayStaff[staffIndex];
+      if (this.isHoliday(saturday) || this.isHoliday(sunday)) return;
 
-        if (!this.isAssigned(staff.id, saturday) && !this.isOnLeave(staff.id, saturday)) {
+      // === WEEKEND DAY SHIFTS ===
+      // Pattern: Rotate through weekend day staff pool, 2 different staff each day
+      const satDayAssigned: string[] = [];
+      const sunDayAssigned: string[] = [];
+
+      // Saturday day shift - assign 2 staff
+      for (let slot = 0; slot < 2; slot++) {
+        // Find least assigned weekend day staff who is available
+        const available = weekendDayStaff
+          .filter(s =>
+            !this.isAssigned(s.id, saturday) &&
+            !this.isOnLeave(s.id, saturday) &&
+            !satDayAssigned.includes(s.id)
+          )
+          .sort((a, b) => this.stats[a.id].weekendDayCount - this.stats[b.id].weekendDayCount);
+
+        if (available.length > 0) {
+          const staff = available[0];
           this.addAssignment(staff.id, saturday, ShiftType.WEEKEND_DAY);
           this.stats[staff.id].weekendDayCount++;
+          satDayAssigned.push(staff.id);
 
-          // Add off day after weekend day shift
+          // Add off day after - but only if they don't work Sunday
           if (sunday <= this.daysInMonth && !this.isAssigned(staff.id, sunday)) {
             this.addAssignment(staff.id, sunday, ShiftType.OFF);
             this.stats[staff.id].offCount++;
@@ -323,85 +342,148 @@ export class ShiftGenerator {
         }
       }
 
-      // Sunday day shift - 2 staff (different from Saturday)
-      for (let i = 0; i < 2 && i < weekendDayStaff.length; i++) {
-        const staffIndex = (dayRotationIndex + i + 2) % weekendDayStaff.length;
-        const staff = weekendDayStaff[staffIndex];
+      // Sunday day shift - assign 2 staff (prefer different from Saturday)
+      for (let slot = 0; slot < 2; slot++) {
+        // Prefer staff who didn't work Saturday
+        const available = weekendDayStaff
+          .filter(s =>
+            !this.isAssigned(s.id, sunday) &&
+            !this.isOnLeave(s.id, sunday) &&
+            !sunDayAssigned.includes(s.id)
+          )
+          .sort((a, b) => {
+            // Prioritize those who didn't work Saturday
+            const aWorkedSat = satDayAssigned.includes(a.id) ? 1 : 0;
+            const bWorkedSat = satDayAssigned.includes(b.id) ? 1 : 0;
+            if (aWorkedSat !== bWorkedSat) return aWorkedSat - bWorkedSat;
+            // Then sort by weekend day count
+            return this.stats[a.id].weekendDayCount - this.stats[b.id].weekendDayCount;
+          });
 
-        if (!this.isAssigned(staff.id, sunday) && !this.isOnLeave(staff.id, sunday)) {
+        if (available.length > 0) {
+          const staff = available[0];
           this.addAssignment(staff.id, sunday, ShiftType.WEEKEND_DAY);
           this.stats[staff.id].weekendDayCount++;
+          sunDayAssigned.push(staff.id);
 
-          // Add off day after
-          if (sunday + 1 <= this.daysInMonth && !this.isAssigned(staff.id, sunday + 1)) {
-            this.addAssignment(staff.id, sunday + 1, ShiftType.OFF);
+          // Add off day on Monday
+          const monday = sunday + 1;
+          if (monday <= this.daysInMonth && !this.isAssigned(staff.id, monday)) {
+            this.addAssignment(staff.id, monday, ShiftType.OFF);
             this.stats[staff.id].offCount++;
           }
         }
       }
 
-      dayRotationIndex += 2;
+      // === WEEKEND NIGHT SHIFTS ===
 
-      // Saturday night shift - 1 staff (NO SABBATH restriction!)
-      const satNightStaff = nightStaffNoSabbath.find(staff =>
-        !this.isAssigned(staff.id, saturday) && this.canWorkNightShift(staff.id, saturday)
-      );
+      // Saturday night - 1 staff (NO Sabbath restriction!)
+      const satNightAvailable = nightStaffNoSabbath
+        .filter(s => this.canWorkNightShift(s.id, saturday))
+        .sort((a, b) => {
+          // Sort by night count to balance workload
+          const countDiff = this.stats[a.id].nightCount - this.stats[b.id].nightCount;
+          if (countDiff !== 0) return countDiff;
+          // Then by last night shift (prefer more rest)
+          return this.stats[a.id].lastNightShift - this.stats[b.id].lastNightShift;
+        });
 
-      if (satNightStaff) {
-        this.addAssignment(satNightStaff.id, saturday, ShiftType.WEEKEND_NIGHT);
-        this.stats[satNightStaff.id].nightCount++;
-        this.stats[satNightStaff.id].lastNightShift = saturday;
+      if (satNightAvailable.length > 0) {
+        const staff = satNightAvailable[0];
+        this.addAssignment(staff.id, saturday, ShiftType.WEEKEND_NIGHT);
+        this.stats[staff.id].nightCount++;
+        this.stats[staff.id].lastNightShift = saturday;
 
-        // Add off day after night shift
-        if (sunday <= this.daysInMonth && !this.isAssigned(satNightStaff.id, sunday)) {
-          this.addAssignment(satNightStaff.id, sunday, ShiftType.OFF);
-          this.stats[satNightStaff.id].offCount++;
+        // Off day on Sunday
+        if (sunday <= this.daysInMonth && !this.isAssigned(staff.id, sunday)) {
+          this.addAssignment(staff.id, sunday, ShiftType.OFF);
+          this.stats[staff.id].offCount++;
         }
       }
 
-      // Sunday night shift - 1 staff (Sabbath staff CAN work Sunday)
-      const sunNightStaff = nightStaff.find(staff =>
-        !this.isAssigned(staff.id, sunday) && this.canWorkNightShift(staff.id, sunday)
-      );
+      // Sunday night - 1 staff (Sabbath staff CAN work Sunday)
+      const sunNightAvailable = nightStaff
+        .filter(s => this.canWorkNightShift(s.id, sunday))
+        .sort((a, b) => {
+          // Sort by night count to balance workload
+          const countDiff = this.stats[a.id].nightCount - this.stats[b.id].nightCount;
+          if (countDiff !== 0) return countDiff;
+          // Then by last night shift (prefer more rest)
+          return this.stats[a.id].lastNightShift - this.stats[b.id].lastNightShift;
+        });
 
-      if (sunNightStaff) {
-        this.addAssignment(sunNightStaff.id, sunday, ShiftType.WEEKEND_NIGHT);
-        this.stats[sunNightStaff.id].nightCount++;
-        this.stats[sunNightStaff.id].lastNightShift = sunday;
+      if (sunNightAvailable.length > 0) {
+        const staff = sunNightAvailable[0];
+        this.addAssignment(staff.id, sunday, ShiftType.WEEKEND_NIGHT);
+        this.stats[staff.id].nightCount++;
+        this.stats[staff.id].lastNightShift = sunday;
 
-        // Sunday night = Monday off (mandatory rule)
+        // Sunday night = Monday off (MANDATORY)
         const monday = sunday + 1;
-        if (monday <= this.daysInMonth && !this.isAssigned(sunNightStaff.id, monday)) {
-          this.addAssignment(sunNightStaff.id, monday, ShiftType.OFF);
-          this.stats[sunNightStaff.id].offCount++;
+        if (monday <= this.daysInMonth && !this.isAssigned(staff.id, monday)) {
+          this.addAssignment(staff.id, monday, ShiftType.OFF);
+          this.stats[staff.id].offCount++;
         }
       }
-    }
+    });
   }
 
   /**
    * Distribute weekday night shifts fairly
+   * Pattern from HTML: 1 staff per night, balanced distribution, minimum gap enforcement
    */
   private distributeWeekdayNightShifts(): void {
     const nightStaff = this.staff.filter((s) => s.canWorkNightShift);
+    const targetNights = 5; // Target nights per month per staff
 
     for (let day = 1; day <= this.daysInMonth; day++) {
       // Skip weekends and holidays
       if (this.weekends.includes(day) || this.isHoliday(day)) continue;
 
       // Find eligible staff for this night shift
-      const eligible = nightStaff.filter((staff) => {
+      let eligible = nightStaff.filter((staff) => {
         return this.canWorkNightShift(staff.id, day);
       });
 
-      if (eligible.length === 0) continue;
+      if (eligible.length === 0) {
+        // If no one is eligible with all constraints, relax some constraints
+        // (but keep leave and Sabbath restrictions)
+        eligible = nightStaff.filter((staff) => {
+          if (this.isAssigned(staff.id, day)) return false;
+          if (this.isOnLeave(staff.id, day)) return false;
 
-      // Sort by night count (assign to person with fewest nights)
+          // Check Sabbath restriction
+          if (staff.hasSabbathRestriction) {
+            if (this.fridays.includes(day) || this.saturdays.includes(day)) {
+              return false;
+            }
+          }
+
+          return true;
+        });
+      }
+
+      if (eligible.length === 0) {
+        console.warn(`No eligible night staff for day ${day}`);
+        continue;
+      }
+
+      // Sort by multiple criteria (matching HTML pattern)
       eligible.sort((a, b) => {
+        // 1. Prioritize those below target
+        const aBelowTarget = this.stats[a.id].nightCount < targetNights ? 0 : 1;
+        const bBelowTarget = this.stats[b.id].nightCount < targetNights ? 0 : 1;
+        if (aBelowTarget !== bBelowTarget) return aBelowTarget - bBelowTarget;
+
+        // 2. Balance night count (fewest nights first)
         const countDiff = this.stats[a.id].nightCount - this.stats[b.id].nightCount;
         if (countDiff !== 0) return countDiff;
 
-        // If equal, prefer staff with server access on critical days
+        // 3. Prefer more rest (last night shift earlier)
+        const restDiff = this.stats[a.id].lastNightShift - this.stats[b.id].lastNightShift;
+        if (restDiff !== 0) return restDiff;
+
+        // 4. On critical days (month start/mid/end), prefer server access
         if ([1, 15, this.daysInMonth].includes(day)) {
           if (a.hasServerAccess && !b.hasServerAccess) return -1;
           if (!a.hasServerAccess && b.hasServerAccess) return 1;
@@ -417,9 +499,13 @@ export class ShiftGenerator {
       this.stats[selected.id].nightCount++;
       this.stats[selected.id].lastNightShift = day;
 
-      // Add mandatory off day after night shift
-      if (day + 1 <= this.daysInMonth && !this.weekends.includes(day + 1) && !this.isAssigned(selected.id, day + 1)) {
-        this.addAssignment(selected.id, day + 1, ShiftType.OFF);
+      // Add mandatory off day after night shift (only on weekdays)
+      const nextDay = day + 1;
+      if (nextDay <= this.daysInMonth &&
+          !this.weekends.includes(nextDay) &&
+          !this.isHoliday(nextDay) &&
+          !this.isAssigned(selected.id, nextDay)) {
+        this.addAssignment(selected.id, nextDay, ShiftType.OFF);
         this.stats[selected.id].offCount++;
       }
     }
@@ -427,66 +513,98 @@ export class ShiftGenerator {
 
   /**
    * Generate on-call backup for shifts without server access
+   * Pattern from HTML: Rotate fairly among server access staff
    */
   private generateOnCallBackup(): void {
     const serverAccessStaff = this.staff.filter((s) => s.hasServerAccess);
 
-    if (serverAccessStaff.length === 0) return;
-
-    let onCallIndex = 0;
+    if (serverAccessStaff.length === 0) {
+      console.warn('No server access staff available for on-call rotation');
+      return;
+    }
 
     for (let day = 1; day <= this.daysInMonth; day++) {
-      // Find shifts that need on-call backup
+      // Find all shifts for this day
       const dayAssignments = this.assignments.filter((a) => {
         const date = new Date(this.year, this.month - 1, day);
         return a.date.getTime() === date.getTime();
       });
 
+      // Check if any shift on this day needs on-call backup
+      let needsOnCall = false;
+      let reason = '';
+      let shiftStaff: typeof this.staff[0] | null = null;
+
       for (const assignment of dayAssignments) {
         const staff = this.staff.find((s) => s.id === assignment.staffProfileId);
         if (!staff) continue;
 
-        // Weekend day shifts always need on-call (no server access)
-        // Night shifts without server access need on-call
-        let needsOnCall = false;
-        let reason = '';
-
-        if (assignment.shiftType === ShiftType.WEEKEND_DAY) {
+        // Weekend day shifts ALWAYS need on-call (staff don't have server access)
+        if (assignment.shiftType === ShiftType.WEEKEND_DAY && !staff.hasServerAccess) {
           needsOnCall = true;
-          reason = 'Weekend day shift - no server access staff';
-        } else if (
-          (assignment.shiftType === ShiftType.NIGHT || assignment.shiftType === ShiftType.WEEKEND_NIGHT) &&
-          !staff.hasServerAccess
-        ) {
-          needsOnCall = true;
-          reason = `${assignment.shiftType === ShiftType.WEEKEND_NIGHT ? 'Weekend' : 'Weekday'} night shift - staff lacks server access`;
+          reason = 'Weekend day shift - no server access';
+          shiftStaff = staff;
+          break;
         }
 
-        if (needsOnCall) {
-          // Find available on-call staff
-          const available = serverAccessStaff.filter((s) => {
-            const isNotOnShift = !dayAssignments.some(
-              (a) => a.staffProfileId === s.id &&
-              [ShiftType.NIGHT, ShiftType.WEEKEND_NIGHT, ShiftType.WEEKEND_DAY].includes(a.shiftType)
-            );
-            const isNotOff = !dayAssignments.some(
-              (a) => a.staffProfileId === s.id && a.shiftType === ShiftType.OFF
-            );
-            return isNotOnShift && isNotOff;
+        // Night shifts without server access need on-call
+        if ((assignment.shiftType === ShiftType.NIGHT || assignment.shiftType === ShiftType.WEEKEND_NIGHT) &&
+            !staff.hasServerAccess) {
+          needsOnCall = true;
+          reason = assignment.shiftType === ShiftType.WEEKEND_NIGHT
+            ? 'Weekend night shift - no server access'
+            : 'Weekday night shift - no server access';
+          shiftStaff = staff;
+          break;
+        }
+      }
+
+      if (needsOnCall && shiftStaff) {
+        // Find available on-call staff (not on shift, not off, not on leave, not Sabbath)
+        const available = serverAccessStaff.filter((s) => {
+          // Cannot be on any active shift
+          const isOnShift = dayAssignments.some(
+            (a) => a.staffProfileId === s.id &&
+            [ShiftType.NIGHT, ShiftType.WEEKEND_NIGHT, ShiftType.WEEKEND_DAY].includes(a.shiftType)
+          );
+          if (isOnShift) return false;
+
+          // Cannot be on off day
+          const isOff = dayAssignments.some(
+            (a) => a.staffProfileId === s.id && a.shiftType === ShiftType.OFF
+          );
+          if (isOff) return false;
+
+          // Cannot be on leave
+          if (this.isOnLeave(s.id, day)) return false;
+
+          // Sabbath check
+          if (s.hasSabbathRestriction) {
+            if (this.fridays.includes(day) || this.saturdays.includes(day)) {
+              return false;
+            }
+          }
+
+          return true;
+        });
+
+        if (available.length > 0) {
+          // Rotate fairly - pick the one with least on-call assignments
+          available.sort((a, b) =>
+            this.stats[a.id].onCallCount - this.stats[b.id].onCallCount
+          );
+
+          const onCall = available[0];
+
+          this.onCallAssignments.push({
+            staffProfileId: onCall.id,
+            date: new Date(this.year, this.month - 1, day),
+            reason,
           });
 
-          if (available.length > 0) {
-            const onCall = available[onCallIndex % available.length];
-
-            this.onCallAssignments.push({
-              staffProfileId: onCall.id,
-              date: new Date(this.year, this.month - 1, day),
-              reason,
-            });
-
-            this.stats[onCall.id].onCallCount++;
-            onCallIndex++;
-          }
+          this.stats[onCall.id].onCallCount++;
+        } else {
+          console.warn(`No available on-call staff for day ${day}`);
         }
       }
     }
