@@ -298,12 +298,35 @@ const authOptions = {
         token.isFirstLogin = user.isFirstLogin;
         token.avatar = user.avatar;
       }
-      
+
       // Handle session updates (when update() is called)
-      if (trigger === 'update' && session?.avatar) {
-        token.avatar = session.avatar;
+      if (trigger === 'update') {
+        if (session?.avatar) {
+          token.avatar = session.avatar;
+        }
+
+        // Refresh token from database to get latest mustChangePassword status
+        if (token.sub || token.id) {
+          const userId = token.sub || token.id;
+          const freshUser = await prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+              mustChangePassword: true,
+              isFirstLogin: true,
+              avatar: true
+            }
+          });
+
+          if (freshUser) {
+            token.mustChangePassword = freshUser.mustChangePassword;
+            token.isFirstLogin = freshUser.isFirstLogin;
+            if (freshUser.avatar) {
+              token.avatar = freshUser.avatar;
+            }
+          }
+        }
       }
-      
+
       return token;
     },
     async session({ session, token }: any) {

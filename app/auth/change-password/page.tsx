@@ -70,6 +70,8 @@ export default function ChangePasswordPage() {
         setError(data.error || 'Failed to change password');
       } else {
         setSuccess(true);
+        // Update session to refresh JWT token with new mustChangePassword value
+        await update();
         // Hard redirect to home page after 1 second to ensure session refresh
         setTimeout(() => {
           window.location.href = '/';
