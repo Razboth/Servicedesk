@@ -35,7 +35,8 @@ interface DraggableShiftCalendarProps {
     date: string;
     name: string;
   }>;
-  onAssignmentUpdate: (assignmentId: string, newStaffProfileId: string) => Promise<void>;
+  onAssignmentUpdate: (assignmentId: string, newStaffProfileId: string, skipRefresh?: boolean) => Promise<void>;
+  onRefresh?: () => Promise<void>;
   editable?: boolean;
 }
 
@@ -130,6 +131,7 @@ export function DraggableShiftCalendar({
   assignments,
   holidays,
   onAssignmentUpdate,
+  onRefresh,
   editable = false,
 }: DraggableShiftCalendarProps) {
   const [draggedItem, setDraggedItem] = useState<any>(null);
@@ -195,13 +197,55 @@ export function DraggableShiftCalendar({
 
           setUpdating(true);
 
-          // Perform swap:
-          // 1. Update source assignment to have target's staff
-          await onAssignmentUpdate(data.assignmentId, targetStaffId);
-          // 2. Update target assignment to have source's staff
-          await onAssignmentUpdate(targetAssignmentId, sourceStaffId);
+          // Perform swap including OFF days (H+1):
+          // 1. Swap the main shift assignments
+          // @ts-ignore - skipRefresh parameter
+          await onAssignmentUpdate(data.assignmentId, targetStaffId, true);
+          // @ts-ignore - skipRefresh parameter
+          await onAssignmentUpdate(targetAssignmentId, sourceStaffId, true);
 
-          toast.success(`Swapped ${data.staffName} with ${targetAssignment.staffProfile.user.name}`);
+          // 2. Find and swap associated OFF days (day after shift)
+          const sourceDate = new Date(data.sourceDate);
+          const targetDate = new Date(targetAssignment.date);
+
+          // Get next day for both
+          const sourceNextDay = new Date(sourceDate);
+          sourceNextDay.setDate(sourceNextDay.getDate() + 1);
+          const sourceNextDayStr = sourceNextDay.toISOString().split('T')[0];
+
+          const targetNextDay = new Date(targetDate);
+          targetNextDay.setDate(targetNextDay.getDate() + 1);
+          const targetNextDayStr = targetNextDay.toISOString().split('T')[0];
+
+          // Find OFF assignments on next days
+          const sourceOffDay = assignments.find(a =>
+            new Date(a.date).toISOString().split('T')[0] === sourceNextDayStr &&
+            a.staffProfile.id === sourceStaffId &&
+            a.shiftType === 'OFF'
+          );
+
+          const targetOffDay = assignments.find(a =>
+            new Date(a.date).toISOString().split('T')[0] === targetNextDayStr &&
+            a.staffProfile.id === targetStaffId &&
+            a.shiftType === 'OFF'
+          );
+
+          // Swap OFF days if they exist
+          if (sourceOffDay && targetOffDay) {
+            await onAssignmentUpdate(sourceOffDay.id, targetStaffId, true);
+            await onAssignmentUpdate(targetOffDay.id, sourceStaffId, true);
+          }
+
+          // Refresh once after all updates
+          if (onRefresh) {
+            await onRefresh();
+          } else {
+            // Fallback: trigger one more update without skipRefresh
+            await onAssignmentUpdate(data.assignmentId, targetStaffId);
+          }
+
+          const offDayMsg = (sourceOffDay && targetOffDay) ? ' (including OFF days)' : '';
+          toast.success(`Swapped ${data.staffName} with ${targetAssignment.staffProfile.user.name}${offDayMsg}`);
         }
       } else {
         // Dropped on empty space or day header - just check if there's a matching shift type

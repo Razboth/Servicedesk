@@ -150,7 +150,7 @@ export default function ScheduleDetailPage() {
     toast.info('Export functionality coming soon');
   };
 
-  const handleAssignmentUpdate = async (assignmentId: string, newStaffProfileId: string) => {
+  const handleAssignmentUpdate = async (assignmentId: string, newStaffProfileId: string, skipRefresh = false) => {
     try {
       const response = await fetch(`/api/shifts/schedules/${scheduleId}/assignments`, {
         method: 'PATCH',
@@ -163,8 +163,10 @@ export default function ScheduleDetailPage() {
         throw new Error(error.error || 'Failed to update assignment');
       }
 
-      // Refresh schedule after update
-      await fetchSchedule();
+      // Refresh schedule after update (unless skipping for batch operations)
+      if (!skipRefresh) {
+        await fetchSchedule();
+      }
     } catch (error: any) {
       throw error;
     }
@@ -353,6 +355,7 @@ export default function ScheduleDetailPage() {
               assignments={schedule.shiftAssignments}
               holidays={schedule.holidays}
               onAssignmentUpdate={handleAssignmentUpdate}
+              onRefresh={fetchSchedule}
               editable={schedule.status === 'GENERATED'}
             />
           ) : (
