@@ -276,26 +276,53 @@ export default function EditSchedulePage() {
           return;
         }
 
-        // Create a temporary assignment
-        const tempAssignment: ShiftAssignment = {
-          id: `temp-${Date.now()}`,
-          date: overData.date,
-          shiftType: overData.shiftType,
-          staffProfile: {
-            id: staffProfile.id,
-            user: staffProfile.user,
-          },
-        };
+        const targetAssignment = overData.currentAssignment;
 
-        setAssignments([...assignments, tempAssignment]);
+        // Check if slot already has an assignment
+        if (targetAssignment) {
+          // Replace existing assignment's staff
+          setAssignments(prev => {
+            const updated = [...prev];
+            const targetIndex = updated.findIndex(a => a.id === targetAssignment.id);
 
-        // Format date properly for display (parse ISO string with explicit timezone)
-        const displayDate = new Date(overData.date + 'T00:00:00').toLocaleDateString('en-US', {
-          month: 'long',
-          day: 'numeric',
-          year: 'numeric'
-        });
-        toast.success(`Assigned ${activeData.staffName} to ${overData.shiftType} on ${displayDate}`);
+            if (targetIndex !== -1) {
+              updated[targetIndex].staffProfile = {
+                id: staffProfile.id,
+                user: staffProfile.user,
+              };
+            }
+
+            return updated;
+          });
+
+          const displayDate = new Date(overData.date + 'T00:00:00').toLocaleDateString('en-US', {
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric'
+          });
+          toast.success(`Replaced ${targetAssignment.staffProfile.user.name} with ${activeData.staffName} on ${displayDate}`);
+        } else {
+          // Create a new assignment for empty slot
+          const tempAssignment: ShiftAssignment = {
+            id: `temp-${Date.now()}`,
+            date: overData.date,
+            shiftType: overData.shiftType,
+            staffProfile: {
+              id: staffProfile.id,
+              user: staffProfile.user,
+            },
+          };
+
+          setAssignments([...assignments, tempAssignment]);
+
+          // Format date properly for display (parse ISO string with explicit timezone)
+          const displayDate = new Date(overData.date + 'T00:00:00').toLocaleDateString('en-US', {
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric'
+          });
+          toast.success(`Assigned ${activeData.staffName} to ${overData.shiftType} on ${displayDate}`);
+        }
       }
 
       // Case 2: Swapping or moving assignments
