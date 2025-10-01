@@ -70,10 +70,9 @@ export default function ChangePasswordPage() {
         setError(data.error || 'Failed to change password');
       } else {
         setSuccess(true);
-        // Redirect to home page after 1 second
+        // Hard redirect to home page after 1 second to ensure session refresh
         setTimeout(() => {
-          router.push('/');
-          router.refresh();
+          window.location.href = '/';
         }, 1000);
       }
     } catch (error) {
