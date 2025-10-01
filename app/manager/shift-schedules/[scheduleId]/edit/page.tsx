@@ -285,9 +285,95 @@ export default function EditSchedulePage() {
         toast.success(`Assigned ${activeData.staffName} to ${overData.shiftType} on ${overData.date}`);
       }
 
-      // Case 2: Swapping assignments (future enhancement)
+      // Case 2: Swapping or moving assignments
       else if (activeData.type === 'assignment' && overData.type === 'shift-slot') {
-        toast.info('Assignment swapping coming soon');
+        const targetAssignment = overData.currentAssignment;
+
+        // If target has an assignment, swap them
+        if (targetAssignment) {
+          const sourceStaffId = activeData.staffId;
+          const targetStaffId = targetAssignment.staffProfile.id;
+
+          if (sourceStaffId === targetStaffId) {
+            toast.info('Cannot swap with the same staff member');
+            return;
+          }
+
+          // Swap the assignments in state
+          setAssignments(prev => {
+            const updated = [...prev];
+            const sourceIndex = updated.findIndex(a => a.id === activeData.assignmentId);
+            const targetIndex = updated.findIndex(a => a.id === targetAssignment.id);
+
+            if (sourceIndex !== -1 && targetIndex !== -1) {
+              // Swap staff profiles
+              const sourceStaffProfile = updated[sourceIndex].staffProfile;
+              const targetStaffProfile = updated[targetIndex].staffProfile;
+
+              updated[sourceIndex].staffProfile = targetStaffProfile;
+              updated[targetIndex].staffProfile = sourceStaffProfile;
+
+              // Handle OFF days swap (H+1 rule)
+              const sourceDate = new Date(updated[sourceIndex].date);
+              const targetDate = new Date(updated[targetIndex].date);
+
+              const sourceNextDay = new Date(sourceDate);
+              sourceNextDay.setDate(sourceNextDay.getDate() + 1);
+              const sourceNextDayStr = sourceNextDay.toISOString().split('T')[0];
+
+              const targetNextDay = new Date(targetDate);
+              targetNextDay.setDate(targetNextDay.getDate() + 1);
+              const targetNextDayStr = targetNextDay.toISOString().split('T')[0];
+
+              const sourceOffIndex = updated.findIndex(a =>
+                a.date === sourceNextDayStr &&
+                a.staffProfile.id === targetStaffProfile.id &&
+                a.shiftType === 'OFF'
+              );
+
+              const targetOffIndex = updated.findIndex(a =>
+                a.date === targetNextDayStr &&
+                a.staffProfile.id === sourceStaffProfile.id &&
+                a.shiftType === 'OFF'
+              );
+
+              // Swap OFF days if they exist
+              if (sourceOffIndex !== -1) {
+                updated[sourceOffIndex].staffProfile = sourceStaffProfile;
+              }
+              if (targetOffIndex !== -1) {
+                updated[targetOffIndex].staffProfile = targetStaffProfile;
+              }
+
+              const offDayMsg = (sourceOffIndex !== -1 || targetOffIndex !== -1) ? ' (including OFF days)' : '';
+              toast.success(`Swapped ${activeData.staffName} with ${targetAssignment.staffProfile.user.name}${offDayMsg}`);
+            }
+
+            return updated;
+          });
+        }
+        // Empty slot - just move the assignment
+        else {
+          setAssignments(prev => {
+            const updated = [...prev];
+            const sourceIndex = updated.findIndex(a => a.id === activeData.assignmentId);
+
+            if (sourceIndex !== -1) {
+              // Update the date and shift type
+              updated[sourceIndex].date = overData.date;
+              updated[sourceIndex].shiftType = overData.shiftType;
+
+              const displayDate = new Date(overData.date + 'T00:00:00').toLocaleDateString('en-US', {
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric'
+              });
+              toast.success(`Moved ${activeData.staffName} to ${overData.shiftType} on ${displayDate}`);
+            }
+
+            return updated;
+          });
+        }
       }
     } catch (error: any) {
       console.error('Drag error:', error);
