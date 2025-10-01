@@ -302,13 +302,19 @@ export default function EditSchedulePage() {
       else if (activeData.type === 'assignment' && overData.type === 'shift-slot') {
         const targetAssignment = overData.currentAssignment;
 
-        // If target has an assignment, swap them
+        // If target has an assignment, try to swap (only if same shift type)
         if (targetAssignment) {
           const sourceStaffId = activeData.staffId;
           const targetStaffId = targetAssignment.staffProfile.id;
 
           if (sourceStaffId === targetStaffId) {
             toast.info('Cannot swap with the same staff member');
+            return;
+          }
+
+          // Only allow swapping between same shift types
+          if (activeData.shiftType !== targetAssignment.shiftType) {
+            toast.error('Cannot swap assignments of different shift types');
             return;
           }
 
@@ -367,16 +373,21 @@ export default function EditSchedulePage() {
             return updated;
           });
         }
-        // Empty slot - just move the assignment
+        // Empty slot - move the assignment (only to same shift type)
         else {
+          // Only allow moving to slots of the same shift type
+          if (activeData.shiftType !== overData.shiftType) {
+            toast.error(`Cannot move ${activeData.shiftType} assignment to ${overData.shiftType} slot. Use drag from staff pool to assign different shift types.`);
+            return;
+          }
+
           setAssignments(prev => {
             const updated = [...prev];
             const sourceIndex = updated.findIndex(a => a.id === activeData.assignmentId);
 
             if (sourceIndex !== -1) {
-              // Update the date and shift type
+              // Update only the date (shift type stays the same)
               updated[sourceIndex].date = overData.date;
-              updated[sourceIndex].shiftType = overData.shiftType;
 
               const displayDate = new Date(overData.date + 'T00:00:00').toLocaleDateString('en-US', {
                 month: 'long',
