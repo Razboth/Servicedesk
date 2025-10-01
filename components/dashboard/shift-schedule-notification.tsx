@@ -20,7 +20,7 @@ import { format, isToday, isTomorrow } from 'date-fns';
 interface ShiftAssignment {
   id: string;
   date: string;
-  shiftType: 'DAY' | 'NIGHT';
+  shiftType: 'NIGHT' | 'SATURDAY_DAY' | 'SATURDAY_NIGHT' | 'SUNDAY_DAY' | 'SUNDAY_NIGHT' | 'OFF' | 'LEAVE' | 'HOLIDAY';
   isWeekend: boolean;
   schedule: {
     month: number;
@@ -85,16 +85,43 @@ export function ShiftScheduleNotification() {
     return null;
   }
 
-  const getShiftTypeIcon = (shiftType: 'DAY' | 'NIGHT') => {
-    return shiftType === 'DAY' ? (
-      <Sun className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
-    ) : (
-      <Moon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-    );
+  const getShiftTypeIcon = (shiftType: string) => {
+    switch (shiftType) {
+      case 'SATURDAY_DAY':
+      case 'SUNDAY_DAY':
+        return <Sun className="w-4 h-4 text-orange-600 dark:text-orange-400" />;
+      case 'NIGHT':
+        return <Moon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />;
+      case 'SATURDAY_NIGHT':
+        return <Moon className="w-4 h-4 text-purple-600 dark:text-purple-400" />;
+      case 'SUNDAY_NIGHT':
+        return <Moon className="w-4 h-4 text-pink-600 dark:text-pink-400" />;
+      default:
+        return <Clock className="w-4 h-4 text-gray-600 dark:text-gray-400" />;
+    }
   };
 
-  const getShiftTypeLabel = (shiftType: 'DAY' | 'NIGHT') => {
-    return shiftType === 'DAY' ? 'Day Shift (08:00 - 17:00)' : 'Night Shift (17:00 - 08:00)';
+  const getShiftTypeLabel = (shiftType: string) => {
+    switch (shiftType) {
+      case 'NIGHT':
+        return 'Night Shift (17:00 - 08:00)';
+      case 'SATURDAY_DAY':
+        return 'Saturday Day Shift (08:00 - 17:00)';
+      case 'SATURDAY_NIGHT':
+        return 'Saturday Night Shift (17:00 - 08:00)';
+      case 'SUNDAY_DAY':
+        return 'Sunday Day Shift (08:00 - 17:00)';
+      case 'SUNDAY_NIGHT':
+        return 'Sunday Night Shift (17:00 - 08:00)';
+      case 'OFF':
+        return 'Day Off';
+      case 'LEAVE':
+        return 'On Leave';
+      case 'HOLIDAY':
+        return 'Holiday';
+      default:
+        return shiftType;
+    }
   };
 
   const formatShiftDate = (dateString: string) => {
@@ -181,7 +208,8 @@ export function ShiftScheduleNotification() {
                         {formatShiftDate(shift.date)}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {shift.shiftType === 'DAY' ? '08:00 - 17:00' : '17:00 - 08:00'}
+                        {shift.shiftType.includes('DAY') ? '08:00 - 17:00' :
+                         shift.shiftType.includes('NIGHT') ? '17:00 - 08:00' : '-'}
                       </p>
                     </div>
                   </div>
@@ -190,10 +218,10 @@ export function ShiftScheduleNotification() {
                       <Badge variant="outline" className="text-xs">Weekend</Badge>
                     )}
                     <Badge
-                      variant={shift.shiftType === 'DAY' ? 'default' : 'secondary'}
+                      variant={shift.shiftType.includes('DAY') ? 'default' : 'secondary'}
                       className="text-xs"
                     >
-                      {shift.shiftType}
+                      {shift.shiftType.replace('_', ' ')}
                     </Badge>
                   </div>
                 </div>

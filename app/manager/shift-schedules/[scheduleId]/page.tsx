@@ -75,10 +75,14 @@ const monthNames = [
 ];
 
 const shiftTypeConfig = {
-  DAY: { label: 'Day', icon: Sun, color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' },
   NIGHT: { label: 'Night', icon: Moon, color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300' },
+  SATURDAY_DAY: { label: 'Sat Day', icon: Sun, color: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' },
+  SATURDAY_NIGHT: { label: 'Sat Night', icon: Moon, color: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300' },
+  SUNDAY_DAY: { label: 'Sun Day', icon: Sun, color: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300' },
+  SUNDAY_NIGHT: { label: 'Sun Night', icon: Moon, color: 'bg-pink-100 text-pink-700 dark:bg-pink-900 dark:text-pink-300' },
   OFF: { label: 'Off', icon: Coffee, color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' },
   LEAVE: { label: 'Leave', icon: Calendar, color: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' },
+  HOLIDAY: { label: 'Holiday', icon: Calendar, color: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' },
 };
 
 const statusConfig = {

@@ -3,8 +3,11 @@
  *
  * Generates monthly shift schedules following complex rotation rules:
  * - Weekday night shifts: 1 staff per night
- * - Weekend day shifts: 2 staff for Saturday, 2 for Sunday
- * - Weekend night shifts: 1 staff for Saturday night, 1 for Sunday night
+ * - Weekend shifts split into 4 types:
+ *   * SATURDAY_DAY: 2 staff
+ *   * SATURDAY_NIGHT: 1 staff
+ *   * SUNDAY_DAY: 2 staff
+ *   * SUNDAY_NIGHT: 1 staff (gets Monday off)
  * - Sunday night shift = Monday off (mandatory)
  * - Night shifts require off-day after
  * - Sabbath restrictions (no Friday night/Saturday for specific staff)
@@ -330,7 +333,7 @@ export class ShiftGenerator {
 
         if (available.length > 0) {
           const staff = available[0];
-          this.addAssignment(staff.id, saturday, ShiftType.WEEKEND_DAY);
+          this.addAssignment(staff.id, saturday, ShiftType.SATURDAY_DAY);
           this.stats[staff.id].weekendDayCount++;
           satDayAssigned.push(staff.id);
 
@@ -362,7 +365,7 @@ export class ShiftGenerator {
 
         if (available.length > 0) {
           const staff = available[0];
-          this.addAssignment(staff.id, sunday, ShiftType.WEEKEND_DAY);
+          this.addAssignment(staff.id, sunday, ShiftType.SUNDAY_DAY);
           this.stats[staff.id].weekendDayCount++;
           sunDayAssigned.push(staff.id);
 
@@ -390,7 +393,7 @@ export class ShiftGenerator {
 
       if (satNightAvailable.length > 0) {
         const staff = satNightAvailable[0];
-        this.addAssignment(staff.id, saturday, ShiftType.WEEKEND_NIGHT);
+        this.addAssignment(staff.id, saturday, ShiftType.SATURDAY_NIGHT);
         this.stats[staff.id].nightCount++;
         this.stats[staff.id].lastNightShift = saturday;
 
@@ -414,7 +417,7 @@ export class ShiftGenerator {
 
       if (sunNightAvailable.length > 0) {
         const staff = sunNightAvailable[0];
-        this.addAssignment(staff.id, sunday, ShiftType.WEEKEND_NIGHT);
+        this.addAssignment(staff.id, sunday, ShiftType.SUNDAY_NIGHT);
         this.stats[staff.id].nightCount++;
         this.stats[staff.id].lastNightShift = sunday;
 
