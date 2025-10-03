@@ -149,21 +149,21 @@
     animation-delay: 4s;
   }
 
-  /* Enhanced new ticket animations with blue theme */
+  /* Enhanced new ticket animations with brown theme */
   @keyframes newTicketHighlight {
     0% {
       background: linear-gradient(90deg,
-        rgba(59, 130, 246, 0.15) 0%,
-        rgba(37, 99, 235, 0.1) 50%,
-        rgba(59, 130, 246, 0.15) 100%);
+        rgba(146, 64, 14, 0.15) 0%,
+        rgba(217, 119, 6, 0.1) 50%,
+        rgba(146, 64, 14, 0.15) 100%);
       transform: translateY(-5px) scale(1.01);
-      box-shadow: 0 4px 20px rgba(59, 130, 246, 0.2);
+      box-shadow: 0 4px 20px rgba(146, 64, 14, 0.2);
     }
     20% {
       background: linear-gradient(90deg,
-        rgba(37, 99, 235, 0.12) 0%,
-        rgba(219, 234, 254, 0.15) 50%,
-        rgba(37, 99, 235, 0.12) 100%);
+        rgba(217, 119, 6, 0.12) 0%,
+        rgba(254, 243, 199, 0.15) 50%,
+        rgba(217, 119, 6, 0.12) 100%);
       transform: translateY(0) scale(1);
     }
     100% {
@@ -200,8 +200,8 @@
 
   .new-ticket-badge {
     animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+    background: linear-gradient(135deg, #d97706 0%, #92400e 100%);
+    box-shadow: 0 2px 8px rgba(217, 119, 6, 0.4);
   }
 
   @keyframes pulse {
@@ -228,7 +228,7 @@
     background: linear-gradient(
       90deg,
       transparent 0%,
-      rgba(219, 234, 254, 0.3) 50%,
+      rgba(254, 243, 199, 0.3) 50%,
       transparent 100%
     );
     background-size: 200% 100%;
@@ -270,121 +270,127 @@
 
 @layer base {
   :root {
-    /* Light Theme - Professional Banking Blue/Gray */
-    --background: 0 0% 100%;                    /* Pure white background */
-    --foreground: 222 47% 11%;                  /* Slate 900 - Deep blue-gray text */
-    --card: 0 0% 100%;                          /* White cards */
-    --card-foreground: 222 47% 11%;             /* Slate 900 text */
-    --popover: 0 0% 100%;                       /* White popover */
-    --popover-foreground: 222 47% 11%;          /* Slate 900 text */
-    --primary: 217 91% 60%;                     /* Blue 500 - Primary brand */
-    --primary-foreground: 0 0% 100%;            /* White text on primary */
-    --secondary: 215 20% 65%;                   /* Slate 400 - Secondary */
-    --secondary-foreground: 222 47% 11%;        /* Slate 900 text */
-    --muted: 210 40% 96%;                       /* Slate 50 - Muted background */
-    --muted-foreground: 215 16% 47%;            /* Slate 500 - Muted text */
-    --accent: 217 91% 60%;                      /* Blue 500 - Accent */
-    --accent-foreground: 0 0% 100%;             /* White text on accent */
-    --destructive: 0 84% 60%;                   /* Red 500 - Error/destructive */
-    --destructive-foreground: 0 0% 100%;        /* White text */
-    --border: 214 32% 91%;                      /* Slate 200 - Borders */
-    --input: 214 32% 91%;                       /* Slate 200 - Input borders */
-    --ring: 217 91% 60%;                        /* Blue 500 - Focus rings */
+    /* Light Theme - Professional warm tones */
+    --background: 44.0000 42.8571% 93.1373%;
+    --foreground: 28.5714 16.5354% 24.9020%;
+    --card: 42.0000 100.0000% 98.0392%;
+    --card-foreground: 28.5714 16.5354% 24.9020%;
+    --popover: 42.0000 100.0000% 98.0392%;
+    --popover-foreground: 28.5714 16.5354% 24.9020%;
+    --primary: 30.0000 33.8710% 48.6275%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 40.6452 34.8315% 82.5490%;
+    --secondary-foreground: 28.9655 18.7097% 30.3922%;
+    --muted: 39 34.4828% 88.6275%;
+    --muted-foreground: 32.3077 18.4834% 41.3725%;
+    --accent: 42.8571 32.8125% 74.9020%;
+    --accent-foreground: 28.5714 16.5354% 24.9020%;
+    --destructive: 9.8438 54.7009% 45.8824%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 40.0000 31.4286% 79.4118%;
+    --input: 40.0000 31.4286% 79.4118%;
+    --ring: 30.0000 33.8710% 48.6275%;
 
-    /* Chart colors - Professional palette */
-    --chart-1: 217 91% 60%;                     /* Blue 500 */
-    --chart-2: 142 71% 45%;                     /* Green 600 */
-    --chart-3: 38 92% 50%;                      /* Yellow 500 */
-    --chart-4: 0 84% 60%;                       /* Red 500 */
-    --chart-5: 221 83% 53%;                     /* Blue 600 */
+    /* Chart colors */
+    --chart-1: 30.0000 33.8710% 48.6275%;
+    --chart-2: 31.3846 29.9539% 42.5490%;
+    --chart-3: 33.6842 32.9480% 33.9216%;
+    --chart-4: 29.1176 30.9091% 56.8627%;
+    --chart-5: 30 33.6842% 62.7451%;
 
     /* Sidebar specific */
-    --sidebar: 0 0% 100%;                       /* White sidebar */
-    --sidebar-foreground: 222 47% 11%;          /* Slate 900 */
-    --sidebar-primary: 217 91% 60%;             /* Blue 500 */
-    --sidebar-primary-foreground: 0 0% 100%;    /* White */
-    --sidebar-accent: 214 32% 91%;              /* Slate 200 */
-    --sidebar-accent-foreground: 222 47% 11%;   /* Slate 900 */
-    --sidebar-border: 214 32% 91%;              /* Slate 200 */
-    --sidebar-ring: 217 91% 60%;                /* Blue 500 */
+    --sidebar: 39 34.4828% 88.6275%;
+    --sidebar-foreground: 28.5714 16.5354% 24.9020%;
+    --sidebar-primary: 30.0000 33.8710% 48.6275%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 42.8571 32.8125% 74.9020%;
+    --sidebar-accent-foreground: 28.5714 16.5354% 24.9020%;
+    --sidebar-border: 40.0000 31.4286% 79.4118%;
+    --sidebar-ring: 30.0000 33.8710% 48.6275%;
 
     /* Typography */
     --font-sans: Inter, ui-sans-serif, sans-serif, system-ui;
-    --font-serif: Georgia, serif;
-    --font-mono: 'Courier New', monospace;
+    --font-serif: Lora, serif;
+    --font-mono: IBM Plex Mono, monospace;
 
     /* Radius */
-    --radius: 0.5rem;                           /* 8px default radius */
+    --radius: 0.25rem;
 
-    /* Shadows - Subtle professional shadows */
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-    --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-    --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+    /* Shadows */
+    --shadow-2xs: 2px 3px 0px 0px hsl(28 13% 20% / 0.00);
+    --shadow-xs: 2px 3px 0px 0px hsl(28 13% 20% / 0.00);
+    --shadow-sm: 2px 3px 0px 0px hsl(28 13% 20% / 0.00), 2px 1px 2px -1px hsl(28 13% 20% / 0.00);
+    --shadow: 2px 3px 0px 0px hsl(28 13% 20% / 0.00), 2px 1px 2px -1px hsl(28 13% 20% / 0.00);
+    --shadow-md: 2px 3px 0px 0px hsl(28 13% 20% / 0.00), 2px 2px 4px -1px hsl(28 13% 20% / 0.00);
+    --shadow-lg: 2px 3px 0px 0px hsl(28 13% 20% / 0.00), 2px 4px 6px -1px hsl(28 13% 20% / 0.00);
+    --shadow-xl: 2px 3px 0px 0px hsl(28 13% 20% / 0.00), 2px 8px 10px -1px hsl(28 13% 20% / 0.00);
+    --shadow-2xl: 2px 3px 0px 0px hsl(28 13% 20% / 0.00);
 
-    /* Spacing */
-    --spacing: 0.5rem;                          /* 8px base spacing */
+    /* Spacing and tracking */
+    --tracking-normal: 0em;
+    --spacing: 0.25rem;
   }
 
   .dark {
-    /* Dark Theme - Professional Dark Blue/Gray */
-    --background: 222 47% 11%;                  /* Slate 900 - Deep background */
-    --foreground: 210 40% 98%;                  /* Slate 50 - Light text */
-    --card: 217 33% 17%;                        /* Slate 800 - Card background */
-    --card-foreground: 210 40% 98%;             /* Slate 50 text */
-    --popover: 217 33% 17%;                     /* Slate 800 */
-    --popover-foreground: 210 40% 98%;          /* Slate 50 */
-    --primary: 217 91% 60%;                     /* Blue 500 - Primary brand */
-    --primary-foreground: 0 0% 100%;            /* White text */
-    --secondary: 215 25% 27%;                   /* Slate 700 - Secondary */
-    --secondary-foreground: 210 40% 98%;        /* Slate 50 text */
-    --muted: 217 33% 17%;                       /* Slate 800 - Muted */
-    --muted-foreground: 215 20% 65%;            /* Slate 400 - Muted text */
-    --accent: 217 91% 60%;                      /* Blue 500 - Accent */
-    --accent-foreground: 0 0% 100%;             /* White text */
-    --destructive: 0 84% 60%;                   /* Red 500 */
-    --destructive-foreground: 0 0% 100%;        /* White text */
-    --border: 217 33% 17%;                      /* Slate 800 - Borders */
-    --input: 217 33% 17%;                       /* Slate 800 - Input borders */
-    --ring: 217 91% 60%;                        /* Blue 500 - Focus rings */
+    /* Dark Theme - Professional dark warm tones */
+    --background: 25.0000 15.3846% 15.2941%;
+    --foreground: 39 34.4828% 88.6275%;
+    --card: 25.7143 13.7255% 20%;
+    --card-foreground: 39 34.4828% 88.6275%;
+    --popover: 25.7143 13.7255% 20%;
+    --popover-foreground: 39 34.4828% 88.6275%;
+    --primary: 30 33.6842% 62.7451%;
+    --primary-foreground: 25.0000 15.3846% 15.2941%;
+    --secondary: 24.7059 12.9771% 25.6863%;
+    --secondary-foreground: 39 34.4828% 88.6275%;
+    --muted: 25.7143 13.7255% 20%;
+    --muted-foreground: 38.4000 17.7305% 72.3529%;
+    --accent: 24.4444 17.8808% 29.6078%;
+    --accent-foreground: 39 34.4828% 88.6275%;
+    --destructive: 9.8438 54.7009% 45.8824%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 24.7059 12.9771% 25.6863%;
+    --input: 24.7059 12.9771% 25.6863%;
+    --ring: 30 33.6842% 62.7451%;
 
-    /* Chart colors - Professional palette for dark mode */
-    --chart-1: 217 91% 60%;                     /* Blue 500 */
-    --chart-2: 142 71% 45%;                     /* Green 600 */
-    --chart-3: 38 92% 50%;                      /* Yellow 500 */
-    --chart-4: 0 84% 60%;                       /* Red 500 */
-    --chart-5: 221 83% 53%;                     /* Blue 600 */
+    /* Chart colors */
+    --chart-1: 30 33.6842% 62.7451%;
+    --chart-2: 29.1176 30.9091% 56.8627%;
+    --chart-3: 30.0000 33.8710% 48.6275%;
+    --chart-4: 31.3846 29.9539% 42.5490%;
+    --chart-5: 33.6842 32.9480% 33.9216%;
 
     /* Sidebar specific */
-    --sidebar: 222 47% 11%;                     /* Slate 900 */
-    --sidebar-foreground: 210 40% 98%;          /* Slate 50 */
-    --sidebar-primary: 217 91% 60%;             /* Blue 500 */
-    --sidebar-primary-foreground: 0 0% 100%;    /* White */
-    --sidebar-accent: 217 33% 17%;              /* Slate 800 */
-    --sidebar-accent-foreground: 210 40% 98%;   /* Slate 50 */
-    --sidebar-border: 217 33% 17%;              /* Slate 800 */
-    --sidebar-ring: 217 91% 60%;                /* Blue 500 */
+    --sidebar: 25.0000 15.3846% 15.2941%;
+    --sidebar-foreground: 39 34.4828% 88.6275%;
+    --sidebar-primary: 30 33.6842% 62.7451%;
+    --sidebar-primary-foreground: 25.0000 15.3846% 15.2941%;
+    --sidebar-accent: 24.4444 17.8808% 29.6078%;
+    --sidebar-accent-foreground: 39 34.4828% 88.6275%;
+    --sidebar-border: 24.7059 12.9771% 25.6863%;
+    --sidebar-ring: 30 33.6842% 62.7451%;
 
     /* Typography */
     --font-sans: Inter, ui-sans-serif, sans-serif, system-ui;
-    --font-serif: Georgia, serif;
-    --font-mono: 'Courier New', monospace;
+    --font-serif: Lora, serif;
+    --font-mono: IBM Plex Mono, monospace;
 
     /* Radius */
-    --radius: 0.5rem;                           /* 8px default radius */
+    --radius: 0.25rem;
 
-    /* Shadows - Enhanced for dark mode */
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.5);
-    --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.5), 0 1px 2px -1px rgb(0 0 0 / 0.5);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.5);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.5);
-    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.5);
-    --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.7);
+    /* Shadows */
+    --shadow-2xs: 2px 3px 0px 0px hsl(28 13% 20% / 0.00);
+    --shadow-xs: 2px 3px 0px 0px hsl(28 13% 20% / 0.00);
+    --shadow-sm: 2px 3px 0px 0px hsl(28 13% 20% / 0.00), 2px 1px 2px -1px hsl(28 13% 20% / 0.00);
+    --shadow: 2px 3px 0px 0px hsl(28 13% 20% / 0.00), 2px 1px 2px -1px hsl(28 13% 20% / 0.00);
+    --shadow-md: 2px 3px 0px 0px hsl(28 13% 20% / 0.00), 2px 2px 4px -1px hsl(28 13% 20% / 0.00);
+    --shadow-lg: 2px 3px 0px 0px hsl(28 13% 20% / 0.00), 2px 4px 6px -1px hsl(28 13% 20% / 0.00);
+    --shadow-xl: 2px 3px 0px 0px hsl(28 13% 20% / 0.00), 2px 8px 10px -1px hsl(28 13% 20% / 0.00);
+    --shadow-2xl: 2px 3px 0px 0px hsl(28 13% 20% / 0.00);
 
-    /* Spacing */
-    --spacing: 0.5rem;                          /* 8px base spacing */
+    /* Spacing and tracking */
+    --tracking-normal: 0em;
+    --spacing: 0.25rem;
   }
 }
 
@@ -440,42 +446,42 @@
     @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
   }
   
-  /* Status badges with semantic colors */
+  /* Status badges with theme colors */
   .status-open {
-    @apply bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400;
+    @apply bg-primary/20 text-primary dark:bg-primary/30 dark:text-primary;
   }
 
   .status-in-progress {
-    @apply bg-yellow-100 text-yellow-600 dark:bg-yellow-500/20 dark:text-yellow-400;
+    @apply bg-chart-2/20 text-chart-2 dark:bg-chart-2/30 dark:text-chart-2;
   }
 
   .status-resolved {
-    @apply bg-green-100 text-green-600 dark:bg-green-500/20 dark:text-green-400;
+    @apply bg-chart-5/20 text-chart-5 dark:bg-chart-5/30 dark:text-chart-5;
   }
 
   .status-closed {
-    @apply bg-slate-100 text-slate-600 dark:bg-slate-500/20 dark:text-slate-400;
+    @apply bg-muted text-muted-foreground;
   }
 
-  /* Priority badges with semantic colors */
+  /* Priority badges with theme tones */
   .priority-low {
-    @apply bg-slate-100 text-slate-600 dark:bg-slate-500/20 dark:text-slate-400;
+    @apply bg-muted text-muted-foreground;
   }
 
   .priority-medium {
-    @apply bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400;
+    @apply bg-chart-4/20 text-chart-4 dark:bg-chart-4/30 dark:text-chart-4;
   }
 
   .priority-high {
-    @apply bg-yellow-100 text-yellow-600 dark:bg-yellow-500/20 dark:text-yellow-400;
+    @apply bg-chart-2/20 text-chart-2 dark:bg-chart-2/30 dark:text-chart-2;
   }
 
   .priority-critical {
-    @apply bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400;
+    @apply bg-destructive/20 text-destructive dark:bg-destructive/30 dark:text-destructive;
   }
 
   .priority-emergency {
-    @apply bg-red-500 text-white font-bold dark:bg-red-600;
+    @apply bg-destructive text-destructive-foreground font-bold;
   }
   
   /* Card styles */
@@ -495,23 +501,22 @@
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: hsl(var(--muted));
-  border-radius: 4px;
+  background: #f1f1f1;
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted-foreground) / 0.3);
-  border-radius: 4px;
-  transition: background 0.2s;
+  background: #c1c1c1;
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.5);
+  background: #a8a8a8;
 }
 
 /* Print styles */

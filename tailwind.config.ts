@@ -60,62 +60,31 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Professional Banking Blue Color Palette
-        blue: {
-          50: '#eff6ff',   // Lightest blue for backgrounds
-          100: '#dbeafe',  // Light blue for hover states
-          200: '#bfdbfe',  // Soft blue
-          300: '#93c5fd',  // Medium light blue
-          400: '#60a5fa',  // Medium blue
-          500: '#3b82f6',  // Primary blue (brand)
-          600: '#2563eb',  // Dark blue for text/icons
-          700: '#1d4ed8',  // Darker blue
-          800: '#1e40af',  // Very dark blue
-          900: '#1e3a8a',  // Deepest blue
-          950: '#172554',  // Almost black blue
+        // Custom warm brown/cream color palette
+        cream: {
+          50: '#fffcf5',  // card light
+          100: '#f5f1e6', // background light
+          200: '#ece5d8', // muted light / foreground dark
+          300: '#e2d8c3', // secondary light
+          400: '#d4c8aa', // accent light
+          500: '#dbd0ba', // border light
         },
-        // Professional Gray/Slate Palette
-        slate: {
-          50: '#f8fafc',   // Almost white
-          100: '#f1f5f9',  // Very light gray
-          200: '#e2e8f0',  // Light gray for borders
-          300: '#cbd5e1',  // Medium light gray
-          400: '#94a3b8',  // Medium gray
-          500: '#64748b',  // Base gray for text
-          600: '#475569',  // Dark gray for headings
-          700: '#334155',  // Darker gray
-          800: '#1e293b',  // Very dark gray
-          900: '#0f172a',  // Almost black
-          950: '#020617',  // Pure dark
+        brown: {
+          100: '#c5bcac', // muted foreground dark
+          200: '#c0a080', // primary dark
+          300: '#b3906f', // chart 2
+          400: '#a67c52', // primary light
+          500: '#8d6e4c', // chart 2 light
+          600: '#7d6b56', // muted foreground light
+          700: '#735a3a', // chart 3
+          800: '#5c4d3f', // secondary foreground light
+          900: '#4a3f35', // foreground light
+          950: '#2d2621', // background dark
         },
-        // Semantic Colors
-        success: {
-          50: '#f0fdf4',
-          100: '#dcfce7',
-          500: '#22c55e',  // Green
-          600: '#16a34a',
-          700: '#15803d',
-        },
-        warning: {
-          50: '#fefce8',
-          100: '#fef9c3',
-          500: '#eab308',  // Yellow
-          600: '#ca8a04',
-          700: '#a16207',
-        },
-        error: {
-          50: '#fef2f2',
-          100: '#fee2e2',
-          500: '#ef4444',  // Red
-          600: '#dc2626',
-          700: '#b91c1c',
-        },
-        info: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          500: '#3b82f6',  // Blue
-          600: '#2563eb',
-          700: '#1d4ed8',
+        'warm-dark': {
+          100: '#59493e', // accent dark
+          200: '#4a4039', // secondary/border dark
+          300: '#3a322c', // card/muted dark
         },
         // Sidebar colors
         sidebar: {
@@ -138,12 +107,10 @@ const config: Config = {
         },
         // Bank SulutGo brand colors
         bank: {
-          primary: '#3b82f6',    // Professional blue
-          secondary: '#64748b',  // Slate gray
-          accent: '#2563eb',     // Darker blue
-          success: '#22c55e',    // Green
-          warning: '#eab308',    // Yellow
-          error: '#ef4444',      // Red
+          primary: "hsl(var(--primary))",
+          secondary: "hsl(var(--secondary))",
+          accent: "hsl(var(--accent))",
+          warning: "#d97706", // Orange (keep for warnings)
         },
       },
       fontFamily: {
