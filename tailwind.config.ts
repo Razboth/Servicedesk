@@ -60,31 +60,62 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Custom warm brown/cream color palette
-        cream: {
-          50: '#fffcf5',  // card light
-          100: '#f5f1e6', // background light
-          200: '#ece5d8', // muted light / foreground dark
-          300: '#e2d8c3', // secondary light
-          400: '#d4c8aa', // accent light
-          500: '#dbd0ba', // border light
+        // Professional Banking Blue Color Palette
+        blue: {
+          50: '#eff6ff',   // Lightest blue for backgrounds
+          100: '#dbeafe',  // Light blue for hover states
+          200: '#bfdbfe',  // Soft blue
+          300: '#93c5fd',  // Medium light blue
+          400: '#60a5fa',  // Medium blue
+          500: '#3b82f6',  // Primary blue (brand)
+          600: '#2563eb',  // Dark blue for text/icons
+          700: '#1d4ed8',  // Darker blue
+          800: '#1e40af',  // Very dark blue
+          900: '#1e3a8a',  // Deepest blue
+          950: '#172554',  // Almost black blue
         },
-        brown: {
-          100: '#c5bcac', // muted foreground dark
-          200: '#c0a080', // primary dark
-          300: '#b3906f', // chart 2
-          400: '#a67c52', // primary light
-          500: '#8d6e4c', // chart 2 light
-          600: '#7d6b56', // muted foreground light
-          700: '#735a3a', // chart 3
-          800: '#5c4d3f', // secondary foreground light
-          900: '#4a3f35', // foreground light
-          950: '#2d2621', // background dark
+        // Professional Gray/Slate Palette
+        slate: {
+          50: '#f8fafc',   // Almost white
+          100: '#f1f5f9',  // Very light gray
+          200: '#e2e8f0',  // Light gray for borders
+          300: '#cbd5e1',  // Medium light gray
+          400: '#94a3b8',  // Medium gray
+          500: '#64748b',  // Base gray for text
+          600: '#475569',  // Dark gray for headings
+          700: '#334155',  // Darker gray
+          800: '#1e293b',  // Very dark gray
+          900: '#0f172a',  // Almost black
+          950: '#020617',  // Pure dark
         },
-        'warm-dark': {
-          100: '#59493e', // accent dark
-          200: '#4a4039', // secondary/border dark
-          300: '#3a322c', // card/muted dark
+        // Semantic Colors
+        success: {
+          50: '#f0fdf4',
+          100: '#dcfce7',
+          500: '#22c55e',  // Green
+          600: '#16a34a',
+          700: '#15803d',
+        },
+        warning: {
+          50: '#fefce8',
+          100: '#fef9c3',
+          500: '#eab308',  // Yellow
+          600: '#ca8a04',
+          700: '#a16207',
+        },
+        error: {
+          50: '#fef2f2',
+          100: '#fee2e2',
+          500: '#ef4444',  // Red
+          600: '#dc2626',
+          700: '#b91c1c',
+        },
+        info: {
+          50: '#eff6ff',
+          100: '#dbeafe',
+          500: '#3b82f6',  // Blue
+          600: '#2563eb',
+          700: '#1d4ed8',
         },
         // Sidebar colors
         sidebar: {
@@ -107,10 +138,12 @@ const config: Config = {
         },
         // Bank SulutGo brand colors
         bank: {
-          primary: "hsl(var(--primary))",
-          secondary: "hsl(var(--secondary))",
-          accent: "hsl(var(--accent))",
-          warning: "#d97706", // Orange (keep for warnings)
+          primary: '#3b82f6',    // Professional blue
+          secondary: '#64748b',  // Slate gray
+          accent: '#2563eb',     // Darker blue
+          success: '#22c55e',    // Green
+          warning: '#eab308',    // Yellow
+          error: '#ef4444',      // Red
         },
       },
       fontFamily: {
@@ -119,26 +152,56 @@ const config: Config = {
         mono: ["var(--font-mono)", "ui-monospace"],
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
-        xl: "calc(var(--radius) + 4px)",
+        none: '0',
+        sm: '0.25rem',    // 4px
+        DEFAULT: '0.5rem', // 8px
+        md: '0.5rem',     // 8px
+        lg: '0.75rem',    // 12px
+        xl: '1rem',       // 16px
+        '2xl': '1.5rem',  // 24px
+        '3xl': '2rem',    // 32px
+        full: '9999px',
       },
       boxShadow: {
-        "2xs": "var(--shadow-2xs)",
-        xs: "var(--shadow-xs)",
-        sm: "var(--shadow-sm)",
-        DEFAULT: "var(--shadow)",
-        md: "var(--shadow-md)",
-        lg: "var(--shadow-lg)",
-        xl: "var(--shadow-xl)",
-        "2xl": "var(--shadow-2xl)",
+        sm: '0 1px 2px 0 rgb(0 0 0 / 0.05)',
+        DEFAULT: '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)',
+        md: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
+        lg: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
+        xl: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
+        '2xl': '0 25px 50px -12px rgb(0 0 0 / 0.25)',
+        inner: 'inset 0 2px 4px 0 rgb(0 0 0 / 0.05)',
+        none: 'none',
       },
       letterSpacing: {
         normal: "var(--tracking-normal)",
       },
       spacing: {
-        DEFAULT: "var(--spacing)",
+        '0': '0',
+        'px': '1px',
+        '0.5': '0.125rem',  // 2px
+        '1': '0.25rem',     // 4px
+        '1.5': '0.375rem',  // 6px
+        '2': '0.5rem',      // 8px (base)
+        '2.5': '0.625rem',  // 10px
+        '3': '0.75rem',     // 12px
+        '3.5': '0.875rem',  // 14px
+        '4': '1rem',        // 16px (2x base)
+        '5': '1.25rem',     // 20px
+        '6': '1.5rem',      // 24px (3x base)
+        '7': '1.75rem',     // 28px
+        '8': '2rem',        // 32px (4x base)
+        '9': '2.25rem',     // 36px
+        '10': '2.5rem',     // 40px (5x base)
+        '12': '3rem',       // 48px (6x base)
+        '14': '3.5rem',     // 56px
+        '16': '4rem',       // 64px (8x base)
+        '20': '5rem',       // 80px (10x base)
+        '24': '6rem',       // 96px (12x base)
+        '32': '8rem',       // 128px (16x base)
+        '40': '10rem',      // 160px (20x base)
+        '48': '12rem',      // 192px (24x base)
+        '56': '14rem',      // 224px
+        '64': '16rem',      // 256px (32x base)
       },
       keyframes: {
         "accordion-down": {
