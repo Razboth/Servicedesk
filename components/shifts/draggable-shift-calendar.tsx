@@ -12,8 +12,9 @@ import {
   useSensors,
   DragOverEvent,
 } from '@dnd-kit/core';
-import { Moon, Sun, Coffee, Calendar, Clock, AlertCircle } from 'lucide-react';
+import { Moon, Sun, Coffee, Calendar, Clock, AlertCircle, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useDroppable } from '@dnd-kit/core';
 import { ShiftDropZone, DraggableAssignmentChip } from './shift-drop-zone';
 
 interface ShiftAssignment {
@@ -39,6 +40,7 @@ interface DraggableShiftCalendarProps {
   }>;
   onAssignmentUpdate?: (assignmentId: string, newStaffProfileId: string, skipRefresh?: boolean) => Promise<void>;
   onAssignmentCreate?: (staffId: string, shiftType: string, date: string) => Promise<void>;
+  onAssignmentDelete?: (assignmentId: string) => Promise<void>;
   onRefresh?: () => Promise<void>;
   editable?: boolean;
   validationErrors?: Record<string, string>;
@@ -47,34 +49,61 @@ interface DraggableShiftCalendarProps {
 }
 
 // Helper function to get shift slots for a day
-function getDayShiftSlots(date: Date, isWeekend: boolean, showWeekendNights: boolean = true): Array<{ type: string; maxSlots: number; isRequired: boolean }> {
-  const dayOfWeek = date.getDay();
+function getDayShiftSlots(date: Date, isWeekend: boolean, isHoliday: boolean = false): Array<{ type: string; maxSlots: number; isRequired: boolean }> {
   const slots: Array<{ type: string; maxSlots: number; isRequired: boolean }> = [];
 
-  if (isWeekend) {
-    // Saturday
-    if (dayOfWeek === 6) {
-      slots.push({ type: 'SATURDAY_DAY', maxSlots: 2, isRequired: true });
-      if (showWeekendNights) {
-        slots.push({ type: 'SATURDAY_NIGHT', maxSlots: 1, isRequired: false });
-      }
-    }
-    // Sunday
-    else if (dayOfWeek === 0) {
-      slots.push({ type: 'SUNDAY_DAY', maxSlots: 2, isRequired: true });
-      if (showWeekendNights) {
-        slots.push({ type: 'SUNDAY_NIGHT', maxSlots: 1, isRequired: false });
-      }
-    }
+  if (isWeekend || isHoliday) {
+    // Weekend or Holiday shifts
+    slots.push({ type: 'DAY_WEEKEND', maxSlots: 1, isRequired: false });
+    slots.push({ type: 'NIGHT_WEEKEND', maxSlots: 1, isRequired: false });
+    slots.push({ type: 'STANDBY_ONCALL', maxSlots: 1, isRequired: false });
+    slots.push({ type: 'STANDBY_BRANCH', maxSlots: 1, isRequired: false });
   } else {
-    // Weekday night shift (only one slot)
-    slots.push({ type: 'NIGHT', maxSlots: 1, isRequired: false });
+    // Weekday shifts
+    slots.push({ type: 'NIGHT_WEEKDAY', maxSlots: 1, isRequired: false });
+    slots.push({ type: 'STANDBY_ONCALL', maxSlots: 1, isRequired: false });
+    slots.push({ type: 'STANDBY_BRANCH', maxSlots: 1, isRequired: false });
   }
 
-  // ON_CALL can be assigned any day (weekday or weekend)
-  slots.push({ type: 'ON_CALL', maxSlots: 1, isRequired: false });
-
   return slots;
+}
+
+// Trash Zone Component for drag-out deletion
+function TrashZone({ editable, isActive }: { editable: boolean; isActive: boolean }) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: 'trash-zone',
+    data: {
+      type: 'trash',
+    },
+    disabled: !editable,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`
+        fixed bottom-8 right-8 z-50
+        transition-all duration-200
+        ${isActive ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}
+      `}
+    >
+      <div
+        className={`
+          flex items-center gap-3 px-6 py-4 rounded-full shadow-2xl
+          transition-all
+          ${isOver
+            ? 'bg-red-600 text-white scale-110 ring-4 ring-red-300 dark:ring-red-800'
+            : 'bg-red-500 text-white'
+          }
+        `}
+      >
+        <Trash2 className={`w-6 h-6 ${isOver ? 'animate-bounce' : ''}`} />
+        <span className="font-medium text-sm whitespace-nowrap">
+          {isOver ? 'Release to delete' : 'Drag here to delete'}
+        </span>
+      </div>
+    </div>
+  );
 }
 
 export function DraggableShiftCalendar({
@@ -84,6 +113,7 @@ export function DraggableShiftCalendar({
   holidays,
   onAssignmentUpdate,
   onAssignmentCreate,
+  onAssignmentDelete,
   onRefresh,
   editable = false,
   validationErrors = {},
@@ -116,16 +146,60 @@ export function DraggableShiftCalendar({
     setActiveItem(event.active.data.current);
   };
 
+  const handleDelete = async (assignmentId: string) => {
+    if (!onAssignmentDelete || !editable || updating) {
+      return;
+    }
+
+    try {
+      setUpdating(true);
+      await onAssignmentDelete(assignmentId);
+      toast.success('Assignment deleted');
+      if (onRefresh) {
+        await onRefresh();
+      }
+    } catch (error: any) {
+      console.error('Error deleting assignment:', error);
+      toast.error(error.message || 'Failed to delete assignment');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveItem(null);
 
-    if (!over || !editable || updating) {
+    if (!editable || updating) {
       return;
     }
 
     const activeData = active.data.current;
-    const overData = over.data.current;
+    const overData = over?.data.current;
+
+    // Case 0: Dragging to trash zone (delete assignment)
+    if (activeData?.type === 'assignment' && overData?.type === 'trash') {
+      if (onAssignmentDelete) {
+        try {
+          setUpdating(true);
+          await onAssignmentDelete(activeData.assignmentId);
+          toast.success('Assignment deleted');
+          if (onRefresh) {
+            await onRefresh();
+          }
+        } catch (error: any) {
+          console.error('Error deleting assignment:', error);
+          toast.error(error.message || 'Failed to delete assignment');
+        } finally {
+          setUpdating(false);
+        }
+      }
+      return;
+    }
+
+    if (!over) {
+      return;
+    }
 
     if (!activeData || !overData) {
       return;
@@ -267,7 +341,7 @@ export function DraggableShiftCalendar({
             const isCurrentMonth = date.getMonth() + 1 === month;
 
             // Get shift slots for this day
-            const shiftSlots = getDayShiftSlots(date, isWeekend, showWeekendNights);
+            const shiftSlots = getDayShiftSlots(date, isWeekend, !!holiday);
 
             return (
               <div
@@ -309,6 +383,7 @@ export function DraggableShiftCalendar({
                           slotIndex={dropZoneIndex}
                           isRequired={slot.isRequired}
                           validationError={validationErrors[validationKey]}
+                          onDelete={handleDelete}
                         />
                       );
                     });
@@ -346,6 +421,13 @@ export function DraggableShiftCalendar({
       onDragEnd={handleDragEnd}
     >
       {calendarContent}
+
+      {/* Trash Zone - shows when dragging an assignment */}
+      <TrashZone
+        editable={editable}
+        isActive={activeItem?.type === 'assignment'}
+      />
+
       {/* Drag Overlay */}
       <DragOverlay>
         {activeItem && (

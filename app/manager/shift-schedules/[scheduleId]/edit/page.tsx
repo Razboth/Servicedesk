@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useParams } from 'next/navigation';
-import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, closestCorners } from '@dnd-kit/core';
+import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, closestCorners, useDroppable } from '@dnd-kit/core';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -63,6 +63,41 @@ const monthNames = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
+
+// Trash Zone Component for drag-out deletion
+function TrashZone({ isActive }: { isActive: boolean }) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: 'trash-zone',
+    data: { type: 'trash' },
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`
+        fixed bottom-8 right-8 z-50
+        transition-all duration-200
+        ${isActive ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}
+      `}
+    >
+      <div
+        className={`
+          flex items-center gap-3 px-6 py-4 rounded-full shadow-2xl
+          transition-all
+          ${isOver
+            ? 'bg-red-600 text-white scale-110 ring-4 ring-red-300 dark:ring-red-800'
+            : 'bg-red-500 text-white'
+          }
+        `}
+      >
+        <Trash2 className={`w-6 h-6 ${isOver ? 'animate-bounce' : ''}`} />
+        <span className="font-medium text-sm whitespace-nowrap">
+          {isOver ? 'Release to delete' : 'Drag here to delete'}
+        </span>
+      </div>
+    </div>
+  );
+}
 
 export default function EditSchedulePage() {
   const { data: session } = useSession();
@@ -252,16 +287,42 @@ export default function EditSchedulePage() {
     setActiveItem(event.active.data.current);
   };
 
+  const handleDeleteAssignment = async (assignmentId: string) => {
+    try {
+      const response = await fetch(
+        `/api/shifts/schedules/${scheduleId}/assignments/manual?assignmentId=${assignmentId}`,
+        { method: 'DELETE' }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete assignment');
+      }
+
+      toast.success('Assignment deleted');
+      await fetchAssignments();
+    } catch (error: any) {
+      console.error('Error deleting assignment:', error);
+      toast.error(error.message || 'Failed to delete assignment');
+    }
+  };
+
   const handleDragEnd = async (event: any) => {
     const { active, over } = event;
     setActiveItem(null);
 
-    if (!over) {
+    const activeData = active.data.current;
+    const overData = over?.data.current;
+
+    // Case 0: Dragging to trash zone (delete assignment)
+    if (activeData?.type === 'assignment' && overData?.type === 'trash') {
+      await handleDeleteAssignment(activeData.assignmentId);
       return;
     }
 
-    const activeData = active.data.current;
-    const overData = over.data.current;
+    if (!over) {
+      return;
+    }
 
     if (!activeData || !overData) {
       return;
@@ -722,11 +783,15 @@ export default function EditSchedulePage() {
                   holidays={[]}
                   editable={true}
                   skipDndContext={true}
+                  onAssignmentDelete={handleDeleteAssignment}
                 />
               </CardContent>
             </Card>
           </div>
         </div>
+
+        {/* Trash Zone - shows when dragging an assignment */}
+        <TrashZone isActive={activeItem?.type === 'assignment'} />
 
         {/* Drag Overlay */}
         <DragOverlay>

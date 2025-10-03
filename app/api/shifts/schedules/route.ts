@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const branchId = searchParams.get('branchId');
+    const month = searchParams.get('month');
     const year = searchParams.get('year');
     const status = searchParams.get('status');
 
@@ -27,6 +28,7 @@ export async function GET(request: NextRequest) {
     }
 
     const where: any = { branchId };
+    if (month) where.month = parseInt(month);
     if (year) where.year = parseInt(year);
     if (status) where.status = status;
 

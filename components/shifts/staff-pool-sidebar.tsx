@@ -14,8 +14,10 @@ interface StaffProfile {
     name: string;
     email: string;
   };
-  canWorkNightShift: boolean;
-  canWorkWeekendDay: boolean;
+  canWorkNight: boolean;
+  canWorkDayWeekend: boolean;
+  canStandbyOnCall: boolean;
+  canStandbyBranch: boolean;
   hasServerAccess: boolean;
   hasSabbathRestriction: boolean;
   isActive: boolean;
@@ -51,8 +53,10 @@ function DraggableStaffCard({
       type: 'staff',
       staffId: staff.id,
       staffName: staff.user.name,
-      canWorkNightShift: staff.canWorkNightShift,
-      canWorkWeekendDay: staff.canWorkWeekendDay,
+      canWorkNight: staff.canWorkNight,
+      canWorkDayWeekend: staff.canWorkDayWeekend,
+      canStandbyOnCall: staff.canStandbyOnCall,
+      canStandbyBranch: staff.canStandbyBranch,
       hasServerAccess: staff.hasServerAccess,
       hasSabbathRestriction: staff.hasSabbathRestriction,
     },
@@ -94,13 +98,13 @@ function DraggableStaffCard({
 
           {/* Capabilities */}
           <div className="flex flex-wrap items-center gap-1 mt-2">
-            {staff.canWorkNightShift && (
+            {staff.canWorkNight && (
               <Badge variant="outline" className="text-xs bg-indigo-50 dark:bg-indigo-900/30">
                 <Moon className="w-3 h-3 mr-1" />
                 Night
               </Badge>
             )}
-            {staff.canWorkWeekendDay && (
+            {staff.canWorkDayWeekend && (
               <Badge variant="outline" className="text-xs bg-blue-50 dark:bg-blue-900/30">
                 <Sun className="w-3 h-3 mr-1" />
                 Weekend
@@ -171,10 +175,10 @@ export function StaffPoolSidebar({
       let matchesCapability = true;
       switch (filterCapability) {
         case 'night':
-          matchesCapability = s.canWorkNightShift;
+          matchesCapability = s.canWorkNight;
           break;
         case 'weekend':
-          matchesCapability = s.canWorkWeekendDay;
+          matchesCapability = s.canWorkDayWeekend;
           break;
         case 'server':
           matchesCapability = s.hasServerAccess;
@@ -186,8 +190,8 @@ export function StaffPoolSidebar({
   }, [staff, searchQuery, filterCapability]);
 
   const activeStaff = staff.filter(s => s.isActive);
-  const nightShiftStaff = activeStaff.filter(s => s.canWorkNightShift);
-  const weekendStaff = activeStaff.filter(s => s.canWorkWeekendDay);
+  const nightShiftStaff = activeStaff.filter(s => s.canWorkNight);
+  const weekendStaff = activeStaff.filter(s => s.canWorkDayWeekend);
   const serverAccessStaff = activeStaff.filter(s => s.hasServerAccess);
 
   return (

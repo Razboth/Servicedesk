@@ -1,7 +1,7 @@
 'use client';
 
 import { useDroppable, useDraggable } from '@dnd-kit/core';
-import { Moon, Sun, Coffee, Calendar, Clock, AlertTriangle } from 'lucide-react';
+import { Moon, Sun, Coffee, Calendar, Clock, AlertTriangle, Building, Trash2 } from 'lucide-react';
 
 interface ShiftAssignment {
   id: string;
@@ -17,12 +17,11 @@ interface ShiftAssignment {
 }
 
 const shiftTypeConfig = {
-  NIGHT: { label: 'Night', icon: Moon, color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300', borderColor: 'border-indigo-300 dark:border-indigo-700' },
-  SATURDAY_DAY: { label: 'Sat Day', icon: Sun, color: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300', borderColor: 'border-blue-300 dark:border-blue-700' },
-  SATURDAY_NIGHT: { label: 'Sat Night', icon: Moon, color: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300', borderColor: 'border-purple-300 dark:border-purple-700' },
-  SUNDAY_DAY: { label: 'Sun Day', icon: Sun, color: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300', borderColor: 'border-orange-300 dark:border-orange-700' },
-  SUNDAY_NIGHT: { label: 'Sun Night', icon: Moon, color: 'bg-pink-100 text-pink-700 dark:bg-pink-900 dark:text-pink-300', borderColor: 'border-pink-300 dark:border-pink-700' },
-  ON_CALL: { label: 'On-Call', icon: AlertTriangle, color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300', borderColor: 'border-yellow-300 dark:border-yellow-700' },
+  NIGHT_WEEKDAY: { label: 'Night 20:00-07:59', icon: Moon, color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300', borderColor: 'border-indigo-300 dark:border-indigo-700' },
+  DAY_WEEKEND: { label: 'Day 08:00-19:00', icon: Sun, color: 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300', borderColor: 'border-amber-300 dark:border-amber-700' },
+  NIGHT_WEEKEND: { label: 'Night 20:00-07:59', icon: Moon, color: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300', borderColor: 'border-purple-300 dark:border-purple-700' },
+  STANDBY_ONCALL: { label: 'Standby On-Call', icon: AlertTriangle, color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300', borderColor: 'border-yellow-300 dark:border-yellow-700' },
+  STANDBY_BRANCH: { label: 'Standby Branch Ops', icon: Building, color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300', borderColor: 'border-emerald-300 dark:border-emerald-700' },
   OFF: { label: 'Off', icon: Coffee, color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300', borderColor: 'border-gray-300 dark:border-gray-700' },
   LEAVE: { label: 'Leave', icon: Calendar, color: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300', borderColor: 'border-red-300 dark:border-red-700' },
   HOLIDAY: { label: 'Holiday', icon: Calendar, color: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300', borderColor: 'border-green-300 dark:border-green-700' },
@@ -32,12 +31,14 @@ interface DraggableAssignmentChipProps {
   assignment: ShiftAssignment;
   editable: boolean;
   hasWarning?: boolean;
+  onDelete?: (assignmentId: string) => void;
 }
 
 export function DraggableAssignmentChip({
   assignment,
   editable,
   hasWarning,
+  onDelete,
 }: DraggableAssignmentChipProps) {
   const config = shiftTypeConfig[assignment.shiftType as keyof typeof shiftTypeConfig];
   const Icon = config?.icon || Clock;
@@ -64,12 +65,19 @@ export function DraggableAssignmentChip({
       }
     : undefined;
 
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onDelete) {
+      onDelete(assignment.id);
+    }
+  };
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       className={`
-        relative text-xs p-1.5 rounded transition-all
+        relative text-xs p-1.5 rounded transition-all group
         ${config?.color}
         ${isDraggableShift
           ? 'cursor-move hover:opacity-80 hover:ring-2 hover:ring-blue-400 dark:hover:ring-blue-600'
@@ -78,7 +86,7 @@ export function DraggableAssignmentChip({
         ${isDragging ? 'ring-2 ring-blue-500 shadow-lg' : ''}
         ${hasWarning ? 'ring-2 ring-yellow-400 dark:ring-yellow-600' : ''}
       `}
-      title={`${assignment.staffProfile.user.name} - ${config?.label}${isDraggableShift ? ' (Drag to swap)' : ''}`}
+      title={`${assignment.staffProfile.user.name} - ${config?.label}${isDraggableShift ? ' (Drag to swap or delete)' : ''}`}
       {...(isDraggableShift ? { ...listeners, ...attributes } : {})}
     >
       <div className="flex items-center gap-1">
@@ -87,6 +95,17 @@ export function DraggableAssignmentChip({
           {assignment.staffProfile.user.name.split(' ')[0]}
         </span>
         {hasWarning && <AlertTriangle className="w-3 h-3 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />}
+
+        {/* Delete button - only show on hover for editable shifts */}
+        {isDraggableShift && onDelete && (
+          <button
+            onClick={handleDelete}
+            className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity hover:scale-110 active:scale-95"
+            title="Delete assignment"
+          >
+            <Trash2 className="w-3 h-3 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300" />
+          </button>
+        )}
       </div>
     </div>
   );
@@ -104,6 +123,7 @@ interface ShiftDropZoneProps {
   isRequired?: boolean;
   validationError?: string;
   onAssign?: (staffId: string, shiftType: string, date: string) => void;
+  onDelete?: (assignmentId: string) => void;
 }
 
 export function ShiftDropZone({
@@ -117,6 +137,7 @@ export function ShiftDropZone({
   slotIndex = 0,
   isRequired = false,
   validationError,
+  onDelete,
 }: ShiftDropZoneProps) {
   const { setNodeRef, isOver, active } = useDroppable({
     id,
@@ -183,6 +204,7 @@ export function ShiftDropZone({
           assignment={assignment}
           editable={editable}
           hasWarning={hasError}
+          onDelete={onDelete}
         />
       )}
 

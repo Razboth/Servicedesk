@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const staffProfileId = searchParams.get('staffProfileId');
+    const scheduleId = searchParams.get('scheduleId');
 
     // Build where clause
     const where: any = {};
@@ -27,6 +28,10 @@ export async function GET(request: NextRequest) {
 
     if (staffProfileId) {
       where.staffProfileId = staffProfileId;
+    }
+
+    if (scheduleId) {
+      where.scheduleId = scheduleId;
     } else if (session.user.role !== 'ADMIN') {
       // For managers, only show leaves from their branch staff
       const user = await prisma.user.findUnique({
@@ -72,20 +77,6 @@ export async function GET(request: NextRequest) {
               }
             }
           }
-        },
-        approver: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        },
-        rejector: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
         }
       },
       orderBy: {
@@ -93,9 +84,35 @@ export async function GET(request: NextRequest) {
       }
     });
 
+    // Fetch approver and rejector details separately
+    const leavesWithUsers = await Promise.all(
+      leaves.map(async (leave) => {
+        const [approver, rejector] = await Promise.all([
+          leave.approvedBy
+            ? prisma.user.findUnique({
+                where: { id: leave.approvedBy },
+                select: { id: true, name: true, email: true }
+              })
+            : null,
+          leave.rejectedBy
+            ? prisma.user.findUnique({
+                where: { id: leave.rejectedBy },
+                select: { id: true, name: true, email: true }
+              })
+            : null
+        ]);
+
+        return {
+          ...leave,
+          approver,
+          rejector
+        };
+      })
+    );
+
     return NextResponse.json({
       success: true,
-      leaves
+      leaves: leavesWithUsers
     });
   } catch (error: any) {
     console.error('Error fetching leaves:', error);
@@ -119,7 +136,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { staffProfileId, leaveType, startDate, endDate, reason, contactNumber, emergencyContact } = body;
+    const { staffProfileId, leaveType, startDate, endDate, reason, contactNumber, emergencyContact, scheduleId } = body;
 
     // Validate required fields
     if (!staffProfileId || !leaveType || !startDate || !endDate) {
@@ -163,9 +180,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Calculate total days
+    // Calculate total days - use UTC to avoid timezone issues
     const start = new Date(startDate);
     const end = new Date(endDate);
+
+    // Set to start of day in UTC to avoid timezone offset issues
+    start.setUTCHours(0, 0, 0, 0);
+    end.setUTCHours(0, 0, 0, 0);
+
     const totalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
     // Check for overlapping leaves
@@ -216,6 +238,7 @@ export async function POST(request: NextRequest) {
         reason,
         contactNumber,
         emergencyContact,
+        scheduleId, // Link to schedule if provided
         status: 'APPROVED', // Auto-approve when created by manager
         approvedBy: session.user.id,
         approvedAt: new Date()

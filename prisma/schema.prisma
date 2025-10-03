@@ -2302,11 +2302,14 @@ model StaffShiftProfile {
   userId                String            @unique
   branchId              String
 
-  // Shift capabilities
-  canWorkNightShift     Boolean           @default(false)
-  canWorkWeekendDay     Boolean           @default(false)
-  hasServerAccess       Boolean           @default(false)
-  hasSabbathRestriction Boolean           @default(false) // Cannot work Friday night/Saturday
+  // Shift capabilities (Type 1-5)
+  canWorkType1          Boolean           @default(false)  // Type 1: NIGHT_WEEKDAY (20:00-07:59) - Weekdays
+  canWorkType2          Boolean           @default(false)  // Type 2: DAY_WEEKEND (08:00-19:00) - Weekends/Holidays
+  canWorkType3          Boolean           @default(false)  // Type 3: NIGHT_WEEKEND (20:00-07:59) - Weekends/Holidays
+  canWorkType4          Boolean           @default(false)  // Type 4: STANDBY_ONCALL - Everyday (Server only)
+  canWorkType5          Boolean           @default(false)  // Type 5: STANDBY_BRANCH - Everyday (Non-server only)
+  hasServerAccess       Boolean           @default(false)  // (Legacy - may be removed later)
+  hasSabbathRestriction Boolean           @default(false)  // Cannot work Friday night/Saturday
 
   // Preference settings
   preferredShiftType    StaffShiftType?   // NIGHT, WEEKEND_DAY, MIXED
@@ -2333,7 +2336,7 @@ model StaffShiftProfile {
   swapRequestsReceived  ShiftSwapRequest[] @relation("SwapRecipient")
 
   @@index([branchId, isActive])
-  @@index([canWorkNightShift, hasServerAccess])
+  @@index([canWorkType1, hasServerAccess])
   @@map("staff_shift_profiles")
 }
 
@@ -2362,6 +2365,7 @@ model ShiftSchedule {
   shiftAssignments      ShiftAssignment[]
   onCallAssignments     OnCallAssignment[]
   holidays              Holiday[]
+  leaveRequests         LeaveRequest[]    @relation("ScheduleLeaves")
 
   @@index([branchId, month, year])
   @@index([branchId, status])
@@ -2443,6 +2447,7 @@ model LeaveRequest {
   id                    String            @id @default(cuid())
   staffProfileId        String
   leaveType             LeaveType
+  scheduleId            String?           // Link to schedule for planning purposes
 
   // Date range
   startDate             DateTime          @db.Date
@@ -2468,9 +2473,11 @@ model LeaveRequest {
 
   // Relations
   staffProfile          StaffShiftProfile @relation(fields: [staffProfileId], references: [id])
+  schedule              ShiftSchedule?    @relation("ScheduleLeaves", fields: [scheduleId], references: [id])
 
   @@index([staffProfileId, status])
   @@index([startDate, endDate])
+  @@index([scheduleId])
   @@map("leave_requests")
 }
 
@@ -2577,20 +2584,22 @@ model ShiftTemplate {
 
 // Enums for shift management
 enum StaffShiftType {
-  NIGHT
-  WEEKEND_DAY
-  MIXED
-  ON_CALL_ONLY
+  NIGHT           // Prefers night shifts (weekday or weekend)
+  DAY             // Prefers day shifts (weekend/holiday)
+  STANDBY         // Prefers standby shifts (on-call or branch ops)
+  MIXED           // No preference, can do any shift
 }
 
 enum ShiftType {
-  NIGHT                // Weekday night shift (Monday-Friday only)
-  SATURDAY_DAY         // Saturday day shift (2 staff, canWorkWeekendDay required)
-  SATURDAY_NIGHT       // Saturday night shift (1 staff, canWorkNightShift required)
-  SUNDAY_DAY           // Sunday day shift (2 staff, canWorkWeekendDay required)
-  SUNDAY_NIGHT         // Sunday night shift (1 staff, canWorkNightShift required, Monday OFF auto-created)
-  ON_CALL              // On-call standby (can be assigned any day)
-  OFF                  // Mandatory off day (e.g., after night shift)
+  // Working shifts
+  NIGHT_WEEKDAY        // 20:00-07:59 (Next Day) - Weekdays only - 1 staff - Auto OFF H+1
+  DAY_WEEKEND          // 08:00-19:00 (Same Day) - Weekends/Holidays only - 1 staff
+  NIGHT_WEEKEND        // 20:00-07:59 (Next Day) - Weekends/Holidays only - 1 staff
+  STANDBY_ONCALL       // On-call standby - Everyday - 1 staff
+  STANDBY_BRANCH       // Branch operational standby - Everyday - 1 staff
+
+  // Non-working
+  OFF                  // Day off
   LEAVE                // On leave
   HOLIDAY              // Public holiday
 }

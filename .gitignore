@@ -78,4 +78,5 @@ uploads/
 cypress/videos/
 cypress/screenshots/
 playwright-report/
-test-results/
+test-results/*.sql
+*.backup

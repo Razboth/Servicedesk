@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, closestCorners } from '@dnd-kit/core';
+import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, closestCorners, useDroppable } from '@dnd-kit/core';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -29,6 +29,7 @@ import {
 import Link from 'next/link';
 import { StaffPoolSidebar } from '@/components/shifts/staff-pool-sidebar';
 import { DraggableShiftCalendar } from '@/components/shifts/draggable-shift-calendar';
+import { LeaveManagerInline } from '@/components/shifts/leave-manager-inline';
 
 interface StaffProfile {
   id: string;
@@ -64,6 +65,41 @@ const monthNames = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
+// Trash Zone Component for drag-out deletion
+function TrashZone({ isActive }: { isActive: boolean }) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: 'trash-zone',
+    data: { type: 'trash' },
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`
+        fixed bottom-8 right-8 z-50
+        transition-all duration-200
+        ${isActive ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}
+      `}
+    >
+      <div
+        className={`
+          flex items-center gap-3 px-6 py-4 rounded-full shadow-2xl
+          transition-all
+          ${isOver
+            ? 'bg-red-600 text-white scale-110 ring-4 ring-red-300 dark:ring-red-800'
+            : 'bg-red-500 text-white'
+          }
+        `}
+      >
+        <Trash2 className={`w-6 h-6 ${isOver ? 'animate-bounce' : ''}`} />
+        <span className="font-medium text-sm whitespace-nowrap">
+          {isOver ? 'Release to delete' : 'Drag here to delete'}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export default function ShiftBuilderPage() {
   const { data: session } = useSession();
   const router = useRouter();
@@ -76,6 +112,7 @@ export default function ShiftBuilderPage() {
   const [saving, setSaving] = useState(false);
   const [buildMode, setBuildMode] = useState<'blank' | 'auto' | 'template'>('blank');
   const [activeItem, setActiveItem] = useState<any>(null);
+  const [scheduleId, setScheduleId] = useState<string | undefined>();
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 3 }, (_, i) => currentYear + i);
@@ -90,10 +127,35 @@ export default function ShiftBuilderPage() {
 
   useEffect(() => {
     if (session?.user?.branchId) {
+      createDraftSchedule();
       fetchStaffProfiles();
       fetchLeaveRequests();
     }
   }, [session, month, year]);
+
+  const createDraftSchedule = async () => {
+    if (!session?.user?.branchId) return;
+
+    try {
+      // Create a draft schedule for this month/year if it doesn't exist
+      const response = await fetch('/api/shifts/schedules/builder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          branchId: session.user.branchId,
+          month: parseInt(month),
+          year: parseInt(year),
+        }),
+      });
+
+      const data = await response.json();
+      if (response.ok && data.data?.scheduleId) {
+        setScheduleId(data.data.scheduleId);
+      }
+    } catch (error) {
+      console.error('Error creating draft schedule:', error);
+    }
+  };
 
   const fetchLeaveRequests = async () => {
     if (!session?.user?.branchId) return;
@@ -188,6 +250,7 @@ export default function ShiftBuilderPage() {
           month: parseInt(month),
           year: parseInt(year),
           holidayDates: [],
+          scheduleId: scheduleId, // Pass scheduleId to load leaves for this schedule
         }),
       });
 
@@ -211,6 +274,11 @@ export default function ShiftBuilderPage() {
     setActiveItem(event.active.data.current);
   };
 
+  const handleDeleteAssignment = (assignmentId: string) => {
+    setAssignments(assignments.filter(a => a.id !== assignmentId));
+    toast.success('Assignment removed');
+  };
+
   const handleDragEnd = async (event: any) => {
     const { active, over } = event;
     setActiveItem(null);
@@ -221,6 +289,12 @@ export default function ShiftBuilderPage() {
 
     const activeData = active.data.current;
     const overData = over.data.current;
+
+    // Case 0: Dragging to trash zone (delete assignment)
+    if (activeData?.type === 'assignment' && overData?.type === 'trash') {
+      handleDeleteAssignment(activeData.assignmentId);
+      return;
+    }
 
     if (!activeData || !overData) {
       return;
@@ -575,8 +649,8 @@ export default function ShiftBuilderPage() {
 
         {/* Main Builder Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Staff Pool (Left Sidebar) */}
-          <div className="lg:col-span-1">
+          {/* Staff Pool & Leave Manager (Left Sidebar) */}
+          <div className="lg:col-span-1 space-y-4">
             {loading ? (
               <Card>
                 <CardContent className="pt-6">
@@ -587,10 +661,21 @@ export default function ShiftBuilderPage() {
                 </CardContent>
               </Card>
             ) : (
-              <StaffPoolSidebar
-                staff={staffProfiles}
-                assignmentStats={assignmentStats}
-              />
+              <>
+                <StaffPoolSidebar
+                  staff={staffProfiles}
+                  assignmentStats={assignmentStats}
+                />
+                <LeaveManagerInline
+                  staffProfiles={staffProfiles}
+                  scheduleId={scheduleId}
+                  month={parseInt(month)}
+                  year={parseInt(year)}
+                  onLeaveChanged={() => {
+                    fetchLeaveRequests();
+                  }}
+                />
+              </>
             )}
           </div>
 
@@ -615,11 +700,15 @@ export default function ShiftBuilderPage() {
                   holidays={[]}
                   editable={true}
                   skipDndContext={true}
+                  onAssignmentDelete={async (id) => handleDeleteAssignment(id)}
                 />
               </CardContent>
             </Card>
           </div>
         </div>
+
+        {/* Trash Zone - shows when dragging an assignment */}
+        <TrashZone isActive={activeItem?.type === 'assignment'} />
 
         {/* Drag Overlay */}
         <DragOverlay>

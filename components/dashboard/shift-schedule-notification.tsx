@@ -13,14 +13,16 @@ import {
   Server,
   ChevronRight,
   AlertCircle,
-  CalendarClock
+  CalendarClock,
+  AlertTriangle,
+  Building
 } from 'lucide-react';
 import { format, isToday, isTomorrow } from 'date-fns';
 
 interface ShiftAssignment {
   id: string;
   date: string;
-  shiftType: 'NIGHT' | 'SATURDAY_DAY' | 'SUNDAY_DAY' | 'OFF' | 'LEAVE' | 'HOLIDAY';
+  shiftType: 'NIGHT_WEEKDAY' | 'DAY_WEEKEND' | 'NIGHT_WEEKEND' | 'STANDBY_ONCALL' | 'STANDBY_BRANCH' | 'OFF' | 'LEAVE' | 'HOLIDAY';
   isWeekend: boolean;
   schedule: {
     month: number;
@@ -87,11 +89,16 @@ export function ShiftScheduleNotification() {
 
   const getShiftTypeIcon = (shiftType: string) => {
     switch (shiftType) {
-      case 'SATURDAY_DAY':
-      case 'SUNDAY_DAY':
-        return <Sun className="w-4 h-4 text-orange-600 dark:text-orange-400" />;
-      case 'NIGHT':
+      case 'NIGHT_WEEKDAY':
         return <Moon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />;
+      case 'DAY_WEEKEND':
+        return <Sun className="w-4 h-4 text-amber-600 dark:text-amber-400" />;
+      case 'NIGHT_WEEKEND':
+        return <Moon className="w-4 h-4 text-purple-600 dark:text-purple-400" />;
+      case 'STANDBY_ONCALL':
+        return <AlertTriangle className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />;
+      case 'STANDBY_BRANCH':
+        return <Building className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />;
       default:
         return <Clock className="w-4 h-4 text-gray-600 dark:text-gray-400" />;
     }
@@ -99,12 +106,16 @@ export function ShiftScheduleNotification() {
 
   const getShiftTypeLabel = (shiftType: string) => {
     switch (shiftType) {
-      case 'NIGHT':
-        return 'Weekday Night Shift (17:00 - 08:00)';
-      case 'SATURDAY_DAY':
-        return 'Saturday Day Shift (08:00 - 17:00)';
-      case 'SUNDAY_DAY':
-        return 'Sunday Day Shift (08:00 - 17:00)';
+      case 'NIGHT_WEEKDAY':
+        return 'Night Shift - Weekday (20:00 - 07:59)';
+      case 'DAY_WEEKEND':
+        return 'Day Shift - Weekend (08:00 - 19:00)';
+      case 'NIGHT_WEEKEND':
+        return 'Night Shift - Weekend (20:00 - 07:59)';
+      case 'STANDBY_ONCALL':
+        return 'Standby - On-Call';
+      case 'STANDBY_BRANCH':
+        return 'Standby - Branch Operations';
       case 'OFF':
         return 'Day Off';
       case 'LEAVE':

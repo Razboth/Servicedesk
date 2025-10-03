@@ -11,8 +11,10 @@
 
 interface StaffProfile {
   id: string;
-  canWorkNightShift: boolean;
-  canWorkWeekendDay: boolean;
+  canWorkNight: boolean;
+  canWorkDayWeekend: boolean;
+  canStandbyOnCall: boolean;
+  canStandbyBranch: boolean;
   hasServerAccess: boolean;
   hasSabbathRestriction: boolean;
   maxNightShiftsPerMonth: number;
@@ -86,8 +88,8 @@ export class ShiftValidator {
     const dayOfWeek = date.getDay();
 
     // Validate night shift assignment
-    if (assignment.shiftType === 'NIGHT') {
-      if (!staff.canWorkNightShift) {
+    if (assignment.shiftType === 'NIGHT_WEEKDAY' || assignment.shiftType === 'NIGHT_WEEKEND') {
+      if (!staff.canWorkNight) {
         errors.push(`${assignment.staffProfile.id} cannot work night shifts`);
       }
 
@@ -125,8 +127,8 @@ export class ShiftValidator {
     }
 
     // Validate weekend assignment
-    if (['SATURDAY_DAY', 'SUNDAY_DAY'].includes(assignment.shiftType)) {
-      if (!staff.canWorkWeekendDay) {
+    if (assignment.shiftType === 'DAY_WEEKEND') {
+      if (!staff.canWorkDayWeekend) {
         errors.push(`${assignment.staffProfile.id} cannot work weekend day shifts`);
       }
     }

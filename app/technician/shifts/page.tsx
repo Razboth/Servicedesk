@@ -19,6 +19,7 @@ import {
   Sun,
   Coffee,
   AlertTriangle,
+  Building,
   Loader2,
   ChevronLeft,
   ChevronRight,
@@ -47,12 +48,11 @@ interface MonthlySchedule {
 }
 
 const shiftTypeConfig = {
-  NIGHT: { label: 'Night', icon: Moon, color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300', description: 'Weekday Night' },
-  SATURDAY_DAY: { label: 'Sat Day', icon: Sun, color: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300', description: 'Saturday Day Shift' },
-  SATURDAY_NIGHT: { label: 'Sat Night', icon: Moon, color: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300', description: 'Saturday Night' },
-  SUNDAY_DAY: { label: 'Sun Day', icon: Sun, color: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300', description: 'Sunday Day Shift' },
-  SUNDAY_NIGHT: { label: 'Sun Night', icon: Moon, color: 'bg-pink-100 text-pink-700 dark:bg-pink-900 dark:text-pink-300', description: 'Sunday Night' },
-  ON_CALL: { label: 'On-Call', icon: AlertTriangle, color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300', description: 'On-Call Standby' },
+  NIGHT_WEEKDAY: { label: 'Night Weekday', icon: Moon, color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300', description: '20:00-07:59 (Weekdays)' },
+  DAY_WEEKEND: { label: 'Day Weekend', icon: Sun, color: 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300', description: '08:00-19:00 (Weekends/Holidays)' },
+  NIGHT_WEEKEND: { label: 'Night Weekend', icon: Moon, color: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300', description: '20:00-07:59 (Weekends/Holidays)' },
+  STANDBY_ONCALL: { label: 'Standby On-Call', icon: AlertTriangle, color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300', description: 'On-Call Standby' },
+  STANDBY_BRANCH: { label: 'Standby Branch', icon: Building, color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300', description: 'Branch Operational Standby' },
   OFF: { label: 'Off', icon: Coffee, color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300', description: 'Day Off' },
   LEAVE: { label: 'Leave', icon: Calendar, color: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300', description: 'On Leave' },
   HOLIDAY: { label: 'Holiday', icon: Calendar, color: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300', description: 'Public Holiday' },
@@ -122,8 +122,8 @@ export default function TechnicianShiftsPage() {
       const data = await response.json();
       console.log('Schedule data received:', data);
 
-      if (data.schedules && data.schedules.length > 0) {
-        const schedule = data.schedules[0];
+      if (data.data && data.data.length > 0) {
+        const schedule = data.data[0];
         console.log('Found schedule:', schedule.id, 'Status:', schedule.status);
 
         // Fetch assignments for this schedule
@@ -151,7 +151,9 @@ export default function TechnicianShiftsPage() {
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString + 'T00:00:00');
+    // Extract just the date part from ISO string (YYYY-MM-DD)
+    const datePart = dateString.split('T')[0];
+    const date = new Date(datePart + 'T00:00:00');
     return date.toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
@@ -161,7 +163,8 @@ export default function TechnicianShiftsPage() {
   };
 
   const formatShortDate = (dateString: string) => {
-    const date = new Date(dateString + 'T00:00:00');
+    const datePart = dateString.split('T')[0];
+    const date = new Date(datePart + 'T00:00:00');
     return date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
@@ -169,7 +172,8 @@ export default function TechnicianShiftsPage() {
   };
 
   const getDayOfWeek = (dateString: string) => {
-    const date = new Date(dateString + 'T00:00:00');
+    const datePart = dateString.split('T')[0];
+    const date = new Date(datePart + 'T00:00:00');
     return date.toLocaleDateString('en-US', { weekday: 'short' });
   };
 

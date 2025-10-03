@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import {
@@ -42,7 +42,11 @@ import {
   UserCheck,
   Loader2,
   CheckCircle,
-  XCircle
+  XCircle,
+  Trash2,
+  AlertTriangle,
+  Building,
+  Sun
 } from 'lucide-react';
 
 interface User {
@@ -55,8 +59,11 @@ interface User {
 interface StaffProfile {
   id: string;
   userId: string;
-  canWorkNightShift: boolean;
-  canWorkWeekendDay: boolean;
+  canWorkType1: boolean; // NIGHT_WEEKDAY (20:00-07:59) - Weekdays
+  canWorkType2: boolean; // DAY_WEEKEND (08:00-19:00) - Weekends/Holidays
+  canWorkType3: boolean; // NIGHT_WEEKEND (20:00-07:59) - Weekends/Holidays
+  canWorkType4: boolean; // STANDBY_ONCALL - Everyday (Server only)
+  canWorkType5: boolean; // STANDBY_BRANCH - Everyday (Non-server only)
   hasServerAccess: boolean;
   hasSabbathRestriction: boolean;
   preferredShiftType: string | null;
@@ -82,8 +89,11 @@ interface StaffProfile {
 
 interface ProfileFormData {
   userId: string;
-  canWorkNightShift: boolean;
-  canWorkWeekendDay: boolean;
+  canWorkType1: boolean; // NIGHT_WEEKDAY
+  canWorkType2: boolean; // DAY_WEEKEND
+  canWorkType3: boolean; // NIGHT_WEEKEND
+  canWorkType4: boolean; // STANDBY_ONCALL
+  canWorkType5: boolean; // STANDBY_BRANCH
   hasServerAccess: boolean;
   hasSabbathRestriction: boolean;
   preferredShiftType: string;
@@ -102,11 +112,16 @@ export default function StaffProfilesPage() {
   const [editingProfile, setEditingProfile] = useState<StaffProfile | null>(null);
   const [saving, setSaving] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [deletingProfile, setDeletingProfile] = useState<StaffProfile | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const [formData, setFormData] = useState<ProfileFormData>({
     userId: '',
-    canWorkNightShift: false,
-    canWorkWeekendDay: false,
+    canWorkType1: false,
+    canWorkType2: false,
+    canWorkType3: false,
+    canWorkType4: false,
+    canWorkType5: false,
     hasServerAccess: false,
     hasSabbathRestriction: false,
     preferredShiftType: '',
@@ -120,6 +135,26 @@ export default function StaffProfilesPage() {
       fetchProfiles();
     }
   }, [session, statusFilter]);
+
+  // Server access validation: Enforce shift type rules based on hasServerAccess
+  useEffect(() => {
+    if (formData.hasServerAccess) {
+      // Server staff: Can ONLY work Types 1, 3, 4
+      // Disable and uncheck Types 2 and 5
+      setFormData(prev => ({
+        ...prev,
+        canWorkType2: false, // DAY_WEEKEND - server staff cannot work
+        canWorkType5: false, // STANDBY_BRANCH - server staff cannot work
+      }));
+    } else {
+      // Non-server staff: Can ONLY work Types 1, 2, 3, 5
+      // Disable and uncheck Type 4
+      setFormData(prev => ({
+        ...prev,
+        canWorkType4: false, // STANDBY_ONCALL - only server staff can work
+      }));
+    }
+  }, [formData.hasServerAccess]);
 
   const fetchProfiles = async () => {
     try {
@@ -166,8 +201,11 @@ export default function StaffProfilesPage() {
     setEditingProfile(null);
     setFormData({
       userId: '',
-      canWorkNightShift: false,
-      canWorkWeekendDay: false,
+      canWorkType1: false,
+      canWorkType2: false,
+      canWorkType3: false,
+      canWorkType4: false,
+      canWorkType5: false,
       hasServerAccess: false,
       hasSabbathRestriction: false,
       preferredShiftType: '',
@@ -183,8 +221,11 @@ export default function StaffProfilesPage() {
     setEditingProfile(profile);
     setFormData({
       userId: profile.userId,
-      canWorkNightShift: profile.canWorkNightShift,
-      canWorkWeekendDay: profile.canWorkWeekendDay,
+      canWorkType1: profile.canWorkType1,
+      canWorkType2: profile.canWorkType2,
+      canWorkType3: profile.canWorkType3,
+      canWorkType4: profile.canWorkType4,
+      canWorkType5: profile.canWorkType5,
       hasServerAccess: profile.hasServerAccess,
       hasSabbathRestriction: profile.hasSabbathRestriction,
       preferredShiftType: profile.preferredShiftType || '',
@@ -223,6 +264,32 @@ export default function StaffProfilesPage() {
       toast.error(error.message || 'Failed to save profile');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deletingProfile) return;
+
+    try {
+      setDeleting(true);
+      const response = await fetch(`/api/shifts/staff-profiles?userId=${deletingProfile.userId}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete profile');
+      }
+
+      toast.success('Staff profile deleted successfully');
+      setDeletingProfile(null);
+      fetchProfiles();
+    } catch (error: any) {
+      console.error('Error deleting profile:', error);
+      toast.error(error.message || 'Failed to delete profile');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -312,16 +379,34 @@ export default function StaffProfilesPage() {
                     <TableCell className="text-sm text-gray-600">{profile.user.email}</TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
-                        {profile.canWorkNightShift && (
-                          <Badge variant="outline" className="text-xs">
+                        {profile.canWorkType1 && (
+                          <Badge variant="outline" className="text-xs bg-indigo-50 dark:bg-indigo-900/20">
                             <Moon className="w-3 h-3 mr-1" />
-                            Night
+                            Type 1
                           </Badge>
                         )}
-                        {profile.canWorkWeekendDay && (
-                          <Badge variant="outline" className="text-xs">
-                            <Calendar className="w-3 h-3 mr-1" />
-                            Weekend
+                        {profile.canWorkType2 && (
+                          <Badge variant="outline" className="text-xs bg-amber-50 dark:bg-amber-900/20">
+                            <Sun className="w-3 h-3 mr-1" />
+                            Type 2
+                          </Badge>
+                        )}
+                        {profile.canWorkType3 && (
+                          <Badge variant="outline" className="text-xs bg-purple-50 dark:bg-purple-900/20">
+                            <Moon className="w-3 h-3 mr-1" />
+                            Type 3
+                          </Badge>
+                        )}
+                        {profile.canWorkType4 && (
+                          <Badge variant="outline" className="text-xs bg-yellow-50 dark:bg-yellow-900/20">
+                            <AlertTriangle className="w-3 h-3 mr-1" />
+                            Type 4
+                          </Badge>
+                        )}
+                        {profile.canWorkType5 && (
+                          <Badge variant="outline" className="text-xs bg-emerald-50 dark:bg-emerald-900/20">
+                            <Building className="w-3 h-3 mr-1" />
+                            Type 5
                           </Badge>
                         )}
                         {profile.hasServerAccess && (
@@ -365,13 +450,23 @@ export default function StaffProfilesPage() {
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEdit(profile)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(profile)}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setDeletingProfile(profile)}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -433,41 +528,9 @@ export default function StaffProfilesPage() {
               </div>
             )}
 
-            {/* Capabilities */}
+            {/* Server Access First */}
             <div className="space-y-3">
-              <Label className="text-base font-semibold">Capabilities</Label>
-
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="nightShift"
-                  checked={formData.canWorkNightShift}
-                  onCheckedChange={(checked) =>
-                    setFormData({ ...formData, canWorkNightShift: checked as boolean })
-                  }
-                />
-                <label
-                  htmlFor="nightShift"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  Can work night shifts
-                </label>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="weekend"
-                  checked={formData.canWorkWeekendDay}
-                  onCheckedChange={(checked) =>
-                    setFormData({ ...formData, canWorkWeekendDay: checked as boolean })
-                  }
-                />
-                <label
-                  htmlFor="weekend"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  Available for weekend shifts
-                </label>
-              </div>
+              <Label className="text-base font-semibold">Server Access</Label>
 
               <div className="flex items-center space-x-2">
                 <Checkbox
@@ -481,8 +544,142 @@ export default function StaffProfilesPage() {
                   htmlFor="server"
                   className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                 >
-                  Has server access (for on-call rotation)
+                  Has server access
                 </label>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Server staff can work Types 1, 3, 4 only. Non-server staff can work Types 1, 2, 3, 5 only.
+              </p>
+            </div>
+
+            {/* Shift Types Selection */}
+            <div className="space-y-3">
+              <Label className="text-base font-semibold">Shift Types</Label>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Select which shift types this staff can work:
+              </p>
+
+              <div className="space-y-3 pl-2 border-l-2 border-gray-200 dark:border-gray-700">
+                {/* Type 1 */}
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="type1"
+                    checked={formData.canWorkType1}
+                    onCheckedChange={(checked) =>
+                      setFormData({ ...formData, canWorkType1: checked as boolean })
+                    }
+                  />
+                  <label
+                    htmlFor="type1"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="bg-indigo-50 dark:bg-indigo-900/20">
+                        <Moon className="w-3 h-3 mr-1" />
+                        Type 1
+                      </Badge>
+                      <span>Night Weekday (20:00-07:59) - Mon-Fri</span>
+                    </div>
+                  </label>
+                </div>
+
+                {/* Type 2 */}
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="type2"
+                    checked={formData.canWorkType2}
+                    disabled={formData.hasServerAccess}
+                    onCheckedChange={(checked) =>
+                      setFormData({ ...formData, canWorkType2: checked as boolean })
+                    }
+                  />
+                  <label
+                    htmlFor="type2"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="bg-amber-50 dark:bg-amber-900/20">
+                        <Sun className="w-3 h-3 mr-1" />
+                        Type 2
+                      </Badge>
+                      <span>Day Weekend (08:00-19:00) - Sat-Sun/Holidays</span>
+                      {formData.hasServerAccess && <span className="text-xs text-red-500">(Server staff cannot work)</span>}
+                    </div>
+                  </label>
+                </div>
+
+                {/* Type 3 */}
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="type3"
+                    checked={formData.canWorkType3}
+                    onCheckedChange={(checked) =>
+                      setFormData({ ...formData, canWorkType3: checked as boolean })
+                    }
+                  />
+                  <label
+                    htmlFor="type3"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="bg-purple-50 dark:bg-purple-900/20">
+                        <Moon className="w-3 h-3 mr-1" />
+                        Type 3
+                      </Badge>
+                      <span>Night Weekend (20:00-07:59) - Sat-Sun/Holidays</span>
+                    </div>
+                  </label>
+                </div>
+
+                {/* Type 4 */}
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="type4"
+                    checked={formData.canWorkType4}
+                    disabled={!formData.hasServerAccess}
+                    onCheckedChange={(checked) =>
+                      setFormData({ ...formData, canWorkType4: checked as boolean })
+                    }
+                  />
+                  <label
+                    htmlFor="type4"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="bg-yellow-50 dark:bg-yellow-900/20">
+                        <AlertTriangle className="w-3 h-3 mr-1" />
+                        Type 4
+                      </Badge>
+                      <span>Standby On-Call - Everyday</span>
+                      {!formData.hasServerAccess && <span className="text-xs text-red-500">(Only server staff)</span>}
+                    </div>
+                  </label>
+                </div>
+
+                {/* Type 5 */}
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="type5"
+                    checked={formData.canWorkType5}
+                    disabled={formData.hasServerAccess}
+                    onCheckedChange={(checked) =>
+                      setFormData({ ...formData, canWorkType5: checked as boolean })
+                    }
+                  />
+                  <label
+                    htmlFor="type5"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="bg-emerald-50 dark:bg-emerald-900/20">
+                        <Building className="w-3 h-3 mr-1" />
+                        Type 5
+                      </Badge>
+                      <span>Standby Branch Operations - Everyday</span>
+                      {formData.hasServerAccess && <span className="text-xs text-red-500">(Server staff cannot work)</span>}
+                    </div>
+                  </label>
+                </div>
               </div>
             </div>
 
@@ -598,6 +795,50 @@ export default function StaffProfilesPage() {
                 <>
                   <UserCheck className="w-4 h-4 mr-2" />
                   {editingProfile ? 'Update Profile' : 'Create Profile'}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deletingProfile} onOpenChange={(open) => !open && setDeletingProfile(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Staff Profile</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete the profile for <strong>{deletingProfile?.user.name}</strong>?
+            </DialogDescription>
+          </DialogHeader>
+
+          {deletingProfile && deletingProfile._count.shiftAssignments > 0 && (
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+              <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                <strong>Warning:</strong> This profile has {deletingProfile._count.shiftAssignments} shift assignment(s).
+                The profile cannot be deleted. Consider setting it to inactive instead.
+              </p>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeletingProfile(null)} disabled={deleting}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleting || (deletingProfile && deletingProfile._count.shiftAssignments > 0)}
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete Profile
                 </>
               )}
             </Button>

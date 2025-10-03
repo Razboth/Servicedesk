@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { branchId, month, year, holidayDates = [] } = body;
+    const { branchId, month, year, holidayDates = [], scheduleId } = body;
 
     // Validate inputs
     if (!branchId || !month || !year) {
@@ -68,9 +68,9 @@ export async function POST(request: NextRequest) {
     // Parse holiday dates
     const holidays = holidayDates.map((d: string) => new Date(d));
 
-    // Generate schedule
+    // Generate schedule (pass scheduleId to load leaves for that schedule)
     const generator = new ShiftGenerator(prisma);
-    const result = await generator.generateSchedule(branchId, month, year, holidays);
+    const result = await generator.generateSchedule(branchId, month, year, holidays, scheduleId);
 
     // Create schedule record
     const schedule = await prisma.shiftSchedule.create({
