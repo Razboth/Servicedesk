@@ -78,5 +78,17 @@ uploads/
 cypress/videos/
 cypress/screenshots/
 playwright-report/
-test-results/*.sql
+test-results/
+
+# Backup and Archive Files
+*.sql
+!prisma/migrations/**/*.sql
 *.backup
+*.bak
+*.old
+*.tmp
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z

@@ -63,7 +63,7 @@ interface StaffProfile {
   canWorkType2: boolean; // DAY_WEEKEND (08:00-19:00) - Weekends/Holidays
   canWorkType3: boolean; // NIGHT_WEEKEND (20:00-07:59) - Weekends/Holidays
   canWorkType4: boolean; // STANDBY_ONCALL - Everyday (Server only)
-  canWorkType5: boolean; // STANDBY_BRANCH - Everyday (Non-server only)
+  canWorkType5: boolean; // STANDBY_BRANCH - Everyday (Server & Non-server)
   hasServerAccess: boolean;
   hasSabbathRestriction: boolean;
   preferredShiftType: string | null;
@@ -139,15 +139,14 @@ export default function StaffProfilesPage() {
   // Server access validation: Enforce shift type rules based on hasServerAccess
   useEffect(() => {
     if (formData.hasServerAccess) {
-      // Server staff: Can ONLY work Types 1, 3, 4
-      // Disable and uncheck Types 2 and 5
+      // Server staff: Can work Types 1, 3, 4, 5
+      // Disable and uncheck Type 2 only
       setFormData(prev => ({
         ...prev,
         canWorkType2: false, // DAY_WEEKEND - server staff cannot work
-        canWorkType5: false, // STANDBY_BRANCH - server staff cannot work
       }));
     } else {
-      // Non-server staff: Can ONLY work Types 1, 2, 3, 5
+      // Non-server staff: Can work Types 1, 2, 3, 5
       // Disable and uncheck Type 4
       setFormData(prev => ({
         ...prev,
@@ -239,6 +238,19 @@ export default function StaffProfilesPage() {
   const handleSave = async () => {
     if (!formData.userId) {
       toast.error('Please select a user');
+      return;
+    }
+
+    // Validate at least one shift type is enabled
+    const hasAtLeastOneShiftType =
+      formData.canWorkType1 ||
+      formData.canWorkType2 ||
+      formData.canWorkType3 ||
+      formData.canWorkType4 ||
+      formData.canWorkType5;
+
+    if (!hasAtLeastOneShiftType) {
+      toast.error('Please enable at least one shift type for this staff member');
       return;
     }
 
@@ -661,7 +673,6 @@ export default function StaffProfilesPage() {
                   <Checkbox
                     id="type5"
                     checked={formData.canWorkType5}
-                    disabled={formData.hasServerAccess}
                     onCheckedChange={(checked) =>
                       setFormData({ ...formData, canWorkType5: checked as boolean })
                     }
@@ -676,7 +687,6 @@ export default function StaffProfilesPage() {
                         Type 5
                       </Badge>
                       <span>Standby Branch Operations - Everyday</span>
-                      {formData.hasServerAccess && <span className="text-xs text-red-500">(Server staff cannot work)</span>}
                     </div>
                   </label>
                 </div>

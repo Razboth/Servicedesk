@@ -132,16 +132,13 @@ export default function LeaveRequestsPage() {
   const fetchRequests = async () => {
     try {
       setLoading(true);
-      const params = new URLSearchParams({
-        branchId: session?.user?.branchId || '',
-        ...(statusFilter !== 'all' && { status: statusFilter }),
-      });
+      const params = statusFilter !== 'all' ? `?status=${statusFilter}` : '';
+      const response = await fetch(`/api/manager/leaves${params}`);
 
-      const response = await fetch(`/api/shifts/leave-requests?${params}`);
       if (!response.ok) throw new Error('Failed to fetch leave requests');
 
       const data = await response.json();
-      setRequests(data.data || []);
+      setRequests(data.leaves || []);
     } catch (error) {
       console.error('Error fetching leave requests:', error);
       toast.error('Failed to load leave requests');
@@ -230,18 +227,22 @@ export default function LeaveRequestsPage() {
 
     try {
       setProcessing(true);
-      const response = await fetch(`/api/shifts/leave-requests/${selectedRequest.id}`, {
+      const response = await fetch(`/api/manager/leaves/${selectedRequest.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          status: actionType === 'approve' ? 'APPROVED' : 'REJECTED',
+          action: actionType === 'approve' ? 'APPROVE' : 'REJECT',
           ...(actionType === 'reject' && { rejectionReason }),
         }),
       });
 
-      if (!response.ok) throw new Error(`Failed to ${actionType} leave request`);
+      const data = await response.json();
 
-      toast.success(`Leave request ${actionType}d successfully`);
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || `Failed to ${actionType} leave request`);
+      }
+
+      toast.success(data.message || `Leave request ${actionType}d successfully`);
       setIsDialogOpen(false);
       fetchRequests();
     } catch (error: any) {
