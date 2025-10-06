@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { rateLimit, createUserBasedKeyGenerator } from '@/lib/rate-limit';
 
 /**
  * GET /api/shifts/staff-profiles
@@ -83,6 +84,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Rate limit: 20 staff profile operations per minute per user
+    const rateLimitResult = rateLimit(request, {
+      limit: 20,
+      windowMs: 60000,
+      keyGenerator: createUserBasedKeyGenerator(session.user.id),
+      message: 'Too many staff profile operations. Please try again in a minute.',
+    });
+    if (rateLimitResult) return rateLimitResult;
+
     const body = await request.json();
     const {
       userId,
@@ -113,20 +123,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // SHIFT TYPE VALIDATION
+    // At least one shift type must be enabled
+    const hasAtLeastOneShiftType = canWorkType1Value || canWorkType2Value || canWorkType3Value || canWorkType4Value || canWorkType5Value;
+    if (!hasAtLeastOneShiftType) {
+      return NextResponse.json(
+        { error: 'At least one shift type must be enabled for the staff profile' },
+        { status: 400 }
+      );
+    }
+
     // SERVER ACCESS VALIDATION
-    // Rule: Server staff can ONLY work Types 1, 3, 4
-    // Rule: Non-server staff can ONLY work Types 1, 2, 3, 5
+    // Rule: Server staff can work Types 1, 3, 4, 5 (NOT Type 2)
+    // Rule: Non-server staff can work Types 1, 2, 3, 5 (NOT Type 4)
     if (hasServerAccess) {
       // Server staff validation
       if (canWorkType2Value) {
         return NextResponse.json(
-          { error: 'Server staff cannot work Type 2 (Day Weekend). They can only work Types 1, 3, and 4.' },
-          { status: 400 }
-        );
-      }
-      if (canWorkType5Value) {
-        return NextResponse.json(
-          { error: 'Server staff cannot work Type 5 (Standby Branch). They can only work Types 1, 3, and 4.' },
+          { error: 'Server staff cannot work Type 2 (Day Weekend). They can only work Types 1, 3, 4, and 5.' },
           { status: 400 }
         );
       }

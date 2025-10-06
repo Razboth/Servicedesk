@@ -229,6 +229,132 @@ export async function PUT(
 }
 
 /**
+ * PATCH /api/manager/leaves/[leaveId]
+ * Approve or reject a leave request
+ */
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { leaveId: string } }
+) {
+  try {
+    const session = await auth();
+
+    if (!session?.user || !['MANAGER_IT', 'MANAGER', 'ADMIN'].includes(session.user.role)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { action, rejectionReason } = body;
+
+    if (!action || !['APPROVE', 'REJECT'].includes(action)) {
+      return NextResponse.json(
+        { error: 'Invalid action. Must be APPROVE or REJECT' },
+        { status: 400 }
+      );
+    }
+
+    if (action === 'REJECT' && !rejectionReason) {
+      return NextResponse.json(
+        { error: 'Rejection reason is required' },
+        { status: 400 }
+      );
+    }
+
+    // Find the leave request
+    const leaveRequest = await prisma.leaveRequest.findUnique({
+      where: { id: params.leaveId },
+      include: {
+        staffProfile: {
+          include: {
+            user: {
+              select: {
+                branchId: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!leaveRequest) {
+      return NextResponse.json(
+        { error: 'Leave request not found' },
+        { status: 404 }
+      );
+    }
+
+    // For non-admin managers, verify the staff is in their branch
+    if (session.user.role !== 'ADMIN') {
+      const user = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { branchId: true }
+      });
+
+      if (user?.branchId !== leaveRequest.staffProfile.user.branchId) {
+        return NextResponse.json(
+          { error: 'Cannot manage leave for staff outside your branch' },
+          { status: 403 }
+        );
+      }
+    }
+
+    // Only pending requests can be approved/rejected
+    if (leaveRequest.status !== 'PENDING') {
+      return NextResponse.json(
+        { error: `Leave request is already ${leaveRequest.status.toLowerCase()}` },
+        { status: 400 }
+      );
+    }
+
+    // Update leave request
+    const updateData: any = {
+      updatedAt: new Date()
+    };
+
+    if (action === 'APPROVE') {
+      updateData.status = 'APPROVED';
+      updateData.approvedBy = session.user.id;
+      updateData.approvedAt = new Date();
+    } else {
+      updateData.status = 'REJECTED';
+      updateData.rejectedBy = session.user.id;
+      updateData.rejectedAt = new Date();
+      updateData.rejectionReason = rejectionReason;
+    }
+
+    const updatedLeave = await prisma.leaveRequest.update({
+      where: { id: params.leaveId },
+      data: updateData,
+      include: {
+        staffProfile: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: `Leave request ${action.toLowerCase()}d successfully`,
+      leave: updatedLeave
+    });
+  } catch (error: any) {
+    console.error('Error updating leave:', error);
+    return NextResponse.json(
+      { error: 'Failed to update leave request' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
  * DELETE /api/manager/leaves/[leaveId]
  * Delete a leave request
  */

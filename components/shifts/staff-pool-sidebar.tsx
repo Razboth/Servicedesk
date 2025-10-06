@@ -7,6 +7,16 @@ import { Input } from '@/components/ui/input';
 import { Moon, Sun, Server, AlertCircle, GripVertical, Calendar } from 'lucide-react';
 import { useState, useMemo } from 'react';
 
+interface LeaveRequest {
+  id: string;
+  staffProfileId: string;
+  startDate: string;
+  endDate: string;
+  status: string;
+  leaveType: string;
+  totalDays: number;
+}
+
 interface StaffProfile {
   id: string;
   userId: string;
@@ -14,10 +24,11 @@ interface StaffProfile {
     name: string;
     email: string;
   };
-  canWorkNight: boolean;
-  canWorkDayWeekend: boolean;
-  canStandbyOnCall: boolean;
-  canStandbyBranch: boolean;
+  canWorkType1: boolean; // NIGHT_WEEKDAY
+  canWorkType2: boolean; // DAY_WEEKEND
+  canWorkType3: boolean; // NIGHT_WEEKEND
+  canWorkType4: boolean; // STANDBY_ONCALL
+  canWorkType5: boolean; // STANDBY_BRANCH
   hasServerAccess: boolean;
   hasSabbathRestriction: boolean;
   isActive: boolean;
@@ -36,16 +47,21 @@ interface StaffPoolSidebarProps {
   staff: StaffProfile[];
   assignmentStats?: Record<string, StaffAssignmentStats>;
   onStaffSelect?: (staffId: string) => void;
+  leaveRequests?: LeaveRequest[];
+  selectedMonth?: number;
+  selectedYear?: number;
 }
 
 function DraggableStaffCard({
   staff,
   stats,
   onClick,
+  hasLeave,
 }: {
   staff: StaffProfile;
   stats?: StaffAssignmentStats;
   onClick?: () => void;
+  hasLeave?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `staff-${staff.id}`,
@@ -53,10 +69,11 @@ function DraggableStaffCard({
       type: 'staff',
       staffId: staff.id,
       staffName: staff.user.name,
-      canWorkNight: staff.canWorkNight,
-      canWorkDayWeekend: staff.canWorkDayWeekend,
-      canStandbyOnCall: staff.canStandbyOnCall,
-      canStandbyBranch: staff.canStandbyBranch,
+      canWorkType1: staff.canWorkType1,
+      canWorkType2: staff.canWorkType2,
+      canWorkType3: staff.canWorkType3,
+      canWorkType4: staff.canWorkType4,
+      canWorkType5: staff.canWorkType5,
       hasServerAccess: staff.hasServerAccess,
       hasSabbathRestriction: staff.hasSabbathRestriction,
     },
@@ -89,22 +106,30 @@ function DraggableStaffCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
             <h4 className="font-medium text-sm truncate">{staff.user.name}</h4>
-            {stats && stats.totalAssignments > 0 && (
-              <Badge variant="outline" className="text-xs">
-                {stats.totalAssignments}
-              </Badge>
-            )}
+            <div className="flex items-center gap-1">
+              {hasLeave && (
+                <Badge variant="outline" className="text-xs bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800">
+                  <Calendar className="w-3 h-3 mr-1" />
+                  Leave
+                </Badge>
+              )}
+              {stats && stats.totalAssignments > 0 && (
+                <Badge variant="outline" className="text-xs">
+                  {stats.totalAssignments}
+                </Badge>
+              )}
+            </div>
           </div>
 
           {/* Capabilities */}
           <div className="flex flex-wrap items-center gap-1 mt-2">
-            {staff.canWorkNight && (
+            {(staff.canWorkType1 || staff.canWorkType3) && (
               <Badge variant="outline" className="text-xs bg-indigo-50 dark:bg-indigo-900/30">
                 <Moon className="w-3 h-3 mr-1" />
                 Night
               </Badge>
             )}
-            {staff.canWorkDayWeekend && (
+            {staff.canWorkType2 && (
               <Badge variant="outline" className="text-xs bg-blue-50 dark:bg-blue-900/30">
                 <Sun className="w-3 h-3 mr-1" />
                 Weekend
@@ -162,9 +187,43 @@ export function StaffPoolSidebar({
   staff,
   assignmentStats = {},
   onStaffSelect,
+  leaveRequests = [],
+  selectedMonth,
+  selectedYear,
 }: StaffPoolSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCapability, setFilterCapability] = useState<'all' | 'night' | 'weekend' | 'server'>('all');
+
+  // Check if staff has approved leave in the selected month
+  const staffWithLeave = useMemo(() => {
+    if (!leaveRequests || !selectedMonth || !selectedYear) return new Set();
+
+    const staffIds = new Set<string>();
+    leaveRequests.forEach((leave) => {
+      if (leave.status === 'APPROVED') {
+        const startDate = new Date(leave.startDate);
+        const endDate = new Date(leave.endDate);
+        const leaveStartMonth = startDate.getMonth();
+        const leaveStartYear = startDate.getFullYear();
+        const leaveEndMonth = endDate.getMonth();
+        const leaveEndYear = endDate.getFullYear();
+
+        // Check if leave overlaps with selected month
+        const targetDate = new Date(selectedYear, selectedMonth, 1);
+        const targetMonth = targetDate.getMonth();
+        const targetYear = targetDate.getFullYear();
+
+        if (
+          (leaveStartYear === targetYear && leaveStartMonth === targetMonth) ||
+          (leaveEndYear === targetYear && leaveEndMonth === targetMonth) ||
+          (startDate <= new Date(targetYear, targetMonth + 1, 0) && endDate >= new Date(targetYear, targetMonth, 1))
+        ) {
+          staffIds.add(leave.staffProfileId);
+        }
+      }
+    });
+    return staffIds;
+  }, [leaveRequests, selectedMonth, selectedYear]);
 
   const filteredStaff = useMemo(() => {
     return staff.filter((s) => {
@@ -175,13 +234,13 @@ export function StaffPoolSidebar({
       let matchesCapability = true;
       switch (filterCapability) {
         case 'night':
-          matchesCapability = s.canWorkNight;
+          matchesCapability = s.canWorkType1 || s.canWorkType3;
           break;
         case 'weekend':
-          matchesCapability = s.canWorkDayWeekend;
+          matchesCapability = s.canWorkType2;
           break;
         case 'server':
-          matchesCapability = s.hasServerAccess;
+          matchesCapability = s.hasServerAccess || s.canWorkType5;
           break;
       }
 
@@ -190,9 +249,11 @@ export function StaffPoolSidebar({
   }, [staff, searchQuery, filterCapability]);
 
   const activeStaff = staff.filter(s => s.isActive);
-  const nightShiftStaff = activeStaff.filter(s => s.canWorkNight);
-  const weekendStaff = activeStaff.filter(s => s.canWorkDayWeekend);
-  const serverAccessStaff = activeStaff.filter(s => s.hasServerAccess);
+  const nightShiftStaff = activeStaff.filter(s => s.canWorkType1 || s.canWorkType3);
+  const weekendStaff = activeStaff.filter(s => s.canWorkType2);
+  const serverAccessStaff = activeStaff.filter(s => s.hasServerAccess || s.canWorkType5);
+  const sabbathStaff = activeStaff.filter(s => s.hasSabbathRestriction);
+  const leaveStaff = activeStaff.filter(s => staffWithLeave.has(s.id));
 
   return (
     <Card className="h-full flex flex-col">
@@ -205,20 +266,28 @@ export function StaffPoolSidebar({
         {/* Stats Summary */}
         <div className="grid grid-cols-2 gap-2 pt-2">
           <div className="text-xs">
-            <span className="text-gray-600 dark:text-gray-400">Total: </span>
+            <span className="text-gray-600 dark:text-gray-400">Total active: </span>
             <span className="font-semibold">{activeStaff.length}</span>
           </div>
           <div className="text-xs">
-            <span className="text-gray-600 dark:text-gray-400">Night: </span>
+            <span className="text-gray-600 dark:text-gray-400">Night shift: </span>
             <span className="font-semibold">{nightShiftStaff.length}</span>
           </div>
           <div className="text-xs">
-            <span className="text-gray-600 dark:text-gray-400">Weekend: </span>
+            <span className="text-gray-600 dark:text-gray-400">Weekend available: </span>
             <span className="font-semibold">{weekendStaff.length}</span>
           </div>
           <div className="text-xs">
-            <span className="text-gray-600 dark:text-gray-400">Server: </span>
+            <span className="text-gray-600 dark:text-gray-400">Server access: </span>
             <span className="font-semibold">{serverAccessStaff.length}</span>
+          </div>
+          <div className="text-xs">
+            <span className="text-gray-600 dark:text-gray-400">Sabbath: </span>
+            <span className="font-semibold">{sabbathStaff.length}</span>
+          </div>
+          <div className="text-xs">
+            <span className="text-gray-600 dark:text-gray-400">On leave: </span>
+            <span className="font-semibold text-orange-600 dark:text-orange-400">{leaveStaff.length}</span>
           </div>
         </div>
       </CardHeader>
@@ -290,6 +359,7 @@ export function StaffPoolSidebar({
                 staff={s}
                 stats={assignmentStats[s.id]}
                 onClick={() => onStaffSelect?.(s.id)}
+                hasLeave={staffWithLeave.has(s.id)}
               />
             ))
           )}

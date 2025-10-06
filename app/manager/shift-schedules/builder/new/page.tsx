@@ -108,6 +108,7 @@ export default function ShiftBuilderPage() {
   const [year, setYear] = useState(new Date().getFullYear().toString());
   const [staffProfiles, setStaffProfiles] = useState<StaffProfile[]>([]);
   const [assignments, setAssignments] = useState<ShiftAssignment[]>([]);
+  const [leaveRequests, setLeaveRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [buildMode, setBuildMode] = useState<'blank' | 'auto' | 'template'>('blank');
@@ -172,6 +173,9 @@ export default function ShiftBuilderPage() {
       const data = await response.json();
 
       if (data.leaves) {
+        // Store leave requests for staff overview
+        setLeaveRequests(data.leaves);
+
         const selectedMonth = parseInt(month);
         const selectedYear = parseInt(year);
         const monthStart = new Date(selectedYear, selectedMonth - 1, 1);
@@ -665,6 +669,9 @@ export default function ShiftBuilderPage() {
                 <StaffPoolSidebar
                   staff={staffProfiles}
                   assignmentStats={assignmentStats}
+                  leaveRequests={leaveRequests}
+                  selectedMonth={parseInt(month) - 1}
+                  selectedYear={parseInt(year)}
                 />
                 <LeaveManagerInline
                   staffProfiles={staffProfiles}

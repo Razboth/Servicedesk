@@ -84,7 +84,7 @@ function generateVersionFile() {
 
 export const APP_VERSION = {
   version: '${gitInfo.version}',
-  commit: '${gitInfo.commitHash}${gitInfo.isDirty ? '-dirty' : ''}',
+  commit: '${gitInfo.commitHash}',
   branch: '${gitInfo.branch}',
   buildNumber: ${gitInfo.commitCount},
   buildDate: '${gitInfo.buildDate.split('T')[0]}',
@@ -95,29 +95,20 @@ export const APP_VERSION = {
     date: '${gitInfo.lastCommitDate}',
     hash: '${gitInfo.commitHash}'
   },
-  isDirty: ${gitInfo.isDirty},
+  isDirty: false,
   tag: '${gitInfo.tag}'
 };
 
 // Get formatted version string
 export function getVersionString(): string {
-  const { version, commit, branch, isDirty } = APP_VERSION;
-  const env = process.env.NODE_ENV || 'development';
-  
-  // Format: v{version}-{commit}[-dirty] ({branch})
-  let versionStr = \`v\${version}-\${commit}\`;
-  
-  if (env === 'development' && branch !== 'main' && branch !== 'master') {
-    versionStr += \` (\${branch})\`;
-  }
-  
-  return versionStr;
+  const { version } = APP_VERSION;
+  return \`v\${version}\`;
 }
 
 // Get full version info for debugging
 export function getFullVersionInfo(): string {
-  const { version, commit, branch, buildNumber, buildDate, isDirty } = APP_VERSION;
-  return \`Version \${version} | Build #\${buildNumber} | Commit: \${commit}\${isDirty ? '-dirty' : ''} | Branch: \${branch} | Built: \${buildDate}\`;
+  const { version, buildNumber, branch, buildDate } = APP_VERSION;
+  return \`Version \${version} | Build #\${buildNumber} | Branch: \${branch} | Built: \${buildDate}\`;
 }
 
 // Get commit info
@@ -149,7 +140,6 @@ export const VERSION_HISTORY = [
   
   console.log('✅ Version file generated successfully!');
   console.log(`📋 Version: ${gitInfo.version}`);
-  console.log(`🔧 Commit: ${gitInfo.commitHash}${gitInfo.isDirty ? '-dirty' : ''}`);
   console.log(`🌿 Branch: ${gitInfo.branch}`);
   console.log(`📦 Build: #${gitInfo.commitCount}`);
   console.log(`📝 Last commit: ${gitInfo.lastCommitMessage}`);
