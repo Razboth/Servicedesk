@@ -689,23 +689,61 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // Optimize query by selecting only necessary fields
     const [tickets, total] = await Promise.all([
       prisma.ticket.findMany({
         where,
-        include: {
-          service: { 
-            select: { 
+        select: {
+          id: true,
+          ticketNumber: true,
+          title: true,
+          description: true,
+          priority: true,
+          status: true,
+          category: true,
+          createdAt: true,
+          updatedAt: true,
+          resolvedAt: true,
+          closedAt: true,
+          estimatedHours: true,
+          actualHours: true,
+          isConfidential: true,
+          securityClassification: true,
+          // Optimized relations - only select what's needed
+          service: {
+            select: {
+              id: true,
               name: true,
               slaHours: true,
               requiresApproval: true,
               category: {
                 select: { name: true }
               }
-            } 
+            }
           },
-          createdBy: { select: { id: true, name: true, email: true, branchId: true } },
-          assignedTo: { select: { id: true, name: true, email: true } },
-          branch: { select: { id: true, name: true, code: true } },
+          createdBy: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              branchId: true
+            }
+          },
+          assignedTo: {
+            select: {
+              id: true,
+              name: true,
+              email: true
+            }
+          },
+          branch: {
+            select: {
+              id: true,
+              name: true,
+              code: true
+            }
+          },
+          // Only get latest approval for display
           approvals: {
             select: {
               id: true,
@@ -721,12 +759,19 @@ export async function GET(request: NextRequest) {
             orderBy: { createdAt: 'desc' },
             take: 1
           },
-          _count: { select: { comments: true } }
+          // Use count instead of loading all comments
+          _count: {
+            select: {
+              comments: true,
+              attachments: true
+            }
+          }
         },
         orderBy: getSortOrder(sortBy, sortOrder),
         skip: (page - 1) * limit,
-        take: limit
+        take: Math.min(limit, 100) // Cap at 100 for safety
       }),
+      // Use a simpler count query
       prisma.ticket.count({ where })
     ]);
 

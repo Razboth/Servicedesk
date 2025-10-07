@@ -283,8 +283,9 @@ export function TicketsDataTable({
         params.append('search', searchQuery)
       }
 
-      // Add a higher limit to get more tickets
-      params.append('limit', '5000')
+      // Use reasonable pagination limit for better performance
+      params.append('limit', '50')
+      params.append('page', '1')
       
       const response = await fetch(`/api/tickets?${params}`)
       if (response.ok) {

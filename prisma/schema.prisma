@@ -375,6 +375,23 @@ model Ticket {
   supportGroup           SupportGroup?         @relation(fields: [supportGroupId], references: [id])
   vendorTickets          VendorTicket[]
 
+  // Performance optimization indexes
+  @@index([status])
+  @@index([createdById])
+  @@index([assignedToId])
+  @@index([branchId])
+  @@index([serviceId])
+  @@index([createdAt])
+  @@index([priority])
+  @@index([supportGroupId])
+  // Compound indexes for common query patterns
+  @@index([status, assignedToId])
+  @@index([createdById, status])
+  @@index([status, createdAt])
+  @@index([branchId, status])
+  @@index([serviceId, status])
+  @@index([assignedToId, status, priority])
+
   @@map("tickets")
 }
 
