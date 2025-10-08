@@ -1106,21 +1106,95 @@ export default function TicketDetailPage() {
                               
                             case 'FILE':
                               if (!value) return <span className="text-gray-400 italic">No file attached</span>;
+
+                              // Parse the file data (format: "filename|base64data" or just "filename")
+                              const fileData = value.includes('|') ? value.split('|') : [value, ''];
+                              const fileName = fileData[0];
+                              const base64Data = fileData[1];
+
+                              // Determine if it's an image
+                              const isImage = fileName.match(/\.(jpg|jpeg|png|gif|bmp|webp)$/i);
+
                               return (
-                                <div className="inline-flex items-center gap-2 p-2 bg-cream-50 dark:bg-warm-dark-200 rounded-lg">
-                                  <FileText className="h-4 w-4 text-emerald-500" />
-                                  <span className="text-sm font-medium">{value}</span>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 px-2"
-                                    onClick={() => {
-                                      // Handle file download
-                                      console.log('Download file:', value);
-                                    }}
-                                  >
-                                    <Download className="h-3 w-3" />
-                                  </Button>
+                                <div className="space-y-2">
+                                  {/* File preview for images */}
+                                  {isImage && base64Data && (
+                                    <div className="relative group">
+                                      <img
+                                        src={base64Data.startsWith('data:') ? base64Data : `data:image/jpeg;base64,${base64Data}`}
+                                        alt={fileName}
+                                        className="max-w-full h-auto max-h-64 rounded-lg border border-gray-200 dark:border-gray-700"
+                                      />
+                                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Button
+                                          variant="secondary"
+                                          size="sm"
+                                          className="shadow-lg"
+                                          onClick={() => {
+                                            const link = document.createElement('a');
+                                            link.href = base64Data.startsWith('data:') ? base64Data : `data:image/jpeg;base64,${base64Data}`;
+                                            link.download = fileName;
+                                            document.body.appendChild(link);
+                                            link.click();
+                                            document.body.removeChild(link);
+                                          }}
+                                        >
+                                          <Download className="h-3 w-3 mr-1" />
+                                          Download
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* File info and download button */}
+                                  <div className="inline-flex items-center gap-2 p-2 bg-cream-50 dark:bg-warm-dark-200 rounded-lg">
+                                    {isImage ? (
+                                      <ImageIcon className="h-4 w-4 text-emerald-500" />
+                                    ) : (
+                                      <FileText className="h-4 w-4 text-emerald-500" />
+                                    )}
+                                    <span className="text-sm font-medium">{fileName}</span>
+                                    {base64Data && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 px-2"
+                                        onClick={() => {
+                                          // Create download link
+                                          const link = document.createElement('a');
+                                          if (base64Data.startsWith('data:')) {
+                                            link.href = base64Data;
+                                          } else {
+                                            // Guess MIME type from extension
+                                            const ext = fileName.split('.').pop()?.toLowerCase() || '';
+                                            const mimeTypes: Record<string, string> = {
+                                              'pdf': 'application/pdf',
+                                              'doc': 'application/msword',
+                                              'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                                              'xls': 'application/vnd.ms-excel',
+                                              'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                                              'jpg': 'image/jpeg',
+                                              'jpeg': 'image/jpeg',
+                                              'png': 'image/png',
+                                              'gif': 'image/gif',
+                                              'txt': 'text/plain'
+                                            };
+                                            const mimeType = mimeTypes[ext] || 'application/octet-stream';
+                                            link.href = `data:${mimeType};base64,${base64Data}`;
+                                          }
+                                          link.download = fileName;
+                                          document.body.appendChild(link);
+                                          link.click();
+                                          document.body.removeChild(link);
+                                        }}
+                                      >
+                                        <Download className="h-3 w-3" />
+                                      </Button>
+                                    )}
+                                    {!base64Data && (
+                                      <span className="text-xs text-gray-500">(File data not available)</span>
+                                    )}
+                                  </div>
                                 </div>
                               );
                               

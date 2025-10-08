@@ -65,7 +65,23 @@ export function TicketsDataTable({
   const [newItemsCount, setNewItemsCount] = useState(0)
   const [showNewItemsNotification, setShowNewItemsNotification] = useState(false)
   const [serverSearchQuery, setServerSearchQuery] = useState('')
+  // Server-side pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(() => {
+    // Load user preference from localStorage
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('ticketTablePageSize')
+      return saved ? parseInt(saved) : 50
+    }
+    return 50
+  })
   const [totalTickets, setTotalTickets] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
+
+  // Save page size preference to localStorage
+  useEffect(() => {
+    localStorage.setItem('ticketTablePageSize', pageSize.toString())
+  }, [pageSize])
 
   // Load branches for filter
   const loadBranches = async () => {
@@ -250,8 +266,8 @@ export function TicketsDataTable({
     return () => clearInterval(interval)
   }, [])
 
-  // Load tickets from API
-  const loadTickets = async (isInitial = false, searchQuery?: string) => {
+  // Load tickets from API with server-side pagination
+  const loadTickets = async (isInitial = false, searchQuery?: string, page?: number, size?: number) => {
     try {
       // Only show loading spinner on initial load
       if (isInitial) {
@@ -278,21 +294,32 @@ export function TicketsDataTable({
         params.append('categoryId', initialFilters.category)
       }
 
-      // Add search query if provided
-      if (searchQuery) {
-        params.append('search', searchQuery)
+      // Add search query - use provided searchQuery or current serverSearchQuery
+      const effectiveSearchQuery = searchQuery !== undefined ? searchQuery : serverSearchQuery
+      if (effectiveSearchQuery) {
+        params.append('search', effectiveSearchQuery)
       }
 
-      // Add a higher limit to get more tickets
-      params.append('limit', '5000')
+      // Server-side pagination parameters
+      const targetPage = page ?? currentPage
+      const targetSize = size ?? pageSize
+      params.append('limit', targetSize.toString())
+      params.append('page', targetPage.toString())
       
       const response = await fetch(`/api/tickets?${params}`)
       if (response.ok) {
         const data = await response.json()
         const loadedTickets = data.tickets || []
-        
+
+        // Update pagination metadata
+        setTotalTickets(data.total || 0)
+        setTotalPages(data.pages || 0)
+        if (page !== undefined) setCurrentPage(page)
+        if (size !== undefined) setPageSize(size)
+
         // Smart merge to preserve existing tickets and highlight new ones
-        if (!isInitial && tickets.length > 0) {
+        // Only merge if staying on the same page during refresh
+        if (!isInitial && tickets.length > 0 && !page && !size) {
           const mergedTickets = mergeTicketsSmartly(tickets, loadedTickets)
           setTickets(mergedTickets)
           
@@ -310,7 +337,7 @@ export function TicketsDataTable({
             }, 15000)
           }
         } else {
-          // Initial load - just set tickets without highlights
+          // Initial load or page change - just set tickets without highlights
           const ticketsWithMeta: TicketWithMeta[] = loadedTickets.map((t: Ticket) => ({
             ...t,
             isNew: false
@@ -414,11 +441,12 @@ export function TicketsDataTable({
     setServerSearchQuery(query)
   }, [])
 
-  // Debounced search effect
+  // Debounced search effect - reset to page 1 when search changes
   useEffect(() => {
     if (serverSearchQuery !== undefined) {
       const timer = setTimeout(() => {
-        loadTickets(false, serverSearchQuery)
+        // Reset to page 1 when search query changes
+        loadTickets(false, serverSearchQuery, 1)
       }, 300) // 300ms debounce
 
       return () => clearTimeout(timer)
@@ -434,16 +462,19 @@ export function TicketsDataTable({
 
     if (shouldRefresh && !isLoading) {
       console.log('🔄 Real-time update received, refreshing tickets...')
-      loadTickets(false, serverSearchQuery) // Not initial load
+      // Preserve current page during auto-refresh
+      loadTickets(false, serverSearchQuery, currentPage) // Stay on current page
     }
-  }, [session, serverSearchQuery])
+  }, [session, serverSearchQuery, currentPage])
 
   // Use Socket.io for real-time updates instead of interval
   useTicketListUpdates(handleRealtimeUpdate)
 
   // Initial load
   useEffect(() => {
-    loadTickets(true) // Initial load
+    // Reset to page 1 when filters change
+    setCurrentPage(1)
+    loadTickets(true, '', 1) // Initial load with page 1
     loadBranches()
     loadCategories()
     loadServices()
@@ -454,6 +485,36 @@ export function TicketsDataTable({
     const ticketUrlId = getTicketUrlId(ticket.ticketNumber);
     router.push(`/tickets/${ticketUrlId}`)
   }
+
+  // Pagination handlers with debouncing to prevent rapid clicks
+  const handlePageChange = useCallback(async (newPage: number) => {
+    if (newPage !== currentPage && newPage >= 1 && newPage <= totalPages && !isLoading) {
+      await loadTickets(false, serverSearchQuery, newPage)
+    }
+  }, [currentPage, totalPages, serverSearchQuery, isLoading])
+
+  const handlePageSizeChange = useCallback(async (newSize: number) => {
+    if (newSize !== pageSize && !isLoading) {
+      // Reset to page 1 when changing page size
+      await loadTickets(false, serverSearchQuery, 1, newSize)
+    }
+  }, [pageSize, serverSearchQuery, isLoading])
+
+  const goToFirstPage = useCallback(async () => {
+    await handlePageChange(1)
+  }, [handlePageChange])
+
+  const goToLastPage = useCallback(async () => {
+    await handlePageChange(totalPages)
+  }, [handlePageChange, totalPages])
+
+  const goToPreviousPage = useCallback(async () => {
+    await handlePageChange(currentPage - 1)
+  }, [handlePageChange, currentPage])
+
+  const goToNextPage = useCallback(async () => {
+    await handlePageChange(currentPage + 1)
+  }, [handlePageChange, currentPage])
 
   const handleBulkAction = async (action: string, selectedTickets: Ticket[], additionalData?: any, table?: any) => {
     switch (action) {
@@ -689,11 +750,24 @@ export function TicketsDataTable({
                   </span>
                 </div>
               )}
+              {/* Pagination Summary */}
+              {totalTickets > 0 && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Badge variant="outline" className="text-xs">
+                    {totalTickets.toLocaleString()} total tickets
+                  </Badge>
+                  {totalPages > 1 && (
+                    <Badge variant="outline" className="text-xs">
+                      Page {currentPage} of {totalPages}
+                    </Badge>
+                  )}
+                </div>
+              )}
             </div>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
-              onClick={() => loadTickets(false, serverSearchQuery)}
+              onClick={() => loadTickets(false, serverSearchQuery, currentPage)}
               disabled={isLoading}
               className="hover:bg-cream-100 dark:hover:bg-warm-dark-200/50 transition-colors"
             >
@@ -709,7 +783,7 @@ export function TicketsDataTable({
         columns={tableColumns}
         data={tickets}
         onRowClick={handleRowClick}
-        onRefresh={() => loadTickets(false, serverSearchQuery)}
+        onRefresh={() => loadTickets(false, serverSearchQuery, currentPage)}
         isLoading={isLoading}
         enableBulkActions={enableBulkClaim || enableBulkStatusUpdate}
         onBulkAction={handleBulkAction}
@@ -719,6 +793,19 @@ export function TicketsDataTable({
         serviceOptions={serviceOptions}
         technicianOptions={technicianOptions}
         onServerSearch={handleServerSearch}
+        // Server-side pagination props
+        pagination={{
+          currentPage,
+          pageSize,
+          totalTickets,
+          totalPages,
+          onPageChange: handlePageChange,
+          onPageSizeChange: handlePageSizeChange,
+          onFirstPage: goToFirstPage,
+          onLastPage: goToLastPage,
+          onPreviousPage: goToPreviousPage,
+          onNextPage: goToNextPage
+        }}
       />
     </div>
   )

@@ -84,7 +84,9 @@ export async function GET(request: NextRequest) {
     const mineAndAvailable = searchParams.get('mineAndAvailable');
     const branchId = searchParams.get('branchId');
     const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
+    const rawLimit = parseInt(searchParams.get('limit') || '10');
+    // Cap limit at 200 for performance, but allow proper pagination for any number of tickets
+    const limit = Math.min(rawLimit, 200);
     const rawSearch = searchParams.get('search');
     const search = rawSearch ? sanitizeSearchInput(rawSearch) : null;
     const sortBy = searchParams.get('sortBy') || 'createdAt';
@@ -725,13 +727,15 @@ export async function GET(request: NextRequest) {
         },
         orderBy: getSortOrder(sortBy, sortOrder),
         skip: (page - 1) * limit,
-        take: limit
+        take: limit // Use the requested limit for proper pagination
       }),
       prisma.ticket.count({ where })
     ]);
 
     return NextResponse.json({
       tickets,
+      total, // Total tickets for pagination
+      pages: Math.ceil(total / limit), // Total pages
       pagination: {
         page,
         limit,

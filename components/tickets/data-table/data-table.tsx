@@ -27,6 +27,19 @@ import { Card, CardContent } from '@/components/ui/card'
 import { DataTablePagination } from './data-table-pagination'
 import { DataTableToolbar } from './data-table-toolbar'
 
+interface ServerPaginationProps {
+  currentPage: number
+  pageSize: number
+  totalTickets: number
+  totalPages: number
+  onPageChange: (page: number) => Promise<void>
+  onPageSizeChange: (size: number) => Promise<void>
+  onFirstPage: () => Promise<void>
+  onLastPage: () => Promise<void>
+  onPreviousPage: () => Promise<void>
+  onNextPage: () => Promise<void>
+}
+
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
@@ -40,6 +53,8 @@ interface DataTableProps<TData, TValue> {
   categoryOptions?: { value: string; label: string }[]
   serviceOptions?: { value: string; label: string }[]
   technicianOptions?: { value: string; label: string }[]
+  onServerSearch?: (query: string) => void
+  pagination?: ServerPaginationProps
 }
 
 export function DataTable<TData, TValue>({
@@ -56,6 +71,7 @@ export function DataTable<TData, TValue>({
   serviceOptions = [],
   technicianOptions = [],
   onServerSearch,
+  pagination,
 }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
@@ -124,13 +140,25 @@ export function DataTable<TData, TValue>({
       columnFilters,
       globalFilter,
       columnOrder,
+      // For server-side pagination, we manage pagination state externally
+      ...(pagination && {
+        pagination: {
+          pageIndex: pagination.currentPage - 1, // React Table uses 0-based indexing
+          pageSize: pagination.pageSize,
+        },
+      }),
     },
     initialState: {
-      pagination: {
-        pageSize: 50,
-        pageIndex: 0,
-      },
+      ...(pagination ? {} : {
+        pagination: {
+          pageSize: 50,
+          pageIndex: 0,
+        },
+      }),
     },
+    // Configure for server-side pagination when pagination prop is provided
+    manualPagination: !!pagination,
+    pageCount: pagination?.totalPages ?? -1,
     enableRowSelection: enableBulkActions,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
@@ -140,7 +168,7 @@ export function DataTable<TData, TValue>({
     onColumnOrderChange: setColumnOrder,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    ...(pagination ? {} : { getPaginationRowModel: getPaginationRowModel() }),
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
@@ -173,8 +201,18 @@ export function DataTable<TData, TValue>({
             categoryOptions={categoryOptions}
             serviceOptions={serviceOptions}
             technicianOptions={technicianOptions}
+            onServerSearch={onServerSearch}
           />
           <div className="relative rounded-lg border">
+            {/* Loading overlay for pagination navigation */}
+            {pagination && isLoading && (
+              <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex items-center justify-center">
+                <div className="flex items-center space-x-2">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                  <span className="text-sm text-muted-foreground">Loading tickets...</span>
+                </div>
+              </div>
+            )}
             <div className="overflow-x-auto">
               <table className="w-full caption-bottom text-sm">
                 <thead className="[&_tr]:border-b bg-muted/50">
@@ -200,16 +238,16 @@ export function DataTable<TData, TValue>({
                 </thead>
                 <tbody className="[&_tr:last-child]:border-0">
                   {isLoading ? (
-                    <tr className="border-b transition-colors">
-                      <td
-                        colSpan={columns.length}
-                        className="h-24 text-center"
-                      >
-                        <div className="flex items-center justify-center">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                        </div>
-                      </td>
-                    </tr>
+                    // Skeleton rows for better loading UX
+                    Array.from({ length: pagination?.pageSize || 10 }, (_, i) => (
+                      <tr key={`skeleton-${i}`} className="border-b transition-colors">
+                        {columns.map((_, colIndex) => (
+                          <td key={`skeleton-col-${colIndex}`} className="px-2 py-2 align-middle">
+                            <div className="animate-pulse bg-muted rounded h-4 w-full"></div>
+                          </td>
+                        ))}
+                      </tr>
+                    ))
                   ) : table.getRowModel().rows?.length ? (
                     table.getRowModel().rows.map((row) => (
                       <tr
@@ -270,7 +308,7 @@ export function DataTable<TData, TValue>({
             </div>
           </div>
         <div className="mt-4">
-          <DataTablePagination table={table} />
+          <DataTablePagination table={table} pagination={pagination} />
         </div>
       </div>
     </div>

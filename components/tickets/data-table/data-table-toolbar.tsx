@@ -82,7 +82,8 @@ export function DataTableToolbar<TData>({
   onServerSearch,
 }: DataTableToolbarProps<TData>) {
   const [selectedStatus, setSelectedStatus] = useState<string>('')
-  const isFiltered = table.getState().columnFilters.length > 0 || globalFilter !== ''
+  const [searchValue, setSearchValue] = useState<string>('')
+  const isFiltered = table.getState().columnFilters.length > 0 || globalFilter !== '' || searchValue !== ''
   
   // Debug: Log available columns
   React.useEffect(() => {
@@ -169,13 +170,17 @@ export function DataTableToolbar<TData>({
           <div className="flex items-center space-x-2">
             <Input
               placeholder="Search tickets (ID, title, description)..."
-              value={globalFilter ?? ''}
+              value={onServerSearch ? searchValue : (globalFilter ?? '')}
               onChange={(event) => {
                 const value = event.target.value
-                setGlobalFilter(value)
-                // Also trigger server-side search if available
+                // If server-side search is available, use it exclusively
                 if (onServerSearch) {
+                  setSearchValue(value)
+                  setGlobalFilter('')  // Clear client-side filter to prevent double filtering
                   onServerSearch(value)
+                } else {
+                  // Fall back to client-side filtering
+                  setGlobalFilter(value)
                 }
               }}
               className="h-8 w-[150px] lg:w-[350px]"
@@ -281,6 +286,11 @@ export function DataTableToolbar<TData>({
               onClick={() => {
                 table.resetColumnFilters()
                 setGlobalFilter('')
+                setSearchValue('')
+                // Clear server-side search as well
+                if (onServerSearch) {
+                  onServerSearch('')
+                }
               }}
               className="h-8 px-2 lg:px-3"
             >
