@@ -92,3 +92,4 @@ test-results/
 *.tar.gz
 *.rar
 *.7z
+nul
