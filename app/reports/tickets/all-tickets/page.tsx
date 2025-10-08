@@ -1,19 +1,20 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
+import { useSidebar } from '@/components/providers/sidebar-provider'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { 
-  FileDown, 
-  RefreshCw, 
-  Search, 
-  Filter, 
-  ChevronLeft, 
+import {
+  FileDown,
+  RefreshCw,
+  Search,
+  Filter,
+  ChevronLeft,
   ChevronRight,
   FileText,
   Clock,
@@ -21,7 +22,11 @@ import {
   CheckCircle,
   XCircle,
   User,
-  Building
+  Building,
+  X,
+  ChevronDown,
+  ChevronUp,
+  Download
 } from 'lucide-react'
 import { format } from 'date-fns'
 
@@ -51,6 +56,9 @@ interface Ticket {
   approvedBy: string | null
   commentCount: number
   attachmentCount: number
+  vendorTicketNumber: string | null
+  vendorName: string | null
+  vendorStatus: string | null
 }
 
 interface ReportData {
@@ -78,10 +86,13 @@ interface ReportData {
 
 export default function AllTicketsReport() {
   const { data: session } = useSession()
+  const { isCollapsed } = useSidebar()
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<ReportData | null>(null)
   const [exporting, setExporting] = useState(false)
-  
+  const [exportFormat, setExportFormat] = useState<'csv' | 'xlsx'>('csv')
+  const [filtersExpanded, setFiltersExpanded] = useState(true)
+
   // Filters
   const [page, setPage] = useState(1)
   const [searchTerm, setSearchTerm] = useState('')
@@ -94,6 +105,32 @@ export default function AllTicketsReport() {
   const [endDate, setEndDate] = useState('')
   const [sortBy, setSortBy] = useState('createdAt')
   const [sortOrder, setSortOrder] = useState('desc')
+
+  // Calculate active filter count
+  const activeFilterCount = useMemo(() => {
+    let count = 0
+    if (status !== 'ALL') count++
+    if (priority !== 'ALL') count++
+    if (categoryId !== 'ALL') count++
+    if (branchId !== 'ALL') count++
+    if (technicianId !== 'ALL') count++
+    if (startDate) count++
+    if (endDate) count++
+    if (searchTerm) count++
+    return count
+  }, [status, priority, categoryId, branchId, technicianId, startDate, endDate, searchTerm])
+
+  // Auto-search with debounce
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (page === 1) {
+        fetchData()
+      } else {
+        setPage(1)
+      }
+    }, 500)
+    return () => clearTimeout(timeoutId)
+  }, [searchTerm])
 
   useEffect(() => {
     fetchData()
@@ -119,7 +156,7 @@ export default function AllTicketsReport() {
 
       const response = await fetch(`/api/reports/tickets/all-tickets?${params}`)
       if (!response.ok) throw new Error('Failed to fetch data')
-      
+
       const result = await response.json()
       setData(result)
     } catch (error) {
@@ -129,19 +166,28 @@ export default function AllTicketsReport() {
     }
   }
 
-  const handleSearch = () => {
+  const clearFilters = () => {
+    setSearchTerm('')
+    setStatus('ALL')
+    setPriority('ALL')
+    setCategoryId('ALL')
+    setBranchId('ALL')
+    setTechnicianId('ALL')
+    setStartDate('')
+    setEndDate('')
+    setSortBy('createdAt')
+    setSortOrder('desc')
     setPage(1)
-    fetchData()
   }
 
-  const exportToCSV = async () => {
+  const exportData = async () => {
     try {
       setExporting(true)
       const response = await fetch('/api/reports/tickets/all-tickets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          format: 'csv',
+          format: exportFormat,
           filters: {
             status: status !== 'ALL' ? status : undefined,
             priority: priority !== 'ALL' ? priority : undefined,
@@ -161,7 +207,8 @@ export default function AllTicketsReport() {
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `tickets-report-${format(new Date(), 'yyyy-MM-dd')}.csv`
+      const ext = exportFormat === 'xlsx' ? 'xlsx' : 'csv'
+      a.download = `tickets-report-${format(new Date(), 'yyyy-MM-dd')}.${ext}`
       a.click()
       window.URL.revokeObjectURL(url)
     } catch (error) {
@@ -171,39 +218,123 @@ export default function AllTicketsReport() {
     }
   }
 
-  const getStatusBadge = (status: string) => {
-    const statusConfig: Record<string, { variant: any; icon: any; className: string }> = {
-      OPEN: { variant: 'default', icon: AlertCircle, className: 'bg-yellow-100 text-yellow-800 border-yellow-300' },
-      IN_PROGRESS: { variant: 'default', icon: Clock, className: 'bg-blue-100 text-blue-800 border-blue-300' },
-      RESOLVED: { variant: 'default', icon: CheckCircle, className: 'bg-green-100 text-green-800 border-green-300' },
-      CLOSED: { variant: 'default', icon: CheckCircle, className: 'bg-gray-100 text-gray-800 border-gray-300' },
-      PENDING: { variant: 'default', icon: Clock, className: 'bg-orange-100 text-orange-800 border-orange-300' },
-      PENDING_APPROVAL: { variant: 'default', icon: Clock, className: 'bg-purple-100 text-purple-800 border-purple-300' },
-      CANCELLED: { variant: 'default', icon: XCircle, className: 'bg-red-100 text-red-800 border-red-300' }
+  const getStatusBadge = (status: string, vendorTicketNumber?: string | null, vendorName?: string | null) => {
+    const statusConfig: Record<string, { icon: any; className: string; textClassName: string; label: string }> = {
+      OPEN: {
+        icon: AlertCircle,
+        className: 'bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800',
+        textClassName: 'text-amber-700 dark:text-amber-400',
+        label: 'Open'
+      },
+      IN_PROGRESS: {
+        icon: Clock,
+        className: 'bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800',
+        textClassName: 'text-blue-700 dark:text-blue-400',
+        label: 'In Progress'
+      },
+      RESOLVED: {
+        icon: CheckCircle,
+        className: 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800',
+        textClassName: 'text-green-700 dark:text-green-400',
+        label: 'Resolved'
+      },
+      CLOSED: {
+        icon: CheckCircle,
+        className: 'bg-slate-50 border-slate-200 dark:bg-slate-900/30 dark:border-slate-800',
+        textClassName: 'text-slate-600 dark:text-slate-400',
+        label: 'Closed'
+      },
+      PENDING: {
+        icon: Clock,
+        className: 'bg-orange-50 border-orange-200 dark:bg-orange-950/30 dark:border-orange-800',
+        textClassName: 'text-orange-700 dark:text-orange-400',
+        label: 'Pending'
+      },
+      PENDING_APPROVAL: {
+        icon: Clock,
+        className: 'bg-purple-50 border-purple-200 dark:bg-purple-950/30 dark:border-purple-800',
+        textClassName: 'text-purple-700 dark:text-purple-400',
+        label: 'Pending Approval'
+      },
+      PENDING_VENDOR: {
+        icon: Clock,
+        className: 'bg-indigo-50 border-indigo-200 dark:bg-indigo-950/30 dark:border-indigo-800',
+        textClassName: 'text-indigo-700 dark:text-indigo-400',
+        label: 'Pending Vendor'
+      },
+      CANCELLED: {
+        icon: XCircle,
+        className: 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800',
+        textClassName: 'text-red-700 dark:text-red-400',
+        label: 'Cancelled'
+      }
     }
-    
-    const config = statusConfig[status] || { variant: 'default', icon: AlertCircle, className: '' }
+
+    const config = statusConfig[status] || {
+      icon: AlertCircle,
+      className: 'bg-slate-50 border-slate-200 dark:bg-slate-900/30 dark:border-slate-800',
+      textClassName: 'text-slate-600 dark:text-slate-400',
+      label: status.replace('_', ' ')
+    }
     const Icon = config.icon
-    
+
     return (
-      <Badge variant={config.variant} className={`${config.className} flex items-center gap-1`}>
-        <Icon className="h-3 w-3" />
-        {status.replace('_', ' ')}
-      </Badge>
+      <div className="flex flex-col gap-1">
+        <Badge
+          variant="outline"
+          className={`${config.className} ${config.textClassName} inline-flex items-center gap-1.5 px-2.5 py-1 font-medium shadow-sm hover:shadow transition-shadow w-fit`}
+        >
+          <Icon className="h-3.5 w-3.5 shrink-0" />
+          <span className="text-xs font-semibold">{config.label}</span>
+        </Badge>
+        {status === 'PENDING_VENDOR' && vendorTicketNumber && (
+          <div className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
+            <span className="font-medium">Vendor:</span>
+            <span className="font-mono bg-muted/50 px-1.5 py-0.5 rounded border border-border">{vendorTicketNumber}</span>
+            {vendorName && <span className="text-[9px] opacity-70">({vendorName})</span>}
+          </div>
+        )}
+      </div>
     )
   }
 
   const getPriorityBadge = (priority: string) => {
-    const colors: Record<string, string> = {
-      URGENT: 'bg-red-100 text-red-800 border-red-300',
-      HIGH: 'bg-orange-100 text-orange-800 border-orange-300',
-      MEDIUM: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-      LOW: 'bg-green-100 text-green-800 border-green-300'
+    const priorityConfig: Record<string, { className: string; textClassName: string; dotColor: string }> = {
+      URGENT: {
+        className: 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800',
+        textClassName: 'text-red-700 dark:text-red-400',
+        dotColor: 'bg-red-500'
+      },
+      HIGH: {
+        className: 'bg-orange-50 border-orange-200 dark:bg-orange-950/30 dark:border-orange-800',
+        textClassName: 'text-orange-700 dark:text-orange-400',
+        dotColor: 'bg-orange-500'
+      },
+      MEDIUM: {
+        className: 'bg-yellow-50 border-yellow-200 dark:bg-yellow-950/30 dark:border-yellow-800',
+        textClassName: 'text-yellow-700 dark:text-yellow-400',
+        dotColor: 'bg-yellow-500'
+      },
+      LOW: {
+        className: 'bg-slate-50 border-slate-200 dark:bg-slate-900/30 dark:border-slate-800',
+        textClassName: 'text-slate-600 dark:text-slate-400',
+        dotColor: 'bg-slate-400'
+      }
     }
-    
+
+    const config = priorityConfig[priority] || {
+      className: 'bg-slate-50 border-slate-200 dark:bg-slate-900/30 dark:border-slate-800',
+      textClassName: 'text-slate-600 dark:text-slate-400',
+      dotColor: 'bg-slate-400'
+    }
+
     return (
-      <Badge className={colors[priority] || ''}>
-        {priority}
+      <Badge
+        variant="outline"
+        className={`${config.className} ${config.textClassName} inline-flex items-center gap-1.5 px-2.5 py-1 font-medium shadow-sm hover:shadow transition-shadow`}
+      >
+        <div className={`h-1.5 w-1.5 rounded-full ${config.dotColor} shrink-0`} />
+        <span className="text-xs font-semibold">{priority}</span>
       </Badge>
     )
   }
@@ -211,128 +342,222 @@ export default function AllTicketsReport() {
   if (!session) return null
 
   return (
-    <div className="container mx-auto py-6 max-w-full">
+    <div className={`container mx-auto py-6 space-y-6 transition-all duration-300 ${
+      isCollapsed ? 'max-w-[calc(100vw-5rem)]' : 'max-w-[calc(100vw-17rem)]'
+    } px-4 md:px-6`}>
       {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-3xl font-bold">All Tickets Report</h1>
-            <p className="text-muted-foreground mt-1">
-              Comprehensive view of all tickets with advanced filtering and export capabilities
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button onClick={fetchData} variant="outline" size="sm" disabled={loading}>
-              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-            <Button onClick={exportToCSV} variant="outline" size="sm" disabled={exporting}>
-              <FileDown className="h-4 w-4 mr-2" />
-              Export CSV
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+            All Tickets Report
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Comprehensive view of all tickets with advanced filtering and export capabilities
+          </p>
+        </div>
+
+        {/* Action Controls */}
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={fetchData}
+            variant="outline"
+            size="sm"
+            disabled={loading}
+            className="touch-target"
+            aria-label="Refresh data"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">Refresh</span>
+          </Button>
+
+          {/* Export Controls Group */}
+          <div className="flex items-center gap-2 p-1 bg-muted/50 rounded-lg border border-border">
+            <Select
+              value={exportFormat}
+              onValueChange={(v) => setExportFormat(v as 'csv' | 'xlsx')}
+            >
+              <SelectTrigger className="w-[120px] h-9 border-0 bg-background/50 touch-target">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="csv">CSV Format</SelectItem>
+                <SelectItem value="xlsx">Excel Format</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              onClick={exportData}
+              variant="default"
+              size="sm"
+              disabled={exporting}
+              className="touch-target"
+              aria-label={`Export as ${exportFormat.toUpperCase()}`}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              {exporting ? 'Exporting...' : 'Export'}
             </Button>
           </div>
         </div>
+      </div>
 
-        {/* Stats Cards */}
-        {data && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-            <Card className="border-gray-200">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-2xl font-bold">{data.stats.total}</p>
-                    <p className="text-xs text-muted-foreground">Total</p>
-                  </div>
-                  <FileText className="h-8 w-8 text-gray-400" />
+      {/* Stats Cards */}
+      {data && (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <Card className="border-border hover:shadow-lg transition-shadow">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-2xl font-bold text-foreground">{data.stats.total}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Total Tickets</p>
                 </div>
-              </CardContent>
-            </Card>
-            <Card className="border-yellow-200 bg-yellow-50/50">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-2xl font-bold">{data.stats.open}</p>
-                    <p className="text-xs text-muted-foreground">Open</p>
-                  </div>
-                  <AlertCircle className="h-8 w-8 text-yellow-500" />
+                <div className="p-2 bg-muted rounded-lg">
+                  <FileText className="h-6 w-6 text-muted-foreground" />
                 </div>
-              </CardContent>
-            </Card>
-            <Card className="border-blue-200 bg-blue-50/50">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-2xl font-bold">{data.stats.inProgress}</p>
-                    <p className="text-xs text-muted-foreground">In Progress</p>
-                  </div>
-                  <Clock className="h-8 w-8 text-blue-500" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-green-200 bg-green-50/50">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-2xl font-bold">{data.stats.resolved}</p>
-                    <p className="text-xs text-muted-foreground">Resolved</p>
-                  </div>
-                  <CheckCircle className="h-8 w-8 text-green-500" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-gray-200">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-2xl font-bold">{data.stats.closed}</p>
-                    <p className="text-xs text-muted-foreground">Closed</p>
-                  </div>
-                  <CheckCircle className="h-8 w-8 text-gray-500" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-orange-200 bg-orange-50/50">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-2xl font-bold">{data.stats.pending}</p>
-                    <p className="text-xs text-muted-foreground">Pending</p>
-                  </div>
-                  <Clock className="h-8 w-8 text-orange-500" />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+              </div>
+            </CardContent>
+          </Card>
 
-        {/* Filters */}
-        <Card className="mb-6">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Filter className="h-4 w-4" />
-              Filters
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+          <Card className="border-primary/30 bg-primary/5 dark:bg-primary/10 hover:shadow-lg transition-shadow">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-2xl font-bold text-primary">{data.stats.open}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Open</p>
+                </div>
+                <div className="p-2 bg-primary/20 rounded-lg">
+                  <AlertCircle className="h-6 w-6 text-primary" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-chart-2/30 bg-chart-2/5 dark:bg-chart-2/10 hover:shadow-lg transition-shadow">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-2xl font-bold text-chart-2">{data.stats.inProgress}</p>
+                  <p className="text-xs text-muted-foreground mt-1">In Progress</p>
+                </div>
+                <div className="p-2 bg-chart-2/20 rounded-lg">
+                  <Clock className="h-6 w-6 text-chart-2" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-chart-5/30 bg-chart-5/5 dark:bg-chart-5/10 hover:shadow-lg transition-shadow">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-2xl font-bold text-chart-5">{data.stats.resolved}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Resolved</p>
+                </div>
+                <div className="p-2 bg-chart-5/20 rounded-lg">
+                  <CheckCircle className="h-6 w-6 text-chart-5" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border bg-muted/30 hover:shadow-lg transition-shadow">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-2xl font-bold text-foreground">{data.stats.closed}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Closed</p>
+                </div>
+                <div className="p-2 bg-muted rounded-lg">
+                  <CheckCircle className="h-6 w-6 text-muted-foreground" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-chart-4/30 bg-chart-4/5 dark:bg-chart-4/10 hover:shadow-lg transition-shadow">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-2xl font-bold text-chart-4">{data.stats.pending}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Pending</p>
+                </div>
+                <div className="p-2 bg-chart-4/20 rounded-lg">
+                  <Clock className="h-6 w-6 text-chart-4" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Filters */}
+      <Card>
+        <CardHeader
+          className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg"
+          onClick={() => setFiltersExpanded(!filtersExpanded)}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <Filter className="h-4 w-4 text-primary" />
+              </div>
               <div>
-                <label className="text-xs text-muted-foreground">Search</label>
+                <CardTitle className="text-base font-semibold">Filters & Search</CardTitle>
+                <CardDescription className="text-xs mt-0.5">
+                  {activeFilterCount > 0
+                    ? `${activeFilterCount} active filter${activeFilterCount > 1 ? 's' : ''}`
+                    : 'No filters applied'}
+                </CardDescription>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {activeFilterCount > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    clearFilters()
+                  }}
+                  className="h-8 px-3"
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Clear All
+                </Button>
+              )}
+              {filtersExpanded ? (
+                <ChevronUp className="h-5 w-5 text-muted-foreground" />
+              ) : (
+                <ChevronDown className="h-5 w-5 text-muted-foreground" />
+              )}
+            </div>
+          </div>
+        </CardHeader>
+
+        {filtersExpanded && (
+          <CardContent className="space-y-4">
+            {/* Primary Filters */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Search
+                </label>
                 <div className="relative">
-                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Ticket #, title..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                    className="pl-8"
+                    className="pl-9 touch-target"
+                    aria-label="Search tickets"
                   />
                 </div>
               </div>
-              
-              <div>
-                <label className="text-xs text-muted-foreground">Status</label>
+
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Status
+                </label>
                 <Select value={status} onValueChange={setStatus}>
-                  <SelectTrigger>
+                  <SelectTrigger className="touch-target" aria-label="Filter by status">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -343,15 +568,18 @@ export default function AllTicketsReport() {
                     <SelectItem value="CLOSED">Closed</SelectItem>
                     <SelectItem value="PENDING">Pending</SelectItem>
                     <SelectItem value="PENDING_APPROVAL">Pending Approval</SelectItem>
+                    <SelectItem value="PENDING_VENDOR">Pending Vendor</SelectItem>
                     <SelectItem value="CANCELLED">Cancelled</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              <div>
-                <label className="text-xs text-muted-foreground">Priority</label>
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Priority
+                </label>
                 <Select value={priority} onValueChange={setPriority}>
-                  <SelectTrigger>
+                  <SelectTrigger className="touch-target" aria-label="Filter by priority">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -365,31 +593,42 @@ export default function AllTicketsReport() {
               </div>
 
               {data && (
-                <>
-                  <div>
-                    <label className="text-xs text-muted-foreground">Category</label>
-                    <Select value={categoryId} onValueChange={setCategoryId}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="ALL">All Categories</SelectItem>
-                        {data.filters.categories.map(cat => (
-                          <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Category
+                  </label>
+                  <Select value={categoryId} onValueChange={setCategoryId}>
+                    <SelectTrigger className="touch-target" aria-label="Filter by category">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">All Categories</SelectItem>
+                      {data.filters.categories.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
 
-                  <div>
-                    <label className="text-xs text-muted-foreground">Branch</label>
+            {/* Secondary Filters */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 pt-2 border-t border-border">
+              {data && (
+                <>
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      Branch
+                    </label>
                     <Select value={branchId} onValueChange={setBranchId}>
-                      <SelectTrigger>
+                      <SelectTrigger className="touch-target" aria-label="Filter by branch">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="ALL">All Branches</SelectItem>
-                        {data.filters.branches.map(branch => (
+                        {data.filters.branches.map((branch) => (
                           <SelectItem key={branch.id} value={branch.id}>
                             {branch.name} ({branch.code})
                           </SelectItem>
@@ -398,16 +637,20 @@ export default function AllTicketsReport() {
                     </Select>
                   </div>
 
-                  <div>
-                    <label className="text-xs text-muted-foreground">Technician</label>
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      Technician
+                    </label>
                     <Select value={technicianId} onValueChange={setTechnicianId}>
-                      <SelectTrigger>
+                      <SelectTrigger className="touch-target" aria-label="Filter by technician">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="ALL">All Technicians</SelectItem>
-                        {data.filters.technicians.map(tech => (
-                          <SelectItem key={tech.id} value={tech.id}>{tech.name}</SelectItem>
+                        {data.filters.technicians.map((tech) => (
+                          <SelectItem key={tech.id} value={tech.id}>
+                            {tech.name}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -415,215 +658,273 @@ export default function AllTicketsReport() {
                 </>
               )}
 
-              <div>
-                <label className="text-xs text-muted-foreground">Start Date</label>
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Start Date
+                </label>
                 <Input
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
+                  className="touch-target"
+                  aria-label="Filter by start date"
                 />
               </div>
 
-              <div>
-                <label className="text-xs text-muted-foreground">End Date</label>
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  End Date
+                </label>
                 <Input
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
+                  className="touch-target"
+                  aria-label="Filter by end date"
                 />
               </div>
 
-              <div>
-                <label className="text-xs text-muted-foreground">Sort By</label>
-                <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="createdAt">Created Date</SelectItem>
-                    <SelectItem value="updatedAt">Updated Date</SelectItem>
-                    <SelectItem value="priority">Priority</SelectItem>
-                    <SelectItem value="status">Status</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <label className="text-xs text-muted-foreground">Order</label>
-                <Select value={sortOrder} onValueChange={setSortOrder}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="desc">Newest First</SelectItem>
-                    <SelectItem value="asc">Oldest First</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Sort By
+                </label>
+                <div className="flex gap-2">
+                  <Select value={sortBy} onValueChange={setSortBy}>
+                    <SelectTrigger className="touch-target flex-1" aria-label="Sort by">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="createdAt">Created</SelectItem>
+                      <SelectItem value="updatedAt">Updated</SelectItem>
+                      <SelectItem value="priority">Priority</SelectItem>
+                      <SelectItem value="status">Status</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                    className="touch-target shrink-0"
+                    aria-label={`Sort ${sortOrder === 'asc' ? 'descending' : 'ascending'}`}
+                  >
+                    {sortOrder === 'desc' ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronUp className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
               </div>
             </div>
           </CardContent>
-        </Card>
-
-        {/* Data Table */}
-        {loading ? (
-          <Card>
-            <CardContent className="p-12">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-                <p className="text-muted-foreground">Loading tickets...</p>
-              </div>
-            </CardContent>
-          </Card>
-        ) : data && data.tickets.length > 0 ? (
-          <Card>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[100px]">Ticket #</TableHead>
-                      <TableHead>Title</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Priority</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Service</TableHead>
-                      <TableHead>Branch</TableHead>
-                      <TableHead>Created By</TableHead>
-                      <TableHead>Assigned To</TableHead>
-                      <TableHead>Created</TableHead>
-                      <TableHead>Resolution Time</TableHead>
-                      <TableHead className="text-center">Comments</TableHead>
-                      <TableHead className="text-center">Files</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {data.tickets.map((ticket) => (
-                      <TableRow key={ticket.id} className="hover:bg-gray-50">
-                        <TableCell className="font-mono text-sm">
-                          <a href={`/tickets/${ticket.id}`} className="text-blue-600 hover:underline">
-                            #{ticket.ticketNumber}
-                          </a>
-                        </TableCell>
-                        <TableCell className="max-w-[200px]">
-                          <p className="truncate font-medium">{ticket.title}</p>
-                        </TableCell>
-                        <TableCell>{getStatusBadge(ticket.status)}</TableCell>
-                        <TableCell>{getPriorityBadge(ticket.priority)}</TableCell>
-                        <TableCell className="text-sm">{ticket.category}</TableCell>
-                        <TableCell className="text-sm">{ticket.service}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Building className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-sm">{ticket.branchCode}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <User className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-sm truncate max-w-[100px]" title={ticket.createdBy}>
-                              {ticket.createdBy}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-sm">
-                            {ticket.assignedTo}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {format(new Date(ticket.createdAt), 'MMM dd, yyyy')}
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {ticket.resolutionTime ? `${ticket.resolutionTime} hrs` : '-'}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {ticket.commentCount > 0 && (
-                            <Badge variant="secondary" className="text-xs">
-                              {ticket.commentCount}
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {ticket.attachmentCount > 0 && (
-                            <Badge variant="secondary" className="text-xs">
-                              {ticket.attachmentCount}
-                            </Badge>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-
-              {/* Pagination */}
-              {data.pagination.pages > 1 && (
-                <div className="flex items-center justify-between p-4 border-t">
-                  <p className="text-sm text-muted-foreground">
-                    Showing {((page - 1) * 50) + 1} to {Math.min(page * 50, data.pagination.total)} of {data.pagination.total} tickets
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPage(p => Math.max(1, p - 1))}
-                      disabled={page === 1}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                      Previous
-                    </Button>
-                    <div className="flex items-center gap-1">
-                      {Array.from({ length: Math.min(5, data.pagination.pages) }, (_, i) => {
-                        let pageNum;
-                        if (data.pagination.pages <= 5) {
-                          pageNum = i + 1;
-                        } else if (page <= 3) {
-                          pageNum = i + 1;
-                        } else if (page >= data.pagination.pages - 2) {
-                          pageNum = data.pagination.pages - 4 + i;
-                        } else {
-                          pageNum = page - 2 + i;
-                        }
-                        
-                        return (
-                          <Button
-                            key={pageNum}
-                            variant={page === pageNum ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={() => setPage(pageNum)}
-                            className="w-8 h-8 p-0"
-                          >
-                            {pageNum}
-                          </Button>
-                        );
-                      })}
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPage(p => Math.min(data.pagination.pages, p + 1))}
-                      disabled={page === data.pagination.pages}
-                    >
-                      Next
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ) : (
-          <Card>
-            <CardContent className="p-12">
-              <div className="text-center">
-                <FileText className="mx-auto h-12 w-12 text-muted-foreground/50 mb-4" />
-                <h3 className="text-lg font-medium mb-2">No tickets found</h3>
-                <p className="text-muted-foreground text-sm">Try adjusting your filters to see more results</p>
-              </div>
-            </CardContent>
-          </Card>
         )}
-      </div>
+      </Card>
+
+      {/* Data Table */}
+      {loading ? (
+        <Card>
+          <CardContent className="p-12">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-sm text-muted-foreground">Loading tickets...</p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : data && data.tickets.length > 0 ? (
+        <Card>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50 hover:bg-muted/50">
+                    <TableHead className="w-[110px] font-semibold">Ticket #</TableHead>
+                    <TableHead className="min-w-[200px] font-semibold">Title</TableHead>
+                    <TableHead className="font-semibold">Status</TableHead>
+                    <TableHead className="font-semibold">Priority</TableHead>
+                    <TableHead className="hidden md:table-cell font-semibold">Category</TableHead>
+                    <TableHead className="hidden lg:table-cell font-semibold">Service</TableHead>
+                    <TableHead className="hidden xl:table-cell font-semibold">Branch</TableHead>
+                    <TableHead className="hidden xl:table-cell font-semibold">Created By</TableHead>
+                    <TableHead className="hidden 2xl:table-cell font-semibold">Assigned To</TableHead>
+                    <TableHead className="font-semibold">Created</TableHead>
+                    <TableHead className="hidden lg:table-cell font-semibold text-right">Time</TableHead>
+                    <TableHead className="hidden xl:table-cell text-center font-semibold">Activity</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {data.tickets.map((ticket) => (
+                    <TableRow key={ticket.id} className="group hover:bg-muted/30 transition-colors">
+                      <TableCell className="font-mono text-sm">
+                        <a
+                          href={`/tickets/${ticket.id}`}
+                          className="text-primary hover:underline font-semibold"
+                        >
+                          #{ticket.ticketNumber}
+                        </a>
+                      </TableCell>
+                      <TableCell className="max-w-[250px]">
+                        <a href={`/tickets/${ticket.id}`} className="block hover:text-primary transition-colors">
+                          <p className="truncate font-medium text-foreground group-hover:text-primary">
+                            {ticket.title}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate mt-0.5 md:hidden">
+                            {ticket.category} • {ticket.branchCode}
+                          </p>
+                        </a>
+                      </TableCell>
+                      <TableCell>{getStatusBadge(ticket.status, ticket.vendorTicketNumber, ticket.vendorName)}</TableCell>
+                      <TableCell>{getPriorityBadge(ticket.priority)}</TableCell>
+                      <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                        {ticket.category}
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell text-sm text-muted-foreground max-w-[150px]">
+                        <span className="truncate block" title={ticket.service}>
+                          {ticket.service}
+                        </span>
+                      </TableCell>
+                      <TableCell className="hidden xl:table-cell">
+                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                          <Building className="h-3.5 w-3.5 shrink-0" />
+                          <span className="text-sm">{ticket.branchCode}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden xl:table-cell">
+                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                          <User className="h-3.5 w-3.5 shrink-0" />
+                          <span className="text-sm truncate max-w-[120px]" title={ticket.createdBy}>
+                            {ticket.createdBy}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden 2xl:table-cell text-sm text-muted-foreground truncate max-w-[120px]">
+                        {ticket.assignedTo || '-'}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                        {format(new Date(ticket.createdAt), 'MMM dd, yyyy')}
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell text-sm text-right">
+                        {ticket.resolutionTime ? (
+                          <Badge variant="secondary" className="font-mono">
+                            {ticket.resolutionTime}h
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="hidden xl:table-cell">
+                        <div className="flex items-center justify-center gap-2">
+                          {ticket.commentCount > 0 && (
+                            <Badge
+                              variant="secondary"
+                              className="bg-chart-2/20 text-chart-2 border-chart-2/30 text-xs font-medium"
+                            >
+                              {ticket.commentCount} {ticket.commentCount === 1 ? 'comment' : 'comments'}
+                            </Badge>
+                          )}
+                          {ticket.attachmentCount > 0 && (
+                            <Badge
+                              variant="secondary"
+                              className="bg-chart-4/20 text-chart-4 border-chart-4/30 text-xs font-medium"
+                            >
+                              {ticket.attachmentCount} {ticket.attachmentCount === 1 ? 'file' : 'files'}
+                            </Badge>
+                          )}
+                          {ticket.commentCount === 0 && ticket.attachmentCount === 0 && (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Pagination */}
+            {data.pagination.pages > 1 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t border-border bg-muted/30">
+                <p className="text-sm text-muted-foreground">
+                  Showing <span className="font-medium text-foreground">{((page - 1) * 50) + 1}</span> to{' '}
+                  <span className="font-medium text-foreground">{Math.min(page * 50, data.pagination.total)}</span> of{' '}
+                  <span className="font-medium text-foreground">{data.pagination.total}</span> tickets
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                    className="touch-target"
+                    aria-label="Previous page"
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-1" />
+                    <span className="hidden sm:inline">Previous</span>
+                  </Button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(5, data.pagination.pages) }, (_, i) => {
+                      let pageNum
+                      if (data.pagination.pages <= 5) {
+                        pageNum = i + 1
+                      } else if (page <= 3) {
+                        pageNum = i + 1
+                      } else if (page >= data.pagination.pages - 2) {
+                        pageNum = data.pagination.pages - 4 + i
+                      } else {
+                        pageNum = page - 2 + i
+                      }
+
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={page === pageNum ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setPage(pageNum)}
+                          className="w-10 h-10 p-0 touch-target"
+                          aria-label={`Go to page ${pageNum}`}
+                          aria-current={page === pageNum ? 'page' : undefined}
+                        >
+                          {pageNum}
+                        </Button>
+                      )
+                    })}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.min(data.pagination.pages, p + 1))}
+                    disabled={page === data.pagination.pages}
+                    className="touch-target"
+                    aria-label="Next page"
+                  >
+                    <span className="hidden sm:inline">Next</span>
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardContent className="p-12">
+            <div className="text-center">
+              <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+                <FileText className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-semibold mb-1">No tickets found</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Try adjusting your filters to see more results
+              </p>
+              {activeFilterCount > 0 && (
+                <Button variant="outline" size="sm" onClick={clearFilters}>
+                  <X className="h-4 w-4 mr-2" />
+                  Clear all filters
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

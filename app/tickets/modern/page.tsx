@@ -150,7 +150,7 @@ export default function ModernTicketsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       {/* Header */}
-      <div className="bg-white/[0.8] dark:bg-gray-900/[0.8] backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40">
+      <div className="bg-card/80 dark:bg-card/80 backdrop-blur-sm border-b border-border sticky top-0 z-40">
         <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4">
@@ -173,7 +173,7 @@ export default function ModernTicketsPage() {
                   placeholder="Quick search..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 w-64 bg-white/[0.5] dark:bg-gray-800/[0.5] border-gray-300 dark:border-gray-600"
+                  className="pl-10 w-64 bg-card/50 dark:bg-card/50 border-border"
                 />
               </div>
 
@@ -228,7 +228,7 @@ export default function ModernTicketsPage() {
       <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-6">
           {quickStats.map((stat, index) => (
-            <Card key={index} className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+            <Card key={index} className="bg-card/70 dark:bg-card/70 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -254,7 +254,7 @@ export default function ModernTicketsPage() {
 
         {/* Main Content */}
         <Tabs defaultValue="tickets" className="space-y-6">
-          <TabsList className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border border-gray-200 dark:border-gray-700">
+          <TabsList className="bg-card/70 dark:bg-card/70 backdrop-blur-sm border border-border">
             <TabsTrigger value="tickets" className="flex items-center gap-2">
               <List className="h-4 w-4" />
               All Tickets
@@ -274,7 +274,7 @@ export default function ModernTicketsPage() {
           </TabsContent>
 
           <TabsContent value="analytics" className="space-y-6">
-            <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
+            <Card className="bg-card/70 dark:bg-card/70 backdrop-blur-sm border-0 shadow-lg">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <BarChart3 className="h-5 w-5" />

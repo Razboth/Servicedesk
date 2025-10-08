@@ -434,7 +434,7 @@ export default function ManagerApprovalsPage() {
       </div>
 
       {/* Filters and Actions */}
-      <Card className="bg-white/[0.7] dark:bg-gray-800/[0.7] backdrop-blur-sm border-0 shadow-lg">
+      <Card className="bg-card/70 dark:bg-card/70 backdrop-blur-sm border-0 shadow-lg">
         <CardContent className="p-4">
           <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
             <div className="flex flex-1 gap-4 items-center">

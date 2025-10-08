@@ -381,11 +381,11 @@ export default function TechnicianWorkbench() {
 
   if (status === 'loading' || loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-background">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading workbench...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading workbench...</p>
           </div>
         </div>
       </div>
@@ -407,7 +407,7 @@ export default function TechnicianWorkbench() {
   const unassignedTickets = tickets.filter(ticket => !ticket.assignedToId);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <div className="min-h-screen bg-background">
       <main className="w-full py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
           <div className="mb-8">
@@ -542,11 +542,11 @@ export default function TechnicianWorkbench() {
                       size="sm"
                       onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                       disabled={currentPage === 1}
-                      className="bg-white/[0.5] dark:bg-gray-800/[0.5]"
+                      className="bg-card/50 dark:bg-card/50"
                     >
                       Previous
                     </Button>
-                    <span className="text-sm text-gray-600 dark:text-gray-400 px-4">
+                    <span className="text-sm text-muted-foreground px-4">
                       Page {currentPage} of {totalPages}
                     </span>
                     <Button
@@ -554,7 +554,7 @@ export default function TechnicianWorkbench() {
                       size="sm"
                       onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                       disabled={currentPage === totalPages}
-                      className="bg-white/[0.5] dark:bg-gray-800/[0.5]"
+                      className="bg-card/50 dark:bg-card/50"
                     >
                       Next
                     </Button>
@@ -594,11 +594,11 @@ export default function TechnicianWorkbench() {
                       size="sm"
                       onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                       disabled={currentPage === 1}
-                      className="bg-white/[0.5] dark:bg-gray-800/[0.5]"
+                      className="bg-card/50 dark:bg-card/50"
                     >
                       Previous
                     </Button>
-                    <span className="text-sm text-gray-600 dark:text-gray-400 px-4">
+                    <span className="text-sm text-muted-foreground px-4">
                       Page {currentPage} of {totalPages}
                     </span>
                     <Button
@@ -606,7 +606,7 @@ export default function TechnicianWorkbench() {
                       size="sm"
                       onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                       disabled={currentPage === totalPages}
-                      className="bg-white/[0.5] dark:bg-gray-800/[0.5]"
+                      className="bg-card/50 dark:bg-card/50"
                     >
                       Next
                     </Button>
@@ -645,7 +645,7 @@ export default function TechnicianWorkbench() {
                   Initial Status
                 </Label>
                 <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                  <SelectTrigger className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
+                  <SelectTrigger className="bg-card/50 dark:bg-card/50 backdrop-blur-sm">
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -668,7 +668,7 @@ export default function TechnicianWorkbench() {
             <Button 
               variant="outline" 
               onClick={() => setClaimModalOpen(false)}
-              className="bg-white/50 hover:bg-white/70"
+              className="bg-card/50 hover:bg-card/70"
             >
               Cancel
             </Button>
@@ -696,7 +696,7 @@ export default function TechnicianWorkbench() {
               <div className="space-y-2">
                 <Label htmlFor="status-select" className="text-sm font-medium">New Status</Label>
                 <Select value={selectedResolutionStatus} onValueChange={setSelectedResolutionStatus}>
-                  <SelectTrigger id="status-select" className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
+                  <SelectTrigger id="status-select" className="bg-card/50 dark:bg-card/50 backdrop-blur-sm">
                     <SelectValue placeholder="Select new status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -720,7 +720,7 @@ export default function TechnicianWorkbench() {
                   placeholder="Add a comment about this status change..."
                   value={resolutionComment}
                   onChange={(e) => setResolutionComment(e.target.value)}
-                  className="min-h-[100px] resize-none bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm"
+                  className="min-h-[100px] resize-none bg-card/50 dark:bg-card/50 backdrop-blur-sm"
                 />
               </div>
             </div>
@@ -730,7 +730,7 @@ export default function TechnicianWorkbench() {
               variant="outline"
               onClick={handleModalClose}
               disabled={isSubmittingResolution}
-              className="bg-white/50 hover:bg-white/70"
+              className="bg-card/50 hover:bg-card/70"
             >
               Cancel
             </Button>

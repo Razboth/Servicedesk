@@ -138,7 +138,7 @@ function SignInForm() {
           </div>
 
           {/* Sign In Form */}
-          <div className="bg-white/80 dark:bg-warm-dark-300/80 backdrop-blur-xl rounded-2xl shadow-xl ring-1 ring-brown-200/50 dark:ring-warm-dark-200/50 p-8">
+          <div className="bg-card/80 dark:bg-warm-dark-300/80 backdrop-blur-xl rounded-2xl shadow-xl ring-1 ring-brown-200/50 dark:ring-warm-dark-200/50 p-8">
             <form onSubmit={handleSubmit} className="space-y-6">
               {successMessage && (
                 <div className="flex items-start gap-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 px-4 py-3 rounded-lg text-sm">
@@ -230,7 +230,7 @@ function SignInForm() {
                   <div className="w-full border-t border-brown-200 dark:border-warm-dark-200"></div>
                 </div>
                 <div className="relative flex justify-center text-xs">
-                  <span className="bg-white dark:bg-warm-dark-300 px-2 text-brown-500 dark:text-cream-400">
+                  <span className="bg-card dark:bg-warm-dark-300 px-2 text-brown-500 dark:text-cream-400">
                     Need assistance?
                   </span>
                 </div>

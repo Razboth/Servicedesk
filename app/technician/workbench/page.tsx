@@ -100,8 +100,8 @@ export default function TechnicianWorkbenchPage() {
 
   if (!session) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
-        <Card className="w-full max-w-md mx-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm">
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Card className="w-full max-w-md mx-4 bg-card dark:bg-card border border-border rounded-xl shadow-sm">
           <CardContent className="p-8 text-center">
             <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
               <Sparkles className="w-8 h-8 text-gray-600 dark:text-gray-400" />
@@ -117,8 +117,8 @@ export default function TechnicianWorkbenchPage() {
   // Check if user is a technician or security analyst
   if (!session?.user?.role || !['TECHNICIAN', 'SECURITY_ANALYST'].includes(session.user.role)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
-        <Card className="w-full max-w-md mx-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm">
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Card className="w-full max-w-md mx-4 bg-card dark:bg-card border border-border rounded-xl shadow-sm">
           <CardContent className="p-8 text-center">
             <div className="w-16 h-16 mx-auto mb-4 bg-red-50 dark:bg-red-950/20 rounded-full flex items-center justify-center">
               <UserCheck className="w-8 h-8 text-red-600 dark:text-red-400" />
@@ -132,7 +132,7 @@ export default function TechnicianWorkbenchPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="min-h-screen bg-background">
       <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
         <PageHeader
           title="Technician Workbench"
@@ -187,7 +187,7 @@ export default function TechnicianWorkbenchPage() {
               quickStats.map((stat, index) => (
                 <Card
                   key={index}
-                  className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl hover:shadow-md transition-all duration-200 cursor-pointer group"
+                  className="bg-card dark:bg-card border border-border rounded-xl hover:shadow-md transition-all duration-200 cursor-pointer group"
                   onClick={() => {
                     // Navigate to appropriate view based on stat
                     if (stat.label === 'My Tickets') {
@@ -242,7 +242,7 @@ export default function TechnicianWorkbenchPage() {
           </div>
 
           {/* Tabs with Data Tables/Cards - ReUI Style */}
-          <Card className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm">
+          <Card className="bg-card dark:bg-card border border-border rounded-xl shadow-sm">
             <CardContent className="p-6">
               <Tabs defaultValue="my-tickets" className="w-full">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">

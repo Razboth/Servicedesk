@@ -127,8 +127,8 @@ export default function SimpleTicketsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white shadow-sm border-b">
+    <div className="min-h-screen bg-background">
+      <div className="bg-card shadow-sm border-b">
         <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div>
@@ -157,7 +157,7 @@ export default function SimpleTicketsPage() {
 
       <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
         {/* Filters */}
-        <div className="bg-white rounded-lg shadow-sm border p-4 mb-6">
+        <div className="bg-card rounded-lg shadow-sm border p-4 mb-6">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
               <div className="relative">
@@ -292,25 +292,25 @@ export default function SimpleTicketsPage() {
         {/* Quick Stats */}
         {!loading && filteredTickets.length > 0 && (
           <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white p-4 rounded-lg shadow-sm border text-center">
+            <div className="bg-card p-4 rounded-lg shadow-sm border text-center">
               <div className="text-2xl font-bold text-blue-600">
                 {filteredTickets.filter(t => t.status === 'OPEN').length}
               </div>
               <div className="text-sm text-gray-600">Open</div>
             </div>
-            <div className="bg-white p-4 rounded-lg shadow-sm border text-center">
+            <div className="bg-card p-4 rounded-lg shadow-sm border text-center">
               <div className="text-2xl font-bold text-yellow-600">
                 {filteredTickets.filter(t => t.status === 'IN_PROGRESS').length}
               </div>
               <div className="text-sm text-gray-600">In Progress</div>
             </div>
-            <div className="bg-white p-4 rounded-lg shadow-sm border text-center">
+            <div className="bg-card p-4 rounded-lg shadow-sm border text-center">
               <div className="text-2xl font-bold text-green-600">
                 {filteredTickets.filter(t => t.status === 'RESOLVED').length}
               </div>
               <div className="text-sm text-gray-600">Resolved</div>
             </div>
-            <div className="bg-white p-4 rounded-lg shadow-sm border text-center">
+            <div className="bg-card p-4 rounded-lg shadow-sm border text-center">
               <div className="text-2xl font-bold text-gray-600">
                 {filteredTickets.filter(t => t.status === 'CLOSED').length}
               </div>

@@ -187,6 +187,19 @@ export async function GET(request: NextRequest) {
           select: {
             id: true
           }
+        },
+        vendorTickets: {
+          select: {
+            vendorTicketNumber: true,
+            vendor: {
+              select: {
+                name: true
+              }
+            },
+            status: true
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 1
         }
       }
     });
@@ -271,12 +284,15 @@ export async function GET(request: NextRequest) {
       resolvedAt: ticket.resolvedAt,
       closedAt: ticket.closedAt,
       responseTime: null, // Field removed as firstResponseAt doesn't exist
-      resolutionTime: ticket.resolvedAt ? 
+      resolutionTime: ticket.resolvedAt ?
         Math.round((new Date(ticket.resolvedAt).getTime() - new Date(ticket.createdAt).getTime()) / (1000 * 60 * 60)) : null,
       approvalStatus: ticket.approvals[0]?.status || null,
       approvedBy: ticket.approvals[0]?.approver?.name || null,
       commentCount: ticket.comments.length,
-      attachmentCount: ticket.attachments.length
+      attachmentCount: ticket.attachments.length,
+      vendorTicketNumber: ticket.vendorTickets[0]?.vendorTicketNumber || null,
+      vendorName: ticket.vendorTickets[0]?.vendor?.name || null,
+      vendorStatus: ticket.vendorTickets[0]?.status || null
     }));
 
     return NextResponse.json({
@@ -311,11 +327,92 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { format = 'csv', filters = {} } = body;
 
-    // Use the same logic as GET but without pagination
+    // Build where clause with SAME logic as GET endpoint
     const whereClause: any = {};
-    
-    // Apply same role-based and filter logic as GET endpoint
-    // ... (same filtering logic as above)
+
+    // Role-based filtering (SAME AS GET)
+    if (session.user.role === 'USER') {
+      whereClause.createdById = session.user.id;
+    } else if (session.user.role === 'TECHNICIAN' || session.user.role === 'SECURITY_ANALYST') {
+      const userWithGroup = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        include: { supportGroup: true }
+      });
+
+      whereClause.OR = [
+        { createdById: session.user.id },
+        { assignedToId: session.user.id }
+      ];
+
+      if (userWithGroup?.supportGroupId) {
+        whereClause.OR.push({
+          service: {
+            supportGroupId: userWithGroup.supportGroupId
+          }
+        });
+      }
+    } else if (session.user.role === 'MANAGER') {
+      const manager = await prisma.user.findUnique({
+        where: { id: session.user.id }
+      });
+
+      if (manager?.branchId) {
+        whereClause.createdBy = {
+          branchId: manager.branchId
+        };
+      }
+    }
+    // Admins see all tickets - no additional filtering
+
+    // Apply filters from request body
+    if (filters.status && filters.status !== 'ALL') {
+      whereClause.status = filters.status;
+    }
+    if (filters.priority && filters.priority !== 'ALL') {
+      whereClause.priority = filters.priority;
+    }
+    if (filters.categoryId && filters.categoryId !== 'ALL') {
+      whereClause.categoryId = filters.categoryId;
+    }
+    if (filters.subcategoryId && filters.subcategoryId !== 'ALL') {
+      whereClause.subcategoryId = filters.subcategoryId;
+    }
+    if (filters.itemId && filters.itemId !== 'ALL') {
+      whereClause.itemId = filters.itemId;
+    }
+    if (filters.serviceId && filters.serviceId !== 'ALL') {
+      whereClause.serviceId = filters.serviceId;
+    }
+    if (filters.technicianId && filters.technicianId !== 'ALL') {
+      whereClause.assignedToId = filters.technicianId;
+    }
+    if (filters.branchId && filters.branchId !== 'ALL') {
+      whereClause.createdBy = {
+        ...whereClause.createdBy,
+        branchId: filters.branchId
+      };
+    }
+
+    // Date range filter
+    if (filters.startDate || filters.endDate) {
+      whereClause.createdAt = {};
+      if (filters.startDate) {
+        whereClause.createdAt.gte = new Date(filters.startDate);
+      }
+      if (filters.endDate) {
+        whereClause.createdAt.lte = new Date(filters.endDate);
+      }
+    }
+
+    // Search filter
+    if (filters.searchTerm) {
+      whereClause.OR = whereClause.OR || [];
+      whereClause.OR.push(
+        { ticketNumber: { contains: filters.searchTerm, mode: 'insensitive' } },
+        { title: { contains: filters.searchTerm, mode: 'insensitive' } },
+        { description: { contains: filters.searchTerm, mode: 'insensitive' } }
+      );
+    }
 
     const tickets = await prisma.ticket.findMany({
       where: whereClause,
@@ -332,34 +429,82 @@ export async function POST(request: NextRequest) {
         },
         service: {
           select: {
-            name: true
+            name: true,
+            supportGroup: {
+              select: { name: true }
+            }
           }
+        },
+        vendorTickets: {
+          select: {
+            vendorTicketNumber: true,
+            vendor: {
+              select: {
+                name: true
+              }
+            },
+            status: true
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 1
         }
       },
       orderBy: { createdAt: 'desc' }
     });
 
-    if (format === 'csv') {
+    // Format data for export
+    const formattedData = tickets.map(t => ({
+      'Ticket #': t.ticketNumber,
+      'Title': t.title,
+      'Description': t.description,
+      'Status': t.status,
+      'Priority': t.priority,
+      'Service': t.service?.name || 'N/A',
+      'Support Group': t.service?.supportGroup?.name || 'N/A',
+      'Created By': t.createdBy.name,
+      'Created By Email': t.createdBy.email,
+      'Branch': t.createdBy.branch?.name || 'N/A',
+      'Branch Code': t.createdBy.branch?.code || 'N/A',
+      'Assigned To': t.assignedTo?.name || 'Unassigned',
+      'Assigned To Email': t.assignedTo?.email || '',
+      'Vendor Ticket #': t.vendorTickets[0]?.vendorTicketNumber || '',
+      'Vendor Name': t.vendorTickets[0]?.vendor?.name || '',
+      'Vendor Status': t.vendorTickets[0]?.status || '',
+      'Created Date': new Date(t.createdAt).toISOString(),
+      'Updated Date': new Date(t.updatedAt).toISOString(),
+      'Resolved Date': t.resolvedAt ? new Date(t.resolvedAt).toISOString() : '',
+      'Closed Date': t.closedAt ? new Date(t.closedAt).toISOString() : '',
+      'Resolution Time (hrs)': t.resolvedAt ?
+        Math.round((new Date(t.resolvedAt).getTime() - new Date(t.createdAt).getTime()) / (1000 * 60 * 60)) : ''
+    }));
+
+    if (format === 'xlsx') {
+      const XLSX = require('xlsx');
+      const worksheet = XLSX.utils.json_to_sheet(formattedData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Tickets');
+      const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+      return new NextResponse(buffer, {
+        headers: {
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'Content-Disposition': `attachment; filename="tickets-report-${new Date().toISOString().split('T')[0]}.xlsx"`
+        }
+      });
+    } else if (format === 'csv') {
+      const headers = Object.keys(formattedData[0] || {});
       const csv = [
-        // Headers with 3-tier categorization
-        ['Ticket #', 'Title', 'Status', 'Priority', 'Category', 'Subcategory', 'Item', 'Service', 'Created By', 'Branch', 'Assigned To', 'Created Date', 'Resolved Date', 'Resolution Time (hrs)'].join(','),
-        // Data rows
-        ...tickets.map(t => [
-          t.ticketNumber,
-          `"${t.title.replace(/"/g, '""')}"`,
-          t.status,
-          t.priority,
-          'General', // Category name would need separate lookup
-          '-', // Subcategory name would need separate lookup
-          '-', // Item name would need separate lookup
-          t.service?.name || 'N/A',
-          t.createdBy.name,
-          t.createdBy.branch?.name || 'N/A',
-          t.assignedTo?.name || 'Unassigned',
-          new Date(t.createdAt).toISOString(),
-          t.resolvedAt ? new Date(t.resolvedAt).toISOString() : '',
-          t.resolvedAt ? Math.round((new Date(t.resolvedAt).getTime() - new Date(t.createdAt).getTime()) / (1000 * 60 * 60)) : ''
-        ].join(','))
+        headers.join(','),
+        ...formattedData.map(row =>
+          headers.map(header => {
+            const value = String(row[header as keyof typeof row] || '');
+            // Escape quotes and wrap in quotes if contains comma, quote, or newline
+            if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+              return `"${value.replace(/"/g, '""')}"`;
+            }
+            return value;
+          }).join(',')
+        )
       ].join('\n');
 
       return new NextResponse(csv, {
@@ -370,7 +515,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({ tickets });
+    return NextResponse.json({ tickets: formattedData });
 
   } catch (error) {
     console.error('Error exporting tickets report:', error);

@@ -1041,7 +1041,7 @@ export default function AdminUsersPage() {
                 id="edit-username"
                 value={formData.username || ''}
                 onChange={(e) => setFormData({...formData, username: e.target.value})}
-                className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm"
+                className="bg-card/50 dark:bg-card/50 backdrop-blur-sm"
                 placeholder="Enter username"
               />
             </div>
@@ -1052,7 +1052,7 @@ export default function AdminUsersPage() {
                 id="edit-name"
                 value={formData.name}
                 onChange={(e) => setFormData({...formData, name: e.target.value})}
-                className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm"
+                className="bg-card/50 dark:bg-card/50 backdrop-blur-sm"
               />
             </div>
             
@@ -1063,7 +1063,7 @@ export default function AdminUsersPage() {
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({...formData, email: e.target.value})}
-                className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm"
+                className="bg-card/50 dark:bg-card/50 backdrop-blur-sm"
               />
             </div>
             
@@ -1073,7 +1073,7 @@ export default function AdminUsersPage() {
                 id="edit-phone"
                 value={formData.phone}
                 onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm"
+                className="bg-card/50 dark:bg-card/50 backdrop-blur-sm"
               />
             </div>
             
@@ -1138,7 +1138,7 @@ export default function AdminUsersPage() {
                 value={formData.password || ''}
                 onChange={(e) => setFormData({...formData, password: e.target.value})}
                 placeholder="Leave empty to keep current"
-                className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm"
+                className="bg-card/50 dark:bg-card/50 backdrop-blur-sm"
               />
             </div>
             
@@ -1156,7 +1156,7 @@ export default function AdminUsersPage() {
             <Button 
               variant="outline" 
               onClick={() => setShowEditDialog(false)}
-              className="bg-white/50 hover:bg-white/70"
+              className="bg-card/50 hover:bg-card/70"
             >
               Cancel
             </Button>
