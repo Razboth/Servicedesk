@@ -179,8 +179,8 @@ export default function StaffProfilesPage() {
   const fetchUsers = async () => {
     try {
       setLoadingUsers(true);
-      // Fetch technicians from manager users endpoint for shift scheduling
-      const response = await fetch(`/api/manager/users?role=TECHNICIAN&status=active&limit=1000`);
+      // Fetch shift-eligible users (TECHNICIAN, MANAGER, MANAGER_IT) from the same branch
+      const response = await fetch(`/api/manager/users?shiftEligible=true&status=active&limit=1000`);
       if (!response.ok) throw new Error('Failed to fetch users');
 
       const data = await response.json();
@@ -190,7 +190,7 @@ export default function StaffProfilesPage() {
       setUsers(availableUsers);
     } catch (error) {
       console.error('Error fetching users:', error);
-      toast.error('Failed to load technicians');
+      toast.error('Failed to load shift-eligible staff');
     } finally {
       setLoadingUsers(false);
     }

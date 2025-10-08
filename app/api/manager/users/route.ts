@@ -30,20 +30,29 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
     const role = searchParams.get('role');
     const status = searchParams.get('status');
+    const shiftEligible = searchParams.get('shiftEligible');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
 
     // Build where clause - exclude high-privilege roles for managers
     const where: any = {
       branchId: user.branch.id,
+    };
+
+    // Handle shift-eligible filter (TECHNICIAN, MANAGER, MANAGER_IT from same branch)
+    if (shiftEligible === 'true') {
+      where.role = {
+        in: ['TECHNICIAN', 'MANAGER', 'MANAGER_IT']
+      };
+    } else {
       // Regular managers cannot see high-privilege roles (managed by admin only)
       // IT managers can see technicians for shift scheduling
-      role: session.user.role === 'MANAGER' ? {
+      where.role = session.user.role === 'MANAGER' ? {
         notIn: ['TECHNICIAN', 'ADMIN', 'SECURITY_ANALYST']
       } : session.user.role === 'MANAGER_IT' ? {
         notIn: ['ADMIN', 'SECURITY_ANALYST']
-      } : undefined
-    };
+      } : undefined;
+    }
 
     if (search) {
       where.OR = [
