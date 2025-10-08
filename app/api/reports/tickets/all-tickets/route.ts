@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     // Build where clause based on user role
     const whereClause: any = {};
     
-    // Role-based filtering
+    // Role-based filtering - use AND to ensure search is scoped within user access
     if (session.user.role === 'USER') {
       whereClause.createdById = session.user.id;
     } else if (session.user.role === 'TECHNICIAN' || session.user.role === 'SECURITY_ANALYST') {
@@ -43,25 +43,29 @@ export async function GET(request: NextRequest) {
         where: { id: session.user.id },
         include: { supportGroup: true }
       });
-      
-      whereClause.OR = [
-        { createdById: session.user.id },
-        { assignedToId: session.user.id }
-      ];
-      
+
+      const technicianScope = {
+        OR: [
+          { createdById: session.user.id },
+          { assignedToId: session.user.id }
+        ]
+      };
+
       if (userWithGroup?.supportGroupId) {
-        whereClause.OR.push({
+        technicianScope.OR.push({
           service: {
             supportGroupId: userWithGroup.supportGroupId
           }
         });
       }
+
+      whereClause.AND = [technicianScope];
     } else if (session.user.role === 'MANAGER') {
       // Managers see tickets from their branch
       const manager = await prisma.user.findUnique({
         where: { id: session.user.id }
       });
-      
+
       if (manager?.branchId) {
         whereClause.createdBy = {
           branchId: manager.branchId
@@ -111,14 +115,21 @@ export async function GET(request: NextRequest) {
       }
     }
     
-    // Search filter
+    // Search filter - properly scoped within role access
     if (searchTerm) {
-      whereClause.OR = whereClause.OR || [];
-      whereClause.OR.push(
-        { ticketNumber: { contains: searchTerm, mode: 'insensitive' } },
-        { title: { contains: searchTerm, mode: 'insensitive' } },
-        { description: { contains: searchTerm, mode: 'insensitive' } }
-      );
+      const searchConditions = {
+        OR: [
+          { ticketNumber: { contains: searchTerm, mode: 'insensitive' } },
+          { title: { contains: searchTerm, mode: 'insensitive' } },
+          { description: { contains: searchTerm, mode: 'insensitive' } }
+        ]
+      };
+
+      if (whereClause.AND) {
+        whereClause.AND.push(searchConditions);
+      } else {
+        whereClause.AND = [searchConditions];
+      }
     }
 
     // Get total count
@@ -330,7 +341,7 @@ export async function POST(request: NextRequest) {
     // Build where clause with SAME logic as GET endpoint
     const whereClause: any = {};
 
-    // Role-based filtering (SAME AS GET)
+    // Role-based filtering - use AND to ensure search is scoped within user access
     if (session.user.role === 'USER') {
       whereClause.createdById = session.user.id;
     } else if (session.user.role === 'TECHNICIAN' || session.user.role === 'SECURITY_ANALYST') {
@@ -339,18 +350,22 @@ export async function POST(request: NextRequest) {
         include: { supportGroup: true }
       });
 
-      whereClause.OR = [
-        { createdById: session.user.id },
-        { assignedToId: session.user.id }
-      ];
+      const technicianScope = {
+        OR: [
+          { createdById: session.user.id },
+          { assignedToId: session.user.id }
+        ]
+      };
 
       if (userWithGroup?.supportGroupId) {
-        whereClause.OR.push({
+        technicianScope.OR.push({
           service: {
             supportGroupId: userWithGroup.supportGroupId
           }
         });
       }
+
+      whereClause.AND = [technicianScope];
     } else if (session.user.role === 'MANAGER') {
       const manager = await prisma.user.findUnique({
         where: { id: session.user.id }
@@ -404,14 +419,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Search filter
+    // Search filter - properly scoped within role access
     if (filters.searchTerm) {
-      whereClause.OR = whereClause.OR || [];
-      whereClause.OR.push(
-        { ticketNumber: { contains: filters.searchTerm, mode: 'insensitive' } },
-        { title: { contains: filters.searchTerm, mode: 'insensitive' } },
-        { description: { contains: filters.searchTerm, mode: 'insensitive' } }
-      );
+      const searchConditions = {
+        OR: [
+          { ticketNumber: { contains: filters.searchTerm, mode: 'insensitive' } },
+          { title: { contains: filters.searchTerm, mode: 'insensitive' } },
+          { description: { contains: filters.searchTerm, mode: 'insensitive' } }
+        ]
+      };
+
+      if (whereClause.AND) {
+        whereClause.AND.push(searchConditions);
+      } else {
+        whereClause.AND = [searchConditions];
+      }
     }
 
     const tickets = await prisma.ticket.findMany({
