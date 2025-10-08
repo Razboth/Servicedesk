@@ -107,7 +107,20 @@ class PriorityValidator {
     }
 
     // Check justification requirement
-    if (rule.requiresJustification && !context.justification?.trim()) {
+    // Technicians, Managers and Admins are exempt from justification requirements for HIGH priority
+    const exemptRoles = ['TECHNICIAN', 'MANAGER', 'ADMIN', 'SUPER_ADMIN'];
+    const isExemptFromJustification = exemptRoles.includes(context.userRole) && requestedPriority === 'HIGH';
+
+    // Log exemption status for debugging
+    console.log('[Priority Validation] Checking justification requirement:');
+    console.log('  - User role:', context.userRole);
+    console.log('  - Requested priority:', requestedPriority);
+    console.log('  - Is exempt role?', exemptRoles.includes(context.userRole));
+    console.log('  - Is HIGH priority?', requestedPriority === 'HIGH');
+    console.log('  - Is exempt from justification?', isExemptFromJustification);
+    console.log('  - Has justification?', !!context.justification?.trim());
+
+    if (rule.requiresJustification && !context.justification?.trim() && !isExemptFromJustification) {
       result.isValid = false;
       result.errors.push(`'${requestedPriority}' priority requires justification.`);
     }

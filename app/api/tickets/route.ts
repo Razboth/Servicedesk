@@ -53,6 +53,7 @@ const createTicketSchema = z.object({
   categoryId: z.string().optional(),
   subcategoryId: z.string().optional(),
   itemId: z.string().optional(),
+  branchId: z.string().optional(), // Accept branchId from client (for technicians/admins)
   fieldValues: z.array(z.object({
     fieldId: z.string(),
     value: z.string()
@@ -840,16 +841,20 @@ export async function POST(request: NextRequest) {
     // Initialize priority validator
     const priorityValidator = new PriorityValidator(prisma);
     
-    // Get user's branch information for priority validation
+    // Get user's full information including role for priority validation
     const userForPriorityValidation = await prisma.user.findUnique({
       where: { id: session.user.id },
       include: { branch: true }
     });
 
-    // Validate priority with context
+    // Log the user's role for debugging
+    console.log('[Priority Validation] User role from DB:', userForPriorityValidation?.role);
+    console.log('[Priority Validation] Requested priority:', validatedData.priority);
+
+    // Validate priority with context - use role from database, not session
     const priorityValidationContext: PriorityValidationContext = {
       userId: session.user.id,
-      userRole: session.user.role || 'USER',
+      userRole: userForPriorityValidation?.role || 'USER', // Use role from DB
       serviceId: validatedData.serviceId,
       branchId: userForPriorityValidation?.branchId || undefined,
       description: validatedData.description,
@@ -1055,7 +1060,8 @@ export async function POST(request: NextRequest) {
     });
 
     // Check for ATM claim auto-routing
-    let targetBranchId = userWithBranch?.branchId;
+    // Use branchId from request if provided (for technicians/admins), otherwise use user's branch
+    let targetBranchId = validatedData.branchId || userWithBranch?.branchId;
     // Auto-assign ticket to the creator only if they are a technician
     let assignedToId: string | null = session.user.role === 'TECHNICIAN' ? session.user.id : null;
     let autoRoutingComment: string | null = null;
