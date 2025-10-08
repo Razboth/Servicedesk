@@ -9,7 +9,7 @@ export async function PUT(
   try {
     const session = await auth();
     
-    if (!session || !['MANAGER', 'ADMIN'].includes(session.user.role)) {
+    if (!session || !['MANAGER', 'MANAGER_IT', 'ADMIN'].includes(session.user.role)) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -46,8 +46,17 @@ export async function PUT(
     }
 
     // Managers cannot toggle status of high-privilege roles
-    const restrictedRoles = ['TECHNICIAN', 'ADMIN', 'SECURITY_ANALYST'];
-    if (manager.role === 'MANAGER' && restrictedRoles.includes(existingUser.role)) {
+    const restrictedForManager = ['TECHNICIAN', 'ADMIN', 'SECURITY_ANALYST'];
+    const restrictedForITManager = ['ADMIN', 'SECURITY_ANALYST'];
+
+    if (manager.role === 'MANAGER' && restrictedForManager.includes(existingUser.role)) {
+      return NextResponse.json(
+        { error: 'This role can only be managed by administrators' },
+        { status: 403 }
+      );
+    }
+
+    if (manager.role === 'MANAGER_IT' && restrictedForITManager.includes(existingUser.role)) {
       return NextResponse.json(
         { error: 'This role can only be managed by administrators' },
         { status: 403 }
@@ -55,7 +64,7 @@ export async function PUT(
     }
 
     // Managers can only toggle users from their own branch
-    if (manager.role === 'MANAGER' && existingUser.branchId !== manager.branchId) {
+    if ((manager.role === 'MANAGER' || manager.role === 'MANAGER_IT') && existingUser.branchId !== manager.branchId) {
       return NextResponse.json(
         { error: 'Cannot modify users from other branches' },
         { status: 403 }

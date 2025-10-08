@@ -10,7 +10,7 @@ export async function GET(
     const { id } = await params;
     const session = await auth();
     
-    if (!session || !['MANAGER', 'ADMIN'].includes(session.user.role)) {
+    if (!session || !['MANAGER', 'MANAGER_IT', 'ADMIN'].includes(session.user.role)) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -60,7 +60,7 @@ export async function GET(
     }
 
     // Check if user has access to this ATM's branch
-    if (session.user.role === 'MANAGER' && atm.branchId !== user.branch.id) {
+    if ((session.user.role === 'MANAGER' || session.user.role === 'MANAGER_IT') && atm.branchId !== user.branch.id) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }

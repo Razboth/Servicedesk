@@ -21,7 +21,6 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { TicketNotifications } from '@/components/tickets/ticket-notifications';
 import { toast } from 'sonner';
 import {
   Ticket,
@@ -257,26 +256,23 @@ export default function ManagerTicketsPage() {
         </CardContent>
       </Card>
 
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Tickets Table - Takes 3 columns */}
-        <div className="lg:col-span-3">
-          <Card>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>ID</TableHead>
-                    <TableHead>Title</TableHead>
-                    <TableHead>User</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Priority</TableHead>
-                    <TableHead>Assigned To</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+      {/* Tickets Table */}
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Ticket Number</TableHead>
+                <TableHead>Title</TableHead>
+                <TableHead>User</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Priority</TableHead>
+                <TableHead>Assigned To</TableHead>
+                <TableHead>Created</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {loading ? (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center py-8">
@@ -293,7 +289,7 @@ export default function ManagerTicketsPage() {
                 tickets.map((ticket) => (
                   <TableRow key={ticket.id}>
                     <TableCell className="font-mono text-sm">
-                      {ticket.id.slice(0, 8)}
+                      {ticket.ticketNumber}
                     </TableCell>
                     <TableCell>
                       <div className="max-w-[300px]">
@@ -356,17 +352,6 @@ export default function ManagerTicketsPage() {
           </Table>
         </CardContent>
       </Card>
-    </div>
-
-    {/* Notifications Section - Takes 1 column */}
-    <div className="lg:col-span-1">
-      <Card className="sticky top-4">
-        <CardContent className="p-4">
-          <TicketNotifications autoFetch={false} className="max-h-[600px]" />
-        </CardContent>
-      </Card>
-    </div>
-  </div>
     </div>
   );
 }

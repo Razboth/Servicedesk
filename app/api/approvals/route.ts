@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Only managers can access approval dashboard
-    if (session.user.role !== 'MANAGER') {
+    if (!['MANAGER', 'MANAGER_IT'].includes(session.user.role)) {
       return NextResponse.json({ error: 'Access denied. Manager role required.' }, { status: 403 });
     }
 
@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Only managers can approve tickets
-    if (session.user.role !== 'MANAGER') {
+    if (!['MANAGER', 'MANAGER_IT'].includes(session.user.role)) {
       return NextResponse.json({ error: 'Access denied. Manager role required.' }, { status: 403 });
     }
 
