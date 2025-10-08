@@ -247,7 +247,9 @@ export default function TechnicianShiftsPage() {
                 {sortedShifts.map(shift => {
                   const config = shiftTypeConfig[shift.shiftType as keyof typeof shiftTypeConfig];
                   const Icon = config?.icon;
-                  const date = new Date(shift.date + 'T00:00:00');
+                  // Handle date parsing - extract just the date part if it's ISO format
+                  const datePart = shift.date.split('T')[0];
+                  const date = new Date(datePart + 'T00:00:00');
 
                   return (
                     <div
