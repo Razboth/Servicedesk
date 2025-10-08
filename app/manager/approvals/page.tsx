@@ -215,7 +215,7 @@ export default function ManagerApprovalsPage() {
   // Redirect if not manager
   useEffect(() => {
     if (status === 'loading') return;
-    if (!session || session.user.role !== 'MANAGER') {
+    if (!session || !['MANAGER', 'MANAGER_IT'].includes(session.user.role)) {
       router.push('/dashboard');
       return;
     }
@@ -249,7 +249,7 @@ export default function ManagerApprovalsPage() {
   };
 
   useEffect(() => {
-    if (session?.user.role === 'MANAGER') {
+    if (session?.user.role && ['MANAGER', 'MANAGER_IT'].includes(session.user.role)) {
       fetchApprovals();
     }
   }, [session, pagination.page, searchTerm, priorityFilter]);
@@ -409,12 +409,12 @@ export default function ManagerApprovalsPage() {
     );
   }
 
-  if (!session || session.user.role !== 'MANAGER') {
+  if (!session || !['MANAGER', 'MANAGER_IT'].includes(session.user.role)) {
     return null;
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <div className="min-h-screen bg-background">
       <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 p-6 space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
@@ -439,7 +439,7 @@ export default function ManagerApprovalsPage() {
           <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
             <div className="flex flex-1 gap-4 items-center">
               <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                 <Input
                   placeholder="Search tickets..."
                   value={searchTerm}
@@ -525,7 +525,7 @@ export default function ManagerApprovalsPage() {
                           {priorityIcons[ticket.priority]} {ticket.priority}
                         </Badge>
                       </div>
-                      <p className="text-sm text-gray-600">#{ticket.ticketNumber}</p>
+                      <p className="text-sm text-muted-foreground">#{ticket.ticketNumber}</p>
                     </div>
                     
                     <div className="flex space-x-2">
@@ -559,17 +559,17 @@ export default function ManagerApprovalsPage() {
                   {/* Content */}
                   <div className="grid md:grid-cols-2 gap-4">
                     <div>
-                      <h4 className="font-medium text-sm text-gray-700 mb-1">Description</h4>
-                      <p className="text-sm text-gray-600 line-clamp-2">{ticket.description}</p>
+                      <h4 className="font-medium text-sm text-foreground mb-1">Description</h4>
+                      <p className="text-sm text-muted-foreground line-clamp-2">{ticket.description}</p>
                     </div>
                     <div>
-                      <h4 className="font-medium text-sm text-gray-700 mb-1">Service</h4>
-                      <p className="text-sm text-gray-600">{ticket.service.name}</p>
+                      <h4 className="font-medium text-sm text-foreground mb-1">Service</h4>
+                      <p className="text-sm text-muted-foreground">{ticket.service.name}</p>
                     </div>
                   </div>
 
                   {/* Footer */}
-                  <div className="flex items-center justify-between text-sm text-gray-500 pt-2 border-t">
+                  <div className="flex items-center justify-between text-sm text-muted-foreground pt-2 border-t border-border">
                     <div className="flex items-center space-x-4">
                       <div className="flex items-center space-x-1">
                         <User className="w-4 h-4" />
@@ -591,8 +591,8 @@ export default function ManagerApprovalsPage() {
           <Card>
             <CardContent className="p-12 text-center">
               <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">No Pending Approvals</h3>
-              <p className="text-gray-600">All tickets have been processed. Great job!</p>
+              <h3 className="text-lg font-semibold text-foreground mb-2">No Pending Approvals</h3>
+              <p className="text-muted-foreground">All tickets have been processed. Great job!</p>
             </CardContent>
           </Card>
         )}
@@ -608,7 +608,7 @@ export default function ManagerApprovalsPage() {
           >
             Previous
           </Button>
-          <span className="flex items-center px-4 text-sm text-gray-600">
+          <span className="flex items-center px-4 text-sm text-muted-foreground">
             Page {pagination.page} of {pagination.pages}
           </span>
           <Button
@@ -683,14 +683,14 @@ export default function ManagerApprovalsPage() {
               <div className="space-y-4">
                 <div>
                   <h4 className="font-medium mb-2">Description</h4>
-                  <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
+                  <p className="text-sm text-muted-foreground bg-background p-3 rounded">
                     {selectedTicketDetails.description}
                   </p>
                 </div>
                 
                 <div>
                   <h4 className="font-medium mb-2">Requested by</h4>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-muted-foreground">
                     {selectedTicketDetails.createdBy.name} ({selectedTicketDetails.createdBy.email})
                   </p>
                 </div>
@@ -701,8 +701,8 @@ export default function ManagerApprovalsPage() {
                     <div className="space-y-2">
                       {selectedTicketDetails.fieldValues.map((fieldValue) => (
                         <div key={fieldValue.id} className="flex justify-between text-sm">
-                          <span className="font-medium text-gray-700">{fieldValue.field.label}:</span>
-                          <span className="text-gray-600">{fieldValue.value}</span>
+                          <span className="font-medium text-foreground">{fieldValue.field.label}:</span>
+                          <span className="text-muted-foreground">{fieldValue.value}</span>
                         </div>
                       ))}
                     </div>
@@ -711,7 +711,7 @@ export default function ManagerApprovalsPage() {
                 
                 <div>
                   <h4 className="font-medium mb-2">Created</h4>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-muted-foreground">
                     {formatDistanceToNow(new Date(selectedTicketDetails.createdAt), { addSuffix: true })}
                   </p>
                 </div>
