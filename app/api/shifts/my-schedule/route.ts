@@ -16,13 +16,27 @@ export async function GET(request: NextRequest) {
 
     const userId = session.user.id;
 
-    // First, get the user's staff profile
+    // First, get the user's staff profile and branch info
     const staffProfile = await prisma.staffShiftProfile.findUnique({
       where: { userId },
-      select: { id: true },
+      select: {
+        id: true,
+        branchId: true,
+      },
     });
 
-    // If user doesn't have a staff profile, return empty data
+    // If user doesn't have a staff profile, try to get branchId from user directly
+    let branchId: string | null = staffProfile?.branchId || null;
+
+    if (!branchId) {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { branchId: true },
+      });
+      branchId = user?.branchId || null;
+    }
+
+    // If user doesn't have a staff profile, return empty data with branchId
     if (!staffProfile) {
       return NextResponse.json({
         success: true,
@@ -30,6 +44,7 @@ export async function GET(request: NextRequest) {
           todayShift: null,
           upcomingShifts: [],
           todayOnCall: null,
+          branchId,
         },
       });
     }
@@ -113,6 +128,7 @@ export async function GET(request: NextRequest) {
         todayShift,
         upcomingShifts,
         todayOnCall,
+        branchId,
       },
     });
   } catch (error: any) {

@@ -69,6 +69,7 @@ export default function TechnicianShiftsPage() {
   const [todayShift, setTodayShift] = useState<ShiftAssignment | null>(null);
   const [upcomingShifts, setUpcomingShifts] = useState<ShiftAssignment[]>([]);
   const [monthlySchedule, setMonthlySchedule] = useState<MonthlySchedule | null>(null);
+  const [userBranchId, setUserBranchId] = useState<string | null>(null);
 
   const currentDate = new Date();
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1);
@@ -80,8 +81,10 @@ export default function TechnicianShiftsPage() {
   }, []);
 
   useEffect(() => {
-    fetchMonthlySchedule();
-  }, [selectedMonth, selectedYear]);
+    if (userBranchId) {
+      fetchMonthlySchedule();
+    }
+  }, [selectedMonth, selectedYear, userBranchId]);
 
   const fetchMySchedule = async () => {
     try {
@@ -92,6 +95,11 @@ export default function TechnicianShiftsPage() {
       const data = await response.json();
       setTodayShift(data.data.todayShift);
       setUpcomingShifts(data.data.upcomingShifts || []);
+
+      // Get branchId from the response
+      if (data.data.branchId) {
+        setUserBranchId(data.data.branchId);
+      }
     } catch (error) {
       console.error('Error fetching schedule:', error);
       toast.error('Failed to load your shift schedule');
@@ -101,14 +109,14 @@ export default function TechnicianShiftsPage() {
   };
 
   const fetchMonthlySchedule = async () => {
-    if (!session?.user?.branchId) {
-      console.log('No branchId in session');
+    if (!userBranchId) {
+      console.log('No branchId available yet');
       return;
     }
 
     try {
       // Fetch published schedule for the selected month
-      const url = `/api/shifts/schedules?branchId=${session.user.branchId}&month=${selectedMonth}&year=${selectedYear}&status=PUBLISHED`;
+      const url = `/api/shifts/schedules?branchId=${userBranchId}&month=${selectedMonth}&year=${selectedYear}&status=PUBLISHED`;
       console.log('Fetching schedule from:', url);
 
       const response = await fetch(url);
