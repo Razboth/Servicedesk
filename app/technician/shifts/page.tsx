@@ -37,6 +37,13 @@ interface ShiftAssignment {
     year: number;
     status: string;
   };
+  staffProfile: {
+    user: {
+      id: string;
+      name: string;
+      email: string;
+    };
+  };
 }
 
 interface MonthlySchedule {
