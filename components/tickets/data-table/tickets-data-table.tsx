@@ -118,7 +118,7 @@ export function TicketsDataTable({
       if (response.ok) {
         const data = await response.json()
         const options = data.categories?.map((category: any) => ({
-          value: category.name,
+          value: category.id,
           label: category.name
         })) || []
         setCategoryOptions(options)
@@ -400,20 +400,20 @@ export function TicketsDataTable({
     
     // Extract categories if not loaded
     if (categoryOptions.length === 0) {
-      const uniqueCategories = new Set<string>()
+      const uniqueCategories = new Map<string, string>()
       ticketData.forEach(ticket => {
-        if (ticket.service?.category?.name) {
-          uniqueCategories.add(ticket.service.category.name)
+        if (ticket.service?.category?.id && ticket.service?.category?.name) {
+          uniqueCategories.set(ticket.service.category.id, ticket.service.category.name)
         }
       })
-      
-      const options = Array.from(uniqueCategories)
-        .sort()
-        .map(name => ({
-          value: name,
+
+      const options = Array.from(uniqueCategories.entries())
+        .sort((a, b) => a[1].localeCompare(b[1]))
+        .map(([id, name]) => ({
+          value: id,
           label: name
         }))
-      
+
       if (options.length > 0) {
         setCategoryOptions(options)
         console.log('Extracted categories from tickets:', options.length)

@@ -696,15 +696,18 @@ export async function GET(request: NextRequest) {
       prisma.ticket.findMany({
         where,
         include: {
-          service: { 
-            select: { 
+          service: {
+            select: {
               name: true,
               slaHours: true,
               requiresApproval: true,
               category: {
-                select: { name: true }
+                select: {
+                  id: true,
+                  name: true
+                }
               }
-            } 
+            }
           },
           createdBy: { select: { id: true, name: true, email: true, branchId: true } },
           assignedTo: { select: { id: true, name: true, email: true } },
