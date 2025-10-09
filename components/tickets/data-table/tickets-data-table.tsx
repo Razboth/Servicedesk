@@ -452,15 +452,17 @@ export function TicketsDataTable({
 
   // Handle filter changes from the data table
   const handleFilterChange = useCallback((filters: { status?: string; priority?: string; category?: string }) => {
-    const newFilters = {
-      ...currentFilters,
-      ...filters
-    }
-    setCurrentFilters(newFilters)
-    // Reset to page 1 when filters change and pass filters directly
-    setCurrentPage(1)
-    loadTickets(false, serverSearchQuery, 1, undefined, newFilters)
-  }, [serverSearchQuery, currentFilters])
+    setCurrentFilters(prev => {
+      const newFilters = {
+        ...prev,
+        ...filters
+      }
+      // Reset to page 1 when filters change and pass filters directly
+      setCurrentPage(1)
+      loadTickets(false, serverSearchQuery, 1, undefined, newFilters)
+      return newFilters
+    })
+  }, [serverSearchQuery])
 
   // Debounced search effect - reset to page 1 when search changes
   useEffect(() => {
