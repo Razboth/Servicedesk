@@ -54,6 +54,7 @@ interface DataTableProps<TData, TValue> {
   serviceOptions?: { value: string; label: string }[]
   technicianOptions?: { value: string; label: string }[]
   onServerSearch?: (query: string) => void
+  onFilterChange?: (filters: { status?: string; priority?: string; category?: string }) => void
   pagination?: ServerPaginationProps
 }
 
@@ -71,6 +72,7 @@ export function DataTable<TData, TValue>({
   serviceOptions = [],
   technicianOptions = [],
   onServerSearch,
+  onFilterChange,
   pagination,
 }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState({})
@@ -202,6 +204,7 @@ export function DataTable<TData, TValue>({
             serviceOptions={serviceOptions}
             technicianOptions={technicianOptions}
             onServerSearch={onServerSearch}
+            onFilterChange={onFilterChange}
           />
           <div className="relative rounded-lg border">
             {/* Loading overlay for pagination navigation */}

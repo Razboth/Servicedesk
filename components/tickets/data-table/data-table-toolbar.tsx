@@ -64,6 +64,7 @@ interface DataTableToolbarProps<TData> {
   serviceOptions?: { value: string; label: string }[]
   technicianOptions?: { value: string; label: string }[]
   onServerSearch?: (query: string) => void
+  onFilterChange?: (filters: { status?: string; priority?: string; category?: string }) => void
 }
 
 export function DataTableToolbar<TData>({
@@ -80,11 +81,28 @@ export function DataTableToolbar<TData>({
   serviceOptions = [],
   technicianOptions = [],
   onServerSearch,
+  onFilterChange,
 }: DataTableToolbarProps<TData>) {
   const [selectedStatus, setSelectedStatus] = useState<string>('')
   const [searchValue, setSearchValue] = useState<string>('')
   const isFiltered = table.getState().columnFilters.length > 0 || globalFilter !== '' || searchValue !== ''
-  
+
+  // Notify parent component when filters change (for server-side filtering)
+  React.useEffect(() => {
+    if (onFilterChange) {
+      const columnFilters = table.getState().columnFilters
+      const statusFilter = columnFilters.find(f => f.id === 'status')
+      const priorityFilter = columnFilters.find(f => f.id === 'priority')
+      const categoryFilter = columnFilters.find(f => f.id === 'service.category.name')
+
+      onFilterChange({
+        status: statusFilter?.value as string | undefined,
+        priority: priorityFilter?.value as string | undefined,
+        category: categoryFilter?.value as string | undefined,
+      })
+    }
+  }, [table.getState().columnFilters, onFilterChange])
+
   // Debug: Log available columns
   React.useEffect(() => {
     const allColumns = table.getAllColumns().map(col => col.id)

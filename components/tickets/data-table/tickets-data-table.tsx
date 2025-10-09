@@ -65,6 +65,12 @@ export function TicketsDataTable({
   const [newItemsCount, setNewItemsCount] = useState(0)
   const [showNewItemsNotification, setShowNewItemsNotification] = useState(false)
   const [serverSearchQuery, setServerSearchQuery] = useState('')
+  // Track current filter state to persist across pagination
+  const [currentFilters, setCurrentFilters] = useState({
+    status: initialFilters?.status,
+    priority: initialFilters?.priority,
+    category: initialFilters?.category,
+  })
   // Server-side pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(() => {
@@ -282,16 +288,17 @@ export function TicketsDataTable({
         params.append('filter', ticketFilter)
       }
 
-      if (initialFilters?.status) {
-        params.append('status', initialFilters.status)
+      // Use current filters state to persist filters across pagination
+      if (currentFilters.status) {
+        params.append('status', currentFilters.status)
       }
 
-      if (initialFilters?.priority) {
-        params.append('priority', initialFilters.priority)
+      if (currentFilters.priority) {
+        params.append('priority', currentFilters.priority)
       }
 
-      if (initialFilters?.category) {
-        params.append('categoryId', initialFilters.category)
+      if (currentFilters.category) {
+        params.append('categoryId', currentFilters.category)
       }
 
       // Add search query - use provided searchQuery or current serverSearchQuery
@@ -440,6 +447,17 @@ export function TicketsDataTable({
   const handleServerSearch = useCallback((query: string) => {
     setServerSearchQuery(query)
   }, [])
+
+  // Handle filter changes from the data table
+  const handleFilterChange = useCallback((filters: { status?: string; priority?: string; category?: string }) => {
+    setCurrentFilters(prev => ({
+      ...prev,
+      ...filters
+    }))
+    // Reset to page 1 when filters change
+    setCurrentPage(1)
+    loadTickets(false, serverSearchQuery, 1)
+  }, [serverSearchQuery])
 
   // Debounced search effect - reset to page 1 when search changes
   useEffect(() => {
@@ -793,6 +811,7 @@ export function TicketsDataTable({
         serviceOptions={serviceOptions}
         technicianOptions={technicianOptions}
         onServerSearch={handleServerSearch}
+        onFilterChange={handleFilterChange}
         // Server-side pagination props
         pagination={{
           currentPage,
