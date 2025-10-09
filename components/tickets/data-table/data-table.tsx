@@ -160,6 +160,7 @@ export function DataTable<TData, TValue>({
     },
     // Configure for server-side pagination when pagination prop is provided
     manualPagination: !!pagination,
+    manualFiltering: !!pagination, // Disable client-side filtering when using server pagination
     pageCount: pagination?.totalPages ?? -1,
     enableRowSelection: enableBulkActions,
     onRowSelectionChange: setRowSelection,
@@ -169,7 +170,8 @@ export function DataTable<TData, TValue>({
     onGlobalFilterChange: setGlobalFilter,
     onColumnOrderChange: setColumnOrder,
     getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
+    // Only use client-side filtering when NOT using server pagination
+    ...(!pagination && { getFilteredRowModel: getFilteredRowModel() }),
     ...(pagination ? {} : { getPaginationRowModel: getPaginationRowModel() }),
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),

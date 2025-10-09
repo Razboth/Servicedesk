@@ -95,10 +95,15 @@ export function DataTableToolbar<TData>({
       const priorityFilter = columnFilters.find(f => f.id === 'priority')
       const categoryFilter = columnFilters.find(f => f.id === 'service.category.name')
 
+      // Extract values - faceted filters return arrays, we need the first value for server-side filtering
+      const statusValue = statusFilter?.value
+      const priorityValue = priorityFilter?.value
+      const categoryValue = categoryFilter?.value
+
       onFilterChange({
-        status: statusFilter?.value as string | undefined,
-        priority: priorityFilter?.value as string | undefined,
-        category: categoryFilter?.value as string | undefined,
+        status: Array.isArray(statusValue) ? statusValue[0] : statusValue as string | undefined,
+        priority: Array.isArray(priorityValue) ? priorityValue[0] : priorityValue as string | undefined,
+        category: Array.isArray(categoryValue) ? categoryValue[0] : categoryValue as string | undefined,
       })
     }
   }, [table.getState().columnFilters, onFilterChange])

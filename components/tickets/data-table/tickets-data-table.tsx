@@ -273,7 +273,7 @@ export function TicketsDataTable({
   }, [])
 
   // Load tickets from API with server-side pagination
-  const loadTickets = async (isInitial = false, searchQuery?: string, page?: number, size?: number) => {
+  const loadTickets = async (isInitial = false, searchQuery?: string, page?: number, size?: number, filters?: { status?: string; priority?: string; category?: string }) => {
     try {
       // Only show loading spinner on initial load
       if (isInitial) {
@@ -288,17 +288,19 @@ export function TicketsDataTable({
         params.append('filter', ticketFilter)
       }
 
-      // Use current filters state to persist filters across pagination
-      if (currentFilters.status) {
-        params.append('status', currentFilters.status)
+      // Use provided filters or current filters state to persist filters across pagination
+      const activeFilters = filters ?? currentFilters
+
+      if (activeFilters.status) {
+        params.append('status', activeFilters.status)
       }
 
-      if (currentFilters.priority) {
-        params.append('priority', currentFilters.priority)
+      if (activeFilters.priority) {
+        params.append('priority', activeFilters.priority)
       }
 
-      if (currentFilters.category) {
-        params.append('categoryId', currentFilters.category)
+      if (activeFilters.category) {
+        params.append('categoryId', activeFilters.category)
       }
 
       // Add search query - use provided searchQuery or current serverSearchQuery
@@ -450,14 +452,15 @@ export function TicketsDataTable({
 
   // Handle filter changes from the data table
   const handleFilterChange = useCallback((filters: { status?: string; priority?: string; category?: string }) => {
-    setCurrentFilters(prev => ({
-      ...prev,
+    const newFilters = {
+      ...currentFilters,
       ...filters
-    }))
-    // Reset to page 1 when filters change
+    }
+    setCurrentFilters(newFilters)
+    // Reset to page 1 when filters change and pass filters directly
     setCurrentPage(1)
-    loadTickets(false, serverSearchQuery, 1)
-  }, [serverSearchQuery])
+    loadTickets(false, serverSearchQuery, 1, undefined, newFilters)
+  }, [serverSearchQuery, currentFilters])
 
   // Debounced search effect - reset to page 1 when search changes
   useEffect(() => {
