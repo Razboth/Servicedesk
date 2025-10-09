@@ -64,7 +64,7 @@ interface DataTableToolbarProps<TData> {
   serviceOptions?: { value: string; label: string }[]
   technicianOptions?: { value: string; label: string }[]
   onServerSearch?: (query: string) => void
-  onFilterChange?: (filters: { status?: string; priority?: string; category?: string }) => void
+  onFilterChange?: (filters: { status?: string; priority?: string; category?: string; branch?: string }) => void
 }
 
 export function DataTableToolbar<TData>({
@@ -94,16 +94,19 @@ export function DataTableToolbar<TData>({
       const statusFilter = columnFilters.find(f => f.id === 'status')
       const priorityFilter = columnFilters.find(f => f.id === 'priority')
       const categoryFilter = columnFilters.find(f => f.id === 'service.category.name')
+      const branchFilter = columnFilters.find(f => f.id === 'branch.code')
 
       // Extract values - faceted filters return arrays, we need the first value for server-side filtering
       const statusValue = statusFilter?.value
       const priorityValue = priorityFilter?.value
       const categoryValue = categoryFilter?.value
+      const branchValue = branchFilter?.value
 
       onFilterChange({
         status: Array.isArray(statusValue) ? statusValue[0] : statusValue as string | undefined,
         priority: Array.isArray(priorityValue) ? priorityValue[0] : priorityValue as string | undefined,
         category: Array.isArray(categoryValue) ? categoryValue[0] : categoryValue as string | undefined,
+        branch: Array.isArray(branchValue) ? branchValue[0] : branchValue as string | undefined,
       })
     }
   }, [table.getState().columnFilters, onFilterChange])

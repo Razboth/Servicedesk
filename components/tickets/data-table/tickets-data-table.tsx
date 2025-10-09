@@ -70,6 +70,7 @@ export function TicketsDataTable({
     status: initialFilters?.status,
     priority: initialFilters?.priority,
     category: initialFilters?.category,
+    branch: undefined as string | undefined,
   })
   // Server-side pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -98,7 +99,7 @@ export function TicketsDataTable({
         // API returns array directly, not wrapped in { branches: [...] }
         const branches = Array.isArray(data) ? data : []
         const options = branches.map((branch: any) => ({
-          value: branch.code,
+          value: branch.id,  // Use branch ID for filtering
           label: `${branch.code} - ${branch.name}`
         }))
         setBranchOptions(options)
@@ -273,7 +274,7 @@ export function TicketsDataTable({
   }, [])
 
   // Load tickets from API with server-side pagination
-  const loadTickets = async (isInitial = false, searchQuery?: string, page?: number, size?: number, filters?: { status?: string; priority?: string; category?: string }) => {
+  const loadTickets = async (isInitial = false, searchQuery?: string, page?: number, size?: number, filters?: { status?: string; priority?: string; category?: string; branch?: string }) => {
     try {
       // Only show loading spinner on initial load
       if (isInitial) {
@@ -301,6 +302,10 @@ export function TicketsDataTable({
 
       if (activeFilters.category) {
         params.append('categoryId', activeFilters.category)
+      }
+
+      if (activeFilters.branch) {
+        params.append('branchId', activeFilters.branch)
       }
 
       // Add search query - use provided searchQuery or current serverSearchQuery
@@ -379,18 +384,18 @@ export function TicketsDataTable({
   const extractFilterOptionsFromTickets = (ticketData: Ticket[]) => {
     // Extract branches if not loaded
     if (branchOptions.length === 0) {
-      const uniqueBranches = new Map<string, string>()
+      const uniqueBranches = new Map<string, { id: string; code: string; name: string }>()
       ticketData.forEach(ticket => {
-        if (ticket.branch?.code && ticket.branch?.name) {
-          uniqueBranches.set(ticket.branch.code, ticket.branch.name)
+        if (ticket.branch?.id && ticket.branch?.code && ticket.branch?.name) {
+          uniqueBranches.set(ticket.branch.id, { id: ticket.branch.id, code: ticket.branch.code, name: ticket.branch.name })
         }
       })
-      
-      const options = Array.from(uniqueBranches.entries())
-        .sort((a, b) => a[0].localeCompare(b[0]))
-        .map(([code, name]) => ({
-          value: code,
-          label: `${code} - ${name}`
+
+      const options = Array.from(uniqueBranches.values())
+        .sort((a, b) => a.code.localeCompare(b.code))
+        .map((branch) => ({
+          value: branch.id,  // Use branch ID for filtering
+          label: `${branch.code} - ${branch.name}`
         }))
       
       if (options.length > 0) {
@@ -452,7 +457,7 @@ export function TicketsDataTable({
   }, [])
 
   // Handle filter changes from the data table
-  const handleFilterChange = useCallback((filters: { status?: string; priority?: string; category?: string }) => {
+  const handleFilterChange = useCallback((filters: { status?: string; priority?: string; category?: string; branch?: string }) => {
     setCurrentFilters(prev => {
       const newFilters = {
         ...prev,
