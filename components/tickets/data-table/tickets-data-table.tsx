@@ -357,10 +357,11 @@ export function TicketsDataTable({
         // Update previous ticket IDs for next refresh
         setPreviousTicketIds(new Set(loadedTickets.map((t: Ticket) => t.id)))
         setLastRefreshTime(new Date())
-        
-        // Extract filter options from loaded tickets as fallback
-        extractFilterOptionsFromTickets(loadedTickets)
-        // Load technicians with the ticket data
+
+        // Don't extract filter options - rely on API-loaded options only
+        // Extraction would only show options from current page, not all available options
+
+        // Load technicians with the ticket data (technicians extraction is OK as fallback)
         loadTechnicians(loadedTickets)
       } else {
         toast.error('Failed to load tickets')
