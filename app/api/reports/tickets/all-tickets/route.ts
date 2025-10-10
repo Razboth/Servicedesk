@@ -270,41 +270,68 @@ export async function GET(request: NextRequest) {
       })
     };
 
+    // Collect unique category/subcategory/item IDs to fetch names
+    const categoryIds = [...new Set(tickets.map(t => t.categoryId).filter(Boolean))];
+    const subcategoryIds = [...new Set(tickets.map(t => t.subcategoryId).filter(Boolean))];
+    const itemIds = [...new Set(tickets.map(t => t.itemId).filter(Boolean))];
+
+    // Fetch category/subcategory/item names in bulk
+    const [categories, subcategories, items] = await Promise.all([
+      categoryIds.length > 0 ? prisma.category.findMany({
+        where: { id: { in: categoryIds as string[] } },
+        select: { id: true, name: true }
+      }) : [],
+      subcategoryIds.length > 0 ? prisma.subcategory.findMany({
+        where: { id: { in: subcategoryIds as string[] } },
+        select: { id: true, name: true }
+      }) : [],
+      itemIds.length > 0 ? prisma.item.findMany({
+        where: { id: { in: itemIds as string[] } },
+        select: { id: true, name: true }
+      }) : []
+    ]);
+
+    // Create lookup maps for quick access
+    const categoryMap = new Map(categories.map(c => [c.id, c.name]));
+    const subcategoryMap = new Map(subcategories.map(s => [s.id, s.name]));
+    const itemMap = new Map(items.map(i => [i.id, i.name]));
+
     // Format response
-    const formattedTickets = tickets.map(ticket => ({
-      id: ticket.id,
-      ticketNumber: ticket.ticketNumber,
-      title: ticket.title,
-      description: ticket.description,
-      status: ticket.status,
-      priority: ticket.priority,
-      // 3-tier categorization - These are string IDs, not relations
-      category: 'General', // We'll fetch the names separately if needed
-      subcategory: '-',
-      item: '-',
-      service: ticket.service?.name || 'N/A',
-      supportGroup: ticket.service?.supportGroup?.name || 'N/A',
-      createdBy: ticket.createdBy.name,
-      createdByEmail: ticket.createdBy.email,
-      branch: ticket.createdBy.branch?.name || 'N/A',
-      branchCode: ticket.createdBy.branch?.code || 'N/A',
-      assignedTo: ticket.assignedTo?.name || 'Unassigned',
-      assignedToEmail: ticket.assignedTo?.email || '',
-      createdAt: ticket.createdAt,
-      updatedAt: ticket.updatedAt,
-      resolvedAt: ticket.resolvedAt,
-      closedAt: ticket.closedAt,
-      responseTime: null, // Field removed as firstResponseAt doesn't exist
-      resolutionTime: ticket.resolvedAt ?
-        Math.round((new Date(ticket.resolvedAt).getTime() - new Date(ticket.createdAt).getTime()) / (1000 * 60 * 60)) : null,
-      approvalStatus: ticket.approvals[0]?.status || null,
-      approvedBy: ticket.approvals[0]?.approver?.name || null,
-      commentCount: ticket.comments.length,
-      attachmentCount: ticket.attachments.length,
-      vendorTicketNumber: ticket.vendorTickets[0]?.vendorTicketNumber || null,
-      vendorName: ticket.vendorTickets[0]?.vendor?.name || null,
-      vendorStatus: ticket.vendorTickets[0]?.status || null
-    }));
+    const formattedTickets = tickets.map(ticket => {
+      return {
+        id: ticket.id,
+        ticketNumber: ticket.ticketNumber,
+        title: ticket.title,
+        description: ticket.description,
+        status: ticket.status,
+        priority: ticket.priority,
+        category: ticket.categoryId ? (categoryMap.get(ticket.categoryId) || '-') : '-',
+        subcategory: ticket.subcategoryId ? (subcategoryMap.get(ticket.subcategoryId) || '-') : '-',
+        item: ticket.itemId ? (itemMap.get(ticket.itemId) || '-') : '-',
+        service: ticket.service?.name || 'N/A',
+        supportGroup: ticket.service?.supportGroup?.name || 'N/A',
+        createdBy: ticket.createdBy.name,
+        createdByEmail: ticket.createdBy.email,
+        branch: ticket.createdBy.branch?.name || 'N/A',
+        branchCode: ticket.createdBy.branch?.code || 'N/A',
+        assignedTo: ticket.assignedTo?.name || 'Unassigned',
+        assignedToEmail: ticket.assignedTo?.email || '',
+        createdAt: ticket.createdAt,
+        updatedAt: ticket.updatedAt,
+        resolvedAt: ticket.resolvedAt,
+        closedAt: ticket.closedAt,
+        responseTime: null, // Field removed as firstResponseAt doesn't exist
+        resolutionTime: ticket.resolvedAt ?
+          Math.round((new Date(ticket.resolvedAt).getTime() - new Date(ticket.createdAt).getTime()) / (1000 * 60 * 60)) : null,
+        approvalStatus: ticket.approvals[0]?.status || null,
+        approvedBy: ticket.approvals[0]?.approver?.name || null,
+        commentCount: ticket.comments.length,
+        attachmentCount: ticket.attachments.length,
+        vendorTicketNumber: ticket.vendorTickets[0]?.vendorTicketNumber || null,
+        vendorName: ticket.vendorTickets[0]?.vendor?.name || null,
+        vendorStatus: ticket.vendorTickets[0]?.status || null
+      };
+    });
 
     return NextResponse.json({
       tickets: formattedTickets,
@@ -474,31 +501,62 @@ export async function POST(request: NextRequest) {
       orderBy: { createdAt: 'desc' }
     });
 
+    // Collect unique category/subcategory/item IDs to fetch names
+    const exportCategoryIds = [...new Set(tickets.map(t => t.categoryId).filter(Boolean))];
+    const exportSubcategoryIds = [...new Set(tickets.map(t => t.subcategoryId).filter(Boolean))];
+    const exportItemIds = [...new Set(tickets.map(t => t.itemId).filter(Boolean))];
+
+    // Fetch category/subcategory/item names in bulk
+    const [exportCategories, exportSubcategories, exportItems] = await Promise.all([
+      exportCategoryIds.length > 0 ? prisma.category.findMany({
+        where: { id: { in: exportCategoryIds as string[] } },
+        select: { id: true, name: true }
+      }) : [],
+      exportSubcategoryIds.length > 0 ? prisma.subcategory.findMany({
+        where: { id: { in: exportSubcategoryIds as string[] } },
+        select: { id: true, name: true }
+      }) : [],
+      exportItemIds.length > 0 ? prisma.item.findMany({
+        where: { id: { in: exportItemIds as string[] } },
+        select: { id: true, name: true }
+      }) : []
+    ]);
+
+    // Create lookup maps for quick access
+    const exportCategoryMap = new Map(exportCategories.map(c => [c.id, c.name]));
+    const exportSubcategoryMap = new Map(exportSubcategories.map(s => [s.id, s.name]));
+    const exportItemMap = new Map(exportItems.map(i => [i.id, i.name]));
+
     // Format data for export
-    const formattedData = tickets.map(t => ({
-      'Ticket #': t.ticketNumber,
-      'Title': t.title,
-      'Description': t.description,
-      'Status': t.status,
-      'Priority': t.priority,
-      'Service': t.service?.name || 'N/A',
-      'Support Group': t.service?.supportGroup?.name || 'N/A',
-      'Created By': t.createdBy.name,
-      'Created By Email': t.createdBy.email,
-      'Branch': t.createdBy.branch?.name || 'N/A',
-      'Branch Code': t.createdBy.branch?.code || 'N/A',
-      'Assigned To': t.assignedTo?.name || 'Unassigned',
-      'Assigned To Email': t.assignedTo?.email || '',
-      'Vendor Ticket #': t.vendorTickets[0]?.vendorTicketNumber || '',
-      'Vendor Name': t.vendorTickets[0]?.vendor?.name || '',
-      'Vendor Status': t.vendorTickets[0]?.status || '',
-      'Created Date': new Date(t.createdAt).toISOString(),
-      'Updated Date': new Date(t.updatedAt).toISOString(),
-      'Resolved Date': t.resolvedAt ? new Date(t.resolvedAt).toISOString() : '',
-      'Closed Date': t.closedAt ? new Date(t.closedAt).toISOString() : '',
-      'Resolution Time (hrs)': t.resolvedAt ?
-        Math.round((new Date(t.resolvedAt).getTime() - new Date(t.createdAt).getTime()) / (1000 * 60 * 60)) : ''
-    }));
+    const formattedData = tickets.map(t => {
+      return {
+        'Ticket #': t.ticketNumber,
+        'Title': t.title,
+        'Description': t.description,
+        'Status': t.status,
+        'Priority': t.priority,
+        'Category': t.categoryId ? (exportCategoryMap.get(t.categoryId) || '-') : '-',
+        'Subcategory': t.subcategoryId ? (exportSubcategoryMap.get(t.subcategoryId) || '-') : '-',
+        'Item': t.itemId ? (exportItemMap.get(t.itemId) || '-') : '-',
+        'Service': t.service?.name || 'N/A',
+        'Support Group': t.service?.supportGroup?.name || 'N/A',
+        'Created By': t.createdBy.name,
+        'Created By Email': t.createdBy.email,
+        'Branch': t.createdBy.branch?.name || 'N/A',
+        'Branch Code': t.createdBy.branch?.code || 'N/A',
+        'Assigned To': t.assignedTo?.name || 'Unassigned',
+        'Assigned To Email': t.assignedTo?.email || '',
+        'Vendor Ticket #': t.vendorTickets[0]?.vendorTicketNumber || '',
+        'Vendor Name': t.vendorTickets[0]?.vendor?.name || '',
+        'Vendor Status': t.vendorTickets[0]?.status || '',
+        'Created Date': new Date(t.createdAt).toISOString(),
+        'Updated Date': new Date(t.updatedAt).toISOString(),
+        'Resolved Date': t.resolvedAt ? new Date(t.resolvedAt).toISOString() : '',
+        'Closed Date': t.closedAt ? new Date(t.closedAt).toISOString() : '',
+        'Resolution Time (hrs)': t.resolvedAt ?
+          Math.round((new Date(t.resolvedAt).getTime() - new Date(t.createdAt).getTime()) / (1000 * 60 * 60)) : ''
+      };
+    });
 
     if (format === 'xlsx') {
       const XLSX = require('xlsx');

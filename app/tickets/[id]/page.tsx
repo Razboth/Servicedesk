@@ -22,12 +22,14 @@ import {
 } from '@/components/ui/modern-dialog';
 import { ProgressTracker } from '@/components/ui/progress-tracker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Clock, User, MessageSquare, AlertCircle, CheckCircle, CheckCheck, Plus, X, Paperclip, Download, FileText, Eye, Edit, Sparkles, Shield, UserCheck, UserX, Timer, Trash2, Image as ImageIcon, File, MoreVertical, Building2, Briefcase, UserCircle, Calendar, Hash, MapPin, PlayCircle, XCircle } from 'lucide-react';
+import { ArrowLeft, Clock, User, MessageSquare, AlertCircle, CheckCircle, CheckCheck, Plus, X, Paperclip, Download, FileText, Eye, Edit, Sparkles, Shield, UserCheck, UserX, Timer, Trash2, Image as ImageIcon, File, MoreVertical, Building2, Briefcase, UserCircle, Calendar, Hash, MapPin, PlayCircle, XCircle, Printer } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { RelatedArticles } from '@/components/knowledge/related-articles';
 import { AttachmentPreview } from '@/components/ui/attachment-preview';
 import { getAvatarById } from '@/components/ui/avatar-presets';
 import { VendorAssignmentDialog } from '@/components/tickets/vendor-assignment-dialog';
+import { useReactToPrint } from 'react-to-print';
+import { TicketPrintView } from '@/components/tickets/ticket-print-view';
 
 interface TicketFieldValue {
   id: string;
@@ -179,6 +181,7 @@ export default function TicketDetailPage() {
   const [userSupportGroup, setUserSupportGroup] = useState<{ code?: string; name?: string } | null>(null);
   const [showVendorDialog, setShowVendorDialog] = useState(false);
   const [shouldRedirect, setShouldRedirect] = useState(false);
+  const printRef = useRef<HTMLDivElement>(null);
 
   // Helper function to check if file is previewable
   const isPreviewable = (mimeType: string) => {
@@ -685,7 +688,7 @@ export default function TicketDetailPage() {
   const handleResolveAndClose = async () => {
     try {
       setIsUpdatingStatus(true);
-      
+
       // First update to RESOLVED
       const resolveResponse = await fetch(`/api/tickets/${ticket?.id || ticketId}`, {
         method: 'PATCH',
@@ -694,12 +697,12 @@ export default function TicketDetailPage() {
         },
         body: JSON.stringify({ status: 'RESOLVED' }),
       });
-      
+
       if (!resolveResponse.ok) {
         console.error('Failed to resolve ticket');
         return;
       }
-      
+
       // Then immediately update to CLOSED
       const closeResponse = await fetch(`/api/tickets/${ticket?.id || ticketId}`, {
         method: 'PATCH',
@@ -708,7 +711,7 @@ export default function TicketDetailPage() {
         },
         body: JSON.stringify({ status: 'CLOSED' }),
       });
-      
+
       if (closeResponse.ok) {
         fetchTicket(); // Refresh ticket data
       } else {
@@ -720,6 +723,11 @@ export default function TicketDetailPage() {
       setIsUpdatingStatus(false);
     }
   };
+
+  const handlePrint = useReactToPrint({
+    content: () => printRef.current,
+    documentTitle: `Ticket-${ticket?.ticketNumber || ticketId}`,
+  });
 
   const updateTaskStatus = async (taskId: string, status: string, actualMinutes?: number, notes?: string) => {
     try {
@@ -1868,6 +1876,17 @@ export default function TicketDetailPage() {
                           </Button>
                         </>
                       )}
+                      {/* Print Button - Available for technicians */}
+                      {['TECHNICIAN', 'SECURITY_ANALYST', 'ADMIN'].includes(session?.user?.role || '') && (
+                        <Button
+                          onClick={handlePrint}
+                          variant="outline"
+                          className="w-full flex items-center justify-center gap-2 border-brown-300 text-brown-700 hover:bg-brown-50 dark:border-brown-600 dark:text-brown-300 dark:hover:bg-brown-900/20 rounded-lg py-2.5"
+                        >
+                          <Printer className="h-4 w-4" />
+                          <span className="font-medium">Print Ticket</span>
+                        </Button>
+                      )}
                       {/* Allow reopening from any closed/resolved/cancelled status */}
                       {['CLOSED', 'CANCELLED', 'RESOLVED', 'REJECTED', 'PENDING_APPROVAL', 'APPROVED', 'PENDING'].includes(ticket.status) && canUpdateStatus() && (
                         <Button
@@ -2359,6 +2378,11 @@ export default function TicketDetailPage() {
           ticketTitle={ticket?.title}
         />
       )}
+
+      {/* Hidden Print View */}
+      <div style={{ display: 'none' }}>
+        {ticket && <TicketPrintView ref={printRef} ticket={ticket} />}
+      </div>
     </div>
   );
 }
