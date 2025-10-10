@@ -725,7 +725,7 @@ export default function TicketDetailPage() {
   };
 
   const handlePrint = useReactToPrint({
-    content: () => printRef.current,
+    contentRef: printRef,
     documentTitle: `Ticket-${ticket?.ticketNumber || ticketId}`,
   });
 
