@@ -93,7 +93,7 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
     };
 
     return (
-      <div ref={ref} className="bg-white text-black" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+      <div ref={ref} className="bg-white text-black min-h-screen flex flex-col" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
         {/* Header - Bank SulutGo Red */}
         <div className="print-header px-6 py-3 mb-4">
           <div className="flex justify-between items-center">
@@ -119,7 +119,7 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
           </div>
         </div>
 
-        <div className="px-6 pb-4">
+        <div className="px-6 pb-4 flex-1">
           {/* Title Section with Status and Priority */}
           <div className="mb-3 pb-2 border-b border-gray-200">
             <div className="flex justify-between items-start">
@@ -208,43 +208,31 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
           {/* Approval Information with QR Code */}
           {latestApproval && qrText && (
             <div className="mb-3">
-              <div className="border-2 border-green-600 rounded-lg overflow-hidden">
-                <div className="approval-header px-3 py-2">
-                  <h3 className="text-sm font-bold text-white flex items-center">
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    DIGITAL APPROVAL - VERIFIED
-                  </h3>
+              <h3 className="text-sm font-bold text-gray-900 mb-2 flex items-center">
+                <span className="w-1 h-4 bg-red-600 mr-2 rounded"></span>
+                Approval Information
+              </h3>
+              <div className="grid grid-cols-3 gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Approved By</span>
+                  <span className="text-xs font-semibold text-gray-900">{latestApproval.approver?.name || '-'}</span>
                 </div>
-                <div className="approval-body p-3">
-                  <div className="flex justify-between items-center gap-4">
-                    <div className="flex-1 flex gap-4">
-                      <div className="flex flex-col bg-white p-2 rounded-lg border-2 border-green-400 flex-1">
-                        <span className="text-[10px] font-bold text-green-600 uppercase tracking-wider">Approved By</span>
-                        <span className="text-sm font-extrabold text-green-800">{latestApproval.approver?.name || '-'}</span>
-                      </div>
-                      <div className="flex flex-col bg-white p-2 rounded-lg border-2 border-green-400 flex-1">
-                        <span className="text-[10px] font-bold text-green-600 uppercase tracking-wider">Date & Time</span>
-                        <span className="text-xs font-extrabold text-green-800">
-                          {format(new Date(latestApproval.updatedAt), 'dd MMM yyyy, HH:mm')}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-center qr-container p-2 rounded-lg border-2 border-green-500">
-                      <div className="bg-white p-1 rounded">
-                        <QRCodeSVG
-                          value={qrText}
-                          size={80}
-                          level="H"
-                          includeMargin={false}
-                        />
-                      </div>
-                      <p className="text-[9px] text-white font-bold mt-1 text-center uppercase">
-                        Scan to Verify
-                      </p>
-                    </div>
-                  </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Approval Date</span>
+                  <span className="text-xs font-semibold text-gray-900">
+                    {format(new Date(latestApproval.updatedAt), 'dd MMM yyyy, HH:mm')}
+                  </span>
+                </div>
+                <div className="flex flex-col items-center justify-center border-l border-gray-300 pl-3">
+                  <QRCodeSVG
+                    value={qrText}
+                    size={60}
+                    level="H"
+                    includeMargin={false}
+                  />
+                  <p className="text-[9px] text-gray-600 font-semibold mt-1 text-center">
+                    Scan to Verify
+                  </p>
                 </div>
               </div>
             </div>
@@ -280,25 +268,6 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
           .print-footer {
             background: linear-gradient(135deg, #B91C1C 0%, #991B1B 100%);
             box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1);
-          }
-
-          .approval-header {
-            background: linear-gradient(135deg, #059669 0%, #047857 50%, #065f46 100%);
-            box-shadow: 0 4px 12px rgba(5, 150, 105, 0.4);
-          }
-
-          .approval-body {
-            background: linear-gradient(135deg, #D1FAE5 0%, #A7F3D0 50%, #6EE7B7 100%);
-          }
-
-          .approval-status-badge {
-            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.5);
-          }
-
-          .qr-container {
-            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
-            box-shadow: 0 8px 20px rgba(16, 185, 129, 0.6);
           }
         `}</style>
       </div>
