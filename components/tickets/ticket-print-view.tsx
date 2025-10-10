@@ -59,14 +59,16 @@ interface TicketPrintViewProps {
 
 export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewProps>(
   ({ ticket }, ref) => {
+    if (!ticket) return null;
+
     // Get latest approval if it exists and is approved
     const latestApproval = ticket.approvals?.find(a => a.status === 'APPROVED');
 
     // Generate QR code data if ticket is approved
-    const qrData = latestApproval ? {
-      ticketNumber: ticket.ticketNumber,
-      approverName: latestApproval.approver.name,
-      approvedDate: latestApproval.updatedAt,
+    const qrData = latestApproval && latestApproval.approver ? {
+      ticketNumber: ticket.ticketNumber || '',
+      approverName: latestApproval.approver.name || '',
+      approvedDate: latestApproval.updatedAt || '',
       status: 'APPROVED'
     } : null;
 
@@ -106,11 +108,11 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
             </div>
             <div>
               <p className="text-sm text-gray-600">Service</p>
-              <p className="font-semibold">{ticket.service.name}</p>
+              <p className="font-semibold">{ticket.service?.name || '-'}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Branch</p>
-              <p className="font-semibold">{ticket.branch.name} ({ticket.branch.code})</p>
+              <p className="font-semibold">{ticket.branch?.name || '-'} {ticket.branch?.code ? `(${ticket.branch.code})` : ''}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Created Date</p>
@@ -118,7 +120,7 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
             </div>
             <div>
               <p className="text-sm text-gray-600">Requester</p>
-              <p className="font-semibold">{ticket.creator.name}</p>
+              <p className="font-semibold">{ticket.creator?.name || '-'}</p>
             </div>
             {ticket.assignedTo && (
               <div>
@@ -145,7 +147,7 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
             <div className="grid grid-cols-2 gap-4">
               {ticket.fieldValues.map((fieldValue) => (
                 <div key={fieldValue.id}>
-                  <p className="text-sm text-gray-600">{fieldValue.field.label}</p>
+                  <p className="text-sm text-gray-600">{fieldValue.field?.label || 'Field'}</p>
                   <p className="font-semibold">{fieldValue.value || '-'}</p>
                 </div>
               ))}
@@ -161,7 +163,7 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
               <div className="flex-1">
                 <div className="mb-2">
                   <p className="text-sm text-gray-600">Approved By</p>
-                  <p className="font-semibold text-green-700">{latestApproval.approver.name}</p>
+                  <p className="font-semibold text-green-700">{latestApproval.approver?.name || '-'}</p>
                 </div>
                 <div className="mb-2">
                   <p className="text-sm text-gray-600">Approval Date</p>
