@@ -95,41 +95,40 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
     return (
       <div ref={ref} className="bg-white text-black" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
         {/* Header - Bank SulutGo Red */}
-        <div className="print-header px-10 py-6 mb-8">
+        <div className="print-header px-6 py-3 mb-4">
           <div className="flex justify-between items-center">
-            <div className="flex items-center gap-6">
-              <div className="bg-white rounded-lg p-2 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="bg-white rounded-lg p-1 shadow-sm">
                 <Image
                   src="/logo-bsg.png"
                   alt="Bank SulutGo Logo"
-                  width={80}
-                  height={80}
+                  width={50}
+                  height={50}
                   className="object-contain"
                 />
               </div>
               <div className="text-white">
-                <h1 className="text-3xl font-bold tracking-tight mb-1">Bank SulutGo</h1>
-                <p className="text-lg font-medium opacity-95">ServiceDesk - IT Service Management</p>
-                <p className="text-sm opacity-80 mt-1">Official Ticket Documentation</p>
+                <h1 className="text-xl font-bold tracking-tight">Bank SulutGo ServiceDesk</h1>
+                <p className="text-xs opacity-90">IT Service Management</p>
               </div>
             </div>
-            <div className="text-right bg-white/10 backdrop-blur-sm px-6 py-4 rounded-lg border-2 border-white/30">
-              <p className="text-xs text-white/80 uppercase tracking-wider mb-1">Ticket Number</p>
-              <p className="text-3xl font-bold text-white tracking-tight">{ticket.ticketNumber}</p>
+            <div className="text-right bg-white/10 backdrop-blur-sm px-4 py-2 rounded-lg border-2 border-white/30">
+              <p className="text-xs text-white/80 uppercase tracking-wider">Ticket</p>
+              <p className="text-xl font-bold text-white tracking-tight">{ticket.ticketNumber}</p>
             </div>
           </div>
         </div>
 
-        <div className="px-10 pb-8">
+        <div className="px-6 pb-4">
           {/* Title Section with Status and Priority */}
-          <div className="mb-8 pb-6 border-b-2 border-gray-200">
-            <div className="flex justify-between items-start mb-4">
-              <h2 className="text-2xl font-bold text-gray-900 flex-1 pr-4">{ticket.title}</h2>
-              <div className="flex gap-3">
-                <span className={`px-4 py-2 rounded-lg text-sm font-semibold border-2 ${getStatusColor(ticket.status)}`}>
+          <div className="mb-3 pb-2 border-b border-gray-200">
+            <div className="flex justify-between items-start">
+              <h2 className="text-lg font-bold text-gray-900 flex-1 pr-3">{ticket.title}</h2>
+              <div className="flex gap-2">
+                <span className={`px-2 py-1 rounded text-xs font-semibold border ${getStatusColor(ticket.status)}`}>
                   {ticket.status.replace('_', ' ')}
                 </span>
-                <span className={`px-4 py-2 rounded-lg text-sm font-semibold border-2 ${getPriorityColor(ticket.priority)}`}>
+                <span className={`px-2 py-1 rounded text-xs font-semibold border ${getPriorityColor(ticket.priority)}`}>
                   {ticket.priority}
                 </span>
               </div>
@@ -137,60 +136,50 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
           </div>
 
           {/* Ticket Information Grid */}
-          <div className="mb-8">
-            <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
-              <span className="w-1 h-6 bg-red-600 mr-3 rounded"></span>
+          <div className="mb-3">
+            <h3 className="text-sm font-bold text-gray-900 mb-2 flex items-center">
+              <span className="w-1 h-4 bg-red-600 mr-2 rounded"></span>
               Ticket Information
             </h3>
-            <div className="grid grid-cols-2 gap-6 bg-gray-50 p-6 rounded-lg border border-gray-200">
+            <div className="grid grid-cols-2 gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
               <div className="flex flex-col">
-                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Service</span>
-                <span className="text-base font-semibold text-gray-900">{ticket.service?.name || '-'}</span>
+                <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Service</span>
+                <span className="text-xs font-semibold text-gray-900">{ticket.service?.name || '-'}</span>
               </div>
               <div className="flex flex-col">
-                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Branch</span>
-                <span className="text-base font-semibold text-gray-900">
+                <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Branch</span>
+                <span className="text-xs font-semibold text-gray-900">
                   {ticket.branch?.name || '-'} {ticket.branch?.code ? `(${ticket.branch.code})` : ''}
                 </span>
               </div>
               <div className="flex flex-col">
-                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Requester</span>
-                <span className="text-base font-semibold text-gray-900">{ticket.createdBy?.name || '-'}</span>
-                <span className="text-xs text-gray-600 mt-0.5">{ticket.createdBy?.email || ''}</span>
+                <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Requester</span>
+                <span className="text-xs font-semibold text-gray-900">{ticket.createdBy?.name || '-'}</span>
               </div>
               <div className="flex flex-col">
-                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Created Date</span>
-                <span className="text-base font-semibold text-gray-900">
-                  {format(new Date(ticket.createdAt), 'dd MMMM yyyy, HH:mm')}
+                <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Created</span>
+                <span className="text-xs font-semibold text-gray-900">
+                  {format(new Date(ticket.createdAt), 'dd MMM yyyy, HH:mm')}
                 </span>
               </div>
               {ticket.assignedTo && (
-                <>
-                  <div className="flex flex-col">
-                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Assigned To</span>
-                    <span className="text-base font-semibold text-gray-900">{ticket.assignedTo.name}</span>
-                    <span className="text-xs text-gray-600 mt-0.5">{ticket.assignedTo.email || ''}</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Last Updated</span>
-                    <span className="text-base font-semibold text-gray-900">
-                      {format(new Date(ticket.updatedAt), 'dd MMMM yyyy, HH:mm')}
-                    </span>
-                  </div>
-                </>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Assigned To</span>
+                  <span className="text-xs font-semibold text-gray-900">{ticket.assignedTo.name}</span>
+                </div>
               )}
             </div>
           </div>
 
           {/* Description */}
-          <div className="mb-8">
-            <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
-              <span className="w-1 h-6 bg-red-600 mr-3 rounded"></span>
+          <div className="mb-3">
+            <h3 className="text-sm font-bold text-gray-900 mb-2 flex items-center">
+              <span className="w-1 h-4 bg-red-600 mr-2 rounded"></span>
               Description
             </h3>
-            <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
+            <div className="bg-gray-50 p-2 rounded-lg border border-gray-200">
               <div
-                className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed"
+                className="text-xs text-gray-800 whitespace-pre-wrap leading-snug"
                 dangerouslySetInnerHTML={{ __html: ticket.description }}
               />
             </div>
@@ -198,18 +187,18 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
 
           {/* Custom Fields */}
           {ticket.fieldValues && ticket.fieldValues.length > 0 && (
-            <div className="mb-8">
-              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
-                <span className="w-1 h-6 bg-red-600 mr-3 rounded"></span>
+            <div className="mb-3">
+              <h3 className="text-sm font-bold text-gray-900 mb-2 flex items-center">
+                <span className="w-1 h-4 bg-red-600 mr-2 rounded"></span>
                 Additional Information
               </h3>
-              <div className="grid grid-cols-2 gap-6 bg-gray-50 p-6 rounded-lg border border-gray-200">
+              <div className="grid grid-cols-2 gap-2 bg-gray-50 p-3 rounded-lg border border-gray-200">
                 {ticket.fieldValues.map((fieldValue) => (
                   <div key={fieldValue.id} className="flex flex-col">
-                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+                    <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
                       {fieldValue.field?.label || 'Field'}
                     </span>
-                    <span className="text-base font-semibold text-gray-900">{fieldValue.value || '-'}</span>
+                    <span className="text-xs font-semibold text-gray-900">{fieldValue.value || '-'}</span>
                   </div>
                 ))}
               </div>
@@ -218,58 +207,41 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
 
           {/* Approval Information with QR Code */}
           {latestApproval && qrText && (
-            <div className="mb-8">
-              <div className="border-4 border-green-600 rounded-xl overflow-hidden shadow-2xl">
-                <div className="approval-header px-6 py-4">
-                  <h3 className="text-xl font-bold text-white flex items-center">
-                    <svg className="w-8 h-8 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="mb-3">
+              <div className="border-2 border-green-600 rounded-lg overflow-hidden">
+                <div className="approval-header px-3 py-2">
+                  <h3 className="text-sm font-bold text-white flex items-center">
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     DIGITAL APPROVAL - VERIFIED
                   </h3>
                 </div>
-                <div className="approval-body p-8">
-                  <div className="flex justify-between items-start gap-8">
-                    <div className="flex-1 space-y-5">
-                      <div className="flex flex-col bg-white p-5 rounded-xl border-3 border-green-400 shadow-md">
-                        <span className="text-sm font-bold text-green-600 uppercase tracking-widest mb-2 flex items-center">
-                          <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                          </svg>
-                          Approved By
-                        </span>
-                        <span className="text-2xl font-extrabold text-green-800">{latestApproval.approver?.name || '-'}</span>
-                        <span className="text-base text-green-700 mt-1.5 font-semibold">{latestApproval.approver?.email || ''}</span>
+                <div className="approval-body p-3">
+                  <div className="flex justify-between items-center gap-4">
+                    <div className="flex-1 flex gap-4">
+                      <div className="flex flex-col bg-white p-2 rounded-lg border-2 border-green-400 flex-1">
+                        <span className="text-[10px] font-bold text-green-600 uppercase tracking-wider">Approved By</span>
+                        <span className="text-sm font-extrabold text-green-800">{latestApproval.approver?.name || '-'}</span>
                       </div>
-                      <div className="flex flex-col bg-white p-5 rounded-xl border-3 border-green-400 shadow-md">
-                        <span className="text-sm font-bold text-green-600 uppercase tracking-widest mb-2 flex items-center">
-                          <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
-                          </svg>
-                          Approval Date & Time
+                      <div className="flex flex-col bg-white p-2 rounded-lg border-2 border-green-400 flex-1">
+                        <span className="text-[10px] font-bold text-green-600 uppercase tracking-wider">Date & Time</span>
+                        <span className="text-xs font-extrabold text-green-800">
+                          {format(new Date(latestApproval.updatedAt), 'dd MMM yyyy, HH:mm')}
                         </span>
-                        <span className="text-xl font-extrabold text-green-800">
-                          {format(new Date(latestApproval.updatedAt), 'dd MMMM yyyy, HH:mm:ss')}
-                        </span>
-                      </div>
-                      <div className="approval-status-badge px-6 py-4 rounded-xl border-3 border-green-500 shadow-lg inline-flex items-center gap-3">
-                        <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                        </svg>
-                        <span className="text-lg font-black text-white uppercase tracking-wider">STATUS: APPROVED</span>
                       </div>
                     </div>
-                    <div className="flex flex-col items-center qr-container p-6 rounded-2xl border-4 border-green-500 shadow-2xl">
-                      <div className="bg-white p-3 rounded-lg">
+                    <div className="flex flex-col items-center qr-container p-2 rounded-lg border-2 border-green-500">
+                      <div className="bg-white p-1 rounded">
                         <QRCodeSVG
                           value={qrText}
-                          size={160}
+                          size={80}
                           level="H"
-                          includeMargin={true}
+                          includeMargin={false}
                         />
                       </div>
-                      <p className="text-sm text-white font-black mt-4 text-center max-w-[180px] uppercase tracking-wide">
-                        Scan for Digital Signature Verification
+                      <p className="text-[9px] text-white font-bold mt-1 text-center uppercase">
+                        Scan to Verify
                       </p>
                     </div>
                   </div>
@@ -280,16 +252,10 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
         </div>
 
         {/* Footer - Bank SulutGo Red */}
-        <div className="print-footer px-10 py-4 mt-8">
-          <div className="flex justify-between items-center text-white">
-            <div>
-              <p className="text-sm font-semibold">© {new Date().getFullYear()} Bank SulutGo - All Rights Reserved</p>
-              <p className="text-xs opacity-80 mt-0.5">Confidential IT Service Management Document</p>
-            </div>
-            <div className="text-right">
-              <p className="text-xs opacity-80 uppercase tracking-wider">Document Generated</p>
-              <p className="text-sm font-semibold">{format(new Date(), 'dd MMMM yyyy, HH:mm:ss')}</p>
-            </div>
+        <div className="print-footer px-6 py-2">
+          <div className="flex justify-between items-center text-white text-xs">
+            <p className="font-semibold">© {new Date().getFullYear()} Bank SulutGo</p>
+            <p className="font-semibold">Generated: {format(new Date(), 'dd MMM yyyy, HH:mm')}</p>
           </div>
         </div>
 
