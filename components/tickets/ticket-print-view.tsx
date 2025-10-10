@@ -34,7 +34,7 @@ interface TicketData {
   status: string;
   createdAt: string;
   updatedAt: string;
-  creator: {
+  createdBy: {
     name: string;
     email: string;
   };
@@ -64,15 +64,10 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
     // Get latest approval if it exists and is approved
     const latestApproval = ticket.approvals?.find(a => a.status === 'APPROVED');
 
-    // Generate QR code data if ticket is approved
-    const qrData = latestApproval && latestApproval.approver ? {
-      ticketNumber: ticket.ticketNumber || '',
-      approverName: latestApproval.approver.name || '',
-      approvedDate: latestApproval.updatedAt || '',
-      status: 'APPROVED'
-    } : null;
-
-    const qrDataString = qrData ? btoa(JSON.stringify(qrData)) : null;
+    // Generate QR code text if ticket is approved - plain text format for direct display
+    const qrText = latestApproval && latestApproval.approver ?
+      `DIGITAL SIGNATURE\nTicket: ${ticket.ticketNumber || ''}\nApprover: ${latestApproval.approver.name || ''}\nApproved: ${format(new Date(latestApproval.updatedAt), 'dd MMM yyyy HH:mm')}\nStatus: APPROVED`
+      : null;
 
     return (
       <div ref={ref} className="p-8 bg-white text-black" style={{ fontFamily: 'Arial, sans-serif' }}>
@@ -120,7 +115,7 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
             </div>
             <div>
               <p className="text-sm text-gray-600">Requester</p>
-              <p className="font-semibold">{ticket.creator?.name || '-'}</p>
+              <p className="font-semibold">{ticket.createdBy?.name || '-'}</p>
             </div>
             {ticket.assignedTo && (
               <div>
@@ -156,7 +151,7 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
         )}
 
         {/* Approval Information with QR Code */}
-        {latestApproval && qrDataString && (
+        {latestApproval && qrText && (
           <div className="mb-6 border-2 border-green-600 p-4 rounded">
             <h2 className="text-lg font-bold mb-3 text-green-700">Approval Information</h2>
             <div className="flex justify-between items-start">
@@ -176,12 +171,12 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
               </div>
               <div className="text-center">
                 <QRCodeSVG
-                  value={`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:4000'}/qr/${qrDataString}`}
+                  value={qrText}
                   size={120}
                   level="H"
                   includeMargin={true}
                 />
-                <p className="text-xs text-gray-600 mt-2">Scan to verify approval</p>
+                <p className="text-xs text-gray-600 mt-2">Digital Signature - Scan to view approval info</p>
               </div>
             </div>
           </div>
