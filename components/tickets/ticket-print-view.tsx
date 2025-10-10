@@ -1,7 +1,6 @@
 import React from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { format } from 'date-fns';
-import Image from 'next/image';
 
 interface TicketFieldValue {
   id: string;
@@ -99,7 +98,8 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
               <div className="bg-white rounded-lg p-1 shadow-sm">
-                <Image
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
                   src="/logo-bsg.png"
                   alt="Bank SulutGo Logo"
                   width={50}
