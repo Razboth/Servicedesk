@@ -67,7 +67,7 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
 
     // Generate QR code text if ticket is approved - plain text format for direct display
     const qrText = latestApproval && latestApproval.approver ?
-      `DIGITAL SIGNATURE\nTicket: ${ticket.ticketNumber || ''}\nApprover: ${latestApproval.approver.name || ''}\nApproved: ${format(new Date(latestApproval.updatedAt), 'dd MMM yyyy HH:mm')}\nStatus: APPROVED`
+      `TANDA TANGAN DIGITAL\nTiket: ${ticket.ticketNumber || ''}\nDisetujui Oleh: ${latestApproval.approver.name || ''}\nTanggal: ${format(new Date(latestApproval.updatedAt), 'dd MMM yyyy HH:mm')}\nStatus: DISETUJUI`
       : null;
 
     // Status badge colors
@@ -109,11 +109,11 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
               </div>
               <div className="text-white">
                 <h1 className="text-xl font-bold tracking-tight">Bank SulutGo ServiceDesk</h1>
-                <p className="text-xs opacity-90">IT Service Management</p>
+                <p className="text-xs opacity-90">Manajemen Layanan TI</p>
               </div>
             </div>
             <div className="text-right bg-white/10 backdrop-blur-sm px-4 py-2 rounded-lg border-2 border-white/30">
-              <p className="text-xs text-white/80 uppercase tracking-wider">Ticket</p>
+              <p className="text-xs text-white/80 uppercase tracking-wider">Tiket</p>
               <p className="text-xl font-bold text-white tracking-tight">{ticket.ticketNumber}</p>
             </div>
           </div>
@@ -139,32 +139,32 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
           <div className="mb-3">
             <h3 className="text-sm font-bold text-gray-900 mb-2 flex items-center">
               <span className="w-1 h-4 bg-red-600 mr-2 rounded"></span>
-              Ticket Information
+              Informasi Tiket
             </h3>
             <div className="grid grid-cols-2 gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
               <div className="flex flex-col">
-                <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Service</span>
+                <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Layanan</span>
                 <span className="text-xs font-semibold text-gray-900">{ticket.service?.name || '-'}</span>
               </div>
               <div className="flex flex-col">
-                <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Branch</span>
+                <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Cabang</span>
                 <span className="text-xs font-semibold text-gray-900">
                   {ticket.branch?.name || '-'} {ticket.branch?.code ? `(${ticket.branch.code})` : ''}
                 </span>
               </div>
               <div className="flex flex-col">
-                <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Requester</span>
+                <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Pemohon</span>
                 <span className="text-xs font-semibold text-gray-900">{ticket.createdBy?.name || '-'}</span>
               </div>
               <div className="flex flex-col">
-                <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Created</span>
+                <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Dibuat</span>
                 <span className="text-xs font-semibold text-gray-900">
                   {format(new Date(ticket.createdAt), 'dd MMM yyyy, HH:mm')}
                 </span>
               </div>
               {ticket.assignedTo && (
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Assigned To</span>
+                  <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Ditugaskan Ke</span>
                   <span className="text-xs font-semibold text-gray-900">{ticket.assignedTo.name}</span>
                 </div>
               )}
@@ -175,7 +175,7 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
           <div className="mb-3">
             <h3 className="text-sm font-bold text-gray-900 mb-2 flex items-center">
               <span className="w-1 h-4 bg-red-600 mr-2 rounded"></span>
-              Description
+              Deskripsi
             </h3>
             <div className="bg-gray-50 p-2 rounded-lg border border-gray-200">
               <div
@@ -190,7 +190,7 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
             <div className="mb-3">
               <h3 className="text-sm font-bold text-gray-900 mb-2 flex items-center">
                 <span className="w-1 h-4 bg-red-600 mr-2 rounded"></span>
-                Additional Information
+                Informasi Tambahan
               </h3>
               <div className="grid grid-cols-2 gap-2 bg-gray-50 p-3 rounded-lg border border-gray-200">
                 {ticket.fieldValues.map((fieldValue) => (
@@ -210,15 +210,15 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
             <div className="mb-3">
               <h3 className="text-sm font-bold text-gray-900 mb-2 flex items-center">
                 <span className="w-1 h-4 bg-red-600 mr-2 rounded"></span>
-                Approval Information
+                Informasi Persetujuan
               </h3>
               <div className="grid grid-cols-3 gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Approved By</span>
+                  <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Disetujui Oleh</span>
                   <span className="text-xs font-semibold text-gray-900">{latestApproval.approver?.name || '-'}</span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Approval Date</span>
+                  <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Tanggal Persetujuan</span>
                   <span className="text-xs font-semibold text-gray-900">
                     {format(new Date(latestApproval.updatedAt), 'dd MMM yyyy, HH:mm')}
                   </span>
@@ -231,7 +231,7 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
                     includeMargin={false}
                   />
                   <p className="text-[9px] text-gray-600 font-semibold mt-1 text-center">
-                    Scan to Verify
+                    Pindai untuk Verifikasi
                   </p>
                 </div>
               </div>
@@ -243,7 +243,7 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
         <div className="print-footer px-6 py-2">
           <div className="flex justify-between items-center text-white text-xs">
             <p className="font-semibold">© {new Date().getFullYear()} Bank SulutGo</p>
-            <p className="font-semibold">Generated: {format(new Date(), 'dd MMM yyyy, HH:mm')}</p>
+            <p className="font-semibold">Dicetak: {format(new Date(), 'dd MMM yyyy, HH:mm')}</p>
           </div>
         </div>
 
