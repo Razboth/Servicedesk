@@ -219,44 +219,56 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
           {/* Approval Information with QR Code */}
           {latestApproval && qrText && (
             <div className="mb-8">
-              <div className="border-3 border-green-600 rounded-xl overflow-hidden shadow-lg">
-                <div className="bg-green-600 px-6 py-3">
-                  <h3 className="text-lg font-bold text-white flex items-center">
-                    <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <div className="border-4 border-green-600 rounded-xl overflow-hidden shadow-2xl">
+                <div className="approval-header px-6 py-4">
+                  <h3 className="text-xl font-bold text-white flex items-center">
+                    <svg className="w-8 h-8 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    Digital Approval - Verified
+                    DIGITAL APPROVAL - VERIFIED
                   </h3>
                 </div>
-                <div className="bg-green-50 p-6">
-                  <div className="flex justify-between items-start gap-6">
-                    <div className="flex-1 space-y-4">
-                      <div className="flex flex-col">
-                        <span className="text-xs font-semibold text-green-700 uppercase tracking-wider mb-1">Approved By</span>
-                        <span className="text-lg font-bold text-green-900">{latestApproval.approver?.name || '-'}</span>
-                        <span className="text-sm text-green-700 mt-0.5">{latestApproval.approver?.email || ''}</span>
+                <div className="approval-body p-8">
+                  <div className="flex justify-between items-start gap-8">
+                    <div className="flex-1 space-y-5">
+                      <div className="flex flex-col bg-white p-5 rounded-xl border-3 border-green-400 shadow-md">
+                        <span className="text-sm font-bold text-green-600 uppercase tracking-widest mb-2 flex items-center">
+                          <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                          </svg>
+                          Approved By
+                        </span>
+                        <span className="text-2xl font-extrabold text-green-800">{latestApproval.approver?.name || '-'}</span>
+                        <span className="text-base text-green-700 mt-1.5 font-semibold">{latestApproval.approver?.email || ''}</span>
                       </div>
-                      <div className="flex flex-col">
-                        <span className="text-xs font-semibold text-green-700 uppercase tracking-wider mb-1">Approval Date & Time</span>
-                        <span className="text-base font-bold text-green-900">
+                      <div className="flex flex-col bg-white p-5 rounded-xl border-3 border-green-400 shadow-md">
+                        <span className="text-sm font-bold text-green-600 uppercase tracking-widest mb-2 flex items-center">
+                          <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                          </svg>
+                          Approval Date & Time
+                        </span>
+                        <span className="text-xl font-extrabold text-green-800">
                           {format(new Date(latestApproval.updatedAt), 'dd MMMM yyyy, HH:mm:ss')}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 bg-green-100 px-4 py-2 rounded-lg border-2 border-green-300 inline-block">
-                        <svg className="w-5 h-5 text-green-700" fill="currentColor" viewBox="0 0 20 20">
+                      <div className="approval-status-badge px-6 py-4 rounded-xl border-3 border-green-500 shadow-lg inline-flex items-center gap-3">
+                        <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                         </svg>
-                        <span className="text-sm font-bold text-green-900">STATUS: APPROVED</span>
+                        <span className="text-lg font-black text-white uppercase tracking-wider">STATUS: APPROVED</span>
                       </div>
                     </div>
-                    <div className="flex flex-col items-center bg-white p-4 rounded-lg border-2 border-green-300 shadow-sm">
-                      <QRCodeSVG
-                        value={qrText}
-                        size={140}
-                        level="H"
-                        includeMargin={true}
-                      />
-                      <p className="text-xs text-green-700 font-semibold mt-3 text-center max-w-[140px]">
+                    <div className="flex flex-col items-center qr-container p-6 rounded-2xl border-4 border-green-500 shadow-2xl">
+                      <div className="bg-white p-3 rounded-lg">
+                        <QRCodeSVG
+                          value={qrText}
+                          size={160}
+                          level="H"
+                          includeMargin={true}
+                        />
+                      </div>
+                      <p className="text-sm text-white font-black mt-4 text-center max-w-[180px] uppercase tracking-wide">
                         Scan for Digital Signature Verification
                       </p>
                     </div>
@@ -302,6 +314,25 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
           .print-footer {
             background: linear-gradient(135deg, #B91C1C 0%, #991B1B 100%);
             box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1);
+          }
+
+          .approval-header {
+            background: linear-gradient(135deg, #059669 0%, #047857 50%, #065f46 100%);
+            box-shadow: 0 4px 12px rgba(5, 150, 105, 0.4);
+          }
+
+          .approval-body {
+            background: linear-gradient(135deg, #D1FAE5 0%, #A7F3D0 50%, #6EE7B7 100%);
+          }
+
+          .approval-status-badge {
+            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.5);
+          }
+
+          .qr-container {
+            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+            box-shadow: 0 8px 20px rgba(16, 185, 129, 0.6);
           }
         `}</style>
       </div>
