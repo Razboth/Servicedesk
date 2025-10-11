@@ -22,7 +22,7 @@ import {
 import { getAvatarById } from '@/components/ui/avatar-presets';
 
 export function Sidebar() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const pathname = usePathname();
   const { isCollapsed, setIsCollapsed, isMobileMenuOpen, setIsMobileMenuOpen, isMobile } = useSidebar();
   const { theme, setTheme } = useTheme();
@@ -53,7 +53,8 @@ export function Sidebar() {
     await signOut({ callbackUrl: 'https://hd.bsg.id/auth/signin' });
   };
 
-  if (!session) return null;
+  // Don't render sidebar while loading or if not authenticated
+  if (status === 'loading' || !session) return null;
 
   const isActive = (path: string) => {
     if (path === '/') {

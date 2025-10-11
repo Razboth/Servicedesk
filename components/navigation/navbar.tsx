@@ -7,14 +7,15 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
 export function Navbar() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const pathname = usePathname();
 
   const handleLogout = async () => {
     await signOut({ callbackUrl: 'https://hd.bsg.id/auth/signin' });
   };
 
-  if (!session) return null;
+  // Don't render navbar while loading or if not authenticated
+  if (status === 'loading' || !session) return null;
 
   return (
     <nav className="bg-white/[0.9] dark:bg-gray-900/[0.9] backdrop-blur-xl border-b border-gray-200/50 dark:border-gray-700/50 shadow-lg shadow-blue-50/50 dark:shadow-gray-900/50 sticky top-0 z-50">

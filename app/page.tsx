@@ -88,13 +88,13 @@ export default function Dashboard() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [stats, setStats] = useState<DashboardStats | null>(null)
-
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    if (status === 'loading') return // Still loading
-    if (!session) redirect('/auth/signin')
-    
+    // Trust middleware to handle authentication redirects
+    if (status === 'loading') return
+    if (!session) return
+
     // Fetch dashboard data
     const fetchDashboardData = async () => {
       try {
@@ -111,12 +111,11 @@ export default function Dashboard() {
         setIsLoading(false)
       }
     }
-    
-    if (session) {
-      fetchDashboardData()
-    }
+
+    fetchDashboardData()
   }, [session, status])
 
+  // Show loading state while session or data is loading
   if (status === 'loading' || isLoading) {
     return (
       <div className="min-h-screen bg-cream-100 dark:bg-brown-950 flex items-center justify-center">
@@ -128,6 +127,7 @@ export default function Dashboard() {
     )
   }
 
+  // Don't render if no session (middleware will redirect)
   if (!session || !stats) {
     return null
   }

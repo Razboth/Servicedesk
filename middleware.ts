@@ -1,49 +1,97 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
+import { getAuthCookieName, getAuthSecret } from './lib/auth-config';
 
 export async function middleware(request: NextRequest) {
-  // Use the same cookie name as configured in auth.ts
-  const port = process.env.PORT || '3000';
-  const instanceId = process.env.INSTANCE_ID || port;
-  const cookieName = process.env.NODE_ENV === 'production'
-    ? `__Secure-bsg-auth.session-token-${instanceId}`
-    : `bsg-auth.session-token-${instanceId}`;
-
   const token = await getToken({
     req: request,
-    secret: process.env.NEXTAUTH_SECRET || process.env.JWT_SECRET,
-    cookieName: cookieName
+    secret: getAuthSecret(),
+    cookieName: getAuthCookieName()
   });
-  const isAuthPage = request.nextUrl.pathname.startsWith('/auth/');
-  const isChangePasswordPage = request.nextUrl.pathname === '/auth/change-password';
-  const isSignInPage = request.nextUrl.pathname === '/auth/signin';
-  const isApiRoute = request.nextUrl.pathname.startsWith('/api/');
-  const isStaticAsset = request.nextUrl.pathname.match(/\.(jpg|jpeg|png|gif|svg|ico|css|js|woff|woff2|ttf|eot)$/i);
 
-  // If user must change password, only allow access to change password page, auth routes, and static assets
-  if (token && token.mustChangePassword && !isChangePasswordPage && !isSignInPage && !isStaticAsset) {
-    // Allow API routes for change password and auth
-    if (isApiRoute) {
-      const isAuthApi = request.nextUrl.pathname.startsWith('/api/auth/');
-      if (!isAuthApi) {
-        return NextResponse.json(
-          { error: 'You must change your password before accessing this resource' },
-          { status: 403 }
-        );
-      }
-    } else if (!isAuthPage) {
-      // Redirect to change password page for non-API routes
+  const { pathname } = request.nextUrl;
+
+  // Define route types
+  const isAuthPage = pathname.startsWith('/auth/');
+  const isChangePasswordPage = pathname === '/auth/change-password';
+  const isSignInPage = pathname === '/auth/signin';
+  const isApiRoute = pathname.startsWith('/api/');
+  const isAuthApi = pathname.startsWith('/api/auth/');
+  const isPublicApi = pathname.startsWith('/api/public/');
+  const isStaticAsset = pathname.match(/\.(jpg|jpeg|png|gif|svg|ico|css|js|woff|woff2|ttf|eot)$/i);
+  const isNextInternal = pathname.startsWith('/_next');
+  const isAboutPage = pathname === '/about';
+
+  // Allow static assets and Next.js internals
+  if (isStaticAsset || isNextInternal) {
+    return NextResponse.next();
+  }
+
+  // Public routes that don't require authentication
+  const publicRoutes = ['/about'];
+  const isPublicRoute = publicRoutes.includes(pathname);
+
+  // CRITICAL: Block unauthenticated access to protected routes
+  if (!token) {
+    // Allow auth pages and public routes
+    if (isAuthPage || isPublicRoute) {
+      return NextResponse.next();
+    }
+
+    // Allow public API endpoints
+    if (isPublicApi || isAuthApi) {
+      return NextResponse.next();
+    }
+
+    // Redirect unauthenticated users to sign in
+    if (!isApiRoute) {
+      const signInUrl = new URL('/auth/signin', request.url);
+      signInUrl.searchParams.set('callbackUrl', pathname);
+      return NextResponse.redirect(signInUrl);
+    }
+
+    // Return 401 for API routes
+    return NextResponse.json(
+      { error: 'Authentication required' },
+      { status: 401 }
+    );
+  }
+
+  // User is authenticated - handle must change password
+  if (token.mustChangePassword && !isChangePasswordPage && !isSignInPage && !isStaticAsset) {
+    // Allow auth API routes
+    if (isAuthApi) {
+      return NextResponse.next();
+    }
+
+    // Block other API routes
+    if (isApiRoute && !isAuthApi) {
+      return NextResponse.json(
+        { error: 'You must change your password before accessing this resource' },
+        { status: 403 }
+      );
+    }
+
+    // Redirect to change password page
+    if (!isAuthPage) {
       return NextResponse.redirect(new URL('/auth/change-password', request.url));
     }
   }
-  
+
+  // Authenticated user trying to access auth pages - redirect to dashboard
+  if (isAuthPage && !token.mustChangePassword) {
+    return NextResponse.redirect(new URL('/', request.url));
+  }
+
   const response = NextResponse.next();
-  
-  // Add basic security headers
+
+  // Add security headers
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('X-Frame-Options', 'SAMEORIGIN');
-  
+  response.headers.set('X-XSS-Protection', '1; mode=block');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+
   return response;
 }
 

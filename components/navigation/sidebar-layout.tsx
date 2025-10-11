@@ -1,19 +1,26 @@
 'use client';
 
+import { usePathname } from 'next/navigation';
 import { Sidebar } from './sidebar';
 import { useSidebar } from '@/components/providers/sidebar-provider';
 import { Button } from '@/components/ui/button';
 import { Menu } from 'lucide-react';
 
 export function SidebarLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const { isCollapsed, isMobile, setIsMobileMenuOpen } = useSidebar();
+
+  // Don't show sidebar on auth pages or public pages
+  const isAuthPage = pathname?.startsWith('/auth');
+  const isPublicPage = pathname === '/about';
+  const shouldShowSidebar = !isAuthPage && !isPublicPage;
 
   return (
     <div className="min-h-screen bg-background flex">
-      <Sidebar />
-      
-      {/* Mobile hamburger menu button */}
-      {isMobile && (
+      {shouldShowSidebar && <Sidebar />}
+
+      {/* Mobile hamburger menu button - only show when sidebar should be visible */}
+      {shouldShowSidebar && isMobile && (
         <Button
           variant="ghost"
           size="sm"
@@ -23,9 +30,9 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
           <Menu className="h-5 w-5" />
         </Button>
       )}
-      
+
       <main className={`flex-1 transition-all duration-300 ${
-        isMobile ? 'ml-0' : (isCollapsed ? 'ml-16' : 'ml-64')
+        shouldShowSidebar ? (isMobile ? 'ml-0' : (isCollapsed ? 'ml-16' : 'ml-64')) : 'ml-0'
       }`}>
         {children}
       </main>
