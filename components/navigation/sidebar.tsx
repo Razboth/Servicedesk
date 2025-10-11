@@ -20,9 +20,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { getAvatarById } from '@/components/ui/avatar-presets';
-import { MovingBorderButton } from '@/components/ui/moving-border';
 import { BackgroundGradientAnimation } from '@/components/ui/background-gradient-animation';
-import { GlowEffect, PulseGlow } from '@/components/ui/glow-effect';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export function Sidebar() {
@@ -711,366 +709,214 @@ export function Sidebar() {
             )}
           </nav>
 
-          {/* PREMIUM PROFILE PILL/BAR - The Star of the Show */}
+          {/* Simple Profile Pill */}
           <div className="border-t border-sidebar-border/50 p-3 backdrop-blur-sm">
             <DropdownMenu>
-              <div className="group relative">
-                <GlowEffect containerClassName="w-full">
-                  <DropdownMenuTrigger asChild>
-                    <MovingBorderButton
-                      duration={3000}
-                      borderRadius="0.875rem"
-                      aria-label={`Profile menu for ${session.user?.name}`}
-                      className={`w-full ${
-                        (isCollapsed && !isMobile)
-                          ? 'p-3 min-w-[48px] min-h-[48px] justify-center'
-                          : 'p-3.5 min-h-[48px]'
-                      } flex ${
-                        (isCollapsed && !isMobile) ? 'justify-center' : 'justify-start gap-3'
-                      } items-center relative overflow-hidden group/button transition-all duration-300 hover:scale-[1.03] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:focus-visible:ring-amber-600 focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar`}
-                    >
-                      {(isCollapsed && !isMobile) ? (
-                        // Collapsed state - enhanced avatar with pulse effect
-                        <PulseGlow containerClassName="relative">
-                          <div className="w-10 h-10 relative">
-                            {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
-                              <motion.div
-                                className="w-full h-full"
-                                whileHover={{ scale: 1.1, rotate: 5 }}
-                                transition={{ type: 'spring', stiffness: 400, damping: 10 }}
-                              >
-                                {getAvatarById((session.user as any).avatar)?.component}
-                              </motion.div>
-                            ) : (
-                              <motion.div
-                                className="w-full h-full rounded-full bg-gradient-to-br from-amber-500 via-orange-500 to-amber-600 dark:from-amber-600 dark:via-orange-600 dark:to-amber-700 p-[2px] shadow-xl shadow-amber-900/30 dark:shadow-amber-950/50"
-                                whileHover={{ scale: 1.1, rotate: 5 }}
-                                transition={{ type: 'spring', stiffness: 400, damping: 10 }}
-                              >
-                                <div className="w-full h-full rounded-full overflow-hidden bg-white dark:bg-gray-900 flex items-center justify-center">
-                                  <span className="text-sm font-bold text-amber-700 dark:text-amber-400">
-                                    {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
-                                  </span>
-                                </div>
-                              </motion.div>
-                            )}
-                            {/* Animated online status indicator */}
-                            <motion.div
-                              className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-sidebar shadow-md"
-                              animate={{
-                                scale: [1, 1.2, 1],
-                                opacity: [1, 0.8, 1],
-                              }}
-                              transition={{
-                                duration: 2,
-                                repeat: Infinity,
-                                ease: 'easeInOut',
-                              }}
-                            />
-                          </div>
-                        </PulseGlow>
+              <DropdownMenuTrigger asChild>
+                <button
+                  aria-label={`Profile menu for ${session.user?.name}`}
+                  className={`w-full ${
+                    (isCollapsed && !isMobile)
+                      ? 'p-2 justify-center'
+                      : 'p-2.5'
+                  } flex ${
+                    (isCollapsed && !isMobile) ? 'justify-center' : 'justify-start gap-2.5'
+                  } items-center rounded-lg transition-colors duration-200 hover:bg-amber-100/50 dark:hover:bg-amber-900/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:focus-visible:ring-amber-600 focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar bg-gradient-to-br from-amber-50/30 to-orange-50/20 dark:from-amber-950/20 dark:to-orange-950/10 border border-amber-200/30 dark:border-amber-800/20`}
+                >
+                  {(isCollapsed && !isMobile) ? (
+                    // Collapsed state - avatar only
+                    <div className="w-8 h-8 relative flex-shrink-0">
+                      {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
+                        <div className="w-full h-full">
+                          {getAvatarById((session.user as any).avatar)?.component}
+                        </div>
                       ) : (
-                        // Expanded state - full premium profile display
-                        <>
-                          <PulseGlow containerClassName="relative flex-shrink-0">
-                            <div className="w-12 h-12 relative">
-                              {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
-                                <motion.div
-                                  className="w-full h-full"
-                                  whileHover={{ scale: 1.05, rotate: 3 }}
-                                  transition={{ type: 'spring', stiffness: 400, damping: 10 }}
-                                >
-                                  {getAvatarById((session.user as any).avatar)?.component}
-                                </motion.div>
-                              ) : (
-                                <motion.div
-                                  className="w-full h-full rounded-full bg-gradient-to-br from-amber-500 via-orange-500 to-amber-600 dark:from-amber-600 dark:via-orange-600 dark:to-amber-700 p-[2.5px] shadow-xl shadow-amber-900/30 dark:shadow-amber-950/50"
-                                  whileHover={{ scale: 1.05, rotate: 3 }}
-                                  transition={{ type: 'spring', stiffness: 400, damping: 10 }}
-                                >
-                                  <div className="w-full h-full rounded-full overflow-hidden bg-white dark:bg-gray-900 flex items-center justify-center">
-                                    <span className="text-base font-bold text-amber-700 dark:text-amber-400">
-                                      {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
-                                    </span>
-                                  </div>
-                                </motion.div>
-                              )}
-                              {/* Animated online status indicator */}
-                              <motion.div
-                                className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-sidebar shadow-md"
-                                animate={{
-                                  scale: [1, 1.2, 1],
-                                  opacity: [1, 0.8, 1],
-                                }}
-                                transition={{
-                                  duration: 2,
-                                  repeat: Infinity,
-                                  ease: 'easeInOut',
-                                }}
-                              />
-                            </div>
-                          </PulseGlow>
-
-                          <motion.div
-                            className="flex-1 min-w-0 text-left"
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ duration: 0.3 }}
-                          >
-                            <motion.div
-                              className="text-sm font-semibold text-amber-900 dark:text-amber-100 leading-tight truncate mb-1"
-                              whileHover={{ x: 2 }}
-                              transition={{ type: 'spring', stiffness: 400, damping: 10 }}
-                            >
-                              {session.user?.name}
-                            </motion.div>
-                            <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-                              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                                <Badge
-                                  variant="secondary"
-                                  className="text-xs font-semibold px-2.5 py-0.5 h-5 rounded bg-gradient-to-r from-amber-400 to-orange-400 dark:from-amber-700 dark:to-orange-700 text-white border-0 shadow-sm"
-                                >
-                                  {session.user?.role}
-                                </Badge>
-                              </motion.div>
-                              {session.user?.branchName && (
-                                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                                  <Badge
-                                    variant="secondary"
-                                    className="text-xs font-medium px-2.5 py-0.5 h-5 rounded bg-gradient-to-r from-orange-400 to-yellow-400 dark:from-orange-700 dark:to-yellow-700 text-white border-0 shadow-sm truncate max-w-[100px]"
-                                  >
-                                    {session.user.branchName}
-                                  </Badge>
-                                </motion.div>
-                              )}
-                            </div>
-                            <div className="text-xs text-gray-700 dark:text-gray-300 leading-tight truncate">
-                              {session.user?.email}
-                            </div>
-                          </motion.div>
-
-                          {/* Animated chevron indicator */}
-                          <motion.div
-                            className="flex-shrink-0 ml-1"
-                            animate={{ y: [-2, 2, -2] }}
-                            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-                          >
-                            <svg
-                              className="w-4 h-4 text-amber-600 dark:text-amber-400"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 15l7-7 7 7" />
-                            </svg>
-                          </motion.div>
-                        </>
+                        <div className="w-full h-full rounded-full bg-gradient-to-br from-amber-500 to-orange-500 dark:from-amber-600 dark:to-orange-600 p-[2px]">
+                          <div className="w-full h-full rounded-full overflow-hidden bg-white dark:bg-gray-900 flex items-center justify-center">
+                            <span className="text-xs font-bold text-amber-700 dark:text-amber-400">
+                              {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
+                            </span>
+                          </div>
+                        </div>
                       )}
-                    </MovingBorderButton>
-                  </DropdownMenuTrigger>
-                </GlowEffect>
+                    </div>
+                  ) : (
+                    // Expanded state - avatar and name only
+                    <>
+                      <div className="w-8 h-8 relative flex-shrink-0">
+                        {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
+                          <div className="w-full h-full">
+                            {getAvatarById((session.user as any).avatar)?.component}
+                          </div>
+                        ) : (
+                          <div className="w-full h-full rounded-full bg-gradient-to-br from-amber-500 to-orange-500 dark:from-amber-600 dark:to-orange-600 p-[2px]">
+                            <div className="w-full h-full rounded-full overflow-hidden bg-white dark:bg-gray-900 flex items-center justify-center">
+                              <span className="text-xs font-bold text-amber-700 dark:text-amber-400">
+                                {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex-1 min-w-0 text-left">
+                        <p className="text-sm font-medium text-amber-900 dark:text-amber-100 leading-tight truncate">
+                          {session.user?.name}
+                        </p>
+                      </div>
+
+                      {/* Simple chevron indicator */}
+                      <svg
+                        className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                      </svg>
+                    </>
+                  )}
+                </button>
+              </DropdownMenuTrigger>
 
                 <DropdownMenuContent
                   align={(isCollapsed && !isMobile) ? "end" : "start"}
                   side="top"
-                  sideOffset={16}
-                  className="w-72 p-2 bg-gradient-to-br from-white via-amber-50/40 to-orange-50/30 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 backdrop-blur-xl border-2 border-amber-200/70 dark:border-amber-800/50 rounded-2xl shadow-2xl shadow-amber-900/20 dark:shadow-amber-950/50"
+                  sideOffset={12}
+                  className="w-64 p-2 bg-white dark:bg-gray-900 border border-amber-200 dark:border-amber-800 rounded-lg shadow-lg"
                 >
-                  {/* Profile header - Enhanced with premium styling */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="p-4 mb-2 bg-gradient-to-br from-amber-100/70 via-orange-50/60 to-yellow-50/50 dark:from-amber-950/60 dark:via-orange-950/50 dark:to-yellow-950/40 rounded-xl border border-amber-200/60 dark:border-amber-800/50 shadow-lg relative overflow-hidden"
-                  >
-                    {/* Subtle animated background */}
-                    <div className="absolute inset-0 opacity-30">
-                      <motion.div
-                        className="absolute inset-0 bg-gradient-to-r from-amber-400/20 via-orange-400/20 to-yellow-400/20"
-                        animate={{
-                          backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
-                        }}
-                        transition={{
-                          duration: 5,
-                          repeat: Infinity,
-                          ease: 'linear',
-                        }}
-                        style={{
-                          backgroundSize: '200% 200%',
-                        }}
-                      />
-                    </div>
-
-                    <div className="relative z-10">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-14 h-14 flex-shrink-0 relative">
-                          {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
-                            <div className="w-full h-full">
-                              {getAvatarById((session.user as any).avatar)?.component}
+                  {/* Profile header - Simple version */}
+                  <div className="p-3 mb-2 bg-amber-50 dark:bg-amber-950/40 rounded-md border border-amber-200/50 dark:border-amber-800/50">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-10 h-10 flex-shrink-0 relative">
+                        {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
+                          <div className="w-full h-full">
+                            {getAvatarById((session.user as any).avatar)?.component}
+                          </div>
+                        ) : (
+                          <div className="w-full h-full rounded-full bg-gradient-to-br from-amber-500 to-orange-500 dark:from-amber-600 dark:to-orange-600 p-[2px]">
+                            <div className="w-full h-full rounded-full overflow-hidden bg-white dark:bg-gray-900 flex items-center justify-center">
+                              <span className="text-sm font-bold text-amber-700 dark:text-amber-400">
+                                {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
+                              </span>
                             </div>
-                          ) : (
-                            <div className="w-full h-full rounded-full bg-gradient-to-br from-amber-500 via-orange-500 to-amber-600 dark:from-amber-600 dark:via-orange-600 dark:to-amber-700 p-[2.5px] shadow-xl shadow-amber-900/30">
-                              <div className="w-full h-full rounded-full overflow-hidden bg-white dark:bg-gray-900 flex items-center justify-center">
-                                <span className="text-lg font-bold text-amber-700 dark:text-amber-400">
-                                  {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
-                                </span>
-                              </div>
-                            </div>
-                          )}
-                          {/* Animated online status */}
-                          <motion.div
-                            className="absolute bottom-0 right-0 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white dark:border-gray-900 shadow-md"
-                            animate={{
-                              scale: [1, 1.2, 1],
-                              opacity: [1, 0.8, 1],
-                            }}
-                            transition={{
-                              duration: 2,
-                              repeat: Infinity,
-                              ease: 'easeInOut',
-                            }}
-                          />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-amber-900 dark:text-amber-100 leading-tight truncate mb-1">
-                            {session.user?.name}
-                          </p>
-                          <p className="text-xs text-gray-700 dark:text-gray-300 leading-tight truncate">
-                            {session.user?.email}
-                          </p>
-                        </div>
+                          </div>
+                        )}
                       </div>
-                      <div className="flex gap-1.5 flex-wrap">
-                        <Badge className="text-xs font-semibold px-3 py-1 h-6 rounded-md bg-gradient-to-r from-amber-400 to-orange-400 dark:from-amber-700 dark:to-orange-700 text-white border-0 shadow-md">
-                          {session.user?.role}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-amber-900 dark:text-amber-100 leading-tight truncate">
+                          {session.user?.name}
+                        </p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 leading-tight truncate">
+                          {session.user?.email}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-1.5 flex-wrap">
+                      <Badge className="text-xs font-medium px-2 py-0.5 bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200 border-0">
+                        {session.user?.role}
+                      </Badge>
+                      {session.user?.branchName && (
+                        <Badge className="text-xs font-medium px-2 py-0.5 bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 border-0 truncate max-w-[120px]">
+                          {session.user.branchName}
                         </Badge>
-                        {session.user?.branchName && (
-                          <Badge className="text-xs font-medium px-3 py-1 h-6 rounded-md bg-gradient-to-r from-orange-400 to-yellow-400 dark:from-orange-700 dark:to-yellow-700 text-white border-0 shadow-md truncate max-w-[140px]">
-                            {session.user.branchName}
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-0.5">
+                    <DropdownMenuItem
+                      className="flex items-center p-2.5 rounded-md hover:bg-amber-50 dark:hover:bg-amber-900/20 cursor-pointer transition-colors"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setShowNotifications(true);
+                      }}
+                    >
+                      <div className="flex items-center gap-2.5 flex-1">
+                        <div className="relative w-8 h-8 flex items-center justify-center">
+                          <Bell className="w-4 h-4 text-gray-700 dark:text-gray-300" />
+                          {unreadCount > 0 && (
+                            <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                              {unreadCount > 9 ? '9+' : unreadCount}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          Notifications
+                        </span>
+                        {unreadCount > 0 && (
+                          <Badge variant="destructive" className="ml-auto text-xs px-1.5 py-0.5 font-semibold">
+                            {unreadCount > 99 ? '99+' : unreadCount}
                           </Badge>
                         )}
                       </div>
-                    </div>
-                  </motion.div>
+                    </DropdownMenuItem>
 
-                  <div className="space-y-1">
-                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                      <DropdownMenuItem
-                        className="flex items-center p-3.5 min-h-[44px] hover:bg-gradient-to-r hover:from-amber-100/70 hover:to-orange-100/60 dark:hover:from-amber-900/40 dark:hover:to-orange-900/30 rounded-lg transition-all duration-200 cursor-pointer group hover:shadow-md border border-transparent hover:border-amber-200/60 dark:hover:border-amber-800/40"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setShowNotifications(true);
-                        }}
+                    <DropdownMenuItem asChild>
+                      <Link
+                        href="/profile"
+                        className="flex items-center gap-2.5 p-2.5 rounded-md hover:bg-amber-50 dark:hover:bg-amber-900/20 cursor-pointer transition-colors"
                       >
-                        <div className="flex items-center gap-3 flex-1">
-                          <div className="relative w-10 h-10 flex items-center justify-center rounded-lg bg-amber-100/70 dark:bg-amber-900/40 group-hover:bg-amber-200/80 dark:group-hover:bg-amber-900/60 transition-colors">
-                            <Bell className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-                            {unreadCount > 0 && (
-                              <motion.span
-                                className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center shadow-md"
-                                animate={{ scale: [1, 1.1, 1] }}
-                                transition={{ duration: 2, repeat: Infinity }}
-                              >
-                                {unreadCount > 9 ? '9+' : unreadCount}
-                              </motion.span>
-                            )}
-                          </div>
-                          <span className="text-sm font-semibold text-amber-900 dark:text-amber-100 whitespace-nowrap">
-                            Notifications
-                          </span>
-                          {unreadCount > 0 && (
-                            <Badge variant="destructive" className="ml-auto text-xs px-2.5 py-0.5 font-bold shadow-md">
-                              {unreadCount > 99 ? '99+' : unreadCount}
-                            </Badge>
-                          )}
+                        <div className="w-8 h-8 flex items-center justify-center">
+                          <User className="w-4 h-4 text-gray-700 dark:text-gray-300" />
                         </div>
-                      </DropdownMenuItem>
-                    </motion.div>
+                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          Profile
+                        </span>
+                      </Link>
+                    </DropdownMenuItem>
 
-                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                      <DropdownMenuItem asChild>
-                        <Link
-                          href="/profile"
-                          className="flex items-center p-3.5 min-h-[44px] hover:bg-gradient-to-r hover:from-amber-100/70 hover:to-orange-100/60 dark:hover:from-amber-900/40 dark:hover:to-orange-900/30 rounded-lg transition-all duration-200 cursor-pointer group hover:shadow-md border border-transparent hover:border-amber-200/60 dark:hover:border-amber-800/40"
-                        >
-                          <div className="flex items-center gap-3 flex-1">
-                            <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-amber-100/70 dark:bg-amber-900/40 group-hover:bg-amber-200/80 dark:group-hover:bg-amber-900/60 transition-colors">
-                              <User className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-                            </div>
-                            <span className="text-sm font-semibold text-amber-900 dark:text-amber-100 whitespace-nowrap">
-                              Profile
-                            </span>
-                          </div>
-                        </Link>
-                      </DropdownMenuItem>
-                    </motion.div>
-
-                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                      <DropdownMenuItem asChild>
-                        <Link
-                          href="/settings"
-                          className="flex items-center p-3.5 min-h-[44px] hover:bg-gradient-to-r hover:from-amber-100/70 hover:to-orange-100/60 dark:hover:from-amber-900/40 dark:hover:to-orange-900/30 rounded-lg transition-all duration-200 cursor-pointer group hover:shadow-md border border-transparent hover:border-amber-200/60 dark:hover:border-amber-800/40"
-                        >
-                          <div className="flex items-center gap-3 flex-1">
-                            <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-amber-100/70 dark:bg-amber-900/40 group-hover:bg-amber-200/80 dark:group-hover:bg-amber-900/60 transition-colors">
-                              <Settings className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-                            </div>
-                            <span className="text-sm font-semibold text-amber-900 dark:text-amber-100 whitespace-nowrap">
-                              Settings
-                            </span>
-                          </div>
-                        </Link>
-                      </DropdownMenuItem>
-                    </motion.div>
-
-                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                      <DropdownMenuItem
-                        className="flex items-center p-3.5 min-h-[44px] hover:bg-gradient-to-r hover:from-amber-100/70 hover:to-orange-100/60 dark:hover:from-amber-900/40 dark:hover:to-orange-900/30 rounded-lg transition-all duration-200 cursor-pointer group hover:shadow-md border border-transparent hover:border-amber-200/60 dark:hover:border-amber-800/40"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setTheme(theme === 'dark' ? 'light' : 'dark');
-                        }}
+                    <DropdownMenuItem asChild>
+                      <Link
+                        href="/settings"
+                        className="flex items-center gap-2.5 p-2.5 rounded-md hover:bg-amber-50 dark:hover:bg-amber-900/20 cursor-pointer transition-colors"
                       >
-                        <div className="flex items-center gap-3 flex-1">
-                          <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-amber-100/70 dark:bg-amber-900/40 group-hover:bg-amber-200/80 dark:group-hover:bg-amber-900/60 transition-colors">
-                            <motion.div
-                              animate={{ rotate: theme === 'dark' ? 180 : 0 }}
-                              transition={{ duration: 0.5 }}
-                            >
-                              {theme === 'dark' ? (
-                                <Sun className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-                              ) : (
-                                <Moon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-                              )}
-                            </motion.div>
-                          </div>
-                          <span className="text-sm font-semibold text-amber-900 dark:text-amber-100 whitespace-nowrap">
-                            {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
-                          </span>
+                        <div className="w-8 h-8 flex items-center justify-center">
+                          <Settings className="w-4 h-4 text-gray-700 dark:text-gray-300" />
                         </div>
-                      </DropdownMenuItem>
-                    </motion.div>
+                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          Settings
+                        </span>
+                      </Link>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem
+                      className="flex items-center gap-2.5 p-2.5 rounded-md hover:bg-amber-50 dark:hover:bg-amber-900/20 cursor-pointer transition-colors"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setTheme(theme === 'dark' ? 'light' : 'dark');
+                      }}
+                    >
+                      <div className="w-8 h-8 flex items-center justify-center">
+                        {theme === 'dark' ? (
+                          <Sun className="w-4 h-4 text-gray-700 dark:text-gray-300" />
+                        ) : (
+                          <Moon className="w-4 h-4 text-gray-700 dark:text-gray-300" />
+                        )}
+                      </div>
+                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+                      </span>
+                    </DropdownMenuItem>
                   </div>
 
-                  <div className="my-2 h-px bg-gradient-to-r from-transparent via-amber-400/50 to-transparent dark:via-amber-700/50" />
+                  <div className="my-2 h-px bg-amber-200 dark:bg-amber-800" />
 
-                  <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                    <DropdownMenuItem asChild>
-                      <button
-                        type="button"
-                        onClick={handleLogout}
-                        className="w-full flex items-center gap-3 p-3.5 min-h-[44px] bg-gradient-to-r from-red-50/90 to-red-100/80 dark:from-red-950/40 dark:to-red-900/30 rounded-lg hover:from-red-100 hover:to-red-200 dark:hover:from-red-950/60 dark:hover:to-red-900/50 cursor-pointer border-2 border-red-200/70 dark:border-red-900/60 hover:border-red-300 dark:hover:border-red-800 hover:shadow-lg transition-all group"
-                      >
-                        <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/60 group-hover:bg-red-200 dark:group-hover:bg-red-900/80 transition-colors">
-                          <LogOut className="w-5 h-5 text-red-600 dark:text-red-400" />
-                        </div>
-                        <span className="text-sm font-bold text-red-600 dark:text-red-400 group-hover:text-red-700 dark:group-hover:text-red-300">
-                          Sign Out
-                        </span>
-                      </button>
-                    </DropdownMenuItem>
-                  </motion.div>
+                  <DropdownMenuItem asChild>
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="w-full flex items-center gap-2.5 p-2.5 bg-red-50 dark:bg-red-950/40 rounded-md hover:bg-red-100 dark:hover:bg-red-950/60 cursor-pointer border border-red-200 dark:border-red-900 transition-colors"
+                    >
+                      <div className="w-8 h-8 flex items-center justify-center">
+                        <LogOut className="w-4 h-4 text-red-600 dark:text-red-400" />
+                      </div>
+                      <span className="text-sm font-semibold text-red-600 dark:text-red-400">
+                        Sign Out
+                      </span>
+                    </button>
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
-              </div>
             </DropdownMenu>
           </div>
 
