@@ -562,28 +562,15 @@ export function Sidebar() {
                     </div>
 
                     <div className="flex-1 min-w-0 text-left">
-                      <div className="text-sm font-semibold text-amber-900 dark:text-amber-100 leading-tight truncate mb-0.5">
+                      <div className="text-sm font-semibold text-amber-900 dark:text-amber-100 leading-tight truncate mb-1.5">
                         {session.user?.name}
                       </div>
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <Badge
-                          variant="secondary"
-                          className="text-xs font-semibold px-2.5 py-1 h-6 rounded bg-amber-300 dark:bg-amber-800 text-amber-950 dark:text-amber-100 border-0 tracking-tight"
-                        >
-                          {session.user?.role}
-                        </Badge>
-                        {session.user?.branchName && (
-                          <Badge
-                            variant="secondary"
-                            className="text-xs font-medium px-2.5 py-1 h-6 rounded bg-orange-300 dark:bg-orange-800 text-orange-950 dark:text-orange-100 border-0 tracking-tight truncate max-w-[100px]"
-                          >
-                            {session.user.branchName}
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="text-sm text-gray-700 dark:text-gray-300 leading-tight truncate">
-                        {session.user?.email}
-                      </div>
+                      <Badge
+                        variant="secondary"
+                        className="text-xs font-semibold px-2.5 py-1 h-6 rounded bg-amber-300 dark:bg-amber-800 text-amber-950 dark:text-amber-100 border-0 tracking-tight"
+                      >
+                        {session.user?.role}
+                      </Badge>
                     </div>
 
                     {/* Chevron indicator */}
