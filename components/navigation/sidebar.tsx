@@ -509,9 +509,9 @@ export function Sidebar() {
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="w-full h-auto p-2 flex items-center gap-3 hover:bg-sidebar-accent"
+              className="w-full h-auto p-3.5 flex items-center gap-4 hover:bg-sidebar-accent rounded-lg transition-colors"
             >
-              <Avatar className={(isCollapsed && !isMobile) ? "h-9 w-9" : "h-10 w-10"}>
+              <Avatar className={(isCollapsed && !isMobile) ? "h-9 w-9" : "h-11 w-11"}>
                 {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
                   <div className="h-full w-full">
                     {getAvatarById((session.user as any).avatar)?.component}
@@ -523,11 +523,11 @@ export function Sidebar() {
                 )}
               </Avatar>
               {(!isCollapsed || isMobile) && (
-                <div className="flex flex-col items-start flex-1 min-w-0 text-left">
-                  <span className="text-sm font-medium truncate w-full">
+                <div className="flex flex-col items-start flex-1 min-w-0 text-left gap-1.5 py-1">
+                  <span className="text-sm font-medium truncate w-full leading-tight">
                     {session.user?.name}
                   </span>
-                  <Badge variant="secondary" className="text-xs mt-0.5">
+                  <Badge variant="secondary" className="text-xs">
                     {session.user?.role}
                   </Badge>
                 </div>
