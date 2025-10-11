@@ -511,8 +511,8 @@ export function Sidebar() {
                 className={`w-full ${
                   (isCollapsed && !isMobile)
                     ? 'p-3 min-w-[48px] min-h-[48px] justify-center'
-                    : 'justify-start gap-3 p-3 min-h-[48px]'
-                } rounded-xl bg-gradient-to-br from-amber-50/80 via-orange-50/60 to-yellow-50/70 dark:from-amber-950/40 dark:via-orange-950/30 dark:to-yellow-950/30 border-2 border-amber-200/70 dark:border-amber-800/50 hover:border-amber-300 dark:hover:border-amber-700 hover:shadow-md hover:shadow-amber-900/10 dark:hover:shadow-amber-950/30 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:focus-visible:ring-amber-600 focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar relative overflow-hidden group/button`}
+                    : 'justify-start gap-3 p-3.5 min-h-[72px]'
+                } rounded-xl bg-gradient-to-br from-amber-50/80 via-orange-50/60 to-yellow-50/70 dark:from-amber-950/40 dark:via-orange-950/30 dark:to-yellow-950/30 border-2 border-amber-200/70 dark:border-amber-800/50 hover:border-amber-300 dark:hover:border-amber-700 hover:shadow-md hover:shadow-amber-900/10 dark:hover:shadow-amber-950/30 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:focus-visible:ring-amber-600 focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar relative overflow-visible group/button`}
               >
                 {/* Subtle shine effect on hover */}
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-200%] group-hover/button:translate-x-[200%] transition-transform duration-700 ease-in-out" />
@@ -561,16 +561,18 @@ export function Sidebar() {
                       </div>
                     </div>
 
-                    <div className="flex-1 min-w-0 text-left">
-                      <div className="text-sm font-semibold text-amber-900 dark:text-amber-100 leading-tight truncate mb-1.5">
+                    <div className="flex-1 min-w-0 text-left flex flex-col justify-center gap-1.5">
+                      <div className="text-sm font-semibold text-amber-900 dark:text-amber-100 leading-snug line-clamp-1">
                         {session.user?.name}
                       </div>
-                      <Badge
-                        variant="secondary"
-                        className="text-xs font-semibold px-2.5 py-1 h-6 rounded bg-amber-300 dark:bg-amber-800 text-amber-950 dark:text-amber-100 border-0 tracking-tight"
-                      >
-                        {session.user?.role}
-                      </Badge>
+                      <div className="flex items-center">
+                        <Badge
+                          variant="secondary"
+                          className="text-xs font-semibold px-2.5 py-0.5 rounded bg-amber-300 dark:bg-amber-800 text-amber-950 dark:text-amber-100 border-0 tracking-tight inline-flex items-center whitespace-nowrap"
+                        >
+                          {session.user?.role}
+                        </Badge>
+                      </div>
                     </div>
 
                     {/* Chevron indicator */}
