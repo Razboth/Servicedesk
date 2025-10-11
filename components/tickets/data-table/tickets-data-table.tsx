@@ -71,6 +71,13 @@ export function TicketsDataTable({
     priority: initialFilters?.priority,
     category: initialFilters?.category,
     branch: undefined as string | undefined,
+    slaStatus: undefined as string | undefined,
+    createdAfter: undefined as string | undefined,
+    createdBefore: undefined as string | undefined,
+    updatedAfter: undefined as string | undefined,
+    updatedBefore: undefined as string | undefined,
+    assignment: undefined as string | undefined,
+    technicianId: undefined as string | undefined,
   })
   // Server-side pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -149,59 +156,26 @@ export function TicketsDataTable({
   }
 
   // Load technicians for filter
-  const loadTechnicians = async (ticketData?: Ticket[]) => {
+  const loadTechnicians = async () => {
     try {
-      // First try admin endpoint, fallback to extracting from tickets if not admin
-      let response = await fetch('/api/admin/technicians')
-      
+      // Use the new /api/technicians endpoint
+      const response = await fetch('/api/technicians')
+
       if (response.ok) {
         const data = await response.json()
-        const options = [
-          { value: 'Unassigned', label: 'Unassigned' },
-          ...(data.technicians?.map((tech: any) => ({
-            value: tech.name,
-            label: tech.name
-          })) || [])
-        ]
+        // Map technicians to filter options using IDs as values
+        const options = data.map((tech: any) => ({
+          value: tech.id, // Use technician ID for filtering
+          label: tech.name, // Display technician name
+          supportGroup: tech.supportGroup?.name // Optional: for grouping display
+        }))
         setTechnicianOptions(options)
-      } else if (ticketData && ticketData.length > 0) {
-        // Fallback: extract unique technicians from provided tickets
-        const uniqueTechnicians = new Set<string>()
-        ticketData.forEach(ticket => {
-          if (ticket.assignedTo?.name) {
-            uniqueTechnicians.add(ticket.assignedTo.name)
-          }
-        })
-        
-        const options = [
-          { value: 'Unassigned', label: 'Unassigned' },
-          ...Array.from(uniqueTechnicians).sort().map(name => ({
-            value: name,
-            label: name
-          }))
-        ]
-        setTechnicianOptions(options)
+        console.log('Loaded technicians:', options.length)
+      } else {
+        console.error('Failed to load technicians:', response.status)
       }
     } catch (error) {
       console.error('Error loading technicians:', error)
-      // Fallback to extracting from tickets
-      if (ticketData && ticketData.length > 0) {
-        const uniqueTechnicians = new Set<string>()
-        ticketData.forEach(ticket => {
-          if (ticket.assignedTo?.name) {
-            uniqueTechnicians.add(ticket.assignedTo.name)
-          }
-        })
-        
-        const options = [
-          { value: 'Unassigned', label: 'Unassigned' },
-          ...Array.from(uniqueTechnicians).sort().map(name => ({
-            value: name,
-            label: name
-          }))
-        ]
-        setTechnicianOptions(options)
-      }
     }
   }
 
@@ -274,7 +248,19 @@ export function TicketsDataTable({
   }, [])
 
   // Load tickets from API with server-side pagination
-  const loadTickets = async (isInitial = false, searchQuery?: string, page?: number, size?: number, filters?: { status?: string; priority?: string; category?: string; branch?: string }) => {
+  const loadTickets = async (isInitial = false, searchQuery?: string, page?: number, size?: number, filters?: {
+    status?: string;
+    priority?: string;
+    category?: string;
+    branch?: string;
+    slaStatus?: string;
+    createdAfter?: string;
+    createdBefore?: string;
+    updatedAfter?: string;
+    updatedBefore?: string;
+    assignment?: string;
+    technicianId?: string;
+  }) => {
     try {
       // Only show loading spinner on initial load
       if (isInitial) {
@@ -306,6 +292,36 @@ export function TicketsDataTable({
 
       if (activeFilters.branch) {
         params.append('branchId', activeFilters.branch)
+      }
+
+      if (activeFilters.slaStatus) {
+        params.append('slaStatus', activeFilters.slaStatus)
+      }
+
+      if (activeFilters.createdAfter) {
+        params.append('createdAfter', activeFilters.createdAfter)
+      }
+
+      if (activeFilters.createdBefore) {
+        params.append('createdBefore', activeFilters.createdBefore)
+      }
+
+      if (activeFilters.updatedAfter) {
+        params.append('updatedAfter', activeFilters.updatedAfter)
+      }
+
+      if (activeFilters.updatedBefore) {
+        params.append('updatedBefore', activeFilters.updatedBefore)
+      }
+
+      // Assignment filter (assigned/unassigned)
+      if (activeFilters.assignment) {
+        params.append('assignment', activeFilters.assignment)
+      }
+
+      // Technician filter (multi-select by technician IDs)
+      if (activeFilters.technicianId) {
+        params.append('technicianId', activeFilters.technicianId)
       }
 
       // Add search query - use provided searchQuery or current serverSearchQuery
@@ -365,9 +381,6 @@ export function TicketsDataTable({
 
         // Don't extract filter options - rely on API-loaded options only
         // Extraction would only show options from current page, not all available options
-
-        // Load technicians with the ticket data (technicians extraction is OK as fallback)
-        loadTechnicians(loadedTickets)
       } else {
         toast.error('Failed to load tickets')
       }
@@ -457,7 +470,19 @@ export function TicketsDataTable({
   }, [])
 
   // Handle filter changes from the data table
-  const handleFilterChange = useCallback((filters: { status?: string; priority?: string; category?: string; branch?: string }) => {
+  const handleFilterChange = useCallback((filters: {
+    status?: string;
+    priority?: string;
+    category?: string;
+    branch?: string;
+    slaStatus?: string;
+    createdAfter?: string;
+    createdBefore?: string;
+    updatedAfter?: string;
+    updatedBefore?: string;
+    assignment?: string;
+    technicianId?: string;
+  }) => {
     setCurrentFilters(prev => {
       const newFilters = {
         ...prev,

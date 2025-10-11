@@ -50,6 +50,13 @@ export const assignmentStatuses = [
   { value: 'unassigned', label: 'Unassigned', icon: User },
 ]
 
+// Define SLA status options
+export const slaStatuses = [
+  { value: 'within', label: 'Within SLA', icon: '✅' },
+  { value: 'at_risk', label: 'At Risk', icon: '⚠️' },
+  { value: 'breached', label: 'Breached', icon: '🚨' },
+]
+
 interface DataTableToolbarProps<TData> {
   table: Table<TData>
   onRefresh?: () => void
@@ -64,7 +71,14 @@ interface DataTableToolbarProps<TData> {
   serviceOptions?: { value: string; label: string }[]
   technicianOptions?: { value: string; label: string }[]
   onServerSearch?: (query: string) => void
-  onFilterChange?: (filters: { status?: string; priority?: string; category?: string; branch?: string }) => void
+  onFilterChange?: (filters: {
+    status?: string;
+    priority?: string;
+    category?: string;
+    branch?: string;
+    assignment?: string;
+    technicianId?: string;
+  }) => void
 }
 
 export function DataTableToolbar<TData>({
@@ -95,19 +109,40 @@ export function DataTableToolbar<TData>({
       const priorityFilter = columnFilters.find(f => f.id === 'priority')
       const categoryFilter = columnFilters.find(f => f.id === 'service.category.name')
       const branchFilter = columnFilters.find(f => f.id === 'branch.code')
+      const slaStatusFilter = columnFilters.find(f => f.id === 'slaStatus')
+      const createdAtFilter = columnFilters.find(f => f.id === 'createdAt')
+      const updatedAtFilter = columnFilters.find(f => f.id === 'updatedAt')
+      const assignmentFilter = columnFilters.find(f => f.id === 'assignmentStatus')
+      const technicianFilter = columnFilters.find(f => f.id === 'assignedTo.name')
 
-      // Extract values - faceted filters return arrays, we need the first value for server-side filtering
+      // Extract values - faceted filters return arrays, join with comma for multi-select
       const statusValue = statusFilter?.value
       const priorityValue = priorityFilter?.value
       const categoryValue = categoryFilter?.value
       const branchValue = branchFilter?.value
+      const slaStatusValue = slaStatusFilter?.value
+      const assignmentValue = assignmentFilter?.value
+      const technicianValue = technicianFilter?.value
+
+      // Date range filters return [from, to] array
+      const createdAtValue = createdAtFilter?.value as [Date, Date] | undefined
+      const updatedAtValue = updatedAtFilter?.value as [Date, Date] | undefined
 
       onFilterChange({
-        status: Array.isArray(statusValue) ? statusValue[0] : statusValue as string | undefined,
-        priority: Array.isArray(priorityValue) ? priorityValue[0] : priorityValue as string | undefined,
+        status: Array.isArray(statusValue) ? statusValue.join(',') : statusValue as string | undefined,
+        priority: Array.isArray(priorityValue) ? priorityValue.join(',') : priorityValue as string | undefined,
         category: Array.isArray(categoryValue) ? categoryValue[0] : categoryValue as string | undefined,
         branch: Array.isArray(branchValue) ? branchValue[0] : branchValue as string | undefined,
-      })
+        slaStatus: Array.isArray(slaStatusValue) ? slaStatusValue[0] : slaStatusValue as string | undefined,
+        // Assignment filter - single select (assigned/unassigned)
+        assignment: Array.isArray(assignmentValue) ? assignmentValue[0] : assignmentValue as string | undefined,
+        // Technician filter - multi-select by technician IDs (join with comma)
+        technicianId: Array.isArray(technicianValue) ? technicianValue.join(',') : technicianValue as string | undefined,
+        createdAfter: createdAtValue?.[0]?.toISOString(),
+        createdBefore: createdAtValue?.[1]?.toISOString(),
+        updatedAfter: updatedAtValue?.[0]?.toISOString(),
+        updatedBefore: updatedAtValue?.[1]?.toISOString(),
+      } as any)
     }
   }, [table.getState().columnFilters, onFilterChange])
 
@@ -244,7 +279,16 @@ export function DataTableToolbar<TData>({
               options={priorities}
             />
           )}
-          
+
+          {/* SLA Status Filter */}
+          {table.getColumn('slaStatus') && (
+            <DataTableFacetedFilter
+              column={table.getColumn('slaStatus')}
+              title="SLA Status"
+              options={slaStatuses}
+            />
+          )}
+
           {/* Branch Filter */}
           {table.getColumn('branch.code') && (
             <DataTableFacetedFilter

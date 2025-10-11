@@ -79,11 +79,19 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const status = searchParams.get('status');
-    const priority = searchParams.get('priority');
+    // Support multi-select filters (comma-separated values)
+    const statusParam = searchParams.get('status');
+    const status = statusParam ? statusParam.split(',').filter(Boolean) : null;
+    const priorityParam = searchParams.get('priority');
+    const priority = priorityParam ? priorityParam.split(',').filter(Boolean) : null;
     const assignedTo = searchParams.get('assignedTo');
     const mineAndAvailable = searchParams.get('mineAndAvailable');
     const branchId = searchParams.get('branchId');
+
+    // New filter parameters for Assignment and Technician filters
+    const assignment = searchParams.get('assignment'); // "assigned" or "unassigned"
+    const technicianIdParam = searchParams.get('technicianId'); // comma-separated technician IDs
+    const technicianIds = technicianIdParam ? technicianIdParam.split(',').filter(Boolean) : null;
     const page = parseInt(searchParams.get('page') || '1');
     const rawLimit = parseInt(searchParams.get('limit') || '10');
     // Cap limit at 200 for performance, but allow proper pagination for any number of tickets
@@ -97,6 +105,15 @@ export async function GET(request: NextRequest) {
     const requestStats = searchParams.get('stats') === 'true';
     const filter = searchParams.get('filter'); // 'my-tickets' or 'available-tickets'
     const categoryId = searchParams.get('categoryId'); // Category filter
+
+    // Date range filters
+    const createdAfter = searchParams.get('createdAfter');
+    const createdBefore = searchParams.get('createdBefore');
+    const updatedAfter = searchParams.get('updatedAfter');
+    const updatedBefore = searchParams.get('updatedBefore');
+
+    // SLA status filter
+    const slaStatus = searchParams.get('slaStatus'); // 'within', 'at_risk', 'breached'
 
     // Get user's branch and support group for filtering
     const userWithDetails = await prisma.user.findUnique({
@@ -375,23 +392,56 @@ export async function GET(request: NextRequest) {
     }
     // If role is not handled above, default to no access (shouldn't happen with valid roles)
 
-    // Apply filters
-    if (status && status !== 'all' && status !== 'ALL') {
-      where.status = status;
-    } else if (!status) {
+    // Apply filters - support multi-select
+    if (status && status.length > 0) {
+      // Check if 'all' or 'ALL' is in the array
+      const hasAll = status.some(s => s === 'all' || s === 'ALL');
+      if (!hasAll) {
+        // Filter to specific statuses
+        where.status = status.length === 1 ? status[0] : { in: status };
+      }
+    } else {
       // Exclude rejected tickets by default when no specific status is requested
       where.status = { not: 'REJECTED' };
     }
-    // If status is 'all' or 'ALL', don't add any status filter
-    if (priority) where.priority = priority;
-    if (assignedTo) where.assignedToId = assignedTo;
-    if (mineAndAvailable) {
+
+    // Priority filter - support multi-select
+    if (priority && priority.length > 0) {
+      where.priority = priority.length === 1 ? priority[0] : { in: priority };
+    }
+
+    // Assignment filter - binary filter for assigned/unassigned
+    // This filter takes precedence over the old assignedTo filter
+    if (assignment === 'unassigned') {
+      where.assignedToId = null;
+    } else if (assignment === 'assigned') {
+      where.assignedToId = { not: null };
+    }
+
+    // Technician filter - multi-select by technician IDs
+    // If both assignment and technicianId filters are set, technicianId takes precedence
+    if (technicianIds && technicianIds.length > 0) {
+      // Override assignment filter if technicianId is specified
+      where.assignedToId = technicianIds.length === 1
+        ? technicianIds[0]
+        : { in: technicianIds };
+    }
+
+    // Legacy assignedTo filter for backward compatibility (single ID)
+    // Only apply if neither assignment nor technicianId filters are set
+    if (assignedTo && !assignment && !technicianIds) {
+      where.assignedToId = assignedTo;
+    }
+
+    // Legacy mineAndAvailable filter for backward compatibility
+    if (mineAndAvailable && !assignment && !technicianIds) {
       // Override role-based filtering for mineAndAvailable
       where.OR = [
         { assignedToId: mineAndAvailable }, // My tickets
         { assignedToId: null } // Available tickets
       ];
     }
+
     if (branchId) where.branchId = branchId;
     if (securityClassification) {
       // Only allow security classification filtering for authorized roles
@@ -511,12 +561,46 @@ export async function GET(request: NextRequest) {
       };
     }
 
+    // Date range filters
+    if (createdAfter || createdBefore) {
+      where.createdAt = {};
+      if (createdAfter) {
+        where.createdAt.gte = new Date(createdAfter);
+      }
+      if (createdBefore) {
+        // Include the entire day by setting to end of day
+        const endDate = new Date(createdBefore);
+        endDate.setHours(23, 59, 59, 999);
+        where.createdAt.lte = endDate;
+      }
+    }
+
+    if (updatedAfter || updatedBefore) {
+      where.updatedAt = {};
+      if (updatedAfter) {
+        where.updatedAt.gte = new Date(updatedAfter);
+      }
+      if (updatedBefore) {
+        // Include the entire day by setting to end of day
+        const endDate = new Date(updatedBefore);
+        endDate.setHours(23, 59, 59, 999);
+        where.updatedAt.lte = endDate;
+      }
+    }
+
     if (search) {
       // Combine search conditions with existing role-based filters
+      // Search across multiple fields for better discoverability
       const searchConditions = [
         { title: { contains: search, mode: 'insensitive' } },
         { description: { contains: search, mode: 'insensitive' } },
-        { ticketNumber: { contains: search, mode: 'insensitive' } }
+        { ticketNumber: { contains: search, mode: 'insensitive' } },
+        { service: { name: { contains: search, mode: 'insensitive' } } },
+        { branch: { name: { contains: search, mode: 'insensitive' } } },
+        { branch: { code: { contains: search, mode: 'insensitive' } } },
+        { createdBy: { name: { contains: search, mode: 'insensitive' } } },
+        { createdBy: { email: { contains: search, mode: 'insensitive' } } },
+        { assignedTo: { name: { contains: search, mode: 'insensitive' } } },
       ];
 
       // If there are existing OR conditions (from role-based filtering),
@@ -692,7 +776,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const [tickets, total] = await Promise.all([
+    const [allTickets, total] = await Promise.all([
       prisma.ticket.findMany({
         where,
         include: {
@@ -735,6 +819,32 @@ export async function GET(request: NextRequest) {
       }),
       prisma.ticket.count({ where })
     ]);
+
+    // Apply SLA filter if requested (post-query filter since SLA is calculated)
+    let tickets = allTickets;
+    if (slaStatus) {
+      const now = new Date();
+      tickets = allTickets.filter(ticket => {
+        // Skip if no SLA defined or ticket is closed/resolved
+        if (!ticket.service?.slaHours || ['CLOSED', 'RESOLVED'].includes(ticket.status)) {
+          return slaStatus === 'within'; // Consider completed tickets as "within SLA"
+        }
+
+        const createdAt = new Date(ticket.createdAt);
+        const slaDeadline = new Date(createdAt.getTime() + (ticket.service.slaHours * 60 * 60 * 1000));
+        const hoursRemaining = (slaDeadline.getTime() - now.getTime()) / (1000 * 60 * 60);
+        const percentRemaining = hoursRemaining / ticket.service.slaHours;
+
+        if (slaStatus === 'breached') {
+          return hoursRemaining <= 0; // Past deadline
+        } else if (slaStatus === 'at_risk') {
+          return hoursRemaining > 0 && percentRemaining <= 0.25; // Less than 25% time remaining
+        } else if (slaStatus === 'within') {
+          return percentRemaining > 0.25; // More than 25% time remaining
+        }
+        return true;
+      });
+    }
 
     return NextResponse.json({
       tickets,
