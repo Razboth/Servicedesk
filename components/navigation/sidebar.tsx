@@ -562,13 +562,13 @@ export function Sidebar() {
                     </div>
 
                     <div className="flex-1 min-w-0 text-left flex flex-col justify-center gap-1.5">
-                      <div className="text-sm font-semibold text-amber-900 dark:text-amber-100 leading-snug line-clamp-1">
+                      <div className="text-sm font-semibold text-amber-900 dark:text-amber-100 leading-snug truncate">
                         {session.user?.name}
                       </div>
-                      <div className="flex items-center">
+                      <div className="flex items-center gap-1.5">
                         <Badge
                           variant="secondary"
-                          className="text-xs font-semibold px-2.5 py-0.5 rounded bg-amber-300 dark:bg-amber-800 text-amber-950 dark:text-amber-100 border-0 tracking-tight inline-flex items-center whitespace-nowrap"
+                          className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border-0 tracking-tight inline-flex items-center whitespace-nowrap"
                         >
                           {session.user?.role}
                         </Badge>
@@ -597,47 +597,6 @@ export function Sidebar() {
               sideOffset={12}
               className="w-72 p-2 bg-gradient-to-br from-white via-amber-50/30 to-orange-50/20 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 backdrop-blur-md border-2 border-amber-200/70 dark:border-amber-800/50 rounded-2xl shadow-2xl shadow-amber-900/10 dark:shadow-amber-950/40"
             >
-              {/* Profile header - Enhanced with warm theme */}
-              <div className="p-3.5 mb-2 bg-gradient-to-br from-amber-100/60 via-orange-50/50 to-yellow-50/40 dark:from-amber-950/50 dark:via-orange-950/40 dark:to-yellow-950/30 rounded-xl border border-amber-200/50 dark:border-amber-800/40 shadow-sm">
-                <div className="flex items-center gap-3 mb-2.5">
-                  <div className="w-12 h-12 flex-shrink-0 relative">
-                    {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
-                      <div className="w-full h-full">
-                        {getAvatarById((session.user as any).avatar)?.component}
-                      </div>
-                    ) : (
-                      <div className="w-full h-full rounded-full bg-gradient-to-br from-amber-600 via-orange-600 to-amber-700 dark:from-amber-600 dark:via-orange-700 dark:to-amber-800 p-[2px] shadow-lg shadow-amber-900/20">
-                        <div className="w-full h-full rounded-full overflow-hidden bg-white dark:bg-gray-900 flex items-center justify-center">
-                          <span className="text-base font-bold text-amber-700 dark:text-amber-400">
-                            {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                    {/* Online status */}
-                    <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white dark:border-gray-900 shadow-sm" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-amber-900 dark:text-amber-100 leading-tight truncate mb-0.5">
-                      {session.user?.name}
-                    </p>
-                    <p className="text-sm text-gray-700 dark:text-gray-300 leading-tight truncate">
-                      {session.user?.email}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex gap-1.5 flex-wrap">
-                  <Badge className="text-xs font-semibold px-2.5 py-1 h-6 rounded-md bg-amber-300 dark:bg-amber-800 text-amber-950 dark:text-amber-100 border border-amber-400/50 dark:border-amber-700/50 shadow-sm">
-                    {session.user?.role}
-                  </Badge>
-                  {session.user?.branchName && (
-                    <Badge className="text-xs font-medium px-2.5 py-1 h-6 rounded-md bg-orange-300 dark:bg-orange-800 text-orange-950 dark:text-orange-100 border border-orange-400/50 dark:border-orange-700/50 shadow-sm truncate max-w-[140px]">
-                      {session.user.branchName}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-
               <div className="space-y-0.5">
                 <DropdownMenuItem
                   className="flex items-center p-3 min-h-[44px] hover:bg-amber-100/60 dark:hover:bg-amber-900/30 rounded-lg transition-all duration-200 cursor-pointer group hover:shadow-sm border border-transparent hover:border-amber-200/50 dark:hover:border-amber-800/50"
@@ -726,12 +685,12 @@ export function Sidebar() {
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-3 p-3 min-h-[44px] bg-red-50/80 dark:bg-red-950/30 rounded-lg hover:bg-red-100 dark:hover:bg-red-950/50 cursor-pointer border border-red-200/50 dark:border-red-900/50 hover:border-red-300 dark:hover:border-red-800 hover:shadow-md transition-all group"
+                  className="w-full flex items-center gap-3 p-3 min-h-[44px] bg-white dark:bg-gray-900 rounded-lg hover:bg-red-600 dark:hover:bg-red-600 cursor-pointer border-2 border-red-600 dark:border-red-600 hover:shadow-md transition-all group"
                 >
-                  <div className="w-11 h-11 flex items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/50 group-hover:bg-red-200 dark:group-hover:bg-red-900/70 transition-colors">
-                    <LogOut className="w-5 h-5 text-red-600 dark:text-red-400" />
+                  <div className="w-11 h-11 flex items-center justify-center rounded-lg bg-white dark:bg-gray-900 group-hover:bg-red-600 transition-colors border-2 border-red-600 group-hover:border-white dark:group-hover:border-white">
+                    <LogOut className="w-5 h-5 text-red-600 dark:text-red-600 group-hover:text-white dark:group-hover:text-white transition-colors" />
                   </div>
-                  <span className="text-sm font-bold text-red-600 dark:text-red-400 group-hover:text-red-700 dark:group-hover:text-red-300">
+                  <span className="text-sm font-bold text-red-600 dark:text-red-600 group-hover:text-white dark:group-hover:text-white transition-colors">
                     Sign Out
                   </span>
                 </button>
