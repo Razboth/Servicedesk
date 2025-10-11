@@ -510,8 +510,8 @@ export function Sidebar() {
                 aria-label={`Profile menu for ${session.user?.name}`}
                 className={`w-full ${
                   (isCollapsed && !isMobile)
-                    ? 'p-2.5 justify-center'
-                    : 'justify-start gap-3 p-3'
+                    ? 'p-3 min-w-[48px] min-h-[48px] justify-center'
+                    : 'justify-start gap-3 p-3 min-h-[48px]'
                 } rounded-xl bg-gradient-to-br from-amber-50/80 via-orange-50/60 to-yellow-50/70 dark:from-amber-950/40 dark:via-orange-950/30 dark:to-yellow-950/30 border-2 border-amber-200/70 dark:border-amber-800/50 hover:border-amber-300 dark:hover:border-amber-700 hover:shadow-md hover:shadow-amber-900/10 dark:hover:shadow-amber-950/30 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:focus-visible:ring-amber-600 focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar relative overflow-hidden group/button`}
               >
                 {/* Subtle shine effect on hover */}
@@ -520,7 +520,7 @@ export function Sidebar() {
                 {(isCollapsed && !isMobile) ? (
                   // Collapsed state - avatar with status indicator
                   <div className="relative">
-                    <div className="w-9 h-9 relative">
+                    <div className="w-10 h-10 relative">
                       {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
                         <div className="w-full h-full">
                           {getAvatarById((session.user as any).avatar)?.component}
@@ -568,20 +568,20 @@ export function Sidebar() {
                       <div className="flex items-center gap-1.5 mb-1">
                         <Badge
                           variant="secondary"
-                          className="text-[10px] font-semibold px-1.5 py-0 h-4 rounded bg-amber-200/80 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 border-0 tracking-tight"
+                          className="text-xs font-semibold px-2.5 py-1 h-6 rounded bg-amber-300 dark:bg-amber-800 text-amber-950 dark:text-amber-100 border-0 tracking-tight"
                         >
                           {session.user?.role}
                         </Badge>
                         {session.user?.branchName && (
                           <Badge
                             variant="secondary"
-                            className="text-[10px] font-medium px-1.5 py-0 h-4 rounded bg-orange-200/80 dark:bg-orange-900/60 text-orange-900 dark:text-orange-200 border-0 tracking-tight truncate max-w-[100px]"
+                            className="text-xs font-medium px-2.5 py-1 h-6 rounded bg-orange-300 dark:bg-orange-800 text-orange-950 dark:text-orange-100 border-0 tracking-tight truncate max-w-[100px]"
                           >
                             {session.user.branchName}
                           </Badge>
                         )}
                       </div>
-                      <div className="text-[11px] text-amber-700/70 dark:text-amber-300/60 leading-tight truncate">
+                      <div className="text-sm text-gray-700 dark:text-gray-300 leading-tight truncate">
                         {session.user?.email}
                       </div>
                     </div>
@@ -632,17 +632,17 @@ export function Sidebar() {
                     <p className="text-sm font-bold text-amber-900 dark:text-amber-100 leading-tight truncate mb-0.5">
                       {session.user?.name}
                     </p>
-                    <p className="text-xs text-amber-700/70 dark:text-amber-300/60 leading-tight truncate">
+                    <p className="text-sm text-gray-700 dark:text-gray-300 leading-tight truncate">
                       {session.user?.email}
                     </p>
                   </div>
                 </div>
                 <div className="flex gap-1.5 flex-wrap">
-                  <Badge className="text-[10px] font-semibold px-2 py-0.5 h-5 rounded-md bg-amber-200/90 dark:bg-amber-900/70 text-amber-900 dark:text-amber-100 border border-amber-300/50 dark:border-amber-800/50 shadow-sm">
+                  <Badge className="text-xs font-semibold px-2.5 py-1 h-6 rounded-md bg-amber-300 dark:bg-amber-800 text-amber-950 dark:text-amber-100 border border-amber-400/50 dark:border-amber-700/50 shadow-sm">
                     {session.user?.role}
                   </Badge>
                   {session.user?.branchName && (
-                    <Badge className="text-[10px] font-medium px-2 py-0.5 h-5 rounded-md bg-orange-200/90 dark:bg-orange-900/70 text-orange-900 dark:text-orange-100 border border-orange-300/50 dark:border-orange-800/50 shadow-sm truncate max-w-[140px]">
+                    <Badge className="text-xs font-medium px-2.5 py-1 h-6 rounded-md bg-orange-300 dark:bg-orange-800 text-orange-950 dark:text-orange-100 border border-orange-400/50 dark:border-orange-700/50 shadow-sm truncate max-w-[140px]">
                       {session.user.branchName}
                     </Badge>
                   )}
@@ -651,15 +651,15 @@ export function Sidebar() {
 
               <div className="space-y-0.5">
                 <DropdownMenuItem
-                  className="flex items-center p-2.5 hover:bg-amber-100/60 dark:hover:bg-amber-900/30 rounded-lg transition-all duration-200 cursor-pointer group hover:shadow-sm border border-transparent hover:border-amber-200/50 dark:hover:border-amber-800/50"
+                  className="flex items-center p-3 min-h-[44px] hover:bg-amber-100/60 dark:hover:bg-amber-900/30 rounded-lg transition-all duration-200 cursor-pointer group hover:shadow-sm border border-transparent hover:border-amber-200/50 dark:hover:border-amber-800/50"
                   onClick={(e) => {
                     e.preventDefault();
                     setShowNotifications(true);
                   }}
                 >
                   <div className="flex items-center gap-3 flex-1">
-                    <div className="relative w-9 h-9 flex items-center justify-center rounded-lg bg-amber-100/50 dark:bg-amber-900/30 group-hover:bg-amber-200/70 dark:group-hover:bg-amber-900/50 transition-colors">
-                      <Bell className="w-4 h-4 text-amber-700 dark:text-amber-300" />
+                    <div className="relative w-11 h-11 flex items-center justify-center rounded-lg bg-amber-100/50 dark:bg-amber-900/30 group-hover:bg-amber-200/70 dark:group-hover:bg-amber-900/50 transition-colors">
+                      <Bell className="w-5 h-5 text-gray-700 dark:text-gray-300" />
                       {unreadCount > 0 && (
                         <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center shadow-sm">
                           {unreadCount > 9 ? '9+' : unreadCount}
@@ -680,11 +680,11 @@ export function Sidebar() {
                 <DropdownMenuItem asChild>
                   <Link
                     href="/profile"
-                    className="flex items-center p-2.5 hover:bg-amber-100/60 dark:hover:bg-amber-900/30 rounded-lg transition-all duration-200 cursor-pointer group hover:shadow-sm border border-transparent hover:border-amber-200/50 dark:hover:border-amber-800/50"
+                    className="flex items-center p-3 min-h-[44px] hover:bg-amber-100/60 dark:hover:bg-amber-900/30 rounded-lg transition-all duration-200 cursor-pointer group hover:shadow-sm border border-transparent hover:border-amber-200/50 dark:hover:border-amber-800/50"
                   >
                     <div className="flex items-center gap-3 flex-1">
-                      <div className="w-9 h-9 flex items-center justify-center rounded-lg bg-amber-100/50 dark:bg-amber-900/30 group-hover:bg-amber-200/70 dark:group-hover:bg-amber-900/50 transition-colors">
-                        <User className="w-4 h-4 text-amber-700 dark:text-amber-300" />
+                      <div className="w-11 h-11 flex items-center justify-center rounded-lg bg-amber-100/50 dark:bg-amber-900/30 group-hover:bg-amber-200/70 dark:group-hover:bg-amber-900/50 transition-colors">
+                        <User className="w-5 h-5 text-gray-700 dark:text-gray-300" />
                       </div>
                       <span className="text-sm font-semibold text-amber-900 dark:text-amber-100 whitespace-nowrap">
                         Profile
@@ -696,11 +696,11 @@ export function Sidebar() {
                 <DropdownMenuItem asChild>
                   <Link
                     href="/settings"
-                    className="flex items-center p-2.5 hover:bg-amber-100/60 dark:hover:bg-amber-900/30 rounded-lg transition-all duration-200 cursor-pointer group hover:shadow-sm border border-transparent hover:border-amber-200/50 dark:hover:border-amber-800/50"
+                    className="flex items-center p-3 min-h-[44px] hover:bg-amber-100/60 dark:hover:bg-amber-900/30 rounded-lg transition-all duration-200 cursor-pointer group hover:shadow-sm border border-transparent hover:border-amber-200/50 dark:hover:border-amber-800/50"
                   >
                     <div className="flex items-center gap-3 flex-1">
-                      <div className="w-9 h-9 flex items-center justify-center rounded-lg bg-amber-100/50 dark:bg-amber-900/30 group-hover:bg-amber-200/70 dark:group-hover:bg-amber-900/50 transition-colors">
-                        <Settings className="w-4 h-4 text-amber-700 dark:text-amber-300" />
+                      <div className="w-11 h-11 flex items-center justify-center rounded-lg bg-amber-100/50 dark:bg-amber-900/30 group-hover:bg-amber-200/70 dark:group-hover:bg-amber-900/50 transition-colors">
+                        <Settings className="w-5 h-5 text-gray-700 dark:text-gray-300" />
                       </div>
                       <span className="text-sm font-semibold text-amber-900 dark:text-amber-100 whitespace-nowrap">
                         Settings
@@ -710,18 +710,18 @@ export function Sidebar() {
                 </DropdownMenuItem>
 
                 <DropdownMenuItem
-                  className="flex items-center p-2.5 hover:bg-amber-100/60 dark:hover:bg-amber-900/30 rounded-lg transition-all duration-200 cursor-pointer group hover:shadow-sm border border-transparent hover:border-amber-200/50 dark:hover:border-amber-800/50"
+                  className="flex items-center p-3 min-h-[44px] hover:bg-amber-100/60 dark:hover:bg-amber-900/30 rounded-lg transition-all duration-200 cursor-pointer group hover:shadow-sm border border-transparent hover:border-amber-200/50 dark:hover:border-amber-800/50"
                   onClick={(e) => {
                     e.preventDefault();
                     setTheme(theme === 'dark' ? 'light' : 'dark');
                   }}
                 >
                   <div className="flex items-center gap-3 flex-1">
-                    <div className="w-9 h-9 flex items-center justify-center rounded-lg bg-amber-100/50 dark:bg-amber-900/30 group-hover:bg-amber-200/70 dark:group-hover:bg-amber-900/50 transition-colors">
+                    <div className="w-11 h-11 flex items-center justify-center rounded-lg bg-amber-100/50 dark:bg-amber-900/30 group-hover:bg-amber-200/70 dark:group-hover:bg-amber-900/50 transition-colors">
                       {theme === 'dark' ? (
-                        <Sun className="w-4 h-4 text-amber-700 dark:text-amber-300" />
+                        <Sun className="w-5 h-5 text-gray-700 dark:text-gray-300" />
                       ) : (
-                        <Moon className="w-4 h-4 text-amber-700 dark:text-amber-300" />
+                        <Moon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
                       )}
                     </div>
                     <span className="text-sm font-semibold text-amber-900 dark:text-amber-100 whitespace-nowrap">
@@ -737,10 +737,10 @@ export function Sidebar() {
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-3 p-2.5 bg-red-50/80 dark:bg-red-950/30 rounded-lg hover:bg-red-100 dark:hover:bg-red-950/50 cursor-pointer border border-red-200/50 dark:border-red-900/50 hover:border-red-300 dark:hover:border-red-800 hover:shadow-md transition-all group"
+                  className="w-full flex items-center gap-3 p-3 min-h-[44px] bg-red-50/80 dark:bg-red-950/30 rounded-lg hover:bg-red-100 dark:hover:bg-red-950/50 cursor-pointer border border-red-200/50 dark:border-red-900/50 hover:border-red-300 dark:hover:border-red-800 hover:shadow-md transition-all group"
                 >
-                  <div className="w-9 h-9 flex items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/50 group-hover:bg-red-200 dark:group-hover:bg-red-900/70 transition-colors">
-                    <LogOut className="w-4 h-4 text-red-600 dark:text-red-400" />
+                  <div className="w-11 h-11 flex items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/50 group-hover:bg-red-200 dark:group-hover:bg-red-900/70 transition-colors">
+                    <LogOut className="w-5 h-5 text-red-600 dark:text-red-400" />
                   </div>
                   <span className="text-sm font-bold text-red-600 dark:text-red-400 group-hover:text-red-700 dark:group-hover:text-red-300">
                     Sign Out
