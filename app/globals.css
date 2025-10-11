@@ -161,6 +161,10 @@
 
   .animate-spin-slow {
     animation: spin-slow 3s linear infinite;
+    /* Performance optimizations */
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
   }
 
   @keyframes shimmer-profile {
@@ -175,6 +179,8 @@
   .animate-shimmer {
     background-size: 200% 100%;
     animation: shimmer-profile 3s ease-in-out infinite;
+    /* Performance optimizations */
+    will-change: background-position;
   }
 
   @keyframes pulse-glow {
@@ -190,6 +196,10 @@
 
   .animate-pulse-glow {
     animation: pulse-glow 2s ease-in-out infinite;
+    /* Performance optimizations */
+    will-change: transform, opacity;
+    transform: translateZ(0);
+    backface-visibility: hidden;
   }
 
   @keyframes pulse-subtle {
@@ -203,6 +213,8 @@
 
   .animate-pulse-subtle {
     animation: pulse-subtle 3s ease-in-out infinite;
+    /* Performance optimizations */
+    will-change: opacity;
   }
 
   @keyframes pulse-badge {
@@ -218,6 +230,45 @@
 
   .animate-pulse-badge {
     animation: pulse-badge 2s ease-in-out infinite;
+    /* Performance optimizations */
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+
+  /* Profile trigger performance optimizations */
+  .profile-trigger {
+    will-change: transform, box-shadow;
+    contain: layout style paint;
+  }
+
+  /* Reduce blur intensity on mobile for better performance */
+  @media (max-width: 768px) {
+    .backdrop-blur-xl {
+      backdrop-filter: blur(8px) !important;
+    }
+  }
+
+  /* Accessibility: Respect user's motion preferences */
+  @media (prefers-reduced-motion: reduce) {
+    .animate-spin-slow,
+    .animate-shimmer,
+    .animate-pulse-glow,
+    .animate-pulse-subtle,
+    .animate-pulse-badge,
+    .profile-trigger,
+    .new-ticket-highlight,
+    .new-ticket-badge,
+    .new-ticket-shimmer {
+      animation: none !important;
+    }
+
+    * {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 
   /* Enhanced new ticket animations with brown theme */

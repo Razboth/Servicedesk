@@ -183,11 +183,44 @@ const config: Config = {
           "0%": { transform: "translateX(-100%)" },
           "100%": { transform: "translateX(200%)" },
         },
+        // Modern Profile Menu Animations
+        "spin-slow": {
+          from: { transform: "rotate(0deg)" },
+          to: { transform: "rotate(360deg)" },
+        },
+        "shimmer-profile": {
+          "0%": { backgroundPosition: "-200% center" },
+          "100%": { backgroundPosition: "200% center" },
+        },
+        "pulse-glow": {
+          "0%, 100%": { opacity: "0.3", transform: "scale(1)" },
+          "50%": { opacity: "0.6", transform: "scale(1.05)" },
+        },
+        "pulse-subtle": {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.9" },
+        },
+        "pulse-badge": {
+          "0%, 100%": {
+            transform: "scale(1)",
+            boxShadow: "0 2px 8px rgba(239, 68, 68, 0.4)"
+          },
+          "50%": {
+            transform: "scale(1.05)",
+            boxShadow: "0 4px 12px rgba(239, 68, 68, 0.6)"
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "shimmer": "shimmer 3s linear infinite",
+        // Modern Profile Menu Animations
+        "spin-slow": "spin-slow 3s linear infinite",
+        "shimmer-profile": "shimmer-profile 3s ease-in-out infinite",
+        "pulse-glow": "pulse-glow 2s ease-in-out infinite",
+        "pulse-subtle": "pulse-subtle 3s ease-in-out infinite",
+        "pulse-badge": "pulse-badge 2s ease-in-out infinite",
       },
     },
   },
