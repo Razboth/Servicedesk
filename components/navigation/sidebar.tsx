@@ -503,31 +503,45 @@ export function Sidebar() {
         )}
       </nav>
 
-      {/* User Profile Menu at Bottom */}
+      {/* User Profile Menu at Bottom - Modern Premium Design */}
       <div className="border-t border-sidebar-border p-3">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="w-full h-auto p-3.5 flex items-center gap-4 hover:bg-sidebar-accent rounded-lg transition-colors"
+              className="profile-trigger w-full h-auto p-3.5 flex items-center gap-4 rounded-xl transition-all duration-300 hover:shadow-lg relative overflow-hidden group"
             >
-              <Avatar className={(isCollapsed && !isMobile) ? "h-9 w-9" : "h-11 w-11"}>
-                {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
-                  <div className="h-full w-full">
-                    {getAvatarById((session.user as any).avatar)?.component}
-                  </div>
-                ) : (
-                  <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
-                    {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
-                  </AvatarFallback>
-                )}
-              </Avatar>
+              {/* Animated background gradient */}
+              <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+              {/* Shimmer effect on hover */}
+              <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+
+              {/* Avatar with animated ring */}
+              <div className="relative">
+                <div className="absolute -inset-1 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 rounded-full opacity-0 group-hover:opacity-100 blur-sm transition-opacity duration-300 animate-spin-slow" />
+                <Avatar className={(isCollapsed && !isMobile) ? "h-9 w-9 relative ring-2 ring-primary/20 group-hover:ring-primary/40 transition-all duration-300" : "h-11 w-11 relative ring-2 ring-primary/20 group-hover:ring-primary/40 transition-all duration-300"}>
+                  {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
+                    <div className="h-full w-full">
+                      {getAvatarById((session.user as any).avatar)?.component}
+                    </div>
+                  ) : (
+                    <AvatarFallback className="bg-gradient-to-br from-amber-500 to-orange-600 text-white font-semibold">
+                      {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+              </div>
+
               {(!isCollapsed || isMobile) && (
-                <div className="flex flex-col items-start flex-1 min-w-0 text-left gap-1.5 py-1">
-                  <span className="text-sm font-medium truncate w-full leading-tight">
+                <div className="flex flex-col items-start flex-1 min-w-0 text-left gap-1.5 py-1 relative z-10">
+                  <span className="text-sm font-semibold truncate w-full leading-tight group-hover:text-primary transition-colors duration-200">
                     {session.user?.name}
                   </span>
-                  <Badge variant="secondary" className="text-xs">
+                  <Badge
+                    variant="secondary"
+                    className="text-xs font-medium bg-gradient-to-r from-amber-100 to-orange-100 dark:from-amber-950/50 dark:to-orange-950/50 border border-amber-200 dark:border-amber-800 animate-pulse-subtle"
+                  >
                     {session.user?.role}
                   </Badge>
                 </div>
@@ -536,83 +550,116 @@ export function Sidebar() {
           </DropdownMenuTrigger>
 
           <DropdownMenuContent
-            className="w-64"
+            className="w-72 border-amber-200 dark:border-amber-900 backdrop-blur-xl bg-white/95 dark:bg-gray-900/95 shadow-2xl"
             align="end"
             side={isMobile ? "top" : "right"}
             sideOffset={8}
           >
-            {/* Profile Header Section */}
-            <div className="flex flex-col gap-3 p-3 pb-2">
-              <div className="flex items-start gap-3">
-                <Avatar className="h-12 w-12">
-                  {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
-                    <div className="h-full w-full">
-                      {getAvatarById((session.user as any).avatar)?.component}
-                    </div>
-                  ) : (
-                    <AvatarFallback className="bg-primary text-primary-foreground text-base font-bold">
-                      {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
-                    </AvatarFallback>
-                  )}
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-semibold text-sm truncate">
-                    {session.user?.name}
-                  </h4>
-                  <Badge variant="secondary" className="text-xs font-medium mt-1">
-                    {session.user?.role}
-                  </Badge>
-                </div>
-              </div>
+            {/* Profile Header Section - Premium Glassmorphic Design */}
+            <div className="relative overflow-hidden">
+              {/* Animated gradient background */}
+              <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 via-orange-500/10 to-amber-600/10 dark:from-amber-500/20 dark:via-orange-500/20 dark:to-amber-600/20" />
+              <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent animate-shimmer" />
 
-              {/* User Details */}
-              <div className="space-y-1.5 text-xs">
-                {session.user?.email && (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Mail className="h-3.5 w-3.5 flex-shrink-0" />
-                    <span className="truncate">{session.user.email}</span>
+              <div className="relative flex flex-col gap-4 p-4 pb-3">
+                <div className="flex items-start gap-3">
+                  {/* Avatar with floating glow */}
+                  <div className="relative group/avatar">
+                    <div className="absolute -inset-2 bg-gradient-to-r from-amber-500 to-orange-600 rounded-full opacity-30 blur-lg group-hover/avatar:opacity-60 transition-opacity duration-500 animate-pulse-glow" />
+                    <Avatar className="h-14 w-14 relative ring-4 ring-white/50 dark:ring-gray-800/50 shadow-xl">
+                      {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
+                        <div className="h-full w-full">
+                          {getAvatarById((session.user as any).avatar)?.component}
+                        </div>
+                      ) : (
+                        <AvatarFallback className="bg-gradient-to-br from-amber-500 via-orange-500 to-amber-600 text-white text-lg font-bold shadow-inner">
+                          {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
                   </div>
-                )}
-                {(session.user as any)?.branchName && (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Building2 className="h-3.5 w-3.5 flex-shrink-0" />
-                    <span className="truncate">{(session.user as any).branchName}</span>
+
+                  <div className="flex-1 min-w-0 pt-1">
+                    <h4 className="font-bold text-base truncate bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
+                      {session.user?.name}
+                    </h4>
+                    <Badge
+                      variant="secondary"
+                      className="text-xs font-semibold mt-1.5 bg-gradient-to-r from-amber-500 to-orange-600 text-white border-0 shadow-md hover:shadow-lg transition-all duration-300 px-2.5 py-1"
+                    >
+                      {session.user?.role}
+                    </Badge>
                   </div>
-                )}
+                </div>
+
+                {/* User Details with icons */}
+                <div className="space-y-2 text-xs">
+                  {session.user?.email && (
+                    <div className="flex items-center gap-2.5 text-muted-foreground group/detail hover:text-foreground transition-colors duration-200">
+                      <div className="p-1.5 rounded-lg bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-950/50 dark:to-orange-950/50 group-hover/detail:shadow-md transition-all duration-200">
+                        <Mail className="h-3.5 w-3.5 text-amber-700 dark:text-amber-400" />
+                      </div>
+                      <span className="truncate font-medium">{session.user.email}</span>
+                    </div>
+                  )}
+                  {(session.user as any)?.branchName && (
+                    <div className="flex items-center gap-2.5 text-muted-foreground group/detail hover:text-foreground transition-colors duration-200">
+                      <div className="p-1.5 rounded-lg bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-950/50 dark:to-orange-950/50 group-hover/detail:shadow-md transition-all duration-200">
+                        <Building2 className="h-3.5 w-3.5 text-amber-700 dark:text-amber-400" />
+                      </div>
+                      <span className="truncate font-medium">{(session.user as any).branchName}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
-            <DropdownMenuSeparator />
+            <DropdownMenuSeparator className="bg-gradient-to-r from-transparent via-amber-200 dark:via-amber-800 to-transparent" />
 
-            {/* Menu Items */}
-            <DropdownMenuGroup>
+            {/* Menu Items - Modern Interactive Design */}
+            <DropdownMenuGroup className="p-1">
               <DropdownMenuItem
                 onClick={(e) => {
                   e.preventDefault();
                   setShowNotifications(true);
                 }}
-                className="cursor-pointer"
+                className="cursor-pointer rounded-lg px-3 py-2.5 hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50 dark:hover:from-amber-950/30 dark:hover:to-orange-950/30 transition-all duration-200 group/item"
               >
-                <Bell className="h-4 w-4 mr-2" />
-                <span>Notifications</span>
+                <div className="p-1.5 rounded-lg bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-950/50 dark:to-orange-950/50 mr-3 group-hover/item:shadow-md transition-all duration-200">
+                  <Bell className="h-4 w-4 text-amber-700 dark:text-amber-400" />
+                </div>
+                <span className="font-medium">Notifications</span>
                 {unreadCount > 0 && (
-                  <Badge variant="destructive" className="ml-auto text-xs px-1.5 py-0">
+                  <Badge
+                    variant="destructive"
+                    className="ml-auto text-xs px-2 py-0.5 bg-gradient-to-r from-red-500 to-orange-600 border-0 shadow-lg animate-pulse-badge"
+                  >
                     {unreadCount > 99 ? '99+' : unreadCount}
                   </Badge>
                 )}
               </DropdownMenuItem>
 
               <DropdownMenuItem asChild>
-                <Link href="/profile" className="cursor-pointer">
-                  <User className="h-4 w-4 mr-2" />
-                  <span>Profile</span>
+                <Link
+                  href="/profile"
+                  className="cursor-pointer rounded-lg px-3 py-2.5 hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50 dark:hover:from-amber-950/30 dark:hover:to-orange-950/30 transition-all duration-200 group/item flex items-center"
+                >
+                  <div className="p-1.5 rounded-lg bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-950/50 dark:to-orange-950/50 mr-3 group-hover/item:shadow-md transition-all duration-200">
+                    <User className="h-4 w-4 text-amber-700 dark:text-amber-400" />
+                  </div>
+                  <span className="font-medium">Profile</span>
                 </Link>
               </DropdownMenuItem>
 
               <DropdownMenuItem asChild>
-                <Link href="/settings" className="cursor-pointer">
-                  <Settings className="h-4 w-4 mr-2" />
-                  <span>Settings</span>
+                <Link
+                  href="/settings"
+                  className="cursor-pointer rounded-lg px-3 py-2.5 hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50 dark:hover:from-amber-950/30 dark:hover:to-orange-950/30 transition-all duration-200 group/item flex items-center"
+                >
+                  <div className="p-1.5 rounded-lg bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-950/50 dark:to-orange-950/50 mr-3 group-hover/item:shadow-md transition-all duration-200">
+                    <Settings className="h-4 w-4 text-amber-700 dark:text-amber-400" />
+                  </div>
+                  <span className="font-medium">Settings</span>
                 </Link>
               </DropdownMenuItem>
 
@@ -621,27 +668,33 @@ export function Sidebar() {
                   e.preventDefault();
                   setTheme(theme === 'dark' ? 'light' : 'dark');
                 }}
-                className="cursor-pointer"
+                className="cursor-pointer rounded-lg px-3 py-2.5 hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50 dark:hover:from-amber-950/30 dark:hover:to-orange-950/30 transition-all duration-200 group/item"
               >
-                {theme === 'dark' ? (
-                  <Sun className="h-4 w-4 mr-2" />
-                ) : (
-                  <Moon className="h-4 w-4 mr-2" />
-                )}
-                <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+                <div className="p-1.5 rounded-lg bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-950/50 dark:to-orange-950/50 mr-3 group-hover/item:shadow-md transition-all duration-200">
+                  {theme === 'dark' ? (
+                    <Sun className="h-4 w-4 text-amber-700 dark:text-amber-400" />
+                  ) : (
+                    <Moon className="h-4 w-4 text-amber-700 dark:text-amber-400" />
+                  )}
+                </div>
+                <span className="font-medium">{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
               </DropdownMenuItem>
             </DropdownMenuGroup>
 
-            <DropdownMenuSeparator />
+            <DropdownMenuSeparator className="bg-gradient-to-r from-transparent via-amber-200 dark:via-amber-800 to-transparent" />
 
-            {/* Sign Out */}
-            <DropdownMenuItem
-              onClick={handleLogout}
-              className="text-red-600 dark:text-red-500 focus:bg-red-50 focus:text-red-600 dark:focus:bg-red-950/50 dark:focus:text-red-500 cursor-pointer"
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              <span className="font-medium">Sign Out</span>
-            </DropdownMenuItem>
+            {/* Sign Out - Premium Destructive Style */}
+            <div className="p-1">
+              <DropdownMenuItem
+                onClick={handleLogout}
+                className="cursor-pointer rounded-lg px-3 py-2.5 text-red-600 dark:text-red-400 hover:bg-gradient-to-r hover:from-red-50 hover:to-orange-50 dark:hover:from-red-950/30 dark:hover:to-orange-950/30 focus:bg-red-50 focus:text-red-700 dark:focus:bg-red-950/50 dark:focus:text-red-400 transition-all duration-200 group/logout"
+              >
+                <div className="p-1.5 rounded-lg bg-gradient-to-br from-red-100 to-orange-100 dark:from-red-950/50 dark:to-orange-950/50 mr-3 group-hover/logout:shadow-md transition-all duration-200">
+                  <LogOut className="h-4 w-4 text-red-600 dark:text-red-400" />
+                </div>
+                <span className="font-semibold">Sign Out</span>
+              </DropdownMenuItem>
+            </div>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
