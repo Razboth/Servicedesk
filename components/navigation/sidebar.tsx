@@ -501,157 +501,176 @@ export function Sidebar() {
       </nav>
 
       {/* Enhanced User Profile Dropdown at Bottom */}
-      <div className="border-t border-gray-200/60 dark:border-gray-700/60 p-4">
+      <div className="border-t border-sidebar-border p-3.5">
         <DropdownMenu>
           <div className="group relative">
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
+                aria-label={`Profile menu for ${session.user?.name}`}
                 className={`w-full ${
-                  (isCollapsed && !isMobile) 
-                    ? 'p-2 justify-center' 
+                  (isCollapsed && !isMobile)
+                    ? 'p-2.5 justify-center'
                     : 'justify-start gap-3 p-3'
-                } rounded-xl bg-white/50 dark:bg-gray-800/50 border border-gray-200/60 dark:border-gray-700/60 hover:border-gray-300/80 dark:hover:border-gray-600/80 hover:bg-gray-50/80 dark:hover:bg-gray-700/40 hover:shadow-sm transition-all duration-200 focus:outline-none`}
+                } rounded-xl bg-gradient-to-br from-amber-50/80 via-orange-50/60 to-yellow-50/70 dark:from-amber-950/40 dark:via-orange-950/30 dark:to-yellow-950/30 border-2 border-amber-200/70 dark:border-amber-800/50 hover:border-amber-300 dark:hover:border-amber-700 hover:shadow-md hover:shadow-amber-900/10 dark:hover:shadow-amber-950/30 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:focus-visible:ring-amber-600 focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar relative overflow-hidden group/button`}
               >
+                {/* Subtle shine effect on hover */}
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-200%] group-hover/button:translate-x-[200%] transition-transform duration-700 ease-in-out" />
+
                 {(isCollapsed && !isMobile) ? (
-                  // Collapsed state - just avatar
+                  // Collapsed state - avatar with status indicator
                   <div className="relative">
-                    <div className="w-8 h-8">
+                    <div className="w-9 h-9 relative">
                       {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
-                        <div className="w-full h-full scale-75">
+                        <div className="w-full h-full">
                           {getAvatarById((session.user as any).avatar)?.component}
                         </div>
                       ) : (
-                        <div className="w-full h-full rounded-full bg-gradient-to-br from-amber-600 to-orange-600 dark:from-amber-700 dark:to-orange-700 p-0.5">
-                          <div className="w-full h-full rounded-full overflow-hidden bg-white dark:bg-gray-800 flex items-center justify-center">
-                            <span className="text-xs font-medium text-gray-700 dark:text-gray-200">
+                        <div className="w-full h-full rounded-full bg-gradient-to-br from-amber-600 via-orange-600 to-amber-700 dark:from-amber-600 dark:via-orange-700 dark:to-amber-800 p-[2px] shadow-lg shadow-amber-900/20 dark:shadow-amber-950/40">
+                          <div className="w-full h-full rounded-full overflow-hidden bg-white dark:bg-gray-900 flex items-center justify-center">
+                            <span className="text-sm font-bold text-amber-700 dark:text-amber-400">
                               {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
                             </span>
                           </div>
                         </div>
                       )}
+                      {/* Online status indicator */}
+                      <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-sidebar shadow-sm" />
                     </div>
                   </div>
                 ) : (
-                  // Expanded state - full profile info
+                  // Expanded state - avatar first, then info (natural reading order)
                   <>
-                    <div className="text-left flex-1 min-w-0">
-                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100 tracking-tight leading-tight truncate">
-                        {session.user?.name}
-                      </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400 tracking-tight leading-tight truncate">
-                        {session.user?.email}
-                      </div>
-                    </div>
                     <div className="relative flex-shrink-0">
-                      <div className="w-10 h-10">
+                      <div className="w-11 h-11 relative">
                         {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
-                          <div className="w-full h-full scale-90">
+                          <div className="w-full h-full">
                             {getAvatarById((session.user as any).avatar)?.component}
                           </div>
                         ) : (
-                          <div className="w-full h-full rounded-full bg-gradient-to-br from-amber-600 to-orange-600 dark:from-amber-700 dark:to-orange-700 p-0.5">
-                            <div className="w-full h-full rounded-full overflow-hidden bg-white dark:bg-gray-800 flex items-center justify-center">
-                              <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                          <div className="w-full h-full rounded-full bg-gradient-to-br from-amber-600 via-orange-600 to-amber-700 dark:from-amber-600 dark:via-orange-700 dark:to-amber-800 p-[2px] shadow-lg shadow-amber-900/20 dark:shadow-amber-950/40">
+                            <div className="w-full h-full rounded-full overflow-hidden bg-white dark:bg-gray-900 flex items-center justify-center">
+                              <span className="text-base font-bold text-amber-700 dark:text-amber-400">
                                 {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
                               </span>
                             </div>
                           </div>
                         )}
+                        {/* Online status indicator */}
+                        <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-sidebar shadow-sm ring-2 ring-amber-100/50 dark:ring-amber-900/30" />
                       </div>
+                    </div>
+
+                    <div className="flex-1 min-w-0 text-left">
+                      <div className="text-sm font-semibold text-amber-900 dark:text-amber-100 leading-tight truncate mb-0.5">
+                        {session.user?.name}
+                      </div>
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <Badge
+                          variant="secondary"
+                          className="text-[10px] font-semibold px-1.5 py-0 h-4 rounded bg-amber-200/80 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 border-0 tracking-tight"
+                        >
+                          {session.user?.role}
+                        </Badge>
+                        {session.user?.branchName && (
+                          <Badge
+                            variant="secondary"
+                            className="text-[10px] font-medium px-1.5 py-0 h-4 rounded bg-orange-200/80 dark:bg-orange-900/60 text-orange-900 dark:text-orange-200 border-0 tracking-tight truncate max-w-[100px]"
+                          >
+                            {session.user.branchName}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-amber-700/70 dark:text-amber-300/60 leading-tight truncate">
+                        {session.user?.email}
+                      </div>
+                    </div>
+
+                    {/* Chevron indicator */}
+                    <div className="flex-shrink-0 ml-1">
+                      <svg
+                        className="w-4 h-4 text-amber-600 dark:text-amber-400 group-hover/button:translate-y-[-2px] transition-transform duration-200"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 15l7-7 7 7" />
+                      </svg>
                     </div>
                   </>
                 )}
               </Button>
             </DropdownMenuTrigger>
 
-            {/* Bending line indicator */}
-            {(!isCollapsed || isMobile) && (
-              <div className="absolute -right-3 top-1/2 -translate-y-1/2 transition-all duration-200 opacity-60 group-hover:opacity-100">
-                <svg
-                  width="12"
-                  height="24"
-                  viewBox="0 0 12 24"
-                  fill="none"
-                  className="text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-all duration-200"
-                  aria-hidden="true"
-                >
-                  <path
-                    d="M2 4C6 8 6 16 2 20"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    fill="none"
-                  />
-                </svg>
-              </div>
-            )}
-
-            <DropdownMenuContent 
-              align={(isCollapsed && !isMobile) ? "end" : "start"} 
-              side="top" 
-              sideOffset={8}
-              className="w-64 p-2 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border border-gray-200/60 dark:border-gray-700/60 rounded-xl shadow-xl shadow-gray-900/5 dark:shadow-gray-950/20"
+            <DropdownMenuContent
+              align={(isCollapsed && !isMobile) ? "end" : "start"}
+              side="top"
+              sideOffset={12}
+              className="w-72 p-2 bg-gradient-to-br from-white via-amber-50/30 to-orange-50/20 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 backdrop-blur-md border-2 border-amber-200/70 dark:border-amber-800/50 rounded-2xl shadow-2xl shadow-amber-900/10 dark:shadow-amber-950/40"
             >
-              {/* Profile header */}
-              <div className="p-3 mb-2 bg-gray-50/50 dark:bg-gray-800/50 rounded-lg border border-gray-200/30 dark:border-gray-700/30">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 flex-shrink-0">
+              {/* Profile header - Enhanced with warm theme */}
+              <div className="p-3.5 mb-2 bg-gradient-to-br from-amber-100/60 via-orange-50/50 to-yellow-50/40 dark:from-amber-950/50 dark:via-orange-950/40 dark:to-yellow-950/30 rounded-xl border border-amber-200/50 dark:border-amber-800/40 shadow-sm">
+                <div className="flex items-center gap-3 mb-2.5">
+                  <div className="w-12 h-12 flex-shrink-0 relative">
                     {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
-                      <div className="w-full h-full scale-90">
+                      <div className="w-full h-full">
                         {getAvatarById((session.user as any).avatar)?.component}
                       </div>
                     ) : (
-                      <div className="w-full h-full rounded-full bg-gradient-to-br from-amber-600 to-orange-600 dark:from-amber-700 dark:to-orange-700 p-0.5">
-                        <div className="w-full h-full rounded-full overflow-hidden bg-white dark:bg-gray-800 flex items-center justify-center">
-                          <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                      <div className="w-full h-full rounded-full bg-gradient-to-br from-amber-600 via-orange-600 to-amber-700 dark:from-amber-600 dark:via-orange-700 dark:to-amber-800 p-[2px] shadow-lg shadow-amber-900/20">
+                        <div className="w-full h-full rounded-full overflow-hidden bg-white dark:bg-gray-900 flex items-center justify-center">
+                          <span className="text-base font-bold text-amber-700 dark:text-amber-400">
                             {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
                           </span>
                         </div>
                       </div>
                     )}
+                    {/* Online status */}
+                    <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white dark:border-gray-900 shadow-sm" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 tracking-tight leading-tight truncate">
+                    <p className="text-sm font-bold text-amber-900 dark:text-amber-100 leading-tight truncate mb-0.5">
                       {session.user?.name}
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 tracking-tight leading-tight truncate">
+                    <p className="text-xs text-amber-700/70 dark:text-amber-300/60 leading-tight truncate">
                       {session.user?.email}
                     </p>
                   </div>
                 </div>
-                <div className="flex gap-2 mt-2">
-                  <Badge variant="outline" className="text-xs font-medium rounded-md py-1 px-2 tracking-tight text-gray-600 bg-gray-100 dark:text-gray-400 dark:bg-gray-500/10 border-gray-500/20">
+                <div className="flex gap-1.5 flex-wrap">
+                  <Badge className="text-[10px] font-semibold px-2 py-0.5 h-5 rounded-md bg-amber-200/90 dark:bg-amber-900/70 text-amber-900 dark:text-amber-100 border border-amber-300/50 dark:border-amber-800/50 shadow-sm">
                     {session.user?.role}
                   </Badge>
                   {session.user?.branchName && (
-                    <Badge variant="outline" className="text-xs font-medium rounded-md py-1 px-2 tracking-tight text-purple-600 bg-purple-50 dark:text-purple-400 dark:bg-purple-500/10 border-purple-500/20">
+                    <Badge className="text-[10px] font-medium px-2 py-0.5 h-5 rounded-md bg-orange-200/90 dark:bg-orange-900/70 text-orange-900 dark:text-orange-100 border border-orange-300/50 dark:border-orange-800/50 shadow-sm truncate max-w-[140px]">
                       {session.user.branchName}
                     </Badge>
                   )}
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <DropdownMenuItem 
-                  className="flex items-center p-3 hover:bg-gray-100/80 dark:hover:bg-gray-800/60 rounded-lg transition-all duration-200 cursor-pointer group hover:shadow-sm border border-transparent hover:border-gray-200/50 dark:hover:border-gray-700/50"
+              <div className="space-y-0.5">
+                <DropdownMenuItem
+                  className="flex items-center p-2.5 hover:bg-amber-100/60 dark:hover:bg-amber-900/30 rounded-lg transition-all duration-200 cursor-pointer group hover:shadow-sm border border-transparent hover:border-amber-200/50 dark:hover:border-amber-800/50"
                   onClick={(e) => {
                     e.preventDefault();
                     setShowNotifications(true);
                   }}
                 >
                   <div className="flex items-center gap-3 flex-1">
-                    <div className="relative">
-                      <Bell className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                    <div className="relative w-9 h-9 flex items-center justify-center rounded-lg bg-amber-100/50 dark:bg-amber-900/30 group-hover:bg-amber-200/70 dark:group-hover:bg-amber-900/50 transition-colors">
+                      <Bell className="w-4 h-4 text-amber-700 dark:text-amber-300" />
                       {unreadCount > 0 && (
-                        <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-red-500"></span>
+                        <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center shadow-sm">
+                          {unreadCount > 9 ? '9+' : unreadCount}
+                        </span>
                       )}
                     </div>
-                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100 tracking-tight leading-tight whitespace-nowrap group-hover:text-gray-950 dark:group-hover:text-gray-50 transition-colors">
+                    <span className="text-sm font-semibold text-amber-900 dark:text-amber-100 whitespace-nowrap">
                       Notifications
                     </span>
                     {unreadCount > 0 && (
-                      <Badge variant="destructive" className="ml-auto text-xs px-1.5 py-0.5">
+                      <Badge variant="destructive" className="ml-auto text-xs px-2 py-0.5 font-bold shadow-sm">
                         {unreadCount > 99 ? '99+' : unreadCount}
                       </Badge>
                     )}
@@ -659,13 +678,15 @@ export function Sidebar() {
                 </DropdownMenuItem>
 
                 <DropdownMenuItem asChild>
-                  <Link 
-                    href="/profile" 
-                    className="flex items-center p-3 hover:bg-gray-100/80 dark:hover:bg-gray-800/60 rounded-lg transition-all duration-200 cursor-pointer group hover:shadow-sm border border-transparent hover:border-gray-200/50 dark:hover:border-gray-700/50"
+                  <Link
+                    href="/profile"
+                    className="flex items-center p-2.5 hover:bg-amber-100/60 dark:hover:bg-amber-900/30 rounded-lg transition-all duration-200 cursor-pointer group hover:shadow-sm border border-transparent hover:border-amber-200/50 dark:hover:border-amber-800/50"
                   >
                     <div className="flex items-center gap-3 flex-1">
-                      <User className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100 tracking-tight leading-tight whitespace-nowrap group-hover:text-gray-950 dark:group-hover:text-gray-50 transition-colors">
+                      <div className="w-9 h-9 flex items-center justify-center rounded-lg bg-amber-100/50 dark:bg-amber-900/30 group-hover:bg-amber-200/70 dark:group-hover:bg-amber-900/50 transition-colors">
+                        <User className="w-4 h-4 text-amber-700 dark:text-amber-300" />
+                      </div>
+                      <span className="text-sm font-semibold text-amber-900 dark:text-amber-100 whitespace-nowrap">
                         Profile
                       </span>
                     </div>
@@ -673,49 +694,55 @@ export function Sidebar() {
                 </DropdownMenuItem>
 
                 <DropdownMenuItem asChild>
-                  <Link 
-                    href="/settings" 
-                    className="flex items-center p-3 hover:bg-gray-100/80 dark:hover:bg-gray-800/60 rounded-lg transition-all duration-200 cursor-pointer group hover:shadow-sm border border-transparent hover:border-gray-200/50 dark:hover:border-gray-700/50"
+                  <Link
+                    href="/settings"
+                    className="flex items-center p-2.5 hover:bg-amber-100/60 dark:hover:bg-amber-900/30 rounded-lg transition-all duration-200 cursor-pointer group hover:shadow-sm border border-transparent hover:border-amber-200/50 dark:hover:border-amber-800/50"
                   >
                     <div className="flex items-center gap-3 flex-1">
-                      <Settings className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100 tracking-tight leading-tight whitespace-nowrap group-hover:text-gray-950 dark:group-hover:text-gray-50 transition-colors">
+                      <div className="w-9 h-9 flex items-center justify-center rounded-lg bg-amber-100/50 dark:bg-amber-900/30 group-hover:bg-amber-200/70 dark:group-hover:bg-amber-900/50 transition-colors">
+                        <Settings className="w-4 h-4 text-amber-700 dark:text-amber-300" />
+                      </div>
+                      <span className="text-sm font-semibold text-amber-900 dark:text-amber-100 whitespace-nowrap">
                         Settings
                       </span>
                     </div>
                   </Link>
                 </DropdownMenuItem>
 
-                <DropdownMenuItem 
-                  className="flex items-center justify-between p-3 hover:bg-gray-100/80 dark:hover:bg-gray-800/60 rounded-lg transition-all duration-200 cursor-pointer group hover:shadow-sm border border-transparent hover:border-gray-200/50 dark:hover:border-gray-700/50"
+                <DropdownMenuItem
+                  className="flex items-center p-2.5 hover:bg-amber-100/60 dark:hover:bg-amber-900/30 rounded-lg transition-all duration-200 cursor-pointer group hover:shadow-sm border border-transparent hover:border-amber-200/50 dark:hover:border-amber-800/50"
                   onClick={(e) => {
                     e.preventDefault();
                     setTheme(theme === 'dark' ? 'light' : 'dark');
                   }}
                 >
-                  <div className="flex items-center gap-3">
-                    {theme === 'dark' ? (
-                      <Sun className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                    ) : (
-                      <Moon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                    )}
-                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100 tracking-tight leading-tight whitespace-nowrap group-hover:text-gray-950 dark:group-hover:text-gray-50 transition-colors">
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className="w-9 h-9 flex items-center justify-center rounded-lg bg-amber-100/50 dark:bg-amber-900/30 group-hover:bg-amber-200/70 dark:group-hover:bg-amber-900/50 transition-colors">
+                      {theme === 'dark' ? (
+                        <Sun className="w-4 h-4 text-amber-700 dark:text-amber-300" />
+                      ) : (
+                        <Moon className="w-4 h-4 text-amber-700 dark:text-amber-300" />
+                      )}
+                    </div>
+                    <span className="text-sm font-semibold text-amber-900 dark:text-amber-100 whitespace-nowrap">
                       {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
                     </span>
                   </div>
                 </DropdownMenuItem>
               </div>
 
-              <div className="my-3 h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent dark:via-gray-700" />
+              <div className="my-2 h-px bg-gradient-to-r from-transparent via-amber-300/50 to-transparent dark:via-amber-800/50" />
 
               <DropdownMenuItem asChild>
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-3 p-3 duration-200 bg-red-500/10 rounded-lg hover:bg-red-500/20 cursor-pointer border border-transparent hover:border-red-500/30 hover:shadow-sm transition-all group"
+                  className="w-full flex items-center gap-3 p-2.5 bg-red-50/80 dark:bg-red-950/30 rounded-lg hover:bg-red-100 dark:hover:bg-red-950/50 cursor-pointer border border-red-200/50 dark:border-red-900/50 hover:border-red-300 dark:hover:border-red-800 hover:shadow-md transition-all group"
                 >
-                  <LogOut className="w-4 h-4 text-red-500 group-hover:text-red-600" />
-                  <span className="text-sm font-medium text-red-500 group-hover:text-red-600">
+                  <div className="w-9 h-9 flex items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/50 group-hover:bg-red-200 dark:group-hover:bg-red-900/70 transition-colors">
+                    <LogOut className="w-4 h-4 text-red-600 dark:text-red-400" />
+                  </div>
+                  <span className="text-sm font-bold text-red-600 dark:text-red-400 group-hover:text-red-700 dark:group-hover:text-red-300">
                     Sign Out
                   </span>
                 </button>
