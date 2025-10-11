@@ -323,14 +323,13 @@ export const getColumns = (options?: {
         </div>
       )
     },
-    filterFn: (row, id, value) => {
-      const status = row.original.assignedTo ? 'assigned' : 'unassigned'
-      return value.includes(status)
-    },
+    // Server-side filtering only - don't filter client-side
+    filterFn: () => true, // Always return true to prevent client-side filtering
+    enableColumnFilter: true, // Must be true for filter UI to work
   },
   {
-    id: 'assignedTo.name',
-    accessorFn: (row) => row.assignedTo?.name || 'Unassigned',
+    id: 'assignedTo.id',
+    accessorFn: (row) => row.assignedTo?.id || null,
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Technician" />
     ),
@@ -345,10 +344,9 @@ export const getColumns = (options?: {
         </span>
       )
     },
-    filterFn: (row, id, value) => {
-      const technician = row.original.assignedTo?.name || 'Unassigned'
-      return value.includes(technician)
-    },
+    // Server-side filtering only - don't filter client-side
+    filterFn: () => true, // Always return true to prevent client-side filtering
+    enableColumnFilter: true, // Must be true for filter UI to work
     enableHiding: true,
   },
   {

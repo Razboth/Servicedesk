@@ -113,7 +113,7 @@ export function DataTableToolbar<TData>({
       const createdAtFilter = columnFilters.find(f => f.id === 'createdAt')
       const updatedAtFilter = columnFilters.find(f => f.id === 'updatedAt')
       const assignmentFilter = columnFilters.find(f => f.id === 'assignmentStatus')
-      const technicianFilter = columnFilters.find(f => f.id === 'assignedTo.name')
+      const technicianFilter = columnFilters.find(f => f.id === 'assignedTo.id')
 
       // Extract values - faceted filters return arrays, join with comma for multi-select
       const statusValue = statusFilter?.value
@@ -156,7 +156,7 @@ export function DataTableToolbar<TData>({
     console.log('Category options:', categoryOptions.length, categoryOptions.slice(0, 3))
     console.log('Service column exists:', !!table.getColumn('service.name'))
     console.log('Service options:', serviceOptions.length, serviceOptions.slice(0, 3))
-    console.log('Technician column exists:', !!table.getColumn('assignedTo.name'))
+    console.log('Technician column exists:', !!table.getColumn('assignedTo.id'))
     console.log('Technician options:', technicianOptions.length, technicianOptions.slice(0, 3))
   }, [table, branchOptions, categoryOptions, serviceOptions, technicianOptions])
 
@@ -326,9 +326,9 @@ export function DataTableToolbar<TData>({
           )}
           
           {/* Technician Filter */}
-          {table.getColumn('assignedTo.name') && (
+          {table.getColumn('assignedTo.id') && (
             <DataTableFacetedFilter
-              column={table.getColumn('assignedTo.name')}
+              column={table.getColumn('assignedTo.id')}
               title="Technician"
               options={technicianOptions}
             />
