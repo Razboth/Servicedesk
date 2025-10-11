@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useSidebar } from '@/components/providers/sidebar-provider';
-import { X, User, Settings, LogOut, Sun, Moon, Bell } from 'lucide-react';
+import { X, User, Settings, LogOut, Sun, Moon, Bell, ChevronUp, Mail, Building2 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { getVersionString, APP_VERSION } from '@/lib/version';
 import { NotificationInbox } from '@/components/notifications/notification-inbox';
@@ -19,6 +19,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Separator } from '@/components/ui/separator';
 import { getAvatarById } from '@/components/ui/avatar-presets';
 
 export function Sidebar() {
@@ -500,203 +502,177 @@ export function Sidebar() {
         )}
       </nav>
 
-      {/* Enhanced User Profile Dropdown at Bottom */}
-      <div className="border-t border-sidebar-border p-3.5">
+      {/* User Profile Dropdown at Bottom */}
+      <div className="border-t border-sidebar-border p-3">
         <DropdownMenu>
-          <div className="group relative">
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                aria-label={`Profile menu for ${session.user?.name}`}
-                className={`w-full ${
-                  (isCollapsed && !isMobile)
-                    ? 'p-3 min-w-[48px] min-h-[48px] justify-center'
-                    : 'justify-start gap-3 p-3.5 min-h-[72px]'
-                } rounded-xl bg-gradient-to-br from-amber-50/80 via-orange-50/60 to-yellow-50/70 dark:from-amber-950/40 dark:via-orange-950/30 dark:to-yellow-950/30 border-2 border-amber-200/70 dark:border-amber-800/50 hover:border-amber-300 dark:hover:border-amber-700 hover:shadow-md hover:shadow-amber-900/10 dark:hover:shadow-amber-950/30 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:focus-visible:ring-amber-600 focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar relative overflow-visible group/button`}
-              >
-                {/* Subtle shine effect on hover */}
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-200%] group-hover/button:translate-x-[200%] transition-transform duration-700 ease-in-out" />
-
-                {(isCollapsed && !isMobile) ? (
-                  // Collapsed state - avatar with status indicator
-                  <div className="relative">
-                    <div className="w-10 h-10 relative">
-                      {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
-                        <div className="w-full h-full">
-                          {getAvatarById((session.user as any).avatar)?.component}
-                        </div>
-                      ) : (
-                        <div className="w-full h-full rounded-full bg-gradient-to-br from-amber-600 via-orange-600 to-amber-700 dark:from-amber-600 dark:via-orange-700 dark:to-amber-800 p-[2px] shadow-lg shadow-amber-900/20 dark:shadow-amber-950/40">
-                          <div className="w-full h-full rounded-full overflow-hidden bg-white dark:bg-gray-900 flex items-center justify-center">
-                            <span className="text-sm font-bold text-amber-700 dark:text-amber-400">
-                              {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                      {/* Online status indicator */}
-                      <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-sidebar shadow-sm" />
-                    </div>
-                  </div>
-                ) : (
-                  // Expanded state - avatar first, then info (natural reading order)
-                  <>
-                    <div className="relative flex-shrink-0">
-                      <div className="w-11 h-11 relative">
-                        {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
-                          <div className="w-full h-full">
-                            {getAvatarById((session.user as any).avatar)?.component}
-                          </div>
-                        ) : (
-                          <div className="w-full h-full rounded-full bg-gradient-to-br from-amber-600 via-orange-600 to-amber-700 dark:from-amber-600 dark:via-orange-700 dark:to-amber-800 p-[2px] shadow-lg shadow-amber-900/20 dark:shadow-amber-950/40">
-                            <div className="w-full h-full rounded-full overflow-hidden bg-white dark:bg-gray-900 flex items-center justify-center">
-                              <span className="text-base font-bold text-amber-700 dark:text-amber-400">
-                                {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
-                              </span>
-                            </div>
-                          </div>
-                        )}
-                        {/* Online status indicator */}
-                        <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-sidebar shadow-sm ring-2 ring-amber-100/50 dark:ring-amber-900/30" />
-                      </div>
-                    </div>
-
-                    <div className="flex-1 min-w-0 text-left flex flex-col justify-center gap-1.5">
-                      <div className="text-sm font-semibold text-amber-900 dark:text-amber-100 leading-snug truncate">
-                        {session.user?.name}
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <Badge
-                          variant="secondary"
-                          className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border-0 tracking-tight inline-flex items-center whitespace-nowrap"
-                        >
-                          {session.user?.role}
-                        </Badge>
-                      </div>
-                    </div>
-
-                    {/* Chevron indicator */}
-                    <div className="flex-shrink-0 ml-1">
-                      <svg
-                        className="w-4 h-4 text-amber-600 dark:text-amber-400 group-hover/button:translate-y-[-2px] transition-transform duration-200"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 15l7-7 7 7" />
-                      </svg>
-                    </div>
-                  </>
-                )}
-              </Button>
-            </DropdownMenuTrigger>
-
-            <DropdownMenuContent
-              align={(isCollapsed && !isMobile) ? "end" : "start"}
-              side="top"
-              sideOffset={12}
-              className="w-72 p-2 bg-gradient-to-br from-white via-amber-50/30 to-orange-50/20 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 backdrop-blur-md border-2 border-amber-200/70 dark:border-amber-800/50 rounded-2xl shadow-2xl shadow-amber-900/10 dark:shadow-amber-950/40"
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className={`w-full ${
+                (isCollapsed && !isMobile)
+                  ? 'justify-center p-2'
+                  : 'justify-start'
+              } hover:bg-sidebar-accent transition-colors`}
             >
-              <div className="space-y-0.5">
-                <DropdownMenuItem
-                  className="flex items-center p-3 min-h-[44px] hover:bg-amber-100/60 dark:hover:bg-amber-900/30 rounded-lg transition-all duration-200 cursor-pointer group hover:shadow-sm border border-transparent hover:border-amber-200/50 dark:hover:border-amber-800/50"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setShowNotifications(true);
-                  }}
-                >
-                  <div className="flex items-center gap-3 flex-1">
-                    <div className="relative w-11 h-11 flex items-center justify-center rounded-lg bg-amber-100/50 dark:bg-amber-900/30 group-hover:bg-amber-200/70 dark:group-hover:bg-amber-900/50 transition-colors">
-                      <Bell className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-                      {unreadCount > 0 && (
-                        <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center shadow-sm">
-                          {unreadCount > 9 ? '9+' : unreadCount}
-                        </span>
-                      )}
+              {(isCollapsed && !isMobile) ? (
+                // Collapsed: Show only avatar
+                <Avatar className="h-9 w-9">
+                  {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
+                    <div className="h-full w-full">
+                      {getAvatarById((session.user as any).avatar)?.component}
                     </div>
-                    <span className="text-sm font-semibold text-amber-900 dark:text-amber-100 whitespace-nowrap">
-                      Notifications
-                    </span>
-                    {unreadCount > 0 && (
-                      <Badge variant="destructive" className="ml-auto text-xs px-2 py-0.5 font-bold shadow-sm">
-                        {unreadCount > 99 ? '99+' : unreadCount}
-                      </Badge>
+                  ) : (
+                    <AvatarFallback className="bg-primary text-primary-foreground">
+                      {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+              ) : (
+                // Expanded: Show avatar, name, and role
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <Avatar className="h-10 w-10">
+                    {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
+                      <div className="h-full w-full">
+                        {getAvatarById((session.user as any).avatar)?.component}
+                      </div>
+                    ) : (
+                      <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
+                        {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
+                      </AvatarFallback>
                     )}
-                  </div>
-                </DropdownMenuItem>
-
-                <DropdownMenuItem asChild>
-                  <Link
-                    href="/profile"
-                    className="flex items-center p-3 min-h-[44px] hover:bg-amber-100/60 dark:hover:bg-amber-900/30 rounded-lg transition-all duration-200 cursor-pointer group hover:shadow-sm border border-transparent hover:border-amber-200/50 dark:hover:border-amber-800/50"
-                  >
-                    <div className="flex items-center gap-3 flex-1">
-                      <div className="w-11 h-11 flex items-center justify-center rounded-lg bg-amber-100/50 dark:bg-amber-900/30 group-hover:bg-amber-200/70 dark:group-hover:bg-amber-900/50 transition-colors">
-                        <User className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-                      </div>
-                      <span className="text-sm font-semibold text-amber-900 dark:text-amber-100 whitespace-nowrap">
-                        Profile
-                      </span>
-                    </div>
-                  </Link>
-                </DropdownMenuItem>
-
-                <DropdownMenuItem asChild>
-                  <Link
-                    href="/settings"
-                    className="flex items-center p-3 min-h-[44px] hover:bg-amber-100/60 dark:hover:bg-amber-900/30 rounded-lg transition-all duration-200 cursor-pointer group hover:shadow-sm border border-transparent hover:border-amber-200/50 dark:hover:border-amber-800/50"
-                  >
-                    <div className="flex items-center gap-3 flex-1">
-                      <div className="w-11 h-11 flex items-center justify-center rounded-lg bg-amber-100/50 dark:bg-amber-900/30 group-hover:bg-amber-200/70 dark:group-hover:bg-amber-900/50 transition-colors">
-                        <Settings className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-                      </div>
-                      <span className="text-sm font-semibold text-amber-900 dark:text-amber-100 whitespace-nowrap">
-                        Settings
-                      </span>
-                    </div>
-                  </Link>
-                </DropdownMenuItem>
-
-                <DropdownMenuItem
-                  className="flex items-center p-3 min-h-[44px] hover:bg-amber-100/60 dark:hover:bg-amber-900/30 rounded-lg transition-all duration-200 cursor-pointer group hover:shadow-sm border border-transparent hover:border-amber-200/50 dark:hover:border-amber-800/50"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setTheme(theme === 'dark' ? 'light' : 'dark');
-                  }}
-                >
-                  <div className="flex items-center gap-3 flex-1">
-                    <div className="w-11 h-11 flex items-center justify-center rounded-lg bg-amber-100/50 dark:bg-amber-900/30 group-hover:bg-amber-200/70 dark:group-hover:bg-amber-900/50 transition-colors">
-                      {theme === 'dark' ? (
-                        <Sun className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-                      ) : (
-                        <Moon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-                      )}
-                    </div>
-                    <span className="text-sm font-semibold text-amber-900 dark:text-amber-100 whitespace-nowrap">
-                      {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+                  </Avatar>
+                  <div className="flex flex-col items-start flex-1 min-w-0">
+                    <span className="text-sm font-medium truncate w-full text-left">
+                      {session.user?.name}
                     </span>
+                    <Badge variant="secondary" className="text-xs mt-0.5">
+                      {session.user?.role}
+                    </Badge>
                   </div>
-                </DropdownMenuItem>
+                  <ChevronUp className="h-4 w-4 ml-auto flex-shrink-0" />
+                </div>
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+
+          <DropdownMenuContent
+            align="end"
+            side="top"
+            className="w-80"
+            sideOffset={8}
+          >
+            {/* Profile Header Section */}
+            <div className="flex flex-col gap-3 p-4">
+              <div className="flex items-start gap-3">
+                <Avatar className="h-14 w-14">
+                  {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
+                    <div className="h-full w-full">
+                      {getAvatarById((session.user as any).avatar)?.component}
+                    </div>
+                  ) : (
+                    <AvatarFallback className="bg-primary text-primary-foreground text-lg font-bold">
+                      {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-semibold text-base truncate">
+                    {session.user?.name}
+                  </h4>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge variant="secondary" className="text-xs font-medium">
+                      {session.user?.role}
+                    </Badge>
+                  </div>
+                </div>
               </div>
 
-              <div className="my-2 h-px bg-gradient-to-r from-transparent via-amber-300/50 to-transparent dark:via-amber-800/50" />
+              {/* User Details */}
+              <div className="space-y-2 text-sm">
+                {session.user?.email && (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Mail className="h-4 w-4 flex-shrink-0" />
+                    <span className="truncate">{session.user.email}</span>
+                  </div>
+                )}
+                {(session.user as any)?.branchName && (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Building2 className="h-4 w-4 flex-shrink-0" />
+                    <span className="truncate">{(session.user as any).branchName}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* View Profile Link */}
+              <Link
+                href="/profile"
+                className="text-sm text-primary hover:underline font-medium"
+              >
+                View full profile
+              </Link>
+            </div>
+
+            <DropdownMenuSeparator />
+
+            {/* Menu Items Section */}
+            <div className="py-1">
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.preventDefault();
+                  setShowNotifications(true);
+                }}
+              >
+                <Bell className="mr-2 h-4 w-4" />
+                <span>Notifications</span>
+                {unreadCount > 0 && (
+                  <Badge variant="destructive" className="ml-auto text-xs px-1.5 py-0">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </Badge>
+                )}
+              </DropdownMenuItem>
 
               <DropdownMenuItem asChild>
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-3 p-3 min-h-[44px] bg-white dark:bg-gray-900 rounded-lg hover:bg-red-600 dark:hover:bg-red-600 cursor-pointer border-2 border-red-600 dark:border-red-600 hover:shadow-md transition-all group"
-                >
-                  <div className="w-11 h-11 flex items-center justify-center rounded-lg bg-white dark:bg-gray-900 group-hover:bg-red-600 transition-colors border-2 border-red-600 group-hover:border-white dark:group-hover:border-white">
-                    <LogOut className="w-5 h-5 text-red-600 dark:text-red-600 group-hover:text-white dark:group-hover:text-white transition-colors" />
-                  </div>
-                  <span className="text-sm font-bold text-red-600 dark:text-red-600 group-hover:text-white dark:group-hover:text-white transition-colors">
-                    Sign Out
-                  </span>
-                </button>
+                <Link href="/profile">
+                  <User className="mr-2 h-4 w-4" />
+                  <span>Profile</span>
+                </Link>
               </DropdownMenuItem>
-            </DropdownMenuContent>
-          </div>
+
+              <DropdownMenuItem asChild>
+                <Link href="/settings">
+                  <Settings className="mr-2 h-4 w-4" />
+                  <span>Settings</span>
+                </Link>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.preventDefault();
+                  setTheme(theme === 'dark' ? 'light' : 'dark');
+                }}
+              >
+                {theme === 'dark' ? (
+                  <Sun className="mr-2 h-4 w-4" />
+                ) : (
+                  <Moon className="mr-2 h-4 w-4" />
+                )}
+                <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+              </DropdownMenuItem>
+            </div>
+
+            <DropdownMenuSeparator />
+
+            {/* Sign Out Section */}
+            <div className="p-1">
+              <DropdownMenuItem
+                onClick={handleLogout}
+                className="text-red-600 dark:text-red-500 focus:text-red-600 dark:focus:text-red-500 focus:bg-red-50 dark:focus:bg-red-950/50 cursor-pointer"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                <span className="font-medium">Sign Out</span>
+              </DropdownMenuItem>
+            </div>
+          </DropdownMenuContent>
         </DropdownMenu>
       </div>
       
