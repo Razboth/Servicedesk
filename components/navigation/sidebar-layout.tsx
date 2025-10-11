@@ -10,7 +10,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { isCollapsed, isMobile, setIsMobileMenuOpen } = useSidebar();
 
-  // Hide sidebar only on auth and public pages
+  // Don't show sidebar on auth pages or public pages
   const isAuthPage = pathname?.startsWith('/auth');
   const isPublicPage = pathname === '/about';
   const shouldShowSidebar = !isAuthPage && !isPublicPage;
