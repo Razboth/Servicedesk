@@ -10,10 +10,11 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { isCollapsed, isMobile, setIsMobileMenuOpen } = useSidebar();
 
-  // Don't show sidebar on auth pages or public pages
+  // Only show sidebar on home page, hide on auth and public pages
+  const isHomePage = pathname === '/';
   const isAuthPage = pathname?.startsWith('/auth');
   const isPublicPage = pathname === '/about';
-  const shouldShowSidebar = !isAuthPage && !isPublicPage;
+  const shouldShowSidebar = isHomePage && !isAuthPage && !isPublicPage;
 
   return (
     <div className="min-h-screen bg-background flex">
