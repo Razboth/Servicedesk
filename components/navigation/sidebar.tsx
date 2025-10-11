@@ -15,14 +15,14 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { getAvatarById } from '@/components/ui/avatar-presets';
 import {
-  ProfileMenu,
-  ProfileMenuContent,
-  ProfileMenuGroup,
-  ProfileMenuHeader,
-  ProfileMenuHeaderContent,
-  ProfileMenuItem,
-  ProfileMenuTrigger,
-} from '@/components/molecule-ui/profile-menu';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 export function Sidebar() {
   const { data: session, status } = useSession();
@@ -504,24 +504,13 @@ export function Sidebar() {
       </nav>
 
       {/* User Profile Menu at Bottom */}
-      <div className="border-t border-sidebar-border p-3 relative">
-        <ProfileMenu className="w-full">
-          <ProfileMenuHeader>
-            <ProfileMenuHeaderContent>
-              {(!isCollapsed || isMobile) && (
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="flex flex-col items-start flex-1 min-w-0">
-                    <span className="text-sm font-medium truncate w-full text-left">
-                      {session.user?.name}
-                    </span>
-                    <Badge variant="secondary" className="text-xs mt-0.5">
-                      {session.user?.role}
-                    </Badge>
-                  </div>
-                </div>
-              )}
-            </ProfileMenuHeaderContent>
-            <ProfileMenuTrigger>
+      <div className="border-t border-sidebar-border p-3">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className="w-full h-auto p-2 flex items-center gap-3 hover:bg-sidebar-accent"
+            >
               <Avatar className={(isCollapsed && !isMobile) ? "h-9 w-9" : "h-10 w-10"}>
                 {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
                   <div className="h-full w-full">
@@ -533,111 +522,128 @@ export function Sidebar() {
                   </AvatarFallback>
                 )}
               </Avatar>
-            </ProfileMenuTrigger>
-          </ProfileMenuHeader>
-
-          <ProfileMenuContent>
-            <ProfileMenuGroup className="w-64">
-              {/* Profile Header Section */}
-              <div className="flex flex-col gap-3 p-3 pb-2">
-                <div className="flex items-start gap-3">
-                  <Avatar className="h-12 w-12">
-                    {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
-                      <div className="h-full w-full">
-                        {getAvatarById((session.user as any).avatar)?.component}
-                      </div>
-                    ) : (
-                      <AvatarFallback className="bg-primary text-primary-foreground text-base font-bold">
-                        {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
-                      </AvatarFallback>
-                    )}
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-semibold text-sm truncate">
-                      {session.user?.name}
-                    </h4>
-                    <Badge variant="secondary" className="text-xs font-medium mt-1">
-                      {session.user?.role}
-                    </Badge>
-                  </div>
+              {(!isCollapsed || isMobile) && (
+                <div className="flex flex-col items-start flex-1 min-w-0 text-left">
+                  <span className="text-sm font-medium truncate w-full">
+                    {session.user?.name}
+                  </span>
+                  <Badge variant="secondary" className="text-xs mt-0.5">
+                    {session.user?.role}
+                  </Badge>
                 </div>
+              )}
+            </Button>
+          </DropdownMenuTrigger>
 
-                {/* User Details */}
-                <div className="space-y-1.5 text-xs">
-                  {session.user?.email && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Mail className="h-3.5 w-3.5 flex-shrink-0" />
-                      <span className="truncate">{session.user.email}</span>
+          <DropdownMenuContent
+            className="w-64"
+            align="end"
+            side={isMobile ? "top" : "right"}
+            sideOffset={8}
+          >
+            {/* Profile Header Section */}
+            <div className="flex flex-col gap-3 p-3 pb-2">
+              <div className="flex items-start gap-3">
+                <Avatar className="h-12 w-12">
+                  {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
+                    <div className="h-full w-full">
+                      {getAvatarById((session.user as any).avatar)?.component}
                     </div>
+                  ) : (
+                    <AvatarFallback className="bg-primary text-primary-foreground text-base font-bold">
+                      {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
+                    </AvatarFallback>
                   )}
-                  {(session.user as any)?.branchName && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Building2 className="h-3.5 w-3.5 flex-shrink-0" />
-                      <span className="truncate">{(session.user as any).branchName}</span>
-                    </div>
-                  )}
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-semibold text-sm truncate">
+                    {session.user?.name}
+                  </h4>
+                  <Badge variant="secondary" className="text-xs font-medium mt-1">
+                    {session.user?.role}
+                  </Badge>
                 </div>
               </div>
 
-              <Separator className="my-1" />
+              {/* User Details */}
+              <div className="space-y-1.5 text-xs">
+                {session.user?.email && (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Mail className="h-3.5 w-3.5 flex-shrink-0" />
+                    <span className="truncate">{session.user.email}</span>
+                  </div>
+                )}
+                {(session.user as any)?.branchName && (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Building2 className="h-3.5 w-3.5 flex-shrink-0" />
+                    <span className="truncate">{(session.user as any).branchName}</span>
+                  </div>
+                )}
+              </div>
+            </div>
 
-              {/* Menu Items */}
-              <ProfileMenuItem
+            <DropdownMenuSeparator />
+
+            {/* Menu Items */}
+            <DropdownMenuGroup>
+              <DropdownMenuItem
                 onClick={(e) => {
                   e.preventDefault();
                   setShowNotifications(true);
                 }}
+                className="cursor-pointer"
               >
-                <Bell className="h-4 w-4" />
+                <Bell className="h-4 w-4 mr-2" />
                 <span>Notifications</span>
                 {unreadCount > 0 && (
                   <Badge variant="destructive" className="ml-auto text-xs px-1.5 py-0">
                     {unreadCount > 99 ? '99+' : unreadCount}
                   </Badge>
                 )}
-              </ProfileMenuItem>
+              </DropdownMenuItem>
 
-              <Link href="/profile" onClick={(e) => e.stopPropagation()}>
-                <ProfileMenuItem>
-                  <User className="h-4 w-4" />
+              <DropdownMenuItem asChild>
+                <Link href="/profile" className="cursor-pointer">
+                  <User className="h-4 w-4 mr-2" />
                   <span>Profile</span>
-                </ProfileMenuItem>
-              </Link>
+                </Link>
+              </DropdownMenuItem>
 
-              <Link href="/settings" onClick={(e) => e.stopPropagation()}>
-                <ProfileMenuItem>
-                  <Settings className="h-4 w-4" />
+              <DropdownMenuItem asChild>
+                <Link href="/settings" className="cursor-pointer">
+                  <Settings className="h-4 w-4 mr-2" />
                   <span>Settings</span>
-                </ProfileMenuItem>
-              </Link>
+                </Link>
+              </DropdownMenuItem>
 
-              <ProfileMenuItem
+              <DropdownMenuItem
                 onClick={(e) => {
                   e.preventDefault();
                   setTheme(theme === 'dark' ? 'light' : 'dark');
                 }}
+                className="cursor-pointer"
               >
                 {theme === 'dark' ? (
-                  <Sun className="h-4 w-4" />
+                  <Sun className="h-4 w-4 mr-2" />
                 ) : (
-                  <Moon className="h-4 w-4" />
+                  <Moon className="h-4 w-4 mr-2" />
                 )}
                 <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
-              </ProfileMenuItem>
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
 
-              <Separator className="my-1" />
+            <DropdownMenuSeparator />
 
-              {/* Sign Out */}
-              <ProfileMenuItem
-                onClick={handleLogout}
-                className="text-red-600 dark:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/50"
-              >
-                <LogOut className="h-4 w-4" />
-                <span className="font-medium">Sign Out</span>
-              </ProfileMenuItem>
-            </ProfileMenuGroup>
-          </ProfileMenuContent>
-        </ProfileMenu>
+            {/* Sign Out */}
+            <DropdownMenuItem
+              onClick={handleLogout}
+              className="text-red-600 dark:text-red-500 focus:bg-red-50 focus:text-red-600 dark:focus:bg-red-950/50 dark:focus:text-red-500 cursor-pointer"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              <span className="font-medium">Sign Out</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       
       {/* Version Footer - Below Profile */}
