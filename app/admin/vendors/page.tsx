@@ -47,7 +47,9 @@ import {
   Mail,
   Calendar,
   TrendingUp,
-  BarChart
+  BarChart,
+  RefreshCw,
+  Trash
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -97,7 +99,9 @@ export default function VendorsPage() {
     slaResponseTime: 4,
     slaResolutionTime: 24,
     notes: '',
-    isActive: true
+    isActive: true,
+    contractStartDate: '',
+    contractEndDate: ''
   });
 
   useEffect(() => {
@@ -142,7 +146,9 @@ export default function VendorsPage() {
       slaResponseTime: 4,
       slaResolutionTime: 24,
       notes: '',
-      isActive: true
+      isActive: true,
+      contractStartDate: '',
+      contractEndDate: ''
     });
     setIsCreateDialogOpen(true);
   };
@@ -161,7 +167,9 @@ export default function VendorsPage() {
       slaResponseTime: vendor.slaResponseTime || 4,
       slaResolutionTime: vendor.slaResolutionTime || 24,
       notes: vendor.notes || '',
-      isActive: vendor.isActive
+      isActive: vendor.isActive,
+      contractStartDate: '',
+      contractEndDate: ''
     });
     setIsEditDialogOpen(true);
   };
@@ -200,7 +208,7 @@ export default function VendorsPage() {
     }
   };
 
-  const handleDelete = async (vendor: Vendor) => {
+  const handleDeactivate = async (vendor: Vendor) => {
     if (!confirm(`Are you sure you want to deactivate ${vendor.name}?`)) {
       return;
     }
@@ -215,11 +223,75 @@ export default function VendorsPage() {
         fetchVendors();
       } else {
         const error = await response.json();
-        toast.error(error.error || 'Failed to deactivate vendor');
+        // Show more detailed error message
+        if (error.error === 'Cannot deactivate vendor with active tickets') {
+          toast.error('Cannot deactivate vendor with active tickets. Please resolve or reassign all active tickets first.');
+        } else {
+          toast.error(error.error || 'Failed to deactivate vendor');
+        }
       }
     } catch (error) {
       console.error('Error deactivating vendor:', error);
       toast.error('Failed to deactivate vendor');
+    }
+  };
+
+  const handleReactivate = async (vendor: Vendor) => {
+    if (!confirm(`Are you sure you want to reactivate ${vendor.name}?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/vendors/${vendor.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...vendor, isActive: true }),
+      });
+
+      if (response.ok) {
+        toast.success('Vendor reactivated successfully');
+        fetchVendors();
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Failed to reactivate vendor');
+      }
+    } catch (error) {
+      console.error('Error reactivating vendor:', error);
+      toast.error('Failed to reactivate vendor');
+    }
+  };
+
+  const handleHardDelete = async (vendor: Vendor) => {
+    const confirmText = `DELETE ${vendor.code}`;
+    const userInput = prompt(
+      `⚠️ PERMANENT DELETION WARNING ⚠️\n\n` +
+      `This will PERMANENTLY delete "${vendor.name}" and ALL associated data.\n` +
+      `This action CANNOT be undone!\n\n` +
+      `Type "${confirmText}" to confirm:`
+    );
+
+    if (userInput !== confirmText) {
+      if (userInput !== null) {
+        toast.error('Deletion cancelled - confirmation text did not match');
+      }
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/vendors/${vendor.id}/hard-delete`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        toast.success('Vendor permanently deleted');
+        fetchVendors();
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Failed to delete vendor');
+      }
+    } catch (error) {
+      console.error('Error deleting vendor:', error);
+      toast.error('Failed to delete vendor');
     }
   };
 
@@ -423,22 +495,50 @@ export default function VendorsPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
                           onClick={() => handleEdit(vendor)}
+                          title="Edit vendor"
                         >
-                          <Edit className="h-4 w-4" />
+                          <Edit className="h-4 w-4 mr-1" />
+                          Edit
                         </Button>
-                        {vendor.isActive && (
+                        {vendor.isActive ? (
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
-                            onClick={() => handleDelete(vendor)}
+                            onClick={() => handleDeactivate(vendor)}
+                            title="Deactivate vendor"
+                            className="text-orange-600 hover:text-orange-700"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            Deactivate
                           </Button>
+                        ) : (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleReactivate(vendor)}
+                              title="Reactivate vendor"
+                              className="text-green-600 hover:text-green-700"
+                            >
+                              <RefreshCw className="h-4 w-4 mr-1" />
+                              Reactivate
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleHardDelete(vendor)}
+                              title="Permanently delete vendor"
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              <Trash className="h-4 w-4 mr-1" />
+                              Delete
+                            </Button>
+                          </>
                         )}
                       </div>
                     </TableCell>

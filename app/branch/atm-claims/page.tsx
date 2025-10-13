@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
-import { TicketNotifications } from '@/components/tickets/ticket-notifications';
 import {
   Search,
   Plus,
@@ -283,107 +282,95 @@ export default function BranchATMClaimsPage() {
         </TabsList>
       </Tabs>
 
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Claims List - Takes 3 columns */}
-        <div className="lg:col-span-3">
-          {/* Source Tabs */}
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-4">
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="internal">Internal</TabsTrigger>
-              <TabsTrigger value="external">From Other Branches</TabsTrigger>
-            </TabsList>
+      {/* Main Content - Full Width */}
+      <div>
+        {/* Source Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="mb-4">
+            <TabsTrigger value="all">All</TabsTrigger>
+            <TabsTrigger value="internal">Internal</TabsTrigger>
+            <TabsTrigger value="external">From Other Branches</TabsTrigger>
+          </TabsList>
 
-            <TabsContent value={activeTab}>
-          {loading ? (
-            <div className="text-center py-8">Loading claims...</div>
-          ) : claims.length === 0 ? (
-            <Card>
-              <CardContent className="text-center py-8">
-                <p className="text-gray-500">No claims found</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {claims.map((claim) => (
-                <Card key={claim.id} className="hover:shadow-lg transition-shadow">
-                  <CardContent className="p-6">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-4 mb-2">
-                          <h3 className="font-semibold text-lg">{claim.ticketNumber}</h3>
-                          <Badge variant={getPriorityColor(claim.priority)}>
-                            {claim.priority}
-                          </Badge>
-                          <Badge variant="outline" className="flex items-center gap-1">
-                            {getStatusIcon(claim.status)}
-                            {claim.status}
-                          </Badge>
-                          {getVerificationStatus(claim)}
+          <TabsContent value={activeTab}>
+        {loading ? (
+          <div className="text-center py-8">Loading claims...</div>
+        ) : claims.length === 0 ? (
+          <Card>
+            <CardContent className="text-center py-8">
+              <p className="text-gray-500">No claims found</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-4">
+            {claims.map((claim) => (
+              <Card key={claim.id} className="hover:shadow-lg transition-shadow">
+                <CardContent className="p-6">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-4 mb-2">
+                        <h3 className="font-semibold text-lg">{claim.ticketNumber}</h3>
+                        <Badge variant={getPriorityColor(claim.priority)}>
+                          {claim.priority}
+                        </Badge>
+                        <Badge variant="outline" className="flex items-center gap-1">
+                          {getStatusIcon(claim.status)}
+                          {claim.status}
+                        </Badge>
+                        {getVerificationStatus(claim)}
+                      </div>
+
+                      <p className="text-gray-700 mb-2">{claim.title}</p>
+
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600 mb-3">
+                        <div>
+                          <span className="font-medium">Created:</span>{' '}
+                          {new Date(claim.createdAt).toLocaleDateString('id-ID')}
                         </div>
-                        
-                        <p className="text-gray-700 mb-2">{claim.title}</p>
-                        
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600 mb-3">
-                          <div>
-                            <span className="font-medium">Created:</span>{' '}
-                            {new Date(claim.createdAt).toLocaleDateString('id-ID')}
-                          </div>
-                          <div>
-                            <span className="font-medium">Creator:</span>{' '}
-                            {claim.createdBy?.name}
-                          </div>
-                          <div>
-                            <span className="font-medium">From Branch:</span>{' '}
-                            {claim.createdBy?.branch?.name || 'N/A'}
-                          </div>
-                          <div>
-                            <span className="font-medium">ATM Branch:</span>{' '}
-                            {claim.branch?.name}
-                          </div>
+                        <div>
+                          <span className="font-medium">Creator:</span>{' '}
+                          {claim.createdBy?.name}
                         </div>
-
-                        {/* Assignment Info */}
-                        {claim.branchAssignments && claim.branchAssignments.length > 0 && (
-                          <div className="flex items-center gap-2 text-sm text-blue-600">
-                            <Users className="w-4 h-4" />
-                            Assigned to: {claim.branchAssignments[0].assignedTo.name}
-                          </div>
-                        )}
-
-                        <div className="flex gap-4 text-sm text-gray-500 mt-2">
-                          <span>{claim._count?.comments || 0} comments</span>
-                          <span>{claim._count?.attachments || 0} attachments</span>
+                        <div>
+                          <span className="font-medium">From Branch:</span>{' '}
+                          {claim.createdBy?.branch?.name || 'N/A'}
+                        </div>
+                        <div>
+                          <span className="font-medium">ATM Branch:</span>{' '}
+                          {claim.branch?.name}
                         </div>
                       </div>
 
-                      <Button
-                        variant="outline"
-                        onClick={() => router.push(`/branch/atm-claims/${claim.id}`)}
-                        className="flex items-center gap-2"
-                      >
-                        View Details
-                        <ArrowRight className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
-    </div>
+                      {/* Assignment Info */}
+                      {claim.branchAssignments && claim.branchAssignments.length > 0 && (
+                        <div className="flex items-center gap-2 text-sm text-blue-600">
+                          <Users className="w-4 h-4" />
+                          Assigned to: {claim.branchAssignments[0].assignedTo.name}
+                        </div>
+                      )}
 
-    {/* Notifications Section - Takes 1 column */}
-    <div className="lg:col-span-1">
-      <Card className="sticky top-4">
-        <CardContent className="p-4">
-          <TicketNotifications autoFetch={false} className="max-h-[600px]" />
-        </CardContent>
-      </Card>
-    </div>
+                      <div className="flex gap-4 text-sm text-gray-500 mt-2">
+                        <span>{claim._count?.comments || 0} comments</span>
+                        <span>{claim._count?.attachments || 0} attachments</span>
+                      </div>
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      onClick={() => router.push(`/branch/atm-claims/${claim.id}`)}
+                      className="flex items-center gap-2"
+                    >
+                      View Details
+                      <ArrowRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </TabsContent>
+    </Tabs>
   </div>
     </div>
   );

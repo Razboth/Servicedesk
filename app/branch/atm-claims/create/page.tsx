@@ -27,6 +27,7 @@ import {
 interface ATM {
   id: string;
   code: string;
+  name?: string;
   location: string;
   branch: {
     id: string;
@@ -96,15 +97,35 @@ export default function CreateATMClaimPage() {
 
   const searchATM = async () => {
     if (!atmCode) return;
-    
+
     setSearchingATM(true);
     try {
-      const response = await fetch(`/api/atms/lookup?code=${atmCode}`);
-      const data = await response.json();
-      
+      // First try exact code match
+      let response = await fetch(`/api/atms/lookup?code=${atmCode}`);
+      let data = await response.json();
+
+      // If not found by code, try searching by name or location
+      if (!data || response.status === 404) {
+        response = await fetch(`/api/atms/lookup`);
+        const allATMs = await response.json();
+
+        const searchTerm = atmCode.toLowerCase();
+        const matchedATM = allATMs.options?.find((atm: any) =>
+          atm.atmName?.toLowerCase().includes(searchTerm) ||
+          atm.location?.toLowerCase().includes(searchTerm) ||
+          atm.value?.toLowerCase().includes(searchTerm)
+        );
+
+        if (matchedATM) {
+          // Fetch the full ATM data
+          response = await fetch(`/api/atms/lookup?code=${matchedATM.value}`);
+          data = await response.json();
+        }
+      }
+
       if (response.ok && data) {
         setSelectedATM(data);
-        
+
         // Check if ATM is from different branch
         const userBranch = session?.user?.branchId;
         if (userBranch && data.branch?.id && data.branch.id !== userBranch) {
@@ -117,7 +138,7 @@ export default function CreateATMClaimPage() {
         setSelectedATM(null);
       }
     } catch (error) {
-      toast.error('Error searching ATM');
+      toast.error('Gagal mencari ATM');
     } finally {
       setSearchingATM(false);
     }
@@ -125,9 +146,15 @@ export default function CreateATMClaimPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!selectedATM) {
-      toast.error('Please select an ATM first');
+      toast.error('Silakan pilih ATM terlebih dahulu');
+      return;
+    }
+
+    // Validate account number length
+    if (formData.customerAccount.length !== 14) {
+      toast.error('Nomor rekening harus 14 karakter');
       return;
     }
 
@@ -147,23 +174,23 @@ export default function CreateATMClaimPage() {
       });
 
       const data = await response.json();
-      
+
       if (response.ok) {
         toast.success('Klaim ATM berhasil dibuat');
-        
+
         if (data.routing?.isInterBranch) {
           toast.info(
             `Klaim akan diproses oleh ${data.routing.toBranch}`,
             { duration: 5000 }
           );
         }
-        
+
         router.push('/branch/atm-claims');
       } else {
-        toast.error(data.error || 'Failed to create claim');
+        toast.error(data.error || 'Gagal membuat klaim');
       }
     } catch (error) {
-      toast.error('Error creating claim');
+      toast.error('Gagal membuat klaim');
     } finally {
       setLoading(false);
     }
@@ -178,10 +205,10 @@ export default function CreateATMClaimPage() {
           className="flex items-center gap-2"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back
+          Kembali
         </Button>
         <div>
-          <h1 className="text-3xl font-bold">Create ATM Claim</h1>
+          <h1 className="text-3xl font-bold">Buat Klaim ATM</h1>
           <p className="text-gray-600">Input klaim nasabah untuk ATM</p>
         </div>
       </div>
@@ -192,20 +219,23 @@ export default function CreateATMClaimPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CreditCard className="w-5 h-5" />
-              ATM Information
+              Informasi ATM
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex gap-2">
               <div className="flex-1">
-                <Label htmlFor="atmCode">ATM Code</Label>
+                <Label htmlFor="atmCode">Kode / Nama / Lokasi ATM *</Label>
                 <Input
                   id="atmCode"
                   value={atmCode}
-                  onChange={(e) => setAtmCode(e.target.value.toUpperCase())}
-                  placeholder="e.g., ATM-001234"
+                  onChange={(e) => setAtmCode(e.target.value)}
+                  placeholder="Cari berdasarkan kode, nama, atau lokasi ATM"
                   required
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Contoh: ATM-001234 atau "Indomaret" atau "Manado"
+                </p>
               </div>
               <Button
                 type="button"
@@ -214,19 +244,24 @@ export default function CreateATMClaimPage() {
                 disabled={searchingATM || !atmCode}
                 className="mt-6"
               >
-                {searchingATM ? 'Searching...' : 'Search'}
+                {searchingATM ? 'Mencari...' : 'Cari'}
               </Button>
             </div>
 
             {selectedATM && (
               <div className="p-4 bg-gray-50 rounded-lg space-y-2">
                 <div className="font-semibold">{selectedATM.code}</div>
+                {selectedATM.name && (
+                  <div className="text-sm text-gray-600">
+                    Nama: {selectedATM.name}
+                  </div>
+                )}
                 <div className="text-sm text-gray-600">
-                  Location: {selectedATM.location || 'N/A'}
+                  Lokasi: {selectedATM.location || 'N/A'}
                 </div>
                 <div className="text-sm text-gray-600 flex items-center gap-2">
                   <Building2 className="w-4 h-4" />
-                  Branch: {selectedATM.branch?.name || 'Unknown'} ({selectedATM.branch?.code || 'N/A'})
+                  Cabang: {selectedATM.branch?.name || 'Unknown'} ({selectedATM.branch?.code || 'N/A'})
                 </div>
               </div>
             )}
@@ -235,7 +270,7 @@ export default function CreateATMClaimPage() {
               <Alert className="border-yellow-200 bg-yellow-50">
                 <AlertCircle className="h-4 w-4 text-yellow-600" />
                 <AlertDescription className="text-yellow-800">
-                  ATM milik Cabang {selectedATM?.branch.name}. 
+                  ATM milik Cabang {selectedATM?.branch.name}.
                   Klaim akan diteruskan ke cabang tersebut untuk diproses.
                 </AlertDescription>
               </Alert>
@@ -248,34 +283,43 @@ export default function CreateATMClaimPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <User className="w-5 h-5" />
-              Customer Information
+              Informasi Nasabah
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="customerName">Customer Name *</Label>
+                <Label htmlFor="customerName">Nama Nasabah *</Label>
                 <Input
                   id="customerName"
                   value={formData.customerName}
                   onChange={(e) => setFormData({...formData, customerName: e.target.value})}
+                  placeholder="Nama lengkap nasabah"
                   required
                 />
               </div>
               <div>
-                <Label htmlFor="customerAccount">Account Number *</Label>
+                <Label htmlFor="customerAccount">Nomor Rekening *</Label>
                 <Input
                   id="customerAccount"
                   value={formData.customerAccount}
-                  onChange={(e) => setFormData({...formData, customerAccount: e.target.value})}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '').slice(0, 14);
+                    setFormData({...formData, customerAccount: value});
+                  }}
+                  placeholder="14 digit nomor rekening"
+                  maxLength={14}
                   required
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  {formData.customerAccount.length}/14 karakter
+                </p>
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="customerPhone">Phone Number *</Label>
+                <Label htmlFor="customerPhone">Nomor Telepon *</Label>
                 <div className="relative">
                   <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input
@@ -284,27 +328,32 @@ export default function CreateATMClaimPage() {
                     value={formData.customerPhone}
                     onChange={(e) => setFormData({...formData, customerPhone: e.target.value})}
                     className="pl-10"
+                    placeholder="08xx xxxx xxxx"
                     required
                   />
                 </div>
               </div>
               <div>
-                <Label htmlFor="customerEmail">Email (Optional)</Label>
+                <Label htmlFor="customerEmail">Email (Opsional)</Label>
                 <Input
                   id="customerEmail"
                   type="email"
                   value={formData.customerEmail}
                   onChange={(e) => setFormData({...formData, customerEmail: e.target.value})}
+                  placeholder="email@contoh.com"
                 />
               </div>
             </div>
 
             <div>
-              <Label htmlFor="cardLast4">Last 4 Digits of ATM Card *</Label>
+              <Label htmlFor="cardLast4">4 Digit Terakhir Kartu ATM *</Label>
               <Input
                 id="cardLast4"
                 value={formData.cardLast4}
-                onChange={(e) => setFormData({...formData, cardLast4: e.target.value})}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, '').slice(0, 4);
+                  setFormData({...formData, cardLast4: value});
+                }}
                 placeholder="XXXX"
                 maxLength={4}
                 required
@@ -318,36 +367,36 @@ export default function CreateATMClaimPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <DollarSign className="w-5 h-5" />
-              Transaction Details
+              Detail Transaksi
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="transactionAmount">Transaction Amount *</Label>
+                <Label htmlFor="transactionAmount">Nominal Transaksi *</Label>
                 <Input
                   id="transactionAmount"
                   type="number"
                   value={formData.transactionAmount}
                   onChange={(e) => setFormData({...formData, transactionAmount: e.target.value})}
-                  placeholder="e.g., 500000"
+                  placeholder="Contoh: 500000"
                   required
                 />
               </div>
               <div>
-                <Label htmlFor="transactionRef">Transaction Reference</Label>
+                <Label htmlFor="transactionRef">Referensi Transaksi</Label>
                 <Input
                   id="transactionRef"
                   value={formData.transactionRef}
                   onChange={(e) => setFormData({...formData, transactionRef: e.target.value})}
-                  placeholder="Optional"
+                  placeholder="Opsional"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="transactionDate">Transaction Date *</Label>
+                <Label htmlFor="transactionDate">Tanggal Transaksi *</Label>
                 <div className="relative">
                   <Calendar className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input
@@ -361,12 +410,13 @@ export default function CreateATMClaimPage() {
                 </div>
               </div>
               <div>
-                <Label htmlFor="transactionTime">Transaction Time</Label>
+                <Label htmlFor="transactionTime">Waktu Transaksi</Label>
                 <Input
                   id="transactionTime"
                   type="time"
                   value={formData.transactionTime}
                   onChange={(e) => setFormData({...formData, transactionTime: e.target.value})}
+                  placeholder="HH:MM"
                 />
               </div>
             </div>
@@ -378,13 +428,13 @@ export default function CreateATMClaimPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="w-5 h-5" />
-              Claim Details
+              Detail Klaim
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Quick Templates */}
             <div className="flex gap-2 flex-wrap">
-              <span className="text-sm text-gray-600">Quick Templates:</span>
+              <span className="text-sm text-gray-600">Template Cepat:</span>
               {CLAIM_TYPES.slice(0, 3).map(type => (
                 <Button
                   key={type.value}
@@ -399,13 +449,13 @@ export default function CreateATMClaimPage() {
             </div>
 
             <div>
-              <Label htmlFor="claimType">Claim Type *</Label>
+              <Label htmlFor="claimType">Jenis Klaim *</Label>
               <Select
                 value={formData.claimType}
                 onValueChange={(value) => setFormData({...formData, claimType: value})}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select claim type" />
+                  <SelectValue placeholder="Pilih jenis klaim" />
                 </SelectTrigger>
                 <SelectContent>
                   {CLAIM_TYPES.map(type => (
@@ -418,7 +468,7 @@ export default function CreateATMClaimPage() {
             </div>
 
             <div>
-              <Label htmlFor="claimDescription">Claim Description / Kronologi *</Label>
+              <Label htmlFor="claimDescription">Deskripsi Klaim / Kronologi *</Label>
               <Textarea
                 id="claimDescription"
                 value={formData.claimDescription}
@@ -438,7 +488,7 @@ export default function CreateATMClaimPage() {
             variant="outline"
             onClick={() => router.back()}
           >
-            Cancel
+            Batal
           </Button>
           <Button
             type="submit"
@@ -446,7 +496,7 @@ export default function CreateATMClaimPage() {
             className="flex items-center gap-2"
           >
             <Save className="w-4 h-4" />
-            {loading ? 'Creating...' : 'Create Claim'}
+            {loading ? 'Membuat...' : 'Buat Klaim'}
           </Button>
         </div>
       </form>

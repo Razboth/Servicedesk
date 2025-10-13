@@ -199,10 +199,21 @@ export async function PUT(
         entity: 'Vendor',
         entityId: vendor.id,
         userId: session.user.id,
-        details: {
+        oldValues: {
+          name: existingVendor.name,
+          code: existingVendor.code,
+          contactName: existingVendor.contactName,
+          contactEmail: existingVendor.contactEmail,
+          contactPhone: existingVendor.contactPhone
+        } as any,
+        newValues: {
           name: vendor.name,
+          code: vendor.code,
+          contactName: vendor.contactName,
+          contactEmail: vendor.contactEmail,
+          contactPhone: vendor.contactPhone,
           changes: data
-        }
+        } as any
       }
     });
 
@@ -268,10 +279,14 @@ export async function DELETE(
         entity: 'Vendor',
         entityId: vendor.id,
         userId: session.user.id,
-        details: {
+        oldValues: {
           name: vendor.name,
-          code: vendor.code
-        }
+          code: vendor.code,
+          isActive: true
+        } as any,
+        newValues: {
+          isActive: false
+        } as any
       }
     });
 
