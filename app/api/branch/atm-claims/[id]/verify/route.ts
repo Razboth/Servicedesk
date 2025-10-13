@@ -31,7 +31,7 @@ const verificationSchema = z.object({
   reversalCompleted: z.boolean().nullable().optional(),
   
   // Recommendation
-  recommendation: z.enum(['APPROVE', 'REJECT', 'ESCALATE', 'NEED_MORE_INFO']).optional(),
+  recommendation: z.enum(['APPROVE', 'REJECT', 'NEED_MORE_INFO']).optional(),
   recommendationNotes: z.string().optional()
 });
 
@@ -145,8 +145,9 @@ export async function POST(
       }
     });
 
-    const canVerify = 
+    const canVerify =
       session.user.role === 'ADMIN' ||
+      session.user.role === 'MANAGER_IT' ||
       (session.user.role === 'MANAGER' && user?.branchId === ticket.branchId) ||
       hasAssignment;
 
