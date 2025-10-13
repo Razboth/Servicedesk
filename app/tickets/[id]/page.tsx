@@ -1166,7 +1166,7 @@ export default function TicketDetailPage() {
                                       <Button
                                         variant="ghost"
                                         size="sm"
-                                        className="h-6 px-2"
+                                        className="h-6 px-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100"
                                         onClick={() => {
                                           // Create download link
                                           const link = document.createElement('a');
@@ -1651,7 +1651,7 @@ export default function TicketDetailPage() {
                                                   currentIndex: currentAttachmentIndex >= 0 ? currentAttachmentIndex : 0
                                                 });
                                               }}
-                                              className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-800"
+                                              className="h-8 w-8 p-0 text-gray-600 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-gray-800"
                                               title="Preview"
                                             >
                                               <Eye className="h-4 w-4" />
@@ -1661,7 +1661,7 @@ export default function TicketDetailPage() {
                                             variant="ghost"
                                             size="sm"
                                             onClick={() => window.open(downloadUrl, '_blank')}
-                                            className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-800"
+                                            className="h-8 w-8 p-0 text-gray-600 hover:text-green-600 hover:bg-green-50 dark:hover:bg-gray-800"
                                             title="Download"
                                           >
                                             <Download className="h-4 w-4" />
@@ -1717,7 +1717,7 @@ export default function TicketDetailPage() {
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => removeAttachment(index)}
-                                  className="h-6 w-6 p-0"
+                                  className="h-6 w-6 p-0 text-gray-600 hover:text-red-600 hover:bg-red-50"
                                 >
                                   <X className="h-3 w-3" />
                                 </Button>
@@ -2289,7 +2289,7 @@ export default function TicketDetailPage() {
                 variant="ghost"
                 size="sm"
                 onClick={() => setImagePreview(null)}
-                className="h-8 w-8 p-0"
+                className="h-8 w-8 p-0 text-gray-600 hover:text-gray-900 hover:bg-gray-100"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -2331,7 +2331,7 @@ export default function TicketDetailPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setPdfPreview(null)}
-                  className="h-8 w-8 p-0"
+                  className="h-8 w-8 p-0 text-gray-600 hover:text-gray-900 hover:bg-gray-100"
                 >
                   <X className="h-4 w-4" />
                 </Button>
