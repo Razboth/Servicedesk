@@ -503,15 +503,15 @@ export function Sidebar() {
         )}
       </nav>
 
-      {/* User Profile Menu at Bottom - Simple Clean Design */}
-      <div className="border-t border-sidebar-border p-3">
+      {/* User Profile Menu at Bottom - Simple Avatar Only */}
+      <div className="border-t border-sidebar-border p-3 flex justify-center">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="w-full p-2 flex items-center gap-3 rounded-lg hover:bg-sidebar-accent"
+              className="p-2 rounded-full hover:bg-sidebar-accent"
             >
-              <Avatar className={(isCollapsed && !isMobile) ? "h-9 w-9 ring-2 ring-amber-500 dark:ring-amber-600" : "h-10 w-10 ring-2 ring-amber-500 dark:ring-amber-600"}>
+              <Avatar className="h-10 w-10 ring-2 ring-amber-500 dark:ring-amber-600">
                 {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
                   <div className="h-full w-full">
                     {getAvatarById((session.user as any).avatar)?.component}
@@ -522,16 +522,6 @@ export function Sidebar() {
                   </AvatarFallback>
                 )}
               </Avatar>
-              {(!isCollapsed || isMobile) && (
-                <div className="flex flex-col items-start flex-1 min-w-0 text-left">
-                  <span className="text-sm font-medium truncate w-full">
-                    {session.user?.name}
-                  </span>
-                  <span className="text-xs text-muted-foreground truncate w-full">
-                    {session.user?.email}
-                  </span>
-                </div>
-              )}
             </Button>
           </DropdownMenuTrigger>
 
