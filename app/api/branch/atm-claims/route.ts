@@ -156,10 +156,12 @@ export async function GET(request: NextRequest) {
           }
         ];
       } else {
-        // Default: show ATM Claims only
-        where.service = {
-          name: { contains: 'ATM Claim' }
-        };
+        // Default: show ATM Claims only - support both English and Indonesian spelling
+        where.OR = [
+          { service: { name: { contains: 'ATM Claim', mode: 'insensitive' } } },
+          { service: { name: { contains: 'ATM Klaim', mode: 'insensitive' } } },
+          { service: { name: { contains: 'Penarikan Tunai Internal', mode: 'insensitive' } } }
+        ];
       }
     }
 
@@ -342,9 +344,12 @@ export async function GET(request: NextRequest) {
           }
         ];
       } else {
-        baseWhereForStats.service = {
-          name: { contains: 'ATM Claim' }
-        };
+        // Default stats: show ATM Claims only - support both English and Indonesian spelling
+        baseWhereForStats.OR = [
+          { service: { name: { contains: 'ATM Claim', mode: 'insensitive' } } },
+          { service: { name: { contains: 'ATM Klaim', mode: 'insensitive' } } },
+          { service: { name: { contains: 'Penarikan Tunai Internal', mode: 'insensitive' } } }
+        ];
       }
     }
     
