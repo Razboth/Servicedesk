@@ -11,10 +11,15 @@ export async function POST(
   try {
     const { id } = await params;
     const session = await auth();
-    
+
+    console.log('[UPLOAD] Upload request received for ticket:', id);
+
     if (!session?.user?.id) {
+      console.log('[UPLOAD] Unauthorized - no session');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    console.log('[UPLOAD] User:', { id: session.user.id, role: session.user.role });
 
     // Check if ticket exists
     const ticket = await prisma.ticket.findUnique({
@@ -40,13 +45,30 @@ export async function POST(
       }
     });
 
+    // Check if user is the ticket creator or from the same branch
+    const isCreator = ticket.createdById === session.user.id;
+    const isSameBranch = user?.branchId === ticket.branchId;
+
     const canUpload =
       session.user.role === 'ADMIN' ||
       session.user.role === 'MANAGER_IT' ||
-      (session.user.role === 'MANAGER' && user?.branchId === ticket.branchId) ||
-      hasAssignment;
+      (session.user.role === 'MANAGER' && isSameBranch) ||
+      hasAssignment ||
+      isCreator ||
+      isSameBranch; // Allow anyone from the same branch to upload (for collaborative verification)
+
+    console.log('[UPLOAD] Permission check:', {
+      userRole: session.user.role,
+      userBranchId: user?.branchId,
+      ticketBranchId: ticket.branchId,
+      hasAssignment: !!hasAssignment,
+      isCreator,
+      isSameBranch,
+      canUpload
+    });
 
     if (!canUpload) {
+      console.log('[UPLOAD] Permission denied');
       return NextResponse.json(
         { error: 'You do not have permission to upload files for this claim' },
         { status: 403 }
@@ -57,7 +79,15 @@ export async function POST(
     const file = formData.get('file') as File;
     const uploadType = formData.get('type') as string || 'document';
 
+    console.log('[UPLOAD] File info:', {
+      fileName: file?.name,
+      fileSize: file?.size,
+      fileType: file?.type,
+      uploadType
+    });
+
     if (!file) {
+      console.log('[UPLOAD] No file provided');
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
@@ -174,9 +204,14 @@ export async function POST(
     });
 
   } catch (error) {
-    console.error('Error uploading file:', error);
+    console.error('[UPLOAD] Error uploading file:', error);
+    console.error('[UPLOAD] Error details:', {
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
     return NextResponse.json(
-      { error: 'Failed to upload file' },
+      { error: 'Failed to upload file', message: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }

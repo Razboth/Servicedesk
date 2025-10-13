@@ -147,11 +147,17 @@ export async function POST(
       }
     });
 
+    // Check if user is from the same branch for collaborative verification
+    const isCreator = ticket.createdById === session.user.id;
+    const isSameBranch = user?.branchId === ticket.branchId;
+
     const canVerify =
       session.user.role === 'ADMIN' ||
       session.user.role === 'MANAGER_IT' ||
-      (session.user.role === 'MANAGER' && user?.branchId === ticket.branchId) ||
-      hasAssignment;
+      (session.user.role === 'MANAGER' && isSameBranch) ||
+      hasAssignment ||
+      isCreator ||
+      isSameBranch; // Allow anyone from the same branch to verify (for collaborative verification)
 
     console.log('[VERIFICATION] Permission check:', {
       userId: session.user.id,
@@ -159,6 +165,8 @@ export async function POST(
       userBranchId: user?.branchId,
       ticketBranchId: ticket.branchId,
       hasAssignment: !!hasAssignment,
+      isCreator,
+      isSameBranch,
       canVerify
     });
 
