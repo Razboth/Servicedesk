@@ -503,24 +503,16 @@ export function Sidebar() {
         )}
       </nav>
 
-      {/* User Profile Menu at Bottom - Name/Role Left, Avatar Right */}
+      {/* User Profile Menu at Bottom - Pill-Shaped with Avatar Left, Name Right */}
       <div className="border-t border-sidebar-border p-3">
         {(!isCollapsed || isMobile) ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="w-full pl-2 pr-1 py-2 flex items-center gap-3 rounded-lg hover:bg-sidebar-accent"
+                className="w-full rounded-full py-1.5 pl-1.5 pr-4 flex items-center gap-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 hover:shadow-md transition-all"
               >
-                <div className="flex flex-col items-start text-left min-w-0 flex-1">
-                  <span className="text-sm font-medium truncate w-full">
-                    {session.user?.name}
-                  </span>
-                  <span className="text-xs text-muted-foreground truncate w-full">
-                    {session.user?.role}
-                  </span>
-                </div>
-                <Avatar className="h-10 w-10 ring-2 ring-amber-500 dark:ring-amber-600 flex-shrink-0 ml-auto">
+                <Avatar className="h-10 w-10 ring-2 ring-amber-500 dark:ring-amber-600 flex-shrink-0">
                   {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
                     <div className="h-full w-full">
                       {getAvatarById((session.user as any).avatar)?.component}
@@ -531,6 +523,9 @@ export function Sidebar() {
                     </AvatarFallback>
                   )}
                 </Avatar>
+                <span className="text-base font-semibold text-gray-900 dark:text-white truncate">
+                  {session.user?.name}
+                </span>
               </Button>
             </DropdownMenuTrigger>
 
