@@ -1892,6 +1892,7 @@ export default function TicketDetailPage() {
                         <Button
                           onClick={() => updateTicketStatus('OPEN')}
                           disabled={isUpdatingStatus}
+                          variant="default"
                           className="w-full flex items-center gap-2 bg-amber-600 hover:bg-amber-700 dark:bg-amber-400 dark:hover:bg-amber-500 text-white dark:text-brown-950"
                         >
                           <AlertCircle className="h-4 w-4" />
