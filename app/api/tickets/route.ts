@@ -140,7 +140,7 @@ export async function GET(request: NextRequest) {
       where.isConfidential = false;
     } else {
       // User explicitly requested confidential tickets - check permissions
-      if (!['MANAGER'].includes(session.user.role)) {
+      if (!['MANAGER', 'MANAGER_IT'].includes(session.user.role)) {
         return NextResponse.json(
           { error: 'Insufficient permissions to access confidential tickets' },
           { status: 403 }
@@ -332,7 +332,7 @@ export async function GET(request: NextRequest) {
         where.OR = technicianConditions;
       }
     } else if (session.user.role === 'MANAGER') {
-      // Managers can ONLY see tickets created by users from their own branch, excluding security analyst tickets
+      // Regular Managers can ONLY see tickets created by users from their own branch, excluding security analyst tickets
       if (userWithDetails?.branchId) {
         where.AND = [
           // Ticket must be from the manager's branch
@@ -346,10 +346,14 @@ export async function GET(request: NextRequest) {
           }
         ];
       }
+    } else if (session.user.role === 'MANAGER_IT' || session.user.role === 'ADMIN' || session.user.role === 'SUPER_ADMIN') {
+      // MANAGER_IT, ADMIN and SUPER_ADMIN see all tickets (no additional filtering)
+      // MANAGER_IT can see all tickets including those claimed by other technicians
+      // The where clause remains empty or only contains user-specified filters
     } else if (session.user.role === 'USER') {
       // Check if this is a Call Center user
       const isCallCenterUser = userWithDetails?.supportGroup?.code === 'CALL_CENTER';
-      
+
       // Debug logging for Call Center users
       if (userWithDetails?.supportGroup?.code) {
         console.log('[TICKETS API] User support group:', {
@@ -360,13 +364,13 @@ export async function GET(request: NextRequest) {
           isCallCenterUser
         });
       }
-      
+
       if (isCallCenterUser) {
         // Call Center users can see:
         // 1. Their own created tickets (all types)
         // 2. ALL tickets in Transaction Claims category (cmekrqi45001qhluspcsta20x)
         const TRANSACTION_CLAIMS_CATEGORY_ID = 'cmekrqi45001qhluspcsta20x';
-        
+
         where.OR = [
           // Their own tickets
           { createdById: session.user.id },
@@ -386,9 +390,6 @@ export async function GET(request: NextRequest) {
           where.createdById = session.user.id;
         }
       }
-    } else if (session.user.role === 'ADMIN' || session.user.role === 'SUPER_ADMIN') {
-      // ADMIN and SUPER_ADMIN see all tickets (no additional filtering)
-      // The where clause remains empty or only contains user-specified filters
     }
     // If role is not handled above, default to no access (shouldn't happen with valid roles)
 
@@ -445,7 +446,7 @@ export async function GET(request: NextRequest) {
     if (branchId) where.branchId = branchId;
     if (securityClassification) {
       // Only allow security classification filtering for authorized roles
-      if (!['ADMIN', 'SUPER_ADMIN', 'SECURITY_ANALYST', 'MANAGER'].includes(session.user.role)) {
+      if (!['ADMIN', 'SUPER_ADMIN', 'SECURITY_ANALYST', 'MANAGER', 'MANAGER_IT'].includes(session.user.role)) {
         return NextResponse.json(
           { error: 'Insufficient permissions to filter by security classification' },
           { status: 403 }
@@ -1021,7 +1022,7 @@ export async function POST(request: NextRequest) {
 
     // Check permissions for confidential tickets and security fields
     if (isConfidential || securityClassification || securityFindings) {
-      if (!['ADMIN', 'SECURITY_ANALYST', 'MANAGER'].includes(session.user.role)) {
+      if (!['ADMIN', 'SECURITY_ANALYST', 'MANAGER', 'MANAGER_IT'].includes(session.user.role)) {
         return NextResponse.json(
           { error: 'Insufficient permissions to create confidential or security-classified tickets' },
           { status: 403 }
@@ -1038,9 +1039,9 @@ export async function POST(request: NextRequest) {
     // Determine initial status based on service approval requirement and user role
     let initialStatus: 'OPEN' | 'PENDING_APPROVAL' = 'OPEN';
     if (serviceToCheck?.requiresApproval) {
-      // Manager and Technician created tickets are auto-approved, so status is OPEN
+      // Manager, Manager IT, and Technician created tickets are auto-approved, so status is OPEN
       // Others need approval, so status starts as PENDING_APPROVAL
-      initialStatus = (['MANAGER', 'TECHNICIAN'].includes(session.user.role)) ? 'OPEN' : 'PENDING_APPROVAL';
+      initialStatus = (['MANAGER', 'MANAGER_IT', 'TECHNICIAN'].includes(session.user.role)) ? 'OPEN' : 'PENDING_APPROVAL';
     }
 
     // Handle file attachments
@@ -1343,10 +1344,12 @@ export async function POST(request: NextRequest) {
     });
 
     if (serviceDetails?.requiresApproval) {
-      // Check if creator is a manager or technician - auto-approve their tickets
-      if (['MANAGER', 'TECHNICIAN'].includes(session.user.role)) {
-        const approvalReason = session.user.role === 'MANAGER' 
+      // Check if creator is a manager, manager IT, or technician - auto-approve their tickets
+      if (['MANAGER', 'MANAGER_IT', 'TECHNICIAN'].includes(session.user.role)) {
+        const approvalReason = session.user.role === 'MANAGER'
           ? 'Auto-approved: Manager-created ticket'
+          : session.user.role === 'MANAGER_IT'
+          ? 'Auto-approved: Manager IT-created ticket'
           : 'Auto-approved: Technician-created ticket';
           
         await prisma.ticketApproval.create({
