@@ -21,11 +21,11 @@ module.exports = {
     // Environment variables
     env: {
       NODE_ENV: 'production',
-      PORT: 4000,
+      PORT: 443,
       HOSTNAME: '0.0.0.0',
-      USE_HTTPS: 'false',
-      NEXTAUTH_URL: 'http://localhost:4000',
-      NEXT_PUBLIC_APP_URL: 'http://localhost:4000',
+      USE_HTTPS: 'true',
+      NEXTAUTH_URL: 'https://hd.bsg.id',
+      NEXT_PUBLIC_APP_URL: 'https://hd.bsg.id',
       DATABASE_URL: 'postgresql://postgres:admin@localhost:5432/servicedesk_database?schema=public'
     },
     
