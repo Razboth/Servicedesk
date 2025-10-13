@@ -116,7 +116,9 @@ export async function POST(
     }
 
     const body = await request.json();
+    console.log('[VERIFICATION] Received data:', body);
     const validatedData = verificationSchema.parse(body);
+    console.log('[VERIFICATION] Validated data:', validatedData);
 
     // Check if ticket exists
     const ticket = await prisma.ticket.findUnique({
@@ -150,6 +152,15 @@ export async function POST(
       session.user.role === 'MANAGER_IT' ||
       (session.user.role === 'MANAGER' && user?.branchId === ticket.branchId) ||
       hasAssignment;
+
+    console.log('[VERIFICATION] Permission check:', {
+      userId: session.user.id,
+      userRole: session.user.role,
+      userBranchId: user?.branchId,
+      ticketBranchId: ticket.branchId,
+      hasAssignment: !!hasAssignment,
+      canVerify
+    });
 
     if (!canVerify) {
       return NextResponse.json(
@@ -266,15 +277,22 @@ export async function POST(
 
   } catch (error) {
     if (error instanceof z.ZodError) {
+      console.error('[VERIFICATION] Validation error:', error.errors);
       return NextResponse.json(
         { error: 'Invalid verification data', details: error.errors },
         { status: 400 }
       );
     }
-    
-    console.error('Error updating verification:', error);
+
+    console.error('[VERIFICATION] Error updating verification:', error);
+    console.error('[VERIFICATION] Error details:', {
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
+
     return NextResponse.json(
-      { error: 'Failed to update verification' },
+      { error: 'Failed to update verification', message: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }
