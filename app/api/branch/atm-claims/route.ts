@@ -482,13 +482,16 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { 
-      atmCode, 
-      customerName, 
+    const {
+      atmCode,
+      customerName,
       customerAccount,
       customerPhone,
+      customerEmail,
       transactionAmount,
       transactionDate,
+      transactionRef,
+      cardLast4,
       claimType,
       claimDescription
     } = body;
@@ -503,13 +506,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'ATM not found' }, { status: 404 });
     }
 
-    // Get ATM Claim service
+    // Get ATM Claim service - support both English and Indonesian spelling
     const service = await prisma.service.findFirst({
-      where: { name: { contains: 'ATM Claim' } }
+      where: {
+        OR: [
+          { name: { contains: 'ATM Claim', mode: 'insensitive' } },
+          { name: { contains: 'ATM Klaim', mode: 'insensitive' } },
+          { name: { contains: 'Penarikan Tunai Internal', mode: 'insensitive' } }
+        ],
+        isActive: true
+      },
+      include: {
+        fields: {
+          orderBy: { order: 'asc' }
+        }
+      }
     });
 
     if (!service) {
-      return NextResponse.json({ error: 'ATM Claim service not configured' }, { status: 400 });
+      return NextResponse.json({
+        error: 'ATM Claim service not configured. Please ensure "Penarikan Tunai Internal - ATM Klaim" service exists and is active.'
+      }, { status: 400 });
     }
 
     // Generate ticket number - use standard format TKT-YYYY-000000
@@ -528,7 +545,39 @@ export async function POST(request: NextRequest) {
     
     const ticketNumber = `TKT-${currentYear}-${String(yearTicketCount + 1).padStart(6, '0')}`;
 
-    // Create ticket
+    // Get user's branch for reporting branch field
+    const userBranch = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { branch: { select: { name: true, code: true } } }
+    });
+
+    // Map form data to service field values
+    const fieldValueMappings: Record<string, any> = {
+      'atm_code': atmCode,
+      'transaction_ref': transactionRef || '',
+      'card_last_4': cardLast4,
+      'customer_account': customerAccount,
+      'customer_phone': customerPhone,
+      'customer_email': customerEmail || '',
+      'claim_type': claimType,
+      'claim_description': claimDescription,
+      'reporting_branch': userBranch?.branch ? `${userBranch.branch.code} - ${userBranch.branch.name}` : '',
+      'owner_branch': `${atm.branch.code} - ${atm.branch.name}`,
+      'reporting_channel': 'BRANCH_STAFF' // Default channel for branch-created claims
+    };
+
+    // Create field values for the ticket
+    const fieldValues: any[] = [];
+    for (const field of service.fields) {
+      if (fieldValueMappings[field.name] !== undefined) {
+        fieldValues.push({
+          fieldId: field.id,
+          value: String(fieldValueMappings[field.name])
+        });
+      }
+    }
+
+    // Create ticket with field values
     const ticket = await prisma.ticket.create({
       data: {
         ticketNumber,
@@ -538,10 +587,13 @@ export async function POST(request: NextRequest) {
 - Name: ${customerName}
 - Account: ${customerAccount}
 - Phone: ${customerPhone}
+${customerEmail ? `- Email: ${customerEmail}` : ''}
+${cardLast4 ? `- Card (Last 4): ${cardLast4}` : ''}
 
 **Transaction Details:**
 - Amount: Rp ${Number(transactionAmount).toLocaleString('id-ID')}
 - Date: ${new Date(transactionDate).toLocaleString('id-ID')}
+${transactionRef ? `- Reference: ${transactionRef}` : ''}
 - ATM: ${atmCode} - ${atm.location}
 
 **Claim Details:**
@@ -553,7 +605,19 @@ ${claimDescription}
         status: service.requiresApproval ? 'PENDING_APPROVAL' : 'OPEN',
         createdById: session.user.id,
         branchId: atm.branchId, // Route to ATM owner branch
-        category: 'SERVICE_REQUEST'
+        category: 'SERVICE_REQUEST',
+        fieldValues: fieldValues.length > 0 ? {
+          create: fieldValues
+        } : undefined
+      },
+      include: {
+        service: true,
+        branch: true,
+        fieldValues: {
+          include: {
+            field: true
+          }
+        }
       }
     });
 
@@ -565,12 +629,7 @@ ${claimDescription}
     });
 
     // Create comment for inter-branch visibility
-    const userBranch = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { branch: true }
-    });
-
-    if (userBranch?.branch?.id !== atm.branchId) {
+    if (userBranch?.branch && userBranch.branch.name && atm.branchId !== session.user.branchId) {
       await prisma.ticketComment.create({
         data: {
           ticketId: ticket.id,
