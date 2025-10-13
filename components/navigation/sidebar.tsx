@@ -509,10 +509,10 @@ export function Sidebar() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
-                variant="ghost"
-                className="w-full rounded-full py-1.5 pl-1.5 pr-4 flex items-center gap-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 hover:shadow-md transition-all"
+                variant="outline"
+                className="w-full rounded-full py-1.5 pl-1.5 pr-4 flex items-center gap-3 shadow-sm hover:shadow-md transition-all"
               >
-                <Avatar className="h-10 w-10 ring-2 ring-amber-500 dark:ring-amber-600 flex-shrink-0">
+                <Avatar className="h-10 w-10 ring-2 ring-primary flex-shrink-0">
                   {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
                     <div className="h-full w-full">
                       {getAvatarById((session.user as any).avatar)?.component}
@@ -523,7 +523,7 @@ export function Sidebar() {
                     </AvatarFallback>
                   )}
                 </Avatar>
-                <span className="text-base font-semibold text-gray-900 dark:text-white truncate">
+                <span className="text-base font-semibold truncate">
                   {session.user?.name}
                 </span>
               </Button>
