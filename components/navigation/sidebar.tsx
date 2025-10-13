@@ -503,27 +503,36 @@ export function Sidebar() {
         )}
       </nav>
 
-      {/* User Profile Menu at Bottom - Simple Avatar Only */}
-      <div className="border-t border-sidebar-border p-3 flex justify-center">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              className="p-2 rounded-full hover:bg-sidebar-accent"
-            >
-              <Avatar className="h-10 w-10 ring-2 ring-amber-500 dark:ring-amber-600">
-                {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
-                  <div className="h-full w-full">
-                    {getAvatarById((session.user as any).avatar)?.component}
-                  </div>
-                ) : (
-                  <AvatarFallback className="bg-gradient-to-br from-amber-500 to-orange-600 text-white font-semibold">
-                    {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
-                  </AvatarFallback>
-                )}
-              </Avatar>
-            </Button>
-          </DropdownMenuTrigger>
+      {/* User Profile Menu at Bottom - Name/Role Left, Avatar Right */}
+      <div className="border-t border-sidebar-border p-3">
+        {(!isCollapsed || isMobile) ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="w-full p-2 flex items-center justify-between gap-3 rounded-lg hover:bg-sidebar-accent"
+              >
+                <div className="flex flex-col items-start text-left min-w-0 flex-1">
+                  <span className="text-sm font-medium truncate w-full">
+                    {session.user?.name}
+                  </span>
+                  <span className="text-xs text-muted-foreground truncate w-full">
+                    {session.user?.role}
+                  </span>
+                </div>
+                <Avatar className="h-10 w-10 ring-2 ring-amber-500 dark:ring-amber-600 flex-shrink-0">
+                  {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
+                    <div className="h-full w-full">
+                      {getAvatarById((session.user as any).avatar)?.component}
+                    </div>
+                  ) : (
+                    <AvatarFallback className="bg-gradient-to-br from-amber-500 to-orange-600 text-white font-semibold">
+                      {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
 
           <DropdownMenuContent
             className="w-80 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-xl rounded-2xl"
@@ -649,6 +658,154 @@ export function Sidebar() {
             </div>
           </DropdownMenuContent>
         </DropdownMenu>
+        ) : (
+          <div className="flex justify-center">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="p-2 rounded-full hover:bg-sidebar-accent"
+                >
+                  <Avatar className="h-9 w-9 ring-2 ring-amber-500 dark:ring-amber-600">
+                    {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
+                      <div className="h-full w-full">
+                        {getAvatarById((session.user as any).avatar)?.component}
+                      </div>
+                    ) : (
+                      <AvatarFallback className="bg-gradient-to-br from-amber-500 to-orange-600 text-white font-semibold">
+                        {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+
+              <DropdownMenuContent
+                className="w-80 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-xl rounded-2xl"
+                align="end"
+                side="right"
+                sideOffset={8}
+              >
+                {/* Profile Header Section - Clean Minimal Design */}
+                <div className="p-6 pb-4">
+                  <div className="flex flex-col items-center gap-3">
+                    {/* Avatar */}
+                    <Avatar className="h-16 w-16 ring-4 ring-amber-500 dark:ring-amber-600">
+                      {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
+                        <div className="h-full w-full">
+                          {getAvatarById((session.user as any).avatar)?.component}
+                        </div>
+                      ) : (
+                        <AvatarFallback className="bg-gradient-to-br from-amber-500 to-orange-600 text-white text-xl font-bold">
+                          {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
+
+                    {/* Name */}
+                    <div className="text-center">
+                      <h4 className="font-bold text-base text-gray-900 dark:text-white">
+                        {session.user?.name}
+                      </h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
+                        {session.user?.email}
+                      </p>
+                    </div>
+
+                    {/* Badges */}
+                    <div className="flex gap-2 flex-wrap justify-center">
+                      <Badge
+                        variant="secondary"
+                        className="text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700"
+                      >
+                        {session.user?.role}
+                      </Badge>
+                      {(session.user as any)?.branchName && (
+                        <Badge
+                          className="text-xs font-medium bg-gradient-to-r from-purple-500 to-violet-600 text-white border-0"
+                        >
+                          {(session.user as any).branchName}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Menu Items - Clean Simple Design */}
+                <DropdownMenuGroup className="p-2">
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setShowNotifications(true);
+                    }}
+                    className="cursor-pointer rounded-lg px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-3"
+                  >
+                    <Bell className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+                    <span className="font-medium text-gray-900 dark:text-white">Notifications</span>
+                    {unreadCount > 0 && (
+                      <Badge
+                        variant="destructive"
+                        className="ml-auto text-xs px-2 py-0.5"
+                      >
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </Badge>
+                    )}
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem asChild>
+                    <Link
+                      href="/profile"
+                      className="cursor-pointer rounded-lg px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-3"
+                    >
+                      <User className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+                      <span className="font-medium text-gray-900 dark:text-white">Profile</span>
+                    </Link>
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem asChild>
+                    <Link
+                      href="/settings"
+                      className="cursor-pointer rounded-lg px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-3"
+                    >
+                      <Settings className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+                      <span className="font-medium text-gray-900 dark:text-white">Settings</span>
+                    </Link>
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setTheme(theme === 'dark' ? 'light' : 'dark');
+                    }}
+                    className="cursor-pointer rounded-lg px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-3"
+                  >
+                    {theme === 'dark' ? (
+                      <Sun className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+                    ) : (
+                      <Moon className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+                    )}
+                    <span className="font-medium text-gray-900 dark:text-white">Dark Mode</span>
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+
+                <Separator />
+
+                {/* Sign Out - Clean Red Style */}
+                <div className="p-2">
+                  <DropdownMenuItem
+                    onClick={handleLogout}
+                    className="cursor-pointer rounded-lg px-4 py-3 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950/50 flex items-center gap-3"
+                  >
+                    <LogOut className="h-5 w-5" />
+                    <span className="font-semibold">Sign Out</span>
+                  </DropdownMenuItem>
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
       </div>
       
       {/* Version Footer - Below Profile */}
