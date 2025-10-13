@@ -510,7 +510,7 @@ export function Sidebar() {
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="w-full p-2 flex items-center justify-between gap-3 rounded-lg hover:bg-sidebar-accent"
+                className="w-full pl-2 pr-1 py-2 flex items-center gap-3 rounded-lg hover:bg-sidebar-accent"
               >
                 <div className="flex flex-col items-start text-left min-w-0 flex-1">
                   <span className="text-sm font-medium truncate w-full">
@@ -520,7 +520,7 @@ export function Sidebar() {
                     {session.user?.role}
                   </span>
                 </div>
-                <Avatar className="h-10 w-10 ring-2 ring-amber-500 dark:ring-amber-600 flex-shrink-0">
+                <Avatar className="h-10 w-10 ring-2 ring-amber-500 dark:ring-amber-600 flex-shrink-0 ml-auto">
                   {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
                     <div className="h-full w-full">
                       {getAvatarById((session.user as any).avatar)?.component}
