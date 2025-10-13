@@ -40,8 +40,9 @@ export async function POST(
       }
     });
 
-    const canUpload = 
+    const canUpload =
       session.user.role === 'ADMIN' ||
+      session.user.role === 'MANAGER_IT' ||
       (session.user.role === 'MANAGER' && user?.branchId === ticket.branchId) ||
       hasAssignment;
 

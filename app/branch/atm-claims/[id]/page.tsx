@@ -76,10 +76,10 @@ export default function ATMClaimDetailPage() {
           setVerificationProgress(verifyData.progress || 0);
         }
       } else {
-        toast.error('Failed to fetch claim details');
+        toast.error('Gagal mengambil detail klaim');
       }
     } catch (error) {
-      toast.error('Error loading claim');
+      toast.error('Kesalahan saat memuat klaim');
     } finally {
       setLoading(false);
     }
@@ -121,20 +121,20 @@ export default function ATMClaimDetailPage() {
       });
 
       if (response.ok) {
-        toast.success(`Claim ${action === 'approve' ? 'approved' : 'rejected'} successfully`);
+        toast.success(`Klaim berhasil ${action === 'approve' ? 'disetujui' : 'ditolak'}`);
         fetchClaimDetails();
       } else {
-        toast.error(`Failed to ${action} claim`);
+        toast.error(`Gagal ${action === 'approve' ? 'menyetujui' : 'menolak'} klaim`);
       }
     } catch (error) {
-      toast.error('Error processing approval');
+      toast.error('Kesalahan saat memproses persetujuan');
     }
   };
 
   if (loading) {
     return (
       <div className="container mx-auto py-6">
-        <div className="text-center">Loading claim details...</div>
+        <div className="text-center">Memuat detail klaim...</div>
       </div>
     );
   }
@@ -142,7 +142,7 @@ export default function ATMClaimDetailPage() {
   if (!claim) {
     return (
       <div className="container mx-auto py-6">
-        <div className="text-center">Claim not found</div>
+        <div className="text-center">Klaim tidak ditemukan</div>
       </div>
     );
   }
@@ -158,7 +158,7 @@ export default function ATMClaimDetailPage() {
             className="flex items-center gap-2"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back
+            Kembali
           </Button>
           <div>
             <h1 className="text-3xl font-bold">{claim.ticketNumber}</h1>
@@ -181,7 +181,7 @@ export default function ATMClaimDetailPage() {
         <Card className="mb-6">
           <CardContent className="pt-6">
             <div className="flex justify-between mb-2">
-              <span className="text-sm font-medium">Verification Progress</span>
+              <span className="text-sm font-medium">Progres Verifikasi</span>
               <span className="text-sm text-gray-600">{verificationProgress}%</span>
             </div>
             <Progress value={verificationProgress} className="h-2" />
@@ -197,9 +197,9 @@ export default function ATMClaimDetailPage() {
               <div className="flex items-center gap-3">
                 <AlertCircle className="w-6 h-6 text-yellow-600" />
                 <div>
-                  <p className="font-semibold">Manager Approval Required</p>
+                  <p className="font-semibold">Persetujuan Manager Diperlukan</p>
                   <p className="text-sm text-gray-600">
-                    Review the verification details and make a decision
+                    Tinjau detail verifikasi dan buat keputusan
                   </p>
                 </div>
               </div>
@@ -209,7 +209,7 @@ export default function ATMClaimDetailPage() {
                   className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
                 >
                   <CheckCircle2 className="w-4 h-4" />
-                  Approve
+                  Setujui
                 </Button>
                 <Button
                   variant="destructive"
@@ -217,7 +217,7 @@ export default function ATMClaimDetailPage() {
                   className="flex items-center gap-2"
                 >
                   <XCircle className="w-4 h-4" />
-                  Reject
+                  Tolak
                 </Button>
               </div>
             </div>
@@ -230,11 +230,11 @@ export default function ATMClaimDetailPage() {
         <TabsList className="mb-4">
           <TabsTrigger value="details" className="flex items-center gap-2">
             <FileText className="w-4 h-4" />
-            Details
+            Detail
           </TabsTrigger>
           <TabsTrigger value="verification" className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4" />
-            Verification
+            Verifikasi
           </TabsTrigger>
           {/* Assignments tab - hidden for now but implementation preserved */}
           {/* <TabsTrigger value="assignments" className="flex items-center gap-2">
@@ -243,7 +243,7 @@ export default function ATMClaimDetailPage() {
           </TabsTrigger> */}
           <TabsTrigger value="communication" className="flex items-center gap-2">
             <MessageSquare className="w-4 h-4" />
-            Communication
+            Komunikasi
           </TabsTrigger>
         </TabsList>
 
@@ -252,28 +252,28 @@ export default function ATMClaimDetailPage() {
             {/* Claim Information */}
             <Card>
               <CardHeader>
-                <CardTitle>Claim Information</CardTitle>
+                <CardTitle>Informasi Klaim</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Created:</span>
+                  <span className="text-gray-600">Dibuat:</span>
                   <span>{new Date(claim.createdAt).toLocaleString('id-ID')}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Service:</span>
+                  <span className="text-gray-600">Layanan:</span>
                   <span>{claim.service?.name}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">ATM Branch:</span>
+                  <span className="text-gray-600">Cabang ATM:</span>
                   <span>{claim.branch?.name}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Created By:</span>
+                  <span className="text-gray-600">Dibuat Oleh:</span>
                   <span>{claim.createdBy?.name}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Creator Branch:</span>
-                  <span>{claim.createdBy?.branch?.name || 'N/A'}</span>
+                  <span className="text-gray-600">Cabang Pembuat:</span>
+                  <span>{claim.createdBy?.branch?.name || 'T/A'}</span>
                 </div>
               </CardContent>
             </Card>
@@ -281,7 +281,7 @@ export default function ATMClaimDetailPage() {
             {/* Description */}
             <Card>
               <CardHeader>
-                <CardTitle>Description</CardTitle>
+                <CardTitle>Deskripsi</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="whitespace-pre-wrap text-gray-700">
@@ -297,9 +297,9 @@ export default function ATMClaimDetailPage() {
               <CardTitle className="flex items-center justify-between">
                 <span className="flex items-center gap-2">
                   <MessageSquare className="w-5 h-5" />
-                  Comments ({claim.comments?.length || 0})
+                  Komentar ({claim.comments?.length || 0})
                 </span>
-                <Button size="sm">Add Comment</Button>
+                <Button size="sm">Tambah Komentar</Button>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -321,7 +321,7 @@ export default function ATMClaimDetailPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-gray-500">No comments yet</p>
+                <p className="text-gray-500">Belum ada komentar</p>
               )}
             </CardContent>
           </Card>
