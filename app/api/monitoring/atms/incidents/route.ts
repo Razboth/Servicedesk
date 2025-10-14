@@ -51,7 +51,8 @@ export async function GET(request: NextRequest) {
     const apiAuth = await authenticateApiKey(request);
     let userId: string | null = null;
     let hasAccess = false;
-    
+    let isPublicAccess = false;
+
     if (apiAuth.authenticated && apiAuth.apiKey) {
       // Check if API key has required permissions for monitoring
       if (checkApiPermission(apiAuth.apiKey, 'monitoring:read') || checkApiPermission(apiAuth.apiKey, 'atm:read')) {
@@ -61,18 +62,23 @@ export async function GET(request: NextRequest) {
     } else {
       // Fall back to session authentication if no valid API key
       const session = await auth();
-      
+
       if (session && ['MANAGER', 'ADMIN', 'SUPER_ADMIN', 'TECHNICIAN'].includes(session.user.role)) {
         hasAccess = true;
         userId = session.user.id;
+      } else {
+        // Allow public read access for monitoring endpoints
+        hasAccess = true;
+        isPublicAccess = true;
+        console.log(`[ATM Incidents] Public access granted for GET request`);
       }
     }
-    
+
     if (!hasAccess) {
       // Log unauthorized access attempt
       const clientIp = getClientIp(request);
       console.log(`[ATM Incidents] Unauthorized access attempt from IP: ${clientIp}`);
-      
+
       return createApiErrorResponse('Unauthorized - requires valid API key with monitoring:read permission or session with appropriate role', 401);
     }
 
