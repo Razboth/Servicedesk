@@ -227,27 +227,27 @@ export async function GET(request: NextRequest) {
           { service: { tier1CategoryId: ATM_SERVICES_CATEGORY_ID } }
         ];
       } else if (isITHelpdeskTech) {
-        // IT Helpdesk technicians can see ALL tickets EXCEPT SOC/Security tickets
-        // They have broad access to provide general IT support
-        // This includes system-generated tickets from ATM monitoring
-        where.OR = [
-          // All non-security tickets
-          {
-            createdBy: {
-              role: { not: 'SECURITY_ANALYST' }
-            }
-          },
-          // Include system-generated tickets (from monitoring system)
-          {
-            createdBy: {
-              email: 'system@banksulutgo.co.id'
-            }
-          },
-          // Include tickets assigned to IT Helpdesk support group
-          {
-            supportGroupId: userWithDetails?.supportGroupId
-          }
+        // IT Helpdesk technicians follow the same support group rules as regular technicians
+        // They can ONLY see tickets in their own support group
+        const technicianConditions: any[] = [
+          { createdById: session.user.id }, // Their own tickets
+          { assignedToId: session.user.id }  // Tickets assigned to them
         ];
+
+        // Add support group visibility - see all tickets in their support group ONLY
+        if (userWithDetails?.supportGroupId) {
+          technicianConditions.push({
+            service: {
+              supportGroupId: userWithDetails.supportGroupId
+            }
+          });
+          // Also include tickets directly assigned to their support group
+          technicianConditions.push({
+            supportGroupId: userWithDetails.supportGroupId
+          });
+        }
+
+        where.OR = technicianConditions;
       } else {
         // Regular technicians can see:
         // 1. Tickets they created or are assigned to
