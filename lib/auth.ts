@@ -260,6 +260,7 @@ const authOptions = {
             role: user.role,
             branchId: user.branchId,
             branchName: user.branch?.name,
+            branchCode: user.branch?.code,
             supportGroupId: userWithSupportGroup?.supportGroupId,
             supportGroupCode: userWithSupportGroup?.supportGroup?.code,
             mustChangePassword: user.mustChangePassword,
@@ -292,6 +293,7 @@ const authOptions = {
         token.role = user.role;
         token.branchId = user.branchId;
         token.branchName = user.branchName;
+        token.branchCode = user.branchCode;
         token.supportGroupId = user.supportGroupId;
         token.supportGroupCode = user.supportGroupCode;
         token.mustChangePassword = user.mustChangePassword;
@@ -335,6 +337,7 @@ const authOptions = {
         session.user.role = token.role as string;
         session.user.branchId = token.branchId as string | null;
         session.user.branchName = token.branchName as string | null;
+        session.user.branchCode = token.branchCode as string | null;
         session.user.supportGroupId = token.supportGroupId as string | null;
         session.user.supportGroupCode = token.supportGroupCode as string | null;
         session.user.mustChangePassword = token.mustChangePassword as boolean;

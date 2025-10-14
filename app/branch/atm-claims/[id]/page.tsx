@@ -147,6 +147,18 @@ export default function ATMClaimDetailPage() {
     );
   }
 
+  // Debug logging for read-only check
+  const userBranchCode = session?.user?.branchCode;
+  const claimBranchCode = claim.branch?.code;
+  const isReadOnly = userBranchCode !== claimBranchCode;
+
+  console.log('Read-only check:', {
+    userBranchCode,
+    claimBranchCode,
+    isReadOnly,
+    user: session?.user
+  });
+
   return (
     <div className="container mx-auto py-6">
       {/* Header */}
@@ -342,7 +354,7 @@ export default function ATMClaimDetailPage() {
           <VerificationChecklist
             ticketId={claim.id}
             onUpdate={fetchClaimDetails}
-            readOnly={session?.user?.branchCode !== claim.branch?.code}
+            readOnly={isReadOnly}
           />
         </TabsContent>
 
