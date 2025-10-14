@@ -321,13 +321,14 @@ export async function GET(request: NextRequest) {
             }
           ]
         });
-      } else {
-        // For general /tickets page, show all tickets (including pending approval)
-        // Add all unassigned tickets as viewable
-        technicianConditions.push({
-          assignedToId: null
-        });
       }
+
+      // Note: For general /tickets page, DO NOT add all unassigned tickets
+      // Technicians should only see:
+      // 1. Their own tickets (already in technicianConditions)
+      // 2. Tickets assigned to them (already in technicianConditions)
+      // 3. Tickets in their support group (already in technicianConditions)
+      // This ensures proper support group filtering
 
         where.OR = technicianConditions;
       }
