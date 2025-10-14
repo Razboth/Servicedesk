@@ -227,25 +227,36 @@ export default function ATMClaimDetailPage() {
 
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-4">
-          <TabsTrigger value="details" className="flex items-center gap-2">
-            <FileText className="w-4 h-4" />
-            Detail
-          </TabsTrigger>
-          <TabsTrigger value="verification" className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4" />
-            Verifikasi
-          </TabsTrigger>
-          {/* Assignments tab - hidden for now but implementation preserved */}
-          {/* <TabsTrigger value="assignments" className="flex items-center gap-2">
-            <Users className="w-4 h-4" />
-            Assignments
-          </TabsTrigger> */}
-          <TabsTrigger value="communication" className="flex items-center gap-2">
-            <MessageSquare className="w-4 h-4" />
-            Komunikasi
-          </TabsTrigger>
-        </TabsList>
+        <Card className="mb-6">
+          <CardContent className="p-4">
+            <div className="flex gap-2">
+              <Button
+                variant={activeTab === 'details' ? 'default' : 'outline'}
+                onClick={() => setActiveTab('details')}
+                className="flex-1 gap-2"
+              >
+                <FileText className="w-4 h-4" />
+                <span>Detail</span>
+              </Button>
+              <Button
+                variant={activeTab === 'verification' ? 'default' : 'outline'}
+                onClick={() => setActiveTab('verification')}
+                className="flex-1 gap-2"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Verifikasi</span>
+              </Button>
+              <Button
+                variant={activeTab === 'communication' ? 'default' : 'outline'}
+                onClick={() => setActiveTab('communication')}
+                className="flex-1 gap-2"
+              >
+                <MessageSquare className="w-4 h-4" />
+                <span>Komunikasi</span>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         <TabsContent value="details">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -328,9 +339,10 @@ export default function ATMClaimDetailPage() {
         </TabsContent>
 
         <TabsContent value="verification">
-          <VerificationChecklist 
+          <VerificationChecklist
             ticketId={claim.id}
             onUpdate={fetchClaimDetails}
+            readOnly={session?.user?.branchId !== claim.branch?.code}
           />
         </TabsContent>
 

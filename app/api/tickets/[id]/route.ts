@@ -256,8 +256,11 @@ export async function GET(
                     ticket.categoryId === TRANSACTION_CLAIMS_CATEGORY_ID ||
                     ticket.service?.categoryId === TRANSACTION_CLAIMS_CATEGORY_ID;
       } else if (userWithDetails?.branchId) {
-        // Regular users can see all tickets from their branch
-        canAccess = ticket.branchId === userWithDetails.branchId;
+        // Regular users can see:
+        // 1. Tickets they created (regardless of which branch owns the ticket)
+        // 2. All tickets assigned to their branch
+        canAccess = ticket.createdById === userId ||
+                    ticket.branchId === userWithDetails.branchId;
       } else {
         // Users without branch can only see their own tickets
         canAccess = ticket.createdById === userId;

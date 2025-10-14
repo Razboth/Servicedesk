@@ -27,9 +27,10 @@ import {
 interface VerificationChecklistProps {
   ticketId: string;
   onUpdate?: () => void;
+  readOnly?: boolean;
 }
 
-export default function VerificationChecklist({ ticketId, onUpdate }: VerificationChecklistProps) {
+export default function VerificationChecklist({ ticketId, onUpdate, readOnly = false }: VerificationChecklistProps) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploadingJournal, setUploadingJournal] = useState(false);
@@ -319,6 +320,23 @@ export default function VerificationChecklist({ ticketId, onUpdate }: Verificati
 
   return (
     <div className="space-y-6">
+      {/* Read-Only Notice */}
+      {readOnly && (
+        <Card className="border-yellow-200 bg-yellow-50">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-6 h-6 text-yellow-600" />
+              <div>
+                <p className="font-semibold text-yellow-900">Mode Hanya Lihat</p>
+                <p className="text-sm text-yellow-800">
+                  Anda hanya dapat melihat verifikasi ini. Hanya cabang pemilik ATM yang dapat mengedit.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Step 1: Journal Verification */}
       <Card>
         <CardHeader>
@@ -334,6 +352,7 @@ export default function VerificationChecklist({ ticketId, onUpdate }: Verificati
               onCheckedChange={(checked) =>
                 setVerification({...verification, journalChecked: checked})
               }
+              disabled={readOnly}
             />
             <Label>Jurnal telah diperiksa</Label>
           </div>
@@ -350,23 +369,27 @@ export default function VerificationChecklist({ ticketId, onUpdate }: Verificati
                 Unduh Jurnal
               </Button>
             )}
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-2"
-              onClick={() => journalFileInputRef.current?.click()}
-              disabled={uploadingJournal}
-            >
-              <Upload className="w-4 h-4" />
-              {uploadingJournal ? 'Mengunggah...' : 'Unggah Hasil'}
-            </Button>
-            <input
-              ref={journalFileInputRef}
-              type="file"
-              className="hidden"
-              accept=".pdf,image/*"
-              onChange={handleJournalUpload}
-            />
+            {!readOnly && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2"
+                  onClick={() => journalFileInputRef.current?.click()}
+                  disabled={uploadingJournal}
+                >
+                  <Upload className="w-4 h-4" />
+                  {uploadingJournal ? 'Mengunggah...' : 'Unggah Hasil'}
+                </Button>
+                <input
+                  ref={journalFileInputRef}
+                  type="file"
+                  className="hidden"
+                  accept=".pdf,image/*"
+                  onChange={handleJournalUpload}
+                />
+              </>
+            )}
           </div>
 
           <div>
@@ -379,6 +402,7 @@ export default function VerificationChecklist({ ticketId, onUpdate }: Verificati
               }
               placeholder="Deskripsikan apa yang ditemukan di jurnal..."
               rows={3}
+              disabled={readOnly}
             />
           </div>
         </CardContent>
@@ -401,6 +425,7 @@ export default function VerificationChecklist({ ticketId, onUpdate }: Verificati
                 size="sm"
                 onClick={() => setVerification({...verification, ejTransactionFound: true})}
                 className="flex items-center gap-2"
+                disabled={readOnly}
               >
                 <CheckCircle2 className="w-4 h-4" />
                 Ya
@@ -410,6 +435,7 @@ export default function VerificationChecklist({ ticketId, onUpdate }: Verificati
                 size="sm"
                 onClick={() => setVerification({...verification, ejTransactionFound: false})}
                 className="flex items-center gap-2"
+                disabled={readOnly}
               >
                 <XCircle className="w-4 h-4" />
                 Tidak
@@ -428,6 +454,7 @@ export default function VerificationChecklist({ ticketId, onUpdate }: Verificati
                     setVerification({...verification, ejReferenceNumber: e.target.value})
                   }
                   placeholder="Masukkan nomor referensi dari EJ"
+                  disabled={readOnly}
                 />
               </div>
 
@@ -438,6 +465,7 @@ export default function VerificationChecklist({ ticketId, onUpdate }: Verificati
                     variant={verification.amountMatches === true ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => setVerification({...verification, amountMatches: true})}
+                    disabled={readOnly}
                   >
                     Ya
                   </Button>
@@ -445,6 +473,7 @@ export default function VerificationChecklist({ ticketId, onUpdate }: Verificati
                     variant={verification.amountMatches === false ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => setVerification({...verification, amountMatches: false})}
+                    disabled={readOnly}
                   >
                     Tidak
                   </Button>
@@ -475,6 +504,7 @@ export default function VerificationChecklist({ ticketId, onUpdate }: Verificati
                   setVerification({...verification, cashOpening: e.target.value})
                 }
                 onBlur={calculateCashVariance}
+                disabled={readOnly}
               />
             </div>
             <div>
@@ -487,6 +517,7 @@ export default function VerificationChecklist({ ticketId, onUpdate }: Verificati
                   setVerification({...verification, cashDispensed: e.target.value})
                 }
                 onBlur={calculateCashVariance}
+                disabled={readOnly}
               />
             </div>
           </div>
@@ -502,6 +533,7 @@ export default function VerificationChecklist({ ticketId, onUpdate }: Verificati
                   setVerification({...verification, cashRemaining: e.target.value})
                 }
                 onBlur={calculateCashVariance}
+                disabled={readOnly}
               />
             </div>
             <div>
@@ -511,6 +543,7 @@ export default function VerificationChecklist({ ticketId, onUpdate }: Verificati
                 type="number"
                 value={verification.cashVariance || ''}
                 readOnly
+                disabled={readOnly}
                 className={`${
                   parseFloat(verification.cashVariance || '0') !== 0
                     ? 'bg-red-50 text-red-600'
@@ -537,6 +570,7 @@ export default function VerificationChecklist({ ticketId, onUpdate }: Verificati
               onCheckedChange={(checked) =>
                 setVerification({...verification, cctvReviewed: checked})
               }
+              disabled={readOnly}
             />
             <Label>Rekaman CCTV telah ditinjau</Label>
           </div>
@@ -553,26 +587,29 @@ export default function VerificationChecklist({ ticketId, onUpdate }: Verificati
                   }
                   placeholder="Deskripsikan apa yang ditemukan dalam rekaman CCTV..."
                   rows={3}
+                  disabled={readOnly}
                 />
               </div>
 
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => evidenceFileInputRef.current?.click()}
-                  disabled={uploadingEvidence}
-                >
-                  {uploadingEvidence ? 'Mengunggah...' : 'Unggah Bukti'}
-                </Button>
-                <input
-                  ref={evidenceFileInputRef}
-                  type="file"
-                  className="hidden"
-                  accept="image/*,video/*"
-                  onChange={handleEvidenceUpload}
-                />
-              </div>
+              {!readOnly && (
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => evidenceFileInputRef.current?.click()}
+                    disabled={uploadingEvidence}
+                  >
+                    {uploadingEvidence ? 'Mengunggah...' : 'Unggah Bukti'}
+                  </Button>
+                  <input
+                    ref={evidenceFileInputRef}
+                    type="file"
+                    className="hidden"
+                    accept="image/*,video/*"
+                    onChange={handleEvidenceUpload}
+                  />
+                </div>
+              )}
             </>
           )}
         </CardContent>
@@ -594,6 +631,7 @@ export default function VerificationChecklist({ ticketId, onUpdate }: Verificati
                 variant={verification.debitSuccessful === true ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setVerification({...verification, debitSuccessful: true})}
+                disabled={readOnly}
               >
                 Ya
               </Button>
@@ -601,6 +639,7 @@ export default function VerificationChecklist({ ticketId, onUpdate }: Verificati
                 variant={verification.debitSuccessful === false ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setVerification({...verification, debitSuccessful: false})}
+                disabled={readOnly}
               >
                 Tidak
               </Button>
@@ -608,6 +647,7 @@ export default function VerificationChecklist({ ticketId, onUpdate }: Verificati
                 variant={verification.debitSuccessful === null ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setVerification({...verification, debitSuccessful: null})}
+                disabled={readOnly}
               >
                 T/A
               </Button>
@@ -621,6 +661,7 @@ export default function VerificationChecklist({ ticketId, onUpdate }: Verificati
                 variant={verification.reversalCompleted === true ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setVerification({...verification, reversalCompleted: true})}
+                disabled={readOnly}
               >
                 Ya
               </Button>
@@ -628,6 +669,7 @@ export default function VerificationChecklist({ ticketId, onUpdate }: Verificati
                 variant={verification.reversalCompleted === false ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setVerification({...verification, reversalCompleted: false})}
+                disabled={readOnly}
               >
                 Tidak
               </Button>
@@ -635,6 +677,7 @@ export default function VerificationChecklist({ ticketId, onUpdate }: Verificati
                 variant={verification.reversalCompleted === null ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setVerification({...verification, reversalCompleted: null})}
+                disabled={readOnly}
               >
                 T/A
               </Button>
@@ -659,6 +702,7 @@ export default function VerificationChecklist({ ticketId, onUpdate }: Verificati
               onValueChange={(value) =>
                 setVerification({...verification, recommendation: value})
               }
+              disabled={readOnly}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Pilih rekomendasi" />
@@ -681,6 +725,7 @@ export default function VerificationChecklist({ ticketId, onUpdate }: Verificati
               }
               placeholder="Berikan alasan detail untuk rekomendasi Anda..."
               rows={4}
+              disabled={readOnly}
             />
           </div>
 
@@ -702,14 +747,16 @@ export default function VerificationChecklist({ ticketId, onUpdate }: Verificati
                    verification.recommendation}
                 </Badge>
               </div>
-              <Button
-                onClick={handleSave}
-                disabled={saving}
-                className="flex items-center gap-2"
-              >
-                <Save className="w-4 h-4" />
-                {saving ? 'Menyimpan...' : 'Simpan Verifikasi'}
-              </Button>
+              {!readOnly && (
+                <Button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="flex items-center gap-2"
+                >
+                  <Save className="w-4 h-4" />
+                  {saving ? 'Menyimpan...' : 'Simpan Verifikasi'}
+                </Button>
+              )}
             </div>
           )}
         </CardContent>

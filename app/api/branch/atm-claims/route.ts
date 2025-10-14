@@ -168,11 +168,8 @@ export async function GET(request: NextRequest) {
     // For non-admin, non-Call Center, and non-Transaction Claims Support users, filter by branch
     if (!isCallCenterAgent && !isTransactionClaimsSupport && user?.branchId) {
       if (source === 'internal') {
-        // Claims from own branch
-        where.AND = [
-          { branchId: user.branchId },
-          { createdBy: { branchId: user.branchId } }
-        ];
+        // Claims created by own branch (regardless of which branch owns the ATM)
+        where.createdBy = { branchId: user.branchId };
       } else if (source === 'external') {
         // Claims from other branches for our ATMs
         where.AND = [
@@ -587,7 +584,7 @@ export async function POST(request: NextRequest) {
     const ticket = await prisma.ticket.create({
       data: {
         ticketNumber,
-        title: `ATM Claim - ${claimType} - ${atmCode}`,
+        title: `ATM INTERNAL CLAIM - ${atmCode}`,
         description: `
 **Customer Information:**
 - Name: ${customerName}

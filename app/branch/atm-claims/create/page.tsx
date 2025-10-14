@@ -53,6 +53,7 @@ export default function CreateATMClaimPage() {
   const [atmCode, setAtmCode] = useState('');
   const [selectedATM, setSelectedATM] = useState<ATM | null>(null);
   const [showATMWarning, setShowATMWarning] = useState(false);
+  const [matchedATMs, setMatchedATMs] = useState<ATM[]>([]);
   
   const [formData, setFormData] = useState({
     customerName: '',
@@ -99,48 +100,80 @@ export default function CreateATMClaimPage() {
     if (!atmCode) return;
 
     setSearchingATM(true);
+    setMatchedATMs([]);
+    setSelectedATM(null);
+
     try {
       // First try exact code match
-      let response = await fetch(`/api/atms/lookup?code=${atmCode}`);
-      let data = await response.json();
+      let response = await fetch(`/api/atms/lookup?code=${atmCode.toUpperCase()}`);
 
-      // If not found by code, try searching by name or location
-      if (!data || response.status === 404) {
-        response = await fetch(`/api/atms/lookup`);
-        const allATMs = await response.json();
-
-        const searchTerm = atmCode.toLowerCase();
-        const matchedATM = allATMs.options?.find((atm: any) =>
-          atm.atmName?.toLowerCase().includes(searchTerm) ||
-          atm.location?.toLowerCase().includes(searchTerm) ||
-          atm.value?.toLowerCase().includes(searchTerm)
-        );
-
-        if (matchedATM) {
-          // Fetch the full ATM data
-          response = await fetch(`/api/atms/lookup?code=${matchedATM.value}`);
-          data = await response.json();
+      if (response.ok) {
+        const data = await response.json();
+        if (data) {
+          // Exact match found - select it immediately
+          selectATM(data);
+          setMatchedATMs([data]);
+          return;
         }
       }
 
-      if (response.ok && data) {
-        setSelectedATM(data);
+      // No exact match - search by name, location, and branch with multi-criteria support
+      response = await fetch(`/api/atms/lookup`);
+      const allATMs = await response.json();
 
-        // Check if ATM is from different branch
-        const userBranch = session?.user?.branchId;
-        if (userBranch && data.branch?.id && data.branch.id !== userBranch) {
-          setShowATMWarning(true);
+      // Split search term into multiple keywords for multi-criteria matching
+      const searchTerms = atmCode.toLowerCase().trim().split(/\s+/);
+
+      const matches = allATMs.options?.filter((atm: any) => {
+        const searchableText = [
+          atm.atmName?.toLowerCase() || '',
+          atm.location?.toLowerCase() || '',
+          atm.value?.toLowerCase() || '',
+          atm.branchName?.toLowerCase() || '',
+          atm.branchCode?.toLowerCase() || ''
+        ].join(' ');
+
+        // All search terms must be present in the searchable text (AND logic)
+        return searchTerms.every((term: string) => searchableText.includes(term));
+      });
+
+      if (matches && matches.length > 0) {
+        // Fetch full data for all matches
+        const matchedATMsData = await Promise.all(
+          matches.map(async (match: any) => {
+            const res = await fetch(`/api/atms/lookup?code=${match.value}`);
+            return res.json();
+          })
+        );
+
+        setMatchedATMs(matchedATMsData);
+
+        // If only one match, select it automatically
+        if (matchedATMsData.length === 1) {
+          selectATM(matchedATMsData[0]);
         } else {
-          setShowATMWarning(false);
+          toast.info(`Ditemukan ${matchedATMsData.length} ATM yang cocok. Silakan pilih salah satu.`);
         }
       } else {
         toast.error('ATM tidak ditemukan');
-        setSelectedATM(null);
+        setMatchedATMs([]);
       }
     } catch (error) {
       toast.error('Gagal mencari ATM');
     } finally {
       setSearchingATM(false);
+    }
+  };
+
+  const selectATM = (atm: ATM) => {
+    setSelectedATM(atm);
+
+    // Check if ATM is from different branch
+    const userBranch = session?.user?.branchId;
+    if (userBranch && atm.branch?.id && atm.branch.id !== userBranch) {
+      setShowATMWarning(true);
+    } else {
+      setShowATMWarning(false);
     }
   };
 
@@ -225,16 +258,16 @@ export default function CreateATMClaimPage() {
           <CardContent className="space-y-4">
             <div className="flex gap-2">
               <div className="flex-1">
-                <Label htmlFor="atmCode">Kode / Nama / Lokasi ATM *</Label>
+                <Label htmlFor="atmCode">Kode / Nama / Lokasi / Cabang ATM *</Label>
                 <Input
                   id="atmCode"
                   value={atmCode}
                   onChange={(e) => setAtmCode(e.target.value)}
-                  placeholder="Cari berdasarkan kode, nama, atau lokasi ATM"
+                  placeholder="Cari berdasarkan kode, nama, lokasi, atau cabang"
                   required
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Contoh: ATM-001234 atau "Indomaret" atau "Manado"
+                  Contoh: ATM-001234 atau "Indomaret" atau "Indomaret Gorontalo" atau "Mall Manado"
                 </p>
               </div>
               <Button
@@ -248,9 +281,60 @@ export default function CreateATMClaimPage() {
               </Button>
             </div>
 
+            {/* Multiple matches - show selection list */}
+            {matchedATMs.length > 1 && !selectedATM && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-gray-700">
+                  Pilih ATM yang sesuai ({matchedATMs.length} hasil):
+                </p>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {matchedATMs.map((atm) => (
+                    <button
+                      key={atm.id}
+                      type="button"
+                      onClick={() => selectATM(atm)}
+                      className="w-full p-4 bg-white border-2 border-gray-200 hover:border-blue-500 hover:bg-blue-50 rounded-lg text-left transition-all"
+                    >
+                      <div className="font-semibold text-gray-900">{atm.code}</div>
+                      {atm.name && (
+                        <div className="text-sm text-gray-600 mt-1">
+                          Nama: {atm.name}
+                        </div>
+                      )}
+                      <div className="text-sm text-gray-600">
+                        Lokasi: {atm.location || 'N/A'}
+                      </div>
+                      <div className="text-sm text-gray-600 flex items-center gap-2 mt-1">
+                        <Building2 className="w-4 h-4" />
+                        Cabang: {atm.branch?.name || 'Unknown'} ({atm.branch?.code || 'N/A'})
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Selected ATM display */}
             {selectedATM && (
-              <div className="p-4 bg-gray-50 rounded-lg space-y-2">
-                <div className="font-semibold">{selectedATM.code}</div>
+              <div className="p-4 bg-green-50 border-2 border-green-200 rounded-lg space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="font-semibold text-green-900">✓ ATM Dipilih</div>
+                  {matchedATMs.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedATM(null);
+                        setShowATMWarning(false);
+                      }}
+                      className="text-gray-600 hover:text-gray-900"
+                    >
+                      Ganti ATM
+                    </Button>
+                  )}
+                </div>
+                <div className="font-semibold text-gray-900">{selectedATM.code}</div>
                 {selectedATM.name && (
                   <div className="text-sm text-gray-600">
                     Nama: {selectedATM.name}
