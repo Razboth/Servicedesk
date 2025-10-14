@@ -746,7 +746,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // IMPORTANT: Exclude ATM Claim tickets from /tickets page
+    // IMPORTANT: Exclude ATM Claim tickets from /tickets and /workbench pages
     // ATM Claims should only be accessed through /branch/atm-claims
     // This prevents users from accessing ATM claims through the wrong detail page
     if (!where.AND) {
@@ -754,17 +754,21 @@ export async function GET(request: NextRequest) {
     } else if (!Array.isArray(where.AND)) {
       where.AND = [where.AND];
     }
-    
-    // Only exclude ATM Claims for regular users, not for Transaction Claims Support or Call Center
+
+    // Only exclude ATM Claims for regular users and technicians
+    // Transaction Claims Support and Call Center users can still see ATM Claims
     const isTransactionClaimsSupportUser = userWithDetails?.supportGroup?.code === 'TRANSACTION_CLAIMS_SUPPORT';
     const isCallCenterUserForATM = userWithDetails?.supportGroup?.code === 'CALL_CENTER';
-    
+
     console.log('[TICKETS API] ATM Claim exclusion check:', {
+      role: session.user.role,
+      supportGroupCode: userWithDetails?.supportGroup?.code,
       isTransactionClaimsSupportUser,
       isCallCenterUserForATM,
       willExcludeATMClaims: !isTransactionClaimsSupportUser && !isCallCenterUserForATM
     });
-    
+
+    // Exclude ATM Claims for everyone except Transaction Claims Support and Call Center
     if (!isTransactionClaimsSupportUser && !isCallCenterUserForATM) {
       where.AND.push({
         NOT: {
