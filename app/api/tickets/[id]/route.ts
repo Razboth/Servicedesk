@@ -198,8 +198,8 @@ export async function GET(
     if (apiKeyHeader) {
       // API keys have full read access
       canAccess = true;
-    } else if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') {
-      // Admin and Super Admin can see all tickets
+    } else if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' || userRole === 'MANAGER_IT') {
+      // Admin, Super Admin, and Manager IT can see all tickets
       canAccess = true;
     } else if (userRole === 'SECURITY_ANALYST') {
       // Security Analysts can see:
@@ -234,16 +234,18 @@ export async function GET(
         // IT Helpdesk can see all tickets except those created by Security Analysts
         canAccess = ticket.createdBy?.role !== 'SECURITY_ANALYST';
       } else {
-        // Regular technicians can see:
-        // 1. Tickets they created or are assigned to
-        // 2. ALL tickets in their support group (remove approval check for viewing)
+        // Regular technicians can ONLY see:
+        // 1. Tickets they created
+        // 2. Tickets assigned to them
+        // 3. Tickets where the service's support group matches their support group
         const isCreatorOrAssignee = ticket.createdById === userId || ticket.assignedToId === userId;
-        const isSupportGroupMatch = !!(userWithDetails?.supportGroupId && ticket.service?.supportGroupId === userWithDetails.supportGroupId);
+        const isSupportGroupMatch = !!(
+          userWithDetails?.supportGroupId &&
+          ticket.service?.supportGroupId &&
+          ticket.service.supportGroupId === userWithDetails.supportGroupId
+        );
 
-        // Also allow if no support group (can see unassigned tickets)
-        const noSupportGroup = !userWithDetails?.supportGroupId && ticket.assignedToId === null;
-
-        canAccess = isCreatorOrAssignee || isSupportGroupMatch || noSupportGroup;
+        canAccess = isCreatorOrAssignee || isSupportGroupMatch;
       }
     } else if (userRole === 'USER' || userRole === 'AGENT') {
       const isCallCenterUser = userWithDetails?.supportGroup?.code === 'CALL_CENTER';
