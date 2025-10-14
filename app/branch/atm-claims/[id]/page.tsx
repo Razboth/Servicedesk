@@ -342,7 +342,7 @@ export default function ATMClaimDetailPage() {
           <VerificationChecklist
             ticketId={claim.id}
             onUpdate={fetchClaimDetails}
-            readOnly={session?.user?.branchId !== claim.branch?.code}
+            readOnly={session?.user?.branchCode !== claim.branch?.code}
           />
         </TabsContent>
 
