@@ -245,11 +245,11 @@ export async function POST(request: NextRequest) {
     
     // Create the ticket
     const ticket = await prisma.$transaction(async (tx) => {
-      // Generate ticket number
+      // Generate ticket number - use new simplified sequential format
       const currentYear = new Date().getFullYear();
       const yearStart = new Date(currentYear, 0, 1);
       const yearEnd = new Date(currentYear + 1, 0, 1);
-      
+
       const yearTicketCount = await tx.ticket.count({
         where: {
           createdAt: {
@@ -258,8 +258,9 @@ export async function POST(request: NextRequest) {
           }
         }
       });
-      
-      const ticketNumber = `TKT-${currentYear}-${String(yearTicketCount + 1).padStart(6, '0')}`;
+
+      // New simplified ticket numbering - just sequential numbers
+      const ticketNumber = String(yearTicketCount + 1);
       
       // Create the ticket
       const newTicket = await tx.ticket.create({

@@ -326,13 +326,12 @@ export async function POST(request: NextRequest) {
       priority = 'MEDIUM';
     }
 
-    // Generate unique ticket number
+    // Generate unique ticket number - use new simplified sequential format
     const timestamp = Date.now();
-    // Generate ticket number using standard format
     const currentYear = new Date().getFullYear();
     const yearStart = new Date(currentYear, 0, 1);
     const yearEnd = new Date(currentYear + 1, 0, 1);
-    
+
     const yearTicketCount = await prisma.ticket.count({
       where: {
         createdAt: {
@@ -341,8 +340,9 @@ export async function POST(request: NextRequest) {
         }
       }
     });
-    
-    const ticketNumber = `TKT-${currentYear}-${String(yearTicketCount + 1).padStart(6, '0')}`;
+
+    // New simplified ticket numbering - just sequential numbers
+    const ticketNumber = String(yearTicketCount + 1);
 
     console.log('[CreateTicket] Creating ticket with data:', {
       ticketNumber,

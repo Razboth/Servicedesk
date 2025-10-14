@@ -109,9 +109,22 @@ export async function POST(
         priority = 'HIGH';
     }
 
-    // Generate ticket number
-    const ticketCount = await prisma.ticket.count();
-    const ticketNumber = `TKT-${(ticketCount + 1).toString().padStart(6, '0')}`;
+    // Generate ticket number - use new simplified sequential format
+    const currentYear = new Date().getFullYear();
+    const yearStart = new Date(currentYear, 0, 1);
+    const yearEnd = new Date(currentYear + 1, 0, 1);
+
+    const yearTicketCount = await prisma.ticket.count({
+      where: {
+        createdAt: {
+          gte: yearStart,
+          lt: yearEnd
+        }
+      }
+    });
+
+    // New simplified ticket numbering - just sequential numbers
+    const ticketNumber = String(yearTicketCount + 1);
 
     // Create the ticket
     const ticket = await prisma.ticket.create({
