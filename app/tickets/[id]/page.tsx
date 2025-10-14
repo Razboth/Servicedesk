@@ -849,8 +849,8 @@ export default function TicketDetailPage() {
   const canViewTicket = () => {
     if (!session?.user?.role || !ticket) return false;
 
-    // Admin can always view
-    if (session.user.role === 'ADMIN' || session.user.role === 'SUPER_ADMIN') return true;
+    // Admin, Super Admin, and Manager IT can always view
+    if (session.user.role === 'ADMIN' || session.user.role === 'SUPER_ADMIN' || session.user.role === 'MANAGER_IT') return true;
 
     // User who created the ticket can always view
     if (ticket.createdBy?.email === session.user.email) return true;
