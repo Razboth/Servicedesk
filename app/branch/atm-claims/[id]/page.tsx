@@ -302,15 +302,15 @@ export default function ATMClaimDetailPage() {
             </Card>
           </div>
 
-          {/* Comments Section */}
+          {/* Logs Section */}
           <Card className="mt-6">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <span className="flex items-center gap-2">
                   <MessageSquare className="w-5 h-5" />
-                  Komentar ({claim.comments?.length || 0})
+                  Logs ({claim.comments?.length || 0})
                 </span>
-                <Button size="sm">Tambah Komentar</Button>
+                <Button size="sm">Tambah Log</Button>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -332,7 +332,7 @@ export default function ATMClaimDetailPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-gray-500">Belum ada komentar</p>
+                <p className="text-gray-500">Belum ada log</p>
               )}
             </CardContent>
           </Card>

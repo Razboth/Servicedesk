@@ -11,7 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { 
   MessageSquare, 
@@ -70,7 +69,6 @@ export default function CommunicationPanel({ ticketId, onUpdate }: Communication
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [branches, setBranches] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState('all');
   const [showComposeForm, setShowComposeForm] = useState(false);
   const [newMessage, setNewMessage] = useState({
     messageType: 'INFO',
@@ -205,12 +203,6 @@ export default function CommunicationPanel({ ticketId, onUpdate }: Communication
     }
   };
 
-  const filteredMessages = messages.filter(message => {
-    if (activeTab === 'all') return true;
-    if (activeTab === 'sent') return message.fromUser.id === session?.user?.id;
-    if (activeTab === 'received') return message.fromUser.id !== session?.user?.id;
-    return true;
-  });
 
   return (
     <div className="space-y-6">
@@ -339,28 +331,16 @@ export default function CommunicationPanel({ ticketId, onUpdate }: Communication
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-4">
-              <TabsTrigger value="all">All Messages ({messages.length})</TabsTrigger>
-              <TabsTrigger value="sent">
-                Sent ({messages.filter(m => m.fromUser.id === session?.user?.id).length})
-              </TabsTrigger>
-              <TabsTrigger value="received">
-                Received ({messages.filter(m => m.fromUser.id !== session?.user?.id).length})
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value={activeTab}>
-              <ScrollArea className="h-[500px] pr-4">
-                {filteredMessages.length === 0 ? (
-                  <div className="text-center py-12 text-gray-500">
-                    <MessageSquare className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                    <p>No messages yet</p>
-                    <p className="text-sm mt-2">Start a conversation with other branches</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {filteredMessages.map((message) => (
+          <ScrollArea className="h-[500px] pr-4">
+            {messages.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                <MessageSquare className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <p>No messages yet</p>
+                <p className="text-sm mt-2">Start a conversation with other branches</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {messages.map((message) => (
                       <div
                         key={message.id}
                         className={`flex ${
@@ -422,13 +402,11 @@ export default function CommunicationPanel({ ticketId, onUpdate }: Communication
                           </div>
                         </div>
                       </div>
-                    ))}
-                    <div ref={messagesEndRef} />
-                  </div>
-                )}
-              </ScrollArea>
-            </TabsContent>
-          </Tabs>
+                ))}
+                <div ref={messagesEndRef} />
+              </div>
+            )}
+          </ScrollArea>
         </CardContent>
       </Card>
 
