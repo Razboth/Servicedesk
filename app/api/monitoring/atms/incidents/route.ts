@@ -47,30 +47,16 @@ const ATM_INCIDENT_MAPPING = {
 
 export async function GET(request: NextRequest) {
   try {
-    // Check for API key first
+    // Require API key for this endpoint
     const apiAuth = await authenticateApiKey(request);
     let userId: string | null = null;
     let hasAccess = false;
-    let isPublicAccess = false;
 
     if (apiAuth.authenticated && apiAuth.apiKey) {
       // Check if API key has required permissions for monitoring
       if (checkApiPermission(apiAuth.apiKey, 'monitoring:read') || checkApiPermission(apiAuth.apiKey, 'atm:read')) {
         hasAccess = true;
         userId = apiAuth.apiKey.linkedUserId || apiAuth.apiKey.createdById;
-      }
-    } else {
-      // Fall back to session authentication if no valid API key
-      const session = await auth();
-
-      if (session && ['MANAGER', 'ADMIN', 'SUPER_ADMIN', 'TECHNICIAN'].includes(session.user.role)) {
-        hasAccess = true;
-        userId = session.user.id;
-      } else {
-        // Allow public read access for monitoring endpoints
-        hasAccess = true;
-        isPublicAccess = true;
-        console.log(`[ATM Incidents] Public access granted for GET request`);
       }
     }
 
@@ -79,7 +65,7 @@ export async function GET(request: NextRequest) {
       const clientIp = getClientIp(request);
       console.log(`[ATM Incidents] Unauthorized access attempt from IP: ${clientIp}`);
 
-      return createApiErrorResponse('Unauthorized - requires valid API key with monitoring:read permission or session with appropriate role', 401);
+      return createApiErrorResponse('Unauthorized - requires valid API key with monitoring:read or atm:read permission in X-API-Key header', 401);
     }
 
     const { searchParams } = new URL(request.url);
