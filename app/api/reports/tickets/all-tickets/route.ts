@@ -81,9 +81,12 @@ export async function GET(request: NextRequest) {
     if (priority && priority !== 'ALL') {
       whereClause.priority = priority;
     }
-    // Filter by 3-tier categorization directly on tickets
+    // Filter by 3-tier categorization through service relation (matches /tickets API)
     if (categoryId && categoryId !== 'ALL') {
-      whereClause.categoryId = categoryId;
+      whereClause.service = {
+        ...whereClause.service,
+        categoryId: categoryId
+      };
     }
     if (subcategoryId && subcategoryId !== 'ALL') {
       whereClause.subcategoryId = subcategoryId;
@@ -111,7 +114,10 @@ export async function GET(request: NextRequest) {
         whereClause.createdAt.gte = new Date(startDate);
       }
       if (endDate) {
-        whereClause.createdAt.lte = new Date(endDate);
+        // Include the entire day by setting to end of day
+        const endDateObj = new Date(endDate);
+        endDateObj.setHours(23, 59, 59, 999);
+        whereClause.createdAt.lte = endDateObj;
       }
     }
     
@@ -414,7 +420,10 @@ export async function POST(request: NextRequest) {
       whereClause.priority = filters.priority;
     }
     if (filters.categoryId && filters.categoryId !== 'ALL') {
-      whereClause.categoryId = filters.categoryId;
+      whereClause.service = {
+        ...whereClause.service,
+        categoryId: filters.categoryId
+      };
     }
     if (filters.subcategoryId && filters.subcategoryId !== 'ALL') {
       whereClause.subcategoryId = filters.subcategoryId;
@@ -442,7 +451,10 @@ export async function POST(request: NextRequest) {
         whereClause.createdAt.gte = new Date(filters.startDate);
       }
       if (filters.endDate) {
-        whereClause.createdAt.lte = new Date(filters.endDate);
+        // Include the entire day by setting to end of day
+        const endDateObj = new Date(filters.endDate);
+        endDateObj.setHours(23, 59, 59, 999);
+        whereClause.createdAt.lte = endDateObj;
       }
     }
 
