@@ -124,7 +124,13 @@ interface Ticket {
     name: string;
     requiresApproval?: boolean;
     supportGroupId?: string;
-    category: {
+    tier1Category?: {
+      name: string;
+    };
+    tier2Subcategory?: {
+      name: string;
+    };
+    tier3Item?: {
       name: string;
     };
   };
@@ -1977,7 +1983,13 @@ export default function TicketDetailPage() {
                       <div className="flex-1">
                         <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Service</span>
                         <p className="text-sm text-gray-900 dark:text-gray-100 mt-1 font-medium">{ticket.service.name}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Category: {ticket.service.category.name}</p>
+                        {ticket.service.tier1Category && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            Category: {ticket.service.tier1Category.name}
+                            {ticket.service.tier2Subcategory && ` > ${ticket.service.tier2Subcategory.name}`}
+                            {ticket.service.tier3Item && ` > ${ticket.service.tier3Item.name}`}
+                          </p>
+                        )}
                       </div>
                     </div>
 

@@ -38,7 +38,12 @@ interface Ticket {
   status: string
   priority: string
   category: string
+  subcategory: string
+  item: string
   service: string
+  serviceCategory: string
+  serviceSubcategory: string
+  serviceItem: string
   supportGroup: string
   createdBy: string
   createdByEmail: string
@@ -775,7 +780,16 @@ export default function AllTicketsReport() {
                       <TableCell>{getStatusBadge(ticket.status, ticket.vendorTicketNumber, ticket.vendorName)}</TableCell>
                       <TableCell>{getPriorityBadge(ticket.priority)}</TableCell>
                       <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
-                        {ticket.category}
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-medium text-foreground">{ticket.category}</span>
+                          {ticket.serviceCategory && ticket.serviceCategory !== '-' && (
+                            <span className="text-xs text-muted-foreground">
+                              Service: {ticket.serviceCategory}
+                              {ticket.serviceSubcategory && ticket.serviceSubcategory !== '-' && ` > ${ticket.serviceSubcategory}`}
+                              {ticket.serviceItem && ticket.serviceItem !== '-' && ` > ${ticket.serviceItem}`}
+                            </span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="hidden lg:table-cell text-sm text-muted-foreground max-w-[150px]">
                         <span className="truncate block" title={ticket.service}>

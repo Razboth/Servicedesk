@@ -140,6 +140,7 @@ export async function GET(request: NextRequest) {
         }
 
         whereClause.AND = [technicianScope];
+        }
       }
     } else if (session.user.role === 'MANAGER') {
       // Managers see tickets from their branch
@@ -162,13 +163,17 @@ export async function GET(request: NextRequest) {
     if (priority && priority !== 'ALL') {
       whereClause.priority = priority;
     }
-    // Filter by category - check BOTH ticket.categoryId AND service.tier1CategoryId
+    // Filter by category - check ALL THREE possible locations:
+    // 1. ticket.categoryId (ticket's direct category field)
+    // 2. service.tier1CategoryId (service's NEW 3-tier system)
+    // 3. service.categoryId (service's OLD ServiceCategory system)
     // Skip for users who already have full access through role-based filtering
     if (categoryId && categoryId !== 'ALL' && !skipCategoryFilter) {
       const categoryFilter = {
         OR: [
           { categoryId: categoryId },  // Direct ticket field
-          { service: { tier1CategoryId: categoryId } }  // Service 3-tier categorization
+          { service: { tier1CategoryId: categoryId } },  // Service 3-tier categorization (new)
+          { service: { categoryId: categoryId } }  // Service old category system
         ]
       };
 
@@ -308,6 +313,24 @@ export async function GET(request: NextRequest) {
                 name: true,
                 code: true
               }
+            },
+            tier1Category: {
+              select: {
+                id: true,
+                name: true
+              }
+            },
+            tier2Subcategory: {
+              select: {
+                id: true,
+                name: true
+              }
+            },
+            tier3Item: {
+              select: {
+                id: true,
+                name: true
+              }
             }
           }
         },
@@ -444,6 +467,9 @@ export async function GET(request: NextRequest) {
         subcategory: ticket.subcategoryId ? (subcategoryMap.get(ticket.subcategoryId) || '-') : '-',
         item: ticket.itemId ? (itemMap.get(ticket.itemId) || '-') : '-',
         service: ticket.service?.name || 'N/A',
+        serviceCategory: ticket.service?.tier1Category?.name || '-',
+        serviceSubcategory: ticket.service?.tier2Subcategory?.name || '-',
+        serviceItem: ticket.service?.tier3Item?.name || '-',
         supportGroup: ticket.service?.supportGroup?.name || 'N/A',
         createdBy: ticket.createdBy.name,
         createdByEmail: ticket.createdBy.email,
@@ -611,7 +637,8 @@ export async function POST(request: NextRequest) {
           whereClause.AND = [technicianScope];
         }
       }
-    } else if (session.user.role === 'MANAGER') {
+    }
+    else if (session.user.role === 'MANAGER') {
       const manager = await prisma.user.findUnique({
         where: { id: session.user.id }
       });
@@ -631,13 +658,17 @@ export async function POST(request: NextRequest) {
     if (filters.priority && filters.priority !== 'ALL') {
       whereClause.priority = filters.priority;
     }
-    // Filter by category - check BOTH ticket.categoryId AND service.tier1CategoryId
+    // Filter by category - check ALL THREE possible locations:
+    // 1. ticket.categoryId (ticket's direct category field)
+    // 2. service.tier1CategoryId (service's NEW 3-tier system)
+    // 3. service.categoryId (service's OLD ServiceCategory system)
     // Skip for users who already have full access through role-based filtering
     if (filters.categoryId && filters.categoryId !== 'ALL' && !skipCategoryFilter) {
       const categoryFilter = {
         OR: [
           { categoryId: filters.categoryId },  // Direct ticket field
-          { service: { tier1CategoryId: filters.categoryId } }  // Service 3-tier categorization
+          { service: { tier1CategoryId: filters.categoryId } },  // Service 3-tier categorization (new)
+          { service: { categoryId: filters.categoryId } }  // Service old category system
         ]
       };
 
@@ -754,6 +785,15 @@ export async function POST(request: NextRequest) {
             name: true,
             supportGroup: {
               select: { name: true }
+            },
+            tier1Category: {
+              select: { name: true }
+            },
+            tier2Subcategory: {
+              select: { name: true }
+            },
+            tier3Item: {
+              select: { name: true }
             }
           }
         },
@@ -812,6 +852,9 @@ export async function POST(request: NextRequest) {
         'Subcategory': t.subcategoryId ? (exportSubcategoryMap.get(t.subcategoryId) || '-') : '-',
         'Item': t.itemId ? (exportItemMap.get(t.itemId) || '-') : '-',
         'Service': t.service?.name || 'N/A',
+        'Service Category': t.service?.tier1Category?.name || '-',
+        'Service Subcategory': t.service?.tier2Subcategory?.name || '-',
+        'Service Item': t.service?.tier3Item?.name || '-',
         'Support Group': t.service?.supportGroup?.name || 'N/A',
         'Created By': t.createdBy.name,
         'Created By Email': t.createdBy.email,
