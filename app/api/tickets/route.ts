@@ -115,12 +115,16 @@ export async function GET(request: NextRequest) {
     // SLA status filter
     const slaStatus = searchParams.get('slaStatus'); // 'within', 'at_risk', 'breached'
 
+    // Define category IDs for special access checks (used throughout the function)
+    const TRANSACTION_CLAIMS_CATEGORY_ID = 'cmekrqi45001qhluspcsta20x';
+    const ATM_SERVICES_CATEGORY_ID = 'cmekrqi3t001ghlusklheksqz';
+
     // Get user's branch and support group for filtering
     const userWithDetails = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { 
-        branchId: true, 
-        role: true, 
+      select: {
+        branchId: true,
+        role: true,
         supportGroupId: true,
         supportGroup: {
           select: { id: true, name: true, code: true }
@@ -200,8 +204,6 @@ export async function GET(request: NextRequest) {
         // Call Center technicians can see:
         // 1. Their own created tickets (all types)
         // 2. ALL tickets in Transaction Claims category
-        const TRANSACTION_CLAIMS_CATEGORY_ID = 'cmekrqi45001qhluspcsta20x';
-        
         where.OR = [
           // Their own tickets
           { createdById: session.user.id },
@@ -214,9 +216,6 @@ export async function GET(request: NextRequest) {
         // Transaction Claims Support group can see ALL transaction-related claims and disputes
         // Including ATM Claims
         // They have read-only access with ability to add comments
-        const TRANSACTION_CLAIMS_CATEGORY_ID = 'cmekrqi45001qhluspcsta20x';
-        const ATM_SERVICES_CATEGORY_ID = 'cmekrqi3t001ghlusklheksqz';
-        
         where.OR = [
           // All tickets in Transaction Claims category
           { categoryId: TRANSACTION_CLAIMS_CATEGORY_ID },
@@ -370,8 +369,6 @@ export async function GET(request: NextRequest) {
         // Call Center users can see:
         // 1. Their own created tickets (all types)
         // 2. ALL tickets in Transaction Claims category (cmekrqi45001qhluspcsta20x)
-        const TRANSACTION_CLAIMS_CATEGORY_ID = 'cmekrqi45001qhluspcsta20x';
-
         where.OR = [
           // Their own tickets
           { createdById: session.user.id },
@@ -555,12 +552,54 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Category filter
+    // Category filter - check BOTH ticket.categoryId AND service.tier1CategoryId
     if (categoryId) {
-      where.service = {
-        ...where.service,
-        categoryId: categoryId
+      const categoryFilter = {
+        OR: [
+          { categoryId: categoryId },  // Direct ticket field
+          { service: { tier1CategoryId: categoryId } }  // Service 3-tier categorization
+        ]
       };
+
+      // Special handling for Call Center users filtering by Transaction Claims
+      // Since they already have access to ALL Transaction Claims tickets via role-based filtering,
+      // we don't need to apply category filter - it's already covered
+      const isCallCenterUser = session.user.role === 'USER' &&
+                               userWithDetails?.supportGroup?.code === 'CALL_CENTER';
+      const isFilteringTransactionClaims = categoryId === TRANSACTION_CLAIMS_CATEGORY_ID;
+
+      const isCallCenterTech = session.user.role === 'TECHNICIAN' &&
+                              userWithDetails?.supportGroup?.code === 'CALL_CENTER';
+
+      // Skip category filter for Call Center users/techs filtering their own category
+      // Their role-based OR already grants them full access to these tickets
+      if ((isCallCenterUser || isCallCenterTech) && isFilteringTransactionClaims) {
+        console.log('[TICKETS API] Call Center user filtering Transaction Claims - using existing role-based access');
+        // Do nothing - role-based OR already handles this
+      } else {
+        // For all other cases, apply category filter normally
+        // Combine with existing WHERE conditions using AND
+        if (where.OR) {
+          // Move existing OR to AND, then add category filter
+          const existingOR = where.OR;
+          where.AND = where.AND || [];
+          if (!Array.isArray(where.AND)) {
+            where.AND = [where.AND];
+          }
+          where.AND.push({ OR: existingOR }, categoryFilter);
+          delete where.OR;
+        } else if (where.AND) {
+          // Already has AND conditions, just append
+          if (Array.isArray(where.AND)) {
+            where.AND.push(categoryFilter);
+          } else {
+            where.AND = [where.AND, categoryFilter];
+          }
+        } else {
+          // No existing conditions, create AND with just the category filter
+          where.AND = [categoryFilter];
+        }
+      }
     }
 
     // Date range filters
@@ -781,6 +820,11 @@ export async function GET(request: NextRequest) {
         }
       });
     }
+
+    // Debug logging for WHERE clause structure
+    console.log('[TICKETS API] Final WHERE clause:', JSON.stringify(where, null, 2));
+    console.log('[TICKETS API] Category filter applied:', !!categoryId);
+    console.log('[TICKETS API] Category ID:', categoryId);
 
     const [allTickets, total] = await Promise.all([
       prisma.ticket.findMany({
