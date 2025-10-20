@@ -83,6 +83,9 @@ export async function GET(request: NextRequest) {
       // Check if this is a Transaction Claims Support technician
       const isTransactionClaimsSupport = userWithGroup?.supportGroup?.code === 'TRANSACTION_CLAIMS_SUPPORT';
 
+      // Check if this is an IT Helpdesk technician
+      const isITHelpdeskTech = userWithGroup?.supportGroup?.code === 'IT_HELPDESK';
+
       if (isCallCenterTech) {
         // Call Center technicians can see:
         // 1. Their own created tickets (all types)
@@ -115,6 +118,28 @@ export async function GET(request: NextRequest) {
         if (categoryId === TRANSACTION_CLAIMS_CATEGORY_ID || categoryId === ATM_SERVICES_CATEGORY_ID) {
           skipCategoryFilter = true;
         }
+      } else if (isITHelpdeskTech) {
+        // IT Helpdesk technicians follow the same support group rules as regular technicians
+        // They can ONLY see tickets in their own support group
+        const technicianConditions: any[] = [
+          { createdById: session.user.id }, // Their own tickets
+          { assignedToId: session.user.id }  // Tickets assigned to them
+        ];
+
+        // Add support group visibility - see all tickets in their support group ONLY
+        if (userWithGroup?.supportGroupId) {
+          technicianConditions.push({
+            service: {
+              supportGroupId: userWithGroup.supportGroupId
+            }
+          });
+          // Also include tickets directly assigned to their support group
+          technicianConditions.push({
+            supportGroupId: userWithGroup.supportGroupId
+          });
+        }
+
+        whereClause.OR = technicianConditions;
       } else {
         // Regular technicians see tickets they created, are assigned to, or in their support group
         const technicianScope = {
@@ -545,6 +570,9 @@ export async function POST(request: NextRequest) {
       // Check if this is a Transaction Claims Support technician
       const isTransactionClaimsSupport = userWithGroup?.supportGroup?.code === 'TRANSACTION_CLAIMS_SUPPORT';
 
+      // Check if this is an IT Helpdesk technician
+      const isITHelpdeskTech = userWithGroup?.supportGroup?.code === 'IT_HELPDESK';
+
       if (isCallCenterTech) {
         // Call Center technicians can see:
         // 1. Their own created tickets (all types)
@@ -577,6 +605,28 @@ export async function POST(request: NextRequest) {
         if (filters.categoryId === TRANSACTION_CLAIMS_CATEGORY_ID || filters.categoryId === ATM_SERVICES_CATEGORY_ID) {
           skipCategoryFilter = true;
         }
+      } else if (isITHelpdeskTech) {
+        // IT Helpdesk technicians follow the same support group rules as regular technicians
+        // They can ONLY see tickets in their own support group
+        const technicianConditions: any[] = [
+          { createdById: session.user.id }, // Their own tickets
+          { assignedToId: session.user.id }  // Tickets assigned to them
+        ];
+
+        // Add support group visibility - see all tickets in their support group ONLY
+        if (userWithGroup?.supportGroupId) {
+          technicianConditions.push({
+            service: {
+              supportGroupId: userWithGroup.supportGroupId
+            }
+          });
+          // Also include tickets directly assigned to their support group
+          technicianConditions.push({
+            supportGroupId: userWithGroup.supportGroupId
+          });
+        }
+
+        whereClause.OR = technicianConditions;
       } else {
         // Regular technicians see tickets they created, are assigned to, or in their support group
         const technicianScope = {
