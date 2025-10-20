@@ -156,6 +156,8 @@ model Branch {
   monitoringEnabled      Boolean               @default(false)
   networkMedia           NetworkMedia?
   networkVendor          String?
+  latitude               Float?
+  longitude              Float?
   atms                   ATM[]
   branchAssignments      BranchAssignment[]
   sentCommunications     BranchCommunication[] @relation("SentCommunications")
