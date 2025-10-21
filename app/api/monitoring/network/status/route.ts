@@ -32,10 +32,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Build where clause for branches
+    // For map display, show all active branches (monitoring not required)
+    // For actual monitoring, only those with monitoring enabled will have status data
     const branchWhere: any = {
-      isActive: true,
-      monitoringEnabled: true,
-      ipAddress: { not: null }
+      isActive: true
     };
     if (branchId) branchWhere.id = branchId;
 
