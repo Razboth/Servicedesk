@@ -10,6 +10,8 @@ const branchSchema = z.object({
   address: z.string().optional(),
   city: z.string().optional(),
   province: z.string().optional(),
+  latitude: z.string().optional().transform(val => val ? parseFloat(val) : undefined),
+  longitude: z.string().optional().transform(val => val ? parseFloat(val) : undefined),
   isActive: z.boolean().optional()
 });
 

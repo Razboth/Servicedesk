@@ -21,7 +21,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Building2, ArrowLeft } from 'lucide-react';
+import { Building2, ArrowLeft, MapPin } from 'lucide-react';
 
 const formSchema = z.object({
   name: z.string().min(1, 'Branch name is required').max(100),
@@ -29,6 +29,8 @@ const formSchema = z.object({
   address: z.string().optional(),
   city: z.string().optional(),
   province: z.string().optional(),
+  latitude: z.string().optional(),
+  longitude: z.string().optional(),
   isActive: z.boolean().default(true)
 });
 
@@ -46,6 +48,8 @@ export default function NewBranchPage() {
       address: '',
       city: '',
       province: '',
+      latitude: '',
+      longitude: '',
       isActive: true
     }
   });
@@ -183,6 +187,58 @@ export default function NewBranchPage() {
                     </FormItem>
                   )}
                 />
+              </div>
+
+              <div className="pt-4 border-t">
+                <h4 className="text-sm font-medium mb-4 flex items-center gap-2">
+                  <MapPin className="h-4 w-4" />
+                  Geographic Location (Optional)
+                </h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="latitude"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Latitude</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder="e.g., 1.4748"
+                            type="number"
+                            step="any"
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          For map display
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="longitude"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Longitude</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder="e.g., 124.8421"
+                            type="number"
+                            step="any"
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          For map display
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </div>
 
               <FormField

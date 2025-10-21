@@ -36,17 +36,18 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { 
-  Building2, 
-  ArrowLeft, 
-  Users, 
-  Ticket, 
+import {
+  Building2,
+  ArrowLeft,
+  Users,
+  Ticket,
   CreditCard,
   User,
   Mail,
   Network,
   Wifi,
-  Globe
+  Globe,
+  MapPin
 } from 'lucide-react';
 
 const formSchema = z.object({
@@ -55,6 +56,8 @@ const formSchema = z.object({
   address: z.string().optional(),
   city: z.string().optional(),
   province: z.string().optional(),
+  latitude: z.string().optional(),
+  longitude: z.string().optional(),
   ipAddress: z.string().optional(),
   backupIpAddress: z.string().optional(),
   monitoringEnabled: z.boolean().default(false),
@@ -72,6 +75,8 @@ interface Branch {
   address?: string;
   city?: string;
   province?: string;
+  latitude?: number;
+  longitude?: number;
   ipAddress?: string;
   backupIpAddress?: string;
   monitoringEnabled: boolean;
@@ -116,6 +121,8 @@ export default function EditBranchPage() {
       address: '',
       city: '',
       province: '',
+      latitude: '',
+      longitude: '',
       ipAddress: '',
       backupIpAddress: '',
       monitoringEnabled: false,
@@ -144,6 +151,8 @@ export default function EditBranchPage() {
         address: data.address || '',
         city: data.city || '',
         province: data.province || '',
+        latitude: data.latitude ? String(data.latitude) : '',
+        longitude: data.longitude ? String(data.longitude) : '',
         ipAddress: data.ipAddress || '',
         backupIpAddress: data.backupIpAddress || '',
         monitoringEnabled: data.monitoringEnabled || false,
@@ -519,6 +528,61 @@ export default function EditBranchPage() {
                         </FormItem>
                       )}
                     />
+                  </div>
+
+                  <div className="pt-4 border-t">
+                    <h4 className="text-sm font-medium mb-4 flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      Geographic Location
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="latitude"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Latitude</FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                placeholder="e.g., 1.4748"
+                                type="number"
+                                step="any"
+                              />
+                            </FormControl>
+                            <FormDescription>
+                              Branch latitude coordinate for map display
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="longitude"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Longitude</FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                placeholder="e.g., 124.8421"
+                                type="number"
+                                step="any"
+                              />
+                            </FormControl>
+                            <FormDescription>
+                              Branch longitude coordinate for map display
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-3">
+                      Coordinates are used to display the branch on the network monitoring map at <a href="/monitoring/branches" className="text-blue-600 hover:underline">/monitoring/branches</a>
+                    </p>
                   </div>
 
                   {branch.monitoringEnabled && (
