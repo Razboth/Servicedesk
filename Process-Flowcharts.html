@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bank SulutGo ServiceDesk - Process Flowcharts</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1F4E78 0%, #2E5C8A 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .nav-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            background: #f8f9fa;
+            border-bottom: 3px solid #1F4E78;
+            padding: 10px 20px;
+            gap: 10px;
+        }
+
+        .nav-tab {
+            padding: 12px 24px;
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .nav-tab:hover {
+            background: #e9ecef;
+            border-color: #1F4E78;
+            transform: translateY(-2px);
+        }
+
+        .nav-tab.active {
+            background: #1F4E78;
+            color: white;
+            border-color: #1F4E78;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .flowchart-section {
+            display: none;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        .flowchart-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .section-header {
+            background: linear-gradient(135deg, #5B9BD5 0%, #1F4E78 100%);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+        }
+
+        .section-header h2 {
+            font-size: 1.8em;
+            margin-bottom: 8px;
+        }
+
+        .section-header p {
+            opacity: 0.95;
+            font-size: 1.05em;
+        }
+
+        .flowchart-container {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .flowchart-title {
+            font-size: 1.3em;
+            color: #1F4E78;
+            margin-bottom: 15px;
+            font-weight: bold;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #1F4E78;
+        }
+
+        .mermaid {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            overflow-x: auto;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .info-box h4 {
+            color: #1565C0;
+            margin-bottom: 8px;
+        }
+
+        .info-box ul {
+            margin-left: 20px;
+            color: #333;
+        }
+
+        .info-box ul li {
+            margin: 5px 0;
+        }
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin: 20px 0;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .legend-color {
+            width: 40px;
+            height: 30px;
+            border-radius: 4px;
+            border: 2px solid #333;
+        }
+
+        .legend-color.start { background: #90EE90; }
+        .legend-color.process { background: #87CEEB; }
+        .legend-color.decision { background: #FFD700; }
+        .legend-color.error { background: #FFB6C1; }
+        .legend-color.end { background: #98FB98; }
+
+        .footer {
+            background: #f8f9fa;
+            padding: 30px;
+            text-align: center;
+            color: #666;
+            border-top: 3px solid #1F4E78;
+        }
+
+        .print-btn {
+            background: #1F4E78;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            margin: 20px 0;
+            transition: all 0.3s ease;
+        }
+
+        .print-btn:hover {
+            background: #2E5C8A;
+            transform: scale(1.05);
+        }
+
+        @media print {
+            body { background: white; }
+            .nav-tabs, .print-btn { display: none; }
+            .flowchart-section { display: block !important; page-break-after: always; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Bank SulutGo ServiceDesk</h1>
+            <p>Process Flowcharts - Visualisasi Alur Proses Bisnis</p>
+        </div>
+
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="showSection(1)">1. Login Pengguna</button>
+            <button class="nav-tab" onclick="showSection(2)">2. Logout Pengguna</button>
+            <button class="nav-tab" onclick="showSection(3)">3. Pembuatan User</button>
+            <button class="nav-tab" onclick="showSection(4)">4. Pembuatan Tiket</button>
+            <button class="nav-tab" onclick="showSection(5)">5. Assign Tiket</button>
+            <button class="nav-tab" onclick="showSection(6)">6. Update Progress</button>
+        </div>
+
+        <div class="content">
+            <!-- SECTION 1: LOGIN -->
+            <div id="section1" class="flowchart-section active">
+                <div class="section-header">
+                    <h2>1. Proses Login Pengguna</h2>
+                    <p>Autentikasi user untuk mengakses sistem ServiceDesk</p>
+                </div>
+
+                <div class="info-box">
+                    <h4>📋 Informasi Proses</h4>
+                    <ul>
+                        <li><strong>Actor:</strong> Semua User (USER, AGENT, TECHNICIAN, MANAGER, ADMIN, SUPER_ADMIN)</li>
+                        <li><strong>Preconditions:</strong> User memiliki akun aktif, mengetahui credentials</li>
+                        <li><strong>Postconditions:</strong> User berhasil login dengan session aktif 8 jam</li>
+                    </ul>
+                </div>
+
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color start"></div>
+                        <span>Start/End</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color process"></div>
+                        <span>Process</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color decision"></div>
+                        <span>Decision</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color error"></div>
+                        <span>Error Handling</span>
+                    </div>
+                </div>
+
+                <div class="flowchart-container">
+                    <div class="flowchart-title">Positive Flow - Login Berhasil</div>
+                    <div class="mermaid">
+flowchart TD
+    Start([User Membuka Halaman Login]) --> Input[User Input Email & Password]
+    Input --> Validate{Validasi Format}
+    Validate -->|Valid| Submit[User Klik Sign In]
+    Validate -->|Invalid| ErrorFormat["Error - Invalid Format"]
+    ErrorFormat --> Input
+
+    Submit --> CheckDB{Cek User di Database}
+    CheckDB -->|User Found| VerifyPwd{Verify Password}
+    CheckDB -->|Not Found| ErrorUser["Error - Invalid Credentials"]
+    ErrorUser --> LogFailed1[Log Failed Attempt]
+    LogFailed1 --> Input
+
+    VerifyPwd -->|Correct| CheckActive{Akun Aktif?}
+    VerifyPwd -->|Wrong| ErrorPwd["Error - Invalid Credentials"]
+    ErrorPwd --> Increment[Increment Failed Counter]
+    Increment --> CheckCount{Counter 5 or More?}
+    CheckCount -->|Yes| LockAccount[Lock Account 30 Menit]
+    CheckCount -->|No| LogFailed2[Log Failed Attempt]
+    LockAccount --> LogFailed2
+    LogFailed2 --> Input
+
+    CheckActive -->|Yes| CheckLock{Account Locked?}
+    CheckActive -->|No| ErrorInactive["Error - Account Inactive"]
+    ErrorInactive --> End1([End])
+
+    CheckLock -->|No| GenJWT[Generate JWT Token]
+    CheckLock -->|Yes| ErrorLocked["Error - Account Locked"]
+    ErrorLocked --> End2([End])
+
+    GenJWT --> CreateSession[Create Session 8 Hours]
+    CreateSession --> LogSuccess[Log Successful Login]
+    LogSuccess --> ResetCounter[Reset Failed Counter to 0]
+    ResetCounter --> Redirect{Redirect by Role}
+
+    Redirect -->|ADMIN| DashAdmin[Admin Dashboard]
+    Redirect -->|MANAGER| DashMgr[Manager Dashboard]
+    Redirect -->|TECHNICIAN| DashTech[Technician Dashboard]
+    Redirect -->|USER| DashUser[User Dashboard]
+
+    DashAdmin --> Success([Login Success])
+    DashMgr --> Success
+    DashTech --> Success
+    DashUser --> Success
+
+    style Start fill:#90EE90
+    style Success fill:#98FB98
+    style ErrorFormat fill:#FFB6C1
+    style ErrorUser fill:#FFB6C1
+    style ErrorPwd fill:#FFB6C1
+    style ErrorInactive fill:#FFB6C1
+    style ErrorLocked fill:#FFB6C1
+    style LockAccount fill:#FF6B6B
+    style Validate fill:#FFD700
+    style CheckDB fill:#FFD700
+    style VerifyPwd fill:#FFD700
+    style CheckActive fill:#FFD700
+    style CheckLock fill:#FFD700
+    style CheckCount fill:#FFD700
+    style Redirect fill:#FFD700
+                    </div>
+                </div>
+
+                <div class="info-box">
+                    <h4>⚠️ Negative Cases</h4>
+                    <ul>
+                        <li>Username tidak ditemukan → Error message + log attempt</li>
+                        <li>Password salah → Increment counter, lock after 5 attempts</li>
+                        <li>Akun tidak aktif → Error "Contact administrator"</li>
+                        <li>Akun ter-lock → Error "Try again in 30 minutes"</li>
+                        <li>Session conflict → Konfirmasi invalidate old session</li>
+                        <li>Network error → Error "Try again later"</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- SECTION 2: LOGOUT -->
+            <div id="section2" class="flowchart-section">
+                <div class="section-header">
+                    <h2>2. Proses Logout Pengguna</h2>
+                    <p>Mengakhiri session dan keluar dari sistem</p>
+                </div>
+
+                <div class="info-box">
+                    <h4>📋 Informasi Proses</h4>
+                    <ul>
+                        <li><strong>Actor:</strong> Semua Authenticated Users</li>
+                        <li><strong>Preconditions:</strong> User sudah login dengan session valid</li>
+                        <li><strong>Postconditions:</strong> Session dihapus, redirect ke login page</li>
+                    </ul>
+                </div>
+
+                <div class="flowchart-container">
+                    <div class="flowchart-title">Logout Flow</div>
+                    <div class="mermaid">
+flowchart TD
+    Start([User di Dashboard]) --> Click[User Klik Logout Button]
+    Click --> Confirm{Konfirmasi Logout?}
+    Confirm -->|No| Cancel([Cancel - Stay on Page])
+    Confirm -->|Yes| Request[Send Logout Request]
+
+    Request --> CheckSession{Session Valid?}
+    CheckSession -->|No| AlreadyExpired[Session Already Expired]
+    CheckSession -->|Yes| Invalidate[Invalidate JWT Token]
+
+    AlreadyExpired --> ClearLocal1[Clear Local Session]
+    Invalidate --> ClearLocal2[Clear Local Session]
+
+    ClearLocal1 --> ClearCookie1[Clear Cookies]
+    ClearLocal2 --> ClearCookie2[Clear Cookies]
+
+    ClearCookie1 --> LogAudit1[Log Logout Activity]
+    ClearCookie2 --> LogAudit2[Log Logout Activity]
+
+    LogAudit1 --> Redirect1[Redirect to Login]
+    LogAudit2 --> Redirect2[Redirect to Login]
+
+    Redirect1 --> ShowMsg1["Show Message - Session Expired"]
+    Redirect2 --> ShowMsg2["Show Message - Logged Out Successfully"]
+
+    ShowMsg1 --> End([End - At Login Page])
+    ShowMsg2 --> End
+
+    style Start fill:#90EE90
+    style End fill:#98FB98
+    style Cancel fill:#FFD700
+    style Confirm fill:#FFD700
+    style CheckSession fill:#FFD700
+    style AlreadyExpired fill:#FFB6C1
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 3: CREATE USER -->
+            <div id="section3" class="flowchart-section">
+                <div class="section-header">
+                    <h2>3. Proses Pembuatan User Baru</h2>
+                    <p>Membuat akun pengguna baru dalam sistem</p>
+                </div>
+
+                <div class="info-box">
+                    <h4>📋 Informasi Proses</h4>
+                    <ul>
+                        <li><strong>Actor:</strong> ADMIN, SUPER_ADMIN</li>
+                        <li><strong>Preconditions:</strong> Actor memiliki permission, Branch data tersedia</li>
+                        <li><strong>Postconditions:</strong> User baru ter-create dengan password ter-hash</li>
+                    </ul>
+                </div>
+
+                <div class="flowchart-container">
+                    <div class="flowchart-title">Create User Flow dengan Error Handling</div>
+                    <div class="mermaid">
+flowchart TD
+    Start([Admin di User List Page]) --> ClickAdd[Klik Add New User]
+    ClickAdd --> ShowForm[Tampilkan Form Create User]
+    ShowForm --> FillForm["Admin Isi Form<br/>Name, Email, Employee ID,<br/>Password, Role, Branch"]
+
+    FillForm --> ValidateInput{Validasi Input}
+    ValidateInput -->|Empty Fields| ErrorEmpty["Error - Required Fields Empty"]
+    ValidateInput -->|Invalid Email| ErrorEmail["Error - Invalid Email Format"]
+    ValidateInput -->|Weak Password| ErrorPwd["Error - Password Too Weak"]
+    ValidateInput -->|Valid| CheckEmail{Email Exists?}
+
+    ErrorEmpty --> FillForm
+    ErrorEmail --> FillForm
+    ErrorPwd --> FillForm
+
+    CheckEmail -->|Yes| ErrorDupEmail["Error - Email Already Registered"]
+    CheckEmail -->|No| CheckEmpID{Employee ID Exists?}
+    ErrorDupEmail --> FillForm
+
+    CheckEmpID -->|Yes| ErrorDupID["Error - Employee ID Exists"]
+    CheckEmpID -->|No| ValidateBranch{Branch Valid?}
+    ErrorDupID --> FillForm
+
+    ValidateBranch -->|No| ErrorBranch["Error - Invalid Branch"]
+    ValidateBranch -->|Yes| HashPwd[Hash Password dengan Bcrypt]
+    ErrorBranch --> FillForm
+
+    HashPwd --> CreateRecord[Create User Record in DB]
+    CreateRecord --> CheckDB{DB Insert Success?}
+
+    CheckDB -->|Error| ErrorDB[Database Error]
+    CheckDB -->|Success| CreateAudit[Create Audit Log]
+    ErrorDB --> Rollback[Rollback Transaction]
+    Rollback --> ErrorMsg[Show Error Message]
+    ErrorMsg --> FillForm
+
+    CreateAudit --> SendEmail{Send Welcome Email}
+    SendEmail -->|Failed| WarnEmail["Warning - Email Failed"]
+    SendEmail -->|Success| EmailSent["Email Sent Successfully"]
+
+    WarnEmail --> Redirect[Redirect to User List]
+    EmailSent --> Redirect
+
+    Redirect --> ShowSuccess[Show Success Message]
+    ShowSuccess --> End([User Created Successfully])
+
+    style Start fill:#90EE90
+    style End fill:#98FB98
+    style ErrorEmpty fill:#FFB6C1
+    style ErrorEmail fill:#FFB6C1
+    style ErrorPwd fill:#FFB6C1
+    style ErrorDupEmail fill:#FFB6C1
+    style ErrorDupID fill:#FFB6C1
+    style ErrorBranch fill:#FFB6C1
+    style ErrorDB fill:#FFB6C1
+    style WarnEmail fill:#FFA07A
+    style ValidateInput fill:#FFD700
+    style CheckEmail fill:#FFD700
+    style CheckEmpID fill:#FFD700
+    style ValidateBranch fill:#FFD700
+    style CheckDB fill:#FFD700
+    style SendEmail fill:#FFD700
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 4: CREATE TICKET -->
+            <div id="section4" class="flowchart-section">
+                <div class="section-header">
+                    <h2>4. Proses Pembuatan Tiket Baru</h2>
+                    <p>Membuat tiket layanan IT untuk request atau incident</p>
+                </div>
+
+                <div class="info-box">
+                    <h4>📋 Informasi Proses</h4>
+                    <ul>
+                        <li><strong>Actor:</strong> USER, AGENT, TECHNICIAN, MANAGER, ADMIN</li>
+                        <li><strong>Preconditions:</strong> User login, Service catalog tersedia</li>
+                        <li><strong>Postconditions:</strong> Tiket ter-create dengan ticket number unique</li>
+                    </ul>
+                </div>
+
+                <div class="flowchart-container">
+                    <div class="flowchart-title">Create Ticket Flow - 3-Tier Service Selection</div>
+                    <div class="mermaid">
+flowchart TD
+    Start([User Dashboard]) --> ClickNew[Klik Create Ticket]
+    ClickNew --> ShowCat[Tampilkan Service Categories]
+
+    ShowCat --> SelectCat[User Pilih Category Tier 1]
+    SelectCat --> LoadSub[Load Subcategories Tier 2]
+    LoadSub --> SelectSub[User Pilih Subcategory]
+    SelectSub --> LoadItem[Load Service Items Tier 3]
+    LoadItem --> SelectItem[User Pilih Service Item]
+
+    SelectItem --> LoadFields[Load Custom Fields untuk Service]
+    LoadFields --> SetPriority[Set Default Priority dari Service]
+    SetPriority --> FillDesc[User Isi Description]
+
+    FillDesc --> FillCustom[User Isi Custom Fields]
+    FillCustom --> UploadFile{Upload Attachment?}
+    UploadFile -->|Yes| ValidateFile{File Valid?}
+    UploadFile -->|No| AdjustPrio
+
+    ValidateFile -->|Size > 10MB| ErrorSize["Error - File Too Large"]
+    ValidateFile -->|Invalid Type| ErrorType["Error - Invalid File Type"]
+    ValidateFile -->|Valid| AdjustPrio[User Adjust Priority jika perlu]
+
+    ErrorSize --> FillCustom
+    ErrorType --> FillCustom
+
+    AdjustPrio --> Submit[User Klik Submit]
+    Submit --> ValidateForm{Form Valid?}
+
+    ValidateForm -->|Empty Required| ErrorReq["Error - Missing Required Fields"]
+    ValidateForm -->|Desc Too Short| ErrorDesc["Error - Description Too Short"]
+    ValidateForm -->|Valid| GenTicketNum["Generate Ticket Number<br/>TKT-YYYYMMDD-XXXX"]
+
+    ErrorReq --> FillDesc
+    ErrorDesc --> FillDesc
+
+    GenTicketNum --> GetSupport[Get Support Group dari Service]
+    GetSupport --> AutoAssign{Auto-Assign Enabled?}
+
+    AutoAssign -->|Yes| FindTech{Technician Available?}
+    AutoAssign -->|No| SetOpen["Set Status - OPEN"]
+
+    FindTech -->|No| NotifyMgr[Notify Manager]
+    FindTech -->|Yes| AssignTech["Assign to Best Technician<br/>based on Workload and Skill"]
+
+    NotifyMgr --> SetOpen
+    AssignTech --> SetInProgress["Set Status - IN_PROGRESS"]
+
+    SetOpen --> CalcSLA[Calculate SLA Deadlines]
+    SetInProgress --> CalcSLA
+
+    CalcSLA --> CreateTicket[Create Ticket Record in DB]
+    CreateTicket --> ApplyTemplate{Task Template Exists?}
+
+    ApplyTemplate -->|Yes| CreateTasks[Create Tasks from Template]
+    ApplyTemplate -->|No| UploadFiles
+
+    CreateTasks --> UploadFiles{Upload Attachment Files}
+    UploadFiles -->|Success| CreateAudit[Create Audit Log]
+    UploadFiles -->|Failed| WarnFile["Warning - File Upload Failed"]
+
+    WarnFile --> CreateAudit
+    CreateAudit --> SendNotif["Send Email Notifications<br/>User, Technician, Support Group"]
+
+    SendNotif --> Redirect[Redirect to Ticket Detail]
+    Redirect --> ShowTicket["Show Ticket Number and Status"]
+    ShowTicket --> End([Ticket Created Successfully])
+
+    style Start fill:#90EE90
+    style End fill:#98FB98
+    style ErrorSize fill:#FFB6C1
+    style ErrorType fill:#FFB6C1
+    style ErrorReq fill:#FFB6C1
+    style ErrorDesc fill:#FFB6C1
+    style WarnFile fill:#FFA07A
+    style ValidateFile fill:#FFD700
+    style ValidateForm fill:#FFD700
+    style AutoAssign fill:#FFD700
+    style FindTech fill:#FFD700
+    style ApplyTemplate fill:#FFD700
+    style UploadFile fill:#FFD700
+    style UploadFiles fill:#FFD700
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 5: ASSIGN TICKET -->
+            <div id="section5" class="flowchart-section">
+                <div class="section-header">
+                    <h2>5. Proses Assign Tiket ke Technician</h2>
+                    <p>Mengassign tiket yang belum ter-assign atau reassign</p>
+                </div>
+
+                <div class="info-box">
+                    <h4>📋 Informasi Proses</h4>
+                    <ul>
+                        <li><strong>Actor:</strong> MANAGER, ADMIN, SUPER_ADMIN</li>
+                        <li><strong>Preconditions:</strong> Ticket dalam status OPEN/IN_PROGRESS</li>
+                        <li><strong>Postconditions:</strong> Ticket ter-assign dengan notification sent</li>
+                    </ul>
+                </div>
+
+                <div class="flowchart-container">
+                    <div class="flowchart-title">Assign Ticket Flow</div>
+                    <div class="mermaid">
+flowchart TD
+    Start([Manager di Ticket List]) --> OpenTicket[Buka Ticket Detail]
+    OpenTicket --> CheckStatus{Ticket Status}
+
+    CheckStatus -->|CLOSED| ErrorClosed["Error - Cannot Assign<br/>Closed Ticket"]
+    CheckStatus -->|OPEN/IN_PROGRESS| ClickAssign["Klik Assign atau Reassign Button"]
+
+    ErrorClosed --> End1([End])
+
+    ClickAssign --> LoadTechs["Load Available Technicians<br/>dari Support Group"]
+    LoadTechs --> CheckAvail{Technicians Available?}
+
+    CheckAvail -->|No| ErrorNoTech["Error - No Technicians<br/>Available"]
+    CheckAvail -->|Yes| ShowList["Show Technician List<br/>dengan Workload Info"]
+
+    ErrorNoTech --> SuggestOther["Suggest - Reassign to<br/>Different Support Group"]
+    SuggestOther --> End2([End])
+
+    ShowList --> DisplayInfo["Display untuk setiap Tech<br/>Current Workload<br/>Avg Resolution Time<br/>Active Tickets"]
+    DisplayInfo --> SelectTech[Manager Pilih Technician]
+    SelectTech --> AddNote{Add Assignment Note?}
+
+    AddNote -->|Yes| InputNote[Manager Input Note]
+    AddNote -->|No| Confirm
+    InputNote --> Confirm[Klik Confirm Assignment]
+
+    Confirm --> ValidateTech{Selected Tech Active?}
+    ValidateTech -->|No| ErrorInactive["Error - Technician<br/>No Longer Active"]
+    ValidateTech -->|Yes| CheckSame{Same as Current?}
+
+    ErrorInactive --> RefreshList[Refresh Technician List]
+    RefreshList --> ShowList
+
+    CheckSame -->|Yes| WarnSame["Warning - Already<br/>Assigned to This Tech"]
+    CheckSame -->|No| UpdateDB
+
+    WarnSame --> AllowProceed{Proceed Anyway?}
+    AllowProceed -->|No| ShowList
+    AllowProceed -->|Yes| UpdateDB["Update Ticket<br/>assignedTo, assignedAt,<br/>assignedBy"]
+
+    UpdateDB --> CreateHistory[Create Assignment History<br/>dengan Note]
+    CreateHistory --> CreateAudit["Create Audit Log<br/>Old vs New Assignee"]
+    CreateAudit --> UpdateStatus{Status is OPEN?}
+
+    UpdateStatus -->|Yes| ChangeStatus[Update Status to<br/>IN_PROGRESS]
+    UpdateStatus -->|No| SendNotif
+
+    ChangeStatus --> SendNotif["Send Notifications<br/>Email to Assigned Tech<br/>In-App Notification"]
+    SendNotif --> CheckEmail{Email Success?}
+
+    CheckEmail -->|Failed| WarnEmail["Warning - Assignment OK<br/>but Email Failed"]
+    CheckEmail -->|Success| EmailOK[Email Sent Successfully]
+
+    WarnEmail --> Refresh[Refresh Ticket Detail]
+    EmailOK --> Refresh
+
+    Refresh --> ShowUpdated[Show Updated<br/>Assignment Info]
+    ShowUpdated --> End3([Assignment Complete])
+
+    style Start fill:#90EE90
+    style End1 fill:#FFB6C1
+    style End2 fill:#FFB6C1
+    style End3 fill:#98FB98
+    style ErrorClosed fill:#FFB6C1
+    style ErrorNoTech fill:#FFB6C1
+    style ErrorInactive fill:#FFB6C1
+    style WarnSame fill:#FFA07A
+    style WarnEmail fill:#FFA07A
+    style CheckStatus fill:#FFD700
+    style CheckAvail fill:#FFD700
+    style AddNote fill:#FFD700
+    style ValidateTech fill:#FFD700
+    style CheckSame fill:#FFD700
+    style AllowProceed fill:#FFD700
+    style UpdateStatus fill:#FFD700
+    style CheckEmail fill:#FFD700
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 6: UPDATE PROGRESS -->
+            <div id="section6" class="flowchart-section">
+                <div class="section-header">
+                    <h2>6. Proses Update Progress Tiket</h2>
+                    <p>Update status dan progress penyelesaian tiket</p>
+                </div>
+
+                <div class="info-box">
+                    <h4>📋 Informasi Proses</h4>
+                    <ul>
+                        <li><strong>Actor:</strong> TECHNICIAN (assigned), MANAGER, ADMIN</li>
+                        <li><strong>Preconditions:</strong> Ticket dalam status IN_PROGRESS atau OPEN</li>
+                        <li><strong>Postconditions:</strong> Progress ter-update dengan notification</li>
+                    </ul>
+                </div>
+
+                <div class="flowchart-container">
+                    <div class="flowchart-title">Update Progress Flow</div>
+                    <div class="mermaid">
+flowchart TD
+    Start([Technician di Ticket Detail]) --> CheckAssign{Assigned to Me?}
+
+    CheckAssign -->|No| CheckRole{Role is MANAGER or ADMIN?}
+    CheckAssign -->|Yes| CheckStatus
+
+    CheckRole -->|No| ErrorPerm["Error - Not Assigned<br/>to This Ticket"]
+    CheckRole -->|Yes| WarnNotAssigned["Warning - Not Assigned<br/>Proceed Anyway?"]
+
+    ErrorPerm --> End1([End])
+    WarnNotAssigned --> ProceedAnyway{Proceed?}
+    ProceedAnyway -->|No| End2([End])
+    ProceedAnyway -->|Yes| CheckStatus
+
+    CheckStatus{Ticket Status}
+    CheckStatus -->|CLOSED| ErrorClosed["Error - Cannot Update<br/>Closed Ticket"]
+    CheckStatus -->|OPEN/IN_PROGRESS| ClickUpdate[Klik Update Progress]
+
+    ErrorClosed --> SuggestReopen["Suggest - Reopen First"]
+    SuggestReopen --> End3([End])
+
+    ClickUpdate --> ShowForm["Show Progress Form<br/>Progress Note<br/>Progress Percentage<br/>Status Change<br/>File Upload"]
+
+    ShowForm --> FillNote[Technician Isi Progress Note]
+    FillNote --> SetPercent[Set Progress Percentage 0-100%]
+    SetPercent --> ChangeStatus{Change Status?}
+
+    ChangeStatus -->|Yes| SelectStatus["Select New Status<br/>OPEN, IN_PROGRESS, ON_HOLD"]
+    ChangeStatus -->|No| UploadProg
+    SelectStatus --> UploadProg
+
+    UploadProg{Upload Progress Files?}
+    UploadProg -->|Yes| ValidateFiles{Files Valid?}
+    UploadProg -->|No| Submit
+
+    ValidateFiles -->|Invalid| ErrorFile["Error - Invalid Files"]
+    ValidateFiles -->|Valid| Submit[Klik Save Progress]
+
+    ErrorFile --> FillNote
+
+    Submit --> ValidateForm{Form Valid?}
+    ValidateForm -->|Note Too Short| ErrorNote["Error - Note must be<br/>at least 20 characters"]
+    ValidateForm -->|Invalid %| ErrorPercent["Error - Percentage<br/>must be 0-100"]
+    ValidateForm -->|Valid| CreateComment[Create TicketComment<br/>dengan Progress Note]
+
+    ErrorNote --> FillNote
+    ErrorPercent --> FillNote
+
+    CreateComment --> UpdateTicket["Update Ticket<br/>progressPercentage<br/>lastUpdatedAt<br/>lastUpdatedBy"]
+
+    UpdateTicket --> StatusChanged{Status Changed?}
+    StatusChanged -->|Yes| UpdateStatus[Update Ticket Status<br/>dan statusChangedAt]
+    StatusChanged -->|No| UploadFilesDB
+
+    UpdateStatus --> UploadFilesDB{Upload Files to Storage}
+    UploadFilesDB -->|Failed| WarnFileUpload["Warning - Progress Saved<br/>but Files Failed"]
+    UploadFilesDB -->|Success| FilesUploaded[Files Linked to Comment]
+    UploadFilesDB -->|No Files| CreateHist
+
+    WarnFileUpload --> CreateHist[Create History Log<br/>action PROGRESS_UPDATE]
+    FilesUploaded --> CreateHist
+
+    CreateHist --> SendNotif[Send Email to<br/>Ticket Creator]
+    SendNotif --> CheckNotif{Email Success?}
+
+    CheckNotif -->|Failed| LogError[Log Email Error]
+    CheckNotif -->|Success| NotifSent[Notification Sent]
+
+    LogError --> Refresh[Refresh Ticket Detail]
+    NotifSent --> Refresh
+
+    Refresh --> ShowTimeline[Show Updated Timeline<br/>dengan Progress Entry]
+    ShowTimeline --> Success[Show Success Message]
+    Success --> End4([Progress Updated])
+
+    style Start fill:#90EE90
+    style End1 fill:#FFB6C1
+    style End2 fill:#FFB6C1
+    style End3 fill:#FFB6C1
+    style End4 fill:#98FB98
+    style ErrorPerm fill:#FFB6C1
+    style ErrorClosed fill:#FFB6C1
+    style ErrorFile fill:#FFB6C1
+    style ErrorNote fill:#FFB6C1
+    style ErrorPercent fill:#FFB6C1
+    style WarnNotAssigned fill:#FFA07A
+    style WarnFileUpload fill:#FFA07A
+    style CheckAssign fill:#FFD700
+    style CheckRole fill:#FFD700
+    style CheckStatus fill:#FFD700
+    style ProceedAnyway fill:#FFD700
+    style ChangeStatus fill:#FFD700
+    style UploadProg fill:#FFD700
+    style ValidateFiles fill:#FFD700
+    style ValidateForm fill:#FFD700
+    style StatusChanged fill:#FFD700
+    style UploadFilesDB fill:#FFD700
+    style CheckNotif fill:#FFD700
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <button class="print-btn" onclick="window.print()">🖨️ Print All Flowcharts</button>
+            <p><strong>Bank SulutGo ServiceDesk</strong> - Process Flowcharts Documentation</p>
+            <p>© 2025 Bank SulutGo. All Rights Reserved.</p>
+        </div>
+    </div>
+
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis'
+            }
+        });
+
+        function showSection(num) {
+            // Hide all sections
+            for (let i = 1; i <= 6; i++) {
+                document.getElementById('section' + i).classList.remove('active');
+            }
+
+            // Remove active class from all tabs
+            const tabs = document.querySelectorAll('.nav-tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
+
+            // Show selected section
+            document.getElementById('section' + num).classList.add('active');
+
+            // Add active class to clicked tab
+            tabs[num - 1].classList.add('active');
+
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Add keyboard navigation
+        document.addEventListener('keydown', function(e) {
+            const currentActive = document.querySelector('.flowchart-section.active');
+            if (!currentActive) return;
+
+            const currentNum = parseInt(currentActive.id.replace('section', ''));
+
+            if (e.key === 'ArrowRight' && currentNum < 6) {
+                showSection(currentNum + 1);
+            } else if (e.key === 'ArrowLeft' && currentNum > 1) {
+                showSection(currentNum - 1);
+            }
+        });
+    </script>
+</body>
+</html>

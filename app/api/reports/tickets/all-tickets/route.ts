@@ -163,17 +163,39 @@ export async function GET(request: NextRequest) {
     if (priority && priority !== 'ALL') {
       whereClause.priority = priority;
     }
-    // Filter by category - check ALL THREE possible locations:
+    // Filter by category - check ALL possible locations:
     // 1. ticket.categoryId (ticket's direct category field)
     // 2. service.tier1CategoryId (service's NEW 3-tier system)
     // 3. service.categoryId (service's OLD ServiceCategory system)
+    // IMPORTANT: The categoryId passed is from the NEW Category table, but we need to also
+    // check for ServiceCategories with the same NAME (they have different IDs)
     // Skip for users who already have full access through role-based filtering
     if (categoryId && categoryId !== 'ALL' && !skipCategoryFilter) {
+      // First, get the category name to find matching ServiceCategory
+      const selectedCategory = await prisma.category.findUnique({
+        where: { id: categoryId },
+        select: { name: true }
+      });
+
+      // Find ServiceCategory with the same name (if exists)
+      const matchingServiceCategory = selectedCategory
+        ? await prisma.serviceCategory.findFirst({
+            where: {
+              name: selectedCategory.name,
+              isActive: true
+            },
+            select: { id: true }
+          })
+        : null;
+
       const categoryFilter = {
         OR: [
-          { categoryId: categoryId },  // Direct ticket field
-          { service: { tier1CategoryId: categoryId } },  // Service 3-tier categorization (new)
-          { service: { categoryId: categoryId } }  // Service old category system
+          { categoryId: categoryId },  // Direct ticket field (NEW Category ID)
+          { service: { tier1CategoryId: categoryId } },  // Service 3-tier categorization (NEW Category ID)
+          { service: { categoryId: categoryId } },  // Service old category (try NEW Category ID first)
+          ...(matchingServiceCategory
+            ? [{ service: { categoryId: matchingServiceCategory.id } }]  // Service old category (OLD ServiceCategory ID)
+            : [])
         ]
       };
 
@@ -202,18 +224,29 @@ export async function GET(request: NextRequest) {
       };
     }
     
-    // Date range filter
+    // Date range filter - based on createdAt
     if (startDate || endDate) {
       whereClause.createdAt = {};
       if (startDate) {
-        whereClause.createdAt.gte = new Date(startDate);
+        // Parse the start date and set to beginning of day (00:00:00)
+        const startDateObj = new Date(startDate);
+        startDateObj.setHours(0, 0, 0, 0);
+        whereClause.createdAt.gte = startDateObj;
       }
       if (endDate) {
-        // Include the entire day by setting to end of day
+        // Parse the end date and set to end of day (23:59:59.999)
         const endDateObj = new Date(endDate);
         endDateObj.setHours(23, 59, 59, 999);
         whereClause.createdAt.lte = endDateObj;
       }
+
+      // Debug logging
+      console.log('All Tickets Report - Date Filter:', {
+        startDate: whereClause.createdAt.gte?.toISOString(),
+        endDate: whereClause.createdAt.lte?.toISOString(),
+        rawStartDate: startDate,
+        rawEndDate: endDate
+      });
     }
     
     // Search filter - properly scoped within role access
@@ -658,17 +691,39 @@ export async function POST(request: NextRequest) {
     if (filters.priority && filters.priority !== 'ALL') {
       whereClause.priority = filters.priority;
     }
-    // Filter by category - check ALL THREE possible locations:
+    // Filter by category - check ALL possible locations:
     // 1. ticket.categoryId (ticket's direct category field)
     // 2. service.tier1CategoryId (service's NEW 3-tier system)
     // 3. service.categoryId (service's OLD ServiceCategory system)
+    // IMPORTANT: The categoryId passed is from the NEW Category table, but we need to also
+    // check for ServiceCategories with the same NAME (they have different IDs)
     // Skip for users who already have full access through role-based filtering
     if (filters.categoryId && filters.categoryId !== 'ALL' && !skipCategoryFilter) {
+      // First, get the category name to find matching ServiceCategory
+      const selectedCategoryExport = await prisma.category.findUnique({
+        where: { id: filters.categoryId },
+        select: { name: true }
+      });
+
+      // Find ServiceCategory with the same name (if exists)
+      const matchingServiceCategoryExport = selectedCategoryExport
+        ? await prisma.serviceCategory.findFirst({
+            where: {
+              name: selectedCategoryExport.name,
+              isActive: true
+            },
+            select: { id: true }
+          })
+        : null;
+
       const categoryFilter = {
         OR: [
-          { categoryId: filters.categoryId },  // Direct ticket field
-          { service: { tier1CategoryId: filters.categoryId } },  // Service 3-tier categorization (new)
-          { service: { categoryId: filters.categoryId } }  // Service old category system
+          { categoryId: filters.categoryId },  // Direct ticket field (NEW Category ID)
+          { service: { tier1CategoryId: filters.categoryId } },  // Service 3-tier categorization (NEW Category ID)
+          { service: { categoryId: filters.categoryId } },  // Service old category (try NEW Category ID first)
+          ...(matchingServiceCategoryExport
+            ? [{ service: { categoryId: matchingServiceCategoryExport.id } }]  // Service old category (OLD ServiceCategory ID)
+            : [])
         ]
       };
 
