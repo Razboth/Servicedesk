@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bank SulutGo ServiceDesk - Ticket Lifecycle Process</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1e40af;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #64748b;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .diagram-section {
+            margin-bottom: 40px;
+        }
+        .diagram-section h2 {
+            color: #1e40af;
+            border-bottom: 2px solid #3b82f6;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .legend {
+            background-color: #f8fafc;
+            padding: 20px;
+            border-radius: 6px;
+            margin-top: 30px;
+        }
+        .legend h3 {
+            color: #1e40af;
+            margin-top: 0;
+        }
+        .legend-item {
+            display: inline-block;
+            margin-right: 20px;
+            margin-bottom: 10px;
+        }
+        .legend-color {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+            vertical-align: middle;
+            border-radius: 3px;
+        }
+        .info-box {
+            background-color: #dbeafe;
+            border-left: 4px solid #3b82f6;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .info-box h4 {
+            margin-top: 0;
+            color: #1e40af;
+        }
+        @media print {
+            body { background-color: white; }
+            .container { box-shadow: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎫 Bank SulutGo ServiceDesk</h1>
+        <div class="subtitle">Ticket Lifecycle Process - From Creation to Closure</div>
+
+        <div class="info-box">
+            <h4>📋 Overview</h4>
+            <p>Diagram ini menunjukkan alur lengkap siklus hidup ticket dalam sistem Bank SulutGo ServiceDesk, mulai dari pembuatan ticket oleh user hingga penutupan ticket setelah penyelesaian masalah.</p>
+        </div>
+
+        <!-- Main Ticket Lifecycle Flow -->
+        <div class="diagram-section">
+            <h2>1. Alur Utama Siklus Hidup Ticket</h2>
+            <div class="mermaid">
+flowchart TD
+    Start([User Memiliki Masalah/Permintaan]) --> SelectService[User Memilih Service dari Katalog]
+    SelectService --> FillForm[User Mengisi Form Ticket]
+    FillForm --> FillDetails{Service Memiliki<br/>Custom Fields?}
+
+    FillDetails -->|Ya| CustomFields[User Mengisi Custom Fields]
+    FillDetails -->|Tidak| SubmitTicket
+    CustomFields --> SubmitTicket[User Submit Ticket]
+
+    SubmitTicket --> CheckApproval{Service Memerlukan<br/>Approval?}
+
+    CheckApproval -->|Ya| PendingApproval[Status: PENDING_APPROVAL]
+    CheckApproval -->|Tidak| TicketCreated
+
+    PendingApproval --> ManagerReview{Manager<br/>Mereview}
+    ManagerReview -->|Approved| TicketCreated[Status: OPEN<br/>Ticket Number Generated]
+    ManagerReview -->|Rejected| Rejected[Status: REJECTED<br/>Ticket Ditolak]
+
+    Rejected --> NotifyUser1[Notifikasi ke User<br/>Email & Dashboard]
+    NotifyUser1 --> End1([Selesai - Ditolak])
+
+    TicketCreated --> AutoAssign{Auto-Assign<br/>Enabled?}
+
+    AutoAssign -->|Ya| AssignToGroup[Assign ke Support Group<br/>Berdasarkan Service]
+    AutoAssign -->|Tidak| ManualAssign[Admin/Manager<br/>Assign Secara Manual]
+
+    AssignToGroup --> NotifyGroup[Notifikasi ke Support Group]
+    ManualAssign --> NotifyGroup
+
+    NotifyGroup --> TechReview{Technician<br/>Mereview Ticket}
+
+    TechReview -->|Claim Ticket| ClaimTicket[Technician Claim Ticket]
+    TechReview -->|Tidak Ada yang Claim| Escalate1{Melewati SLA<br/>Response Time?}
+
+    Escalate1 -->|Ya| EscalateManager[Escalate ke Manager<br/>Notifikasi Urgent]
+    Escalate1 -->|Tidak| NotifyGroup
+
+    EscalateManager --> ManualAssign
+
+    ClaimTicket --> InProgress[Status: IN_PROGRESS<br/>Technician Mulai Bekerja]
+
+    InProgress --> WorkOnTicket[Technician Bekerja<br/>Menyelesaikan Masalah]
+
+    WorkOnTicket --> AddComments{Perlu Update<br/>ke User?}
+    AddComments -->|Ya| PostComment[Technician Menambah<br/>Comment/Update]
+    AddComments -->|Tidak| WorkOnTicket
+    PostComment --> WorkOnTicket
+
+    WorkOnTicket --> CheckTasks{Ada Task<br/>Template?}
+
+    CheckTasks -->|Ya| ExecuteTasks[Technician Menyelesaikan<br/>Tasks Satu Per Satu]
+    CheckTasks -->|Tidak| ResolveProblem
+
+    ExecuteTasks --> AllTasksDone{Semua Tasks<br/>Completed?}
+    AllTasksDone -->|Tidak| ExecuteTasks
+    AllTasksDone -->|Ya| ResolveProblem[Masalah Diselesaikan]
+
+    ResolveProblem --> AddResolution[Technician Menambahkan<br/>Resolution Notes]
+    AddResolution --> MarkResolved[Status: RESOLVED]
+
+    MarkResolved --> NotifyUserResolved[Notifikasi ke User<br/>Ticket Sudah Resolved]
+
+    NotifyUserResolved --> UserVerify{User Memverifikasi<br/>Solusi}
+
+    UserVerify -->|Puas| UserClose[User Menutup Ticket]
+    UserVerify -->|Tidak Puas| ReopenTicket[User Reopen Ticket<br/>dengan Komentar]
+    UserVerify -->|Tidak Ada Respon| AutoClose{Auto-Close<br/>Setelah X Hari?}
+
+    ReopenTicket --> InProgress
+
+    AutoClose -->|Ya| SystemClose[System Auto-Close Ticket]
+    AutoClose -->|Tidak| WaitUserResponse[Menunggu Respon User]
+    WaitUserResponse --> UserVerify
+
+    UserClose --> ClosedStatus[Status: CLOSED]
+    SystemClose --> ClosedStatus
+
+    ClosedStatus --> SLACheck{Ticket Memenuhi<br/>SLA?}
+
+    SLACheck -->|Ya| RecordSuccess[Record ke Statistik<br/>SLA Compliance: Success]
+    SLACheck -->|Tidak| RecordBreach[Record ke Statistik<br/>SLA Breach]
+
+    RecordSuccess --> GenerateReport[Generate Report Data]
+    RecordBreach --> GenerateReport
+
+    GenerateReport --> ArchiveTicket[Archive Ticket Data]
+    ArchiveTicket --> End2([Selesai - Ticket Closed])
+
+    style Start fill:#e0f2fe,stroke:#0284c7,stroke-width:3px
+    style TicketCreated fill:#dcfce7,stroke:#16a34a,stroke-width:2px
+    style PendingApproval fill:#fef3c7,stroke:#ca8a04,stroke-width:2px
+    style InProgress fill:#dbeafe,stroke:#2563eb,stroke-width:2px
+    style MarkResolved fill:#fce7f3,stroke:#db2777,stroke-width:2px
+    style ClosedStatus fill:#dcfce7,stroke:#16a34a,stroke-width:3px
+    style Rejected fill:#fee2e2,stroke:#dc2626,stroke-width:2px
+    style End1 fill:#fee2e2,stroke:#dc2626,stroke-width:3px
+    style End2 fill:#dcfce7,stroke:#16a34a,stroke-width:3px
+            </div>
+        </div>
+
+        <!-- Approval Workflow Detail -->
+        <div class="diagram-section">
+            <h2>2. Detail Proses Approval Workflow</h2>
+            <div class="mermaid">
+flowchart TD
+    SubmitApproval([User Submit Ticket<br/>yang Memerlukan Approval]) --> Level1{Service Memiliki<br/>Multi-Level Approval?}
+
+    Level1 -->|Ya| Approver1[Level 1: Branch Manager<br/>Mereview]
+    Level1 -->|Tidak| SingleApprover[Manager Mereview]
+
+    SingleApprover --> Decision1{Keputusan}
+
+    Decision1 -->|Approved| CreateTicket1[Ticket Dibuat<br/>Status: OPEN]
+    Decision1 -->|Rejected| Reject1[Ticket Ditolak]
+    Decision1 -->|Request Info| RequestMoreInfo1[Minta Info Tambahan<br/>dari User]
+
+    RequestMoreInfo1 --> UserProvides1[User Memberikan<br/>Info Tambahan]
+    UserProvides1 --> SingleApprover
+
+    Approver1 --> Decision2{Keputusan Level 1}
+
+    Decision2 -->|Approved| Approver2[Level 2: Department Head<br/>Mereview]
+    Decision2 -->|Rejected| Reject2[Ticket Ditolak]
+    Decision2 -->|Request Info| RequestMoreInfo2[Minta Info Tambahan]
+
+    RequestMoreInfo2 --> UserProvides2[User Memberikan<br/>Info Tambahan]
+    UserProvides2 --> Approver1
+
+    Approver2 --> Decision3{Keputusan Level 2}
+
+    Decision3 -->|Approved| CheckLevel3{Perlu Level 3<br/>Approval?}
+    Decision3 -->|Rejected| Reject3[Ticket Ditolak]
+    Decision3 -->|Request Info| RequestMoreInfo3[Minta Info Tambahan]
+
+    RequestMoreInfo3 --> UserProvides3[User Memberikan<br/>Info Tambahan]
+    UserProvides3 --> Approver2
+
+    CheckLevel3 -->|Ya| Approver3[Level 3: Director<br/>Mereview]
+    CheckLevel3 -->|Tidak| CreateTicket2[Ticket Dibuat<br/>Status: OPEN]
+
+    Approver3 --> Decision4{Keputusan Level 3}
+
+    Decision4 -->|Approved| CreateTicket3[Ticket Dibuat<br/>Status: OPEN]
+    Decision4 -->|Rejected| Reject4[Ticket Ditolak]
+
+    CreateTicket1 --> Success([Lanjut ke Proses Assignment])
+    CreateTicket2 --> Success
+    CreateTicket3 --> Success
+
+    Reject1 --> Rejected([Ticket Rejected<br/>Notifikasi ke User])
+    Reject2 --> Rejected
+    Reject3 --> Rejected
+    Reject4 --> Rejected
+
+    style SubmitApproval fill:#e0f2fe,stroke:#0284c7,stroke-width:3px
+    style Success fill:#dcfce7,stroke:#16a34a,stroke-width:3px
+    style Rejected fill:#fee2e2,stroke:#dc2626,stroke-width:3px
+    style Approver1 fill:#fef3c7,stroke:#ca8a04,stroke-width:2px
+    style Approver2 fill:#fed7aa,stroke:#ea580c,stroke-width:2px
+    style Approver3 fill:#fecaca,stroke:#dc2626,stroke-width:2px
+            </div>
+        </div>
+
+        <!-- SLA Monitoring -->
+        <div class="diagram-section">
+            <h2>3. Proses Monitoring SLA (Service Level Agreement)</h2>
+            <div class="mermaid">
+flowchart TD
+    TicketOpen([Ticket Dibuat<br/>Status: OPEN]) --> StartSLA[Start SLA Timer<br/>Response Time & Resolution Time]
+
+    StartSLA --> MonitorResponse{Response Time<br/>SLA Monitoring}
+
+    MonitorResponse --> CheckResponse{Technician<br/>Respond?}
+
+    CheckResponse -->|Ya, Dalam SLA| ResponseMet[SLA Response: MET<br/>Tercatat di Log]
+    CheckResponse -->|Tidak, Melewati SLA| ResponseBreach[SLA Response: BREACHED<br/>Alert ke Manager]
+
+    ResponseBreach --> EscalateResponse[Escalate Ticket<br/>Priority Dinaikkan]
+    ResponseMet --> MonitorResolution
+    EscalateResponse --> MonitorResolution
+
+    MonitorResolution{Resolution Time<br/>SLA Monitoring} --> WorkInProgress[Technician Bekerja]
+
+    WorkInProgress --> CheckProgress{Regular Check<br/>50%, 75%, 90% SLA}
+
+    CheckProgress -->|50% Terlewati| Warning1[Peringatan ke Technician<br/>Yellow Alert]
+    CheckProgress -->|75% Terlewati| Warning2[Peringatan ke Manager<br/>Orange Alert]
+    CheckProgress -->|90% Terlewati| Warning3[Urgent Alert<br/>Red Alert]
+
+    Warning1 --> ContinueWork
+    Warning2 --> ContinueWork
+    Warning3 --> ContinueWork[Technician Melanjutkan Pekerjaan]
+
+    ContinueWork --> TicketResolved{Ticket Diselesaikan}
+
+    TicketResolved -->|Dalam SLA| ResolutionMet[SLA Resolution: MET<br/>Success Metric]
+    TicketResolved -->|Melewati SLA| ResolutionBreach[SLA Resolution: BREACHED<br/>Breach Metric]
+
+    ResolutionMet --> UpdateDashboard[Update SLA Dashboard<br/>Compliance Report]
+    ResolutionBreach --> UpdateDashboard
+
+    UpdateDashboard --> GenerateSLAReport[Generate SLA Performance Report]
+
+    GenerateSLAReport --> End([SLA Monitoring Complete])
+
+    style TicketOpen fill:#e0f2fe,stroke:#0284c7,stroke-width:3px
+    style ResponseMet fill:#dcfce7,stroke:#16a34a,stroke-width:2px
+    style ResolutionMet fill:#dcfce7,stroke:#16a34a,stroke-width:2px
+    style ResponseBreach fill:#fee2e2,stroke:#dc2626,stroke-width:2px
+    style ResolutionBreach fill:#fee2e2,stroke:#dc2626,stroke-width:2px
+    style Warning1 fill:#fef3c7,stroke:#ca8a04,stroke-width:2px
+    style Warning2 fill:#fed7aa,stroke:#ea580c,stroke-width:2px
+    style Warning3 fill:#fee2e2,stroke:#dc2626,stroke-width:2px
+            </div>
+        </div>
+
+        <!-- Escalation Process -->
+        <div class="diagram-section">
+            <h2>4. Proses Escalation Ticket</h2>
+            <div class="mermaid">
+flowchart TD
+    TriggerEscalation([Trigger Escalation]) --> CheckTrigger{Jenis Trigger}
+
+    CheckTrigger -->|SLA Breach| SLAEscalation[SLA Response/Resolution<br/>Time Terlewati]
+    CheckTrigger -->|No Response| NoResponseEscalation[Tidak Ada Respon<br/>dari Technician]
+    CheckTrigger -->|High Priority| HighPriorityEscalation[Priority: URGENT<br/>Auto-Escalate]
+    CheckTrigger -->|Manual| ManualEscalation[User/Manager<br/>Request Escalate]
+
+    SLAEscalation --> Level1Escalate
+    NoResponseEscalation --> Level1Escalate
+    HighPriorityEscalation --> Level1Escalate
+    ManualEscalation --> Level1Escalate
+
+    Level1Escalate[Level 1: Escalate ke<br/>Senior Technician] --> NotifySenior[Notifikasi ke Senior Tech<br/>Email & SMS Alert]
+
+    NotifySenior --> SeniorReview{Senior Tech<br/>Take Action?}
+
+    SeniorReview -->|Ya| SeniorHandle[Senior Tech Handle Ticket<br/>Re-assign atau Assist]
+    SeniorReview -->|Tidak dalam 2 Jam| Level2Escalate[Level 2: Escalate ke<br/>Support Group Manager]
+
+    SeniorHandle --> MonitorProgress[Monitor Progress]
+
+    Level2Escalate --> NotifyManager[Notifikasi ke Manager<br/>High Priority Alert]
+
+    NotifyManager --> ManagerReview{Manager<br/>Take Action?}
+
+    ManagerReview -->|Ya| ManagerIntervene[Manager Intervene<br/>Assign ke Best Technician]
+    ManagerReview -->|Tidak dalam 1 Jam| Level3Escalate[Level 3: Escalate ke<br/>Department Head]
+
+    ManagerIntervene --> MonitorProgress
+
+    Level3Escalate --> NotifyHead[Notifikasi ke Dept Head<br/>Critical Alert]
+
+    NotifyHead --> HeadReview{Department Head<br/>Take Action?}
+
+    HeadReview -->|Ya| HeadIntervene[Dept Head Assign Resources<br/>Top Priority Handling]
+    HeadReview -->|Tidak dalam 30 Menit| Level4Escalate[Level 4: Escalate ke<br/>IT Director]
+
+    HeadIntervene --> MonitorProgress
+
+    Level4Escalate --> DirectorAction[Director Review & Action<br/>Critical Issue Handling]
+
+    DirectorAction --> MonitorProgress
+
+    MonitorProgress --> CheckResolution{Ticket<br/>Resolved?}
+
+    CheckResolution -->|Ya| RecordEscalation[Record Escalation Metrics<br/>Update Dashboard]
+    CheckResolution -->|Tidak| ContinueMonitor[Continue Monitoring<br/>Daily Updates Required]
+
+    ContinueMonitor --> MonitorProgress
+
+    RecordEscalation --> GenerateReport[Generate Escalation Report<br/>untuk Management]
+
+    GenerateReport --> End([Escalation Complete])
+
+    style TriggerEscalation fill:#fee2e2,stroke:#dc2626,stroke-width:3px
+    style Level1Escalate fill:#fef3c7,stroke:#ca8a04,stroke-width:2px
+    style Level2Escalate fill:#fed7aa,stroke:#ea580c,stroke-width:2px
+    style Level3Escalate fill:#fecaca,stroke:#dc2626,stroke-width:2px
+    style Level4Escalate fill:#fee2e2,stroke:#991b1b,stroke-width:3px
+    style End fill:#dcfce7,stroke:#16a34a,stroke-width:3px
+            </div>
+        </div>
+
+        <!-- Communication Flow -->
+        <div class="diagram-section">
+            <h2>5. Alur Komunikasi dan Notifikasi</h2>
+            <div class="mermaid">
+flowchart TD
+    EventTrigger([Event Trigger]) --> CheckEvent{Jenis Event}
+
+    CheckEvent -->|Ticket Created| NotifyCreate[Notifikasi Pembuatan Ticket]
+    CheckEvent -->|Ticket Assigned| NotifyAssign[Notifikasi Assignment]
+    CheckEvent -->|Comment Added| NotifyComment[Notifikasi Comment Baru]
+    CheckEvent -->|Status Changed| NotifyStatus[Notifikasi Perubahan Status]
+    CheckEvent -->|SLA Warning| NotifySLA[Notifikasi SLA Warning]
+    CheckEvent -->|Ticket Resolved| NotifyResolved[Notifikasi Ticket Resolved]
+    CheckEvent -->|Ticket Closed| NotifyClosed[Notifikasi Ticket Closed]
+
+    NotifyCreate --> PrepareMessage1
+    NotifyAssign --> PrepareMessage1
+    NotifyComment --> PrepareMessage1
+    NotifyStatus --> PrepareMessage1
+    NotifySLA --> PrepareMessage1
+    NotifyResolved --> PrepareMessage1
+    NotifyClosed --> PrepareMessage1
+
+    PrepareMessage1[Prepare Notification Message<br/>dengan Template] --> DetermineRecipients{Tentukan Penerima}
+
+    DetermineRecipients -->|User| AddUser[Tambah User ke List]
+    DetermineRecipients -->|Technician| AddTech[Tambah Technician ke List]
+    DetermineRecipients -->|Manager| AddManager[Tambah Manager ke List]
+    DetermineRecipients -->|Support Group| AddGroup[Tambah Support Group ke List]
+
+    AddUser --> SendChannels
+    AddTech --> SendChannels
+    AddManager --> SendChannels
+    AddGroup --> SendChannels
+
+    SendChannels{Kirim via Channel} --> EmailChannel[Email Notification<br/>SMTP Server]
+    SendChannels --> DashboardChannel[In-App Notification<br/>Dashboard Bell Icon]
+    SendChannels --> SMSChannel{SMS Required?}
+
+    SMSChannel -->|Ya, untuk URGENT| SendSMS[Kirim SMS<br/>SMS Gateway]
+    SMSChannel -->|Tidak| Skip
+
+    EmailChannel --> LogEmail[Log Email Sent]
+    DashboardChannel --> LogDashboard[Log Dashboard Notification]
+    SendSMS --> LogSMS[Log SMS Sent]
+    Skip --> Collect
+
+    LogEmail --> Collect
+    LogDashboard --> Collect
+    LogSMS --> Collect
+
+    Collect[Collect Delivery Status] --> UpdateNotificationTable[Update Notification Table<br/>dalam Database]
+
+    UpdateNotificationTable --> CheckDelivery{Delivery<br/>Successful?}
+
+    CheckDelivery -->|Ya| MarkSent[Mark as Sent<br/>Record Timestamp]
+    CheckDelivery -->|Tidak| Retry{Retry<br/>Attempt < 3?}
+
+    Retry -->|Ya| RetryQueue[Add to Retry Queue<br/>Wait 5 Minutes]
+    Retry -->|Tidak| MarkFailed[Mark as Failed<br/>Log Error]
+
+    RetryQueue --> SendChannels
+
+    MarkSent --> End1([Notification Sent])
+    MarkFailed --> End2([Notification Failed])
+
+    style EventTrigger fill:#e0f2fe,stroke:#0284c7,stroke-width:3px
+    style EmailChannel fill:#dbeafe,stroke:#2563eb,stroke-width:2px
+    style DashboardChannel fill:#dbeafe,stroke:#2563eb,stroke-width:2px
+    style SendSMS fill:#fef3c7,stroke:#ca8a04,stroke-width:2px
+    style End1 fill:#dcfce7,stroke:#16a34a,stroke-width:3px
+    style End2 fill:#fee2e2,stroke:#dc2626,stroke-width:3px
+            </div>
+        </div>
+
+        <!-- Status Transition Diagram -->
+        <div class="diagram-section">
+            <h2>6. Diagram Transisi Status Ticket</h2>
+            <div class="mermaid">
+stateDiagram-v2
+    [*] --> DRAFT: User Mulai Membuat Ticket
+
+    DRAFT --> PENDING_APPROVAL: Submit untuk Approval
+    DRAFT --> OPEN: Submit tanpa Approval
+
+    PENDING_APPROVAL --> OPEN: Approved oleh Manager
+    PENDING_APPROVAL --> REJECTED: Rejected oleh Manager
+    PENDING_APPROVAL --> PENDING_APPROVAL: Request More Info
+
+    REJECTED --> [*]: Ticket Ditolak
+
+    OPEN --> IN_PROGRESS: Technician Claim & Start Work
+    OPEN --> CANCELLED: User Cancel Ticket
+
+    IN_PROGRESS --> ON_HOLD: Menunggu Info/Resources
+    IN_PROGRESS --> RESOLVED: Masalah Diselesaikan
+    IN_PROGRESS --> CANCELLED: User Cancel
+
+    ON_HOLD --> IN_PROGRESS: Info/Resources Tersedia
+    ON_HOLD --> CANCELLED: User Cancel
+
+    RESOLVED --> CLOSED: User Verify & Close
+    RESOLVED --> IN_PROGRESS: User Reopen (Tidak Puas)
+    RESOLVED --> CLOSED: Auto-Close setelah X Hari
+
+    CANCELLED --> [*]: Ticket Cancelled
+
+    CLOSED --> [*]: Ticket Selesai
+
+    note right of PENDING_APPROVAL
+        Hanya untuk Service
+        yang memerlukan Approval
+    end note
+
+    note right of ON_HOLD
+        Technician menunggu:
+        - User Response
+        - Third Party
+        - Parts/Equipment
+    end note
+
+    note right of RESOLVED
+        User memiliki waktu
+        untuk verify solusi
+        sebelum auto-close
+    end note
+            </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="legend">
+            <h3>📊 Keterangan Status Ticket</h3>
+            <div class="legend-item">
+                <span class="legend-color" style="background-color: #e0f2fe;"></span>
+                <strong>DRAFT/START:</strong> Awal proses
+            </div>
+            <div class="legend-item">
+                <span class="legend-color" style="background-color: #fef3c7;"></span>
+                <strong>PENDING_APPROVAL:</strong> Menunggu persetujuan
+            </div>
+            <div class="legend-item">
+                <span class="legend-color" style="background-color: #dcfce7;"></span>
+                <strong>OPEN:</strong> Ticket dibuat, siap untuk dikerjakan
+            </div>
+            <div class="legend-item">
+                <span class="legend-color" style="background-color: #dbeafe;"></span>
+                <strong>IN_PROGRESS:</strong> Sedang dikerjakan oleh technician
+            </div>
+            <div class="legend-item">
+                <span class="legend-color" style="background-color: #fed7aa;"></span>
+                <strong>ON_HOLD:</strong> Ditunda sementara
+            </div>
+            <div class="legend-item">
+                <span class="legend-color" style="background-color: #fce7f3;"></span>
+                <strong>RESOLVED:</strong> Masalah sudah diselesaikan
+            </div>
+            <div class="legend-item">
+                <span class="legend-color" style="background-color: #dcfce7;"></span>
+                <strong>CLOSED:</strong> Ticket ditutup
+            </div>
+            <div class="legend-item">
+                <span class="legend-color" style="background-color: #fee2e2;"></span>
+                <strong>REJECTED/CANCELLED:</strong> Ticket ditolak atau dibatalkan
+            </div>
+        </div>
+
+        <div class="legend">
+            <h3>⏱️ SLA (Service Level Agreement) Metrics</h3>
+            <ul>
+                <li><strong>Response Time:</strong> Waktu maksimal untuk technician merespon ticket pertama kali</li>
+                <li><strong>Resolution Time:</strong> Waktu maksimal untuk menyelesaikan ticket hingga status RESOLVED</li>
+                <li><strong>Priority Levels:</strong>
+                    <ul>
+                        <li>LOW: Response 24 jam, Resolution 72 jam</li>
+                        <li>MEDIUM: Response 8 jam, Resolution 48 jam</li>
+                        <li>HIGH: Response 4 jam, Resolution 24 jam</li>
+                        <li>URGENT: Response 1 jam, Resolution 8 jam</li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+
+        <div class="legend">
+            <h3>👥 Role & Responsibilities</h3>
+            <ul>
+                <li><strong>User:</strong> Membuat ticket, memberikan informasi tambahan, memverifikasi solusi</li>
+                <li><strong>Technician:</strong> Claim ticket, bekerja menyelesaikan masalah, update progress</li>
+                <li><strong>Manager:</strong> Approve request, assign ticket, monitor SLA, handle escalation</li>
+                <li><strong>Admin:</strong> Manage service catalog, configure SLA, manage users dan support groups</li>
+                <li><strong>Support Group:</strong> Team technician yang bertanggung jawab untuk kategori service tertentu</li>
+            </ul>
+        </div>
+
+        <div class="info-box" style="margin-top: 30px;">
+            <h4>📝 Catatan Penting</h4>
+            <ul>
+                <li>Setiap perubahan status ticket akan tercatat dalam audit log</li>
+                <li>Notifikasi otomatis dikirim ke pihak terkait pada setiap event penting</li>
+                <li>SLA timer berjalan otomatis dan memberikan warning pada threshold tertentu</li>
+                <li>User dapat menambahkan comment dan attachment kapan saja selama ticket masih aktif</li>
+                <li>Technician wajib menambahkan resolution notes sebelum mark ticket sebagai RESOLVED</li>
+                <li>Ticket yang RESOLVED akan auto-close setelah 7 hari jika tidak ada respon dari user</li>
+                <li>Escalation dilakukan otomatis jika SLA terlewati atau tidak ada respon dari technician</li>
+            </ul>
+        </div>
+
+        <div style="text-align: center; margin-top: 40px; padding: 20px; background-color: #f8fafc; border-radius: 6px;">
+            <p style="color: #64748b; font-size: 12px; margin: 0;">
+                Generated by Bank SulutGo ServiceDesk System • Version 2.8.0<br>
+                © 2025 Bank SulutGo - IT Division
+            </p>
+        </div>
+    </div>
+
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis'
+            },
+            securityLevel: 'loose'
+        });
+    </script>
+</body>
+</html>
