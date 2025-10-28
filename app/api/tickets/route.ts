@@ -552,12 +552,38 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Category filter - check BOTH ticket.categoryId AND service.tier1CategoryId
+    // Category filter - check ALL possible locations:
+    // 1. ticket.categoryId (ticket's direct category field)
+    // 2. service.tier1CategoryId (service's NEW 3-tier system)
+    // 3. service.categoryId (service's OLD ServiceCategory system)
+    // IMPORTANT: The categoryId passed is from the NEW Category table, but we need to also
+    // check for ServiceCategories with the same NAME (they have different IDs)
     if (categoryId) {
+      // First, get the category name to find matching ServiceCategory
+      const selectedCategory = await prisma.category.findUnique({
+        where: { id: categoryId },
+        select: { name: true }
+      });
+
+      // Find ServiceCategory with the same name (if exists)
+      const matchingServiceCategory = selectedCategory
+        ? await prisma.serviceCategory.findFirst({
+            where: {
+              name: selectedCategory.name,
+              isActive: true
+            },
+            select: { id: true }
+          })
+        : null;
+
       const categoryFilter = {
         OR: [
-          { categoryId: categoryId },  // Direct ticket field
-          { service: { tier1CategoryId: categoryId } }  // Service 3-tier categorization
+          { categoryId: categoryId },  // Direct ticket field (NEW Category ID)
+          { service: { tier1CategoryId: categoryId } },  // Service 3-tier categorization (NEW Category ID)
+          { service: { categoryId: categoryId } },  // Service old category (try NEW Category ID first)
+          ...(matchingServiceCategory
+            ? [{ service: { categoryId: matchingServiceCategory.id } }]  // Service old category (OLD ServiceCategory ID)
+            : [])
         ]
       };
 
