@@ -371,31 +371,6 @@ SOC Team`;
         </p>
       </div>
 
-      {/* SOC Parser Card */}
-      <Card className="border-2 hover:shadow-lg transition-shadow mb-6">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-red-600" />
-            <CardTitle>SOC Notification Parser</CardTitle>
-          </div>
-          <CardDescription>
-            Parse SOC email notifications and automatically create security incident tickets
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-gray-600 mb-4">
-            Use this tool to quickly convert SOC notification emails into structured tickets with all required fields.
-          </p>
-          <Button 
-            className="w-full bg-red-600 hover:bg-red-700"
-            onClick={() => document.getElementById('soc-textarea')?.focus()}
-          >
-            <Edit className="mr-2 h-4 w-4" />
-            Parse SOC Notification
-          </Button>
-        </CardContent>
-      </Card>
-
       <Card className="mb-6">
         <CardHeader>
           <CardTitle>Parse SOC Notification</CardTitle>

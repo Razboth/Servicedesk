@@ -337,6 +337,27 @@ const standardReports: Report[] = [
     type: 'standard',
     roles: ['MANAGER', 'ADMIN'],
     badge: 'Organizational'
+  },
+  // Security Reports
+  {
+    title: 'Security Analyst Tickets',
+    description: 'Dedicated report for security analyst tickets with advanced filtering',
+    href: '/reports/security-analyst',
+    icon: Shield,
+    type: 'standard',
+    roles: ['SECURITY_ANALYST', 'ADMIN'],
+    badge: 'Security',
+    lastRun: 'Live'
+  },
+  {
+    title: 'Transaction Claims Report',
+    description: 'Track and analyze transaction claim tickets with detailed filtering',
+    href: '/reports/transaction-claims',
+    icon: FileText,
+    type: 'standard',
+    roles: ['USER', 'TECHNICIAN', 'MANAGER', 'ADMIN'],
+    badge: 'Claims',
+    lastRun: 'Live'
   }
 ]
 
