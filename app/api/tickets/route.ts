@@ -1093,12 +1093,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate that finalPriority is a valid TicketPriority enum value
-    const validPriorities = ['LOW', 'MEDIUM', 'HIGH', 'URGENT', 'CRITICAL'];
-    if (!validPriorities.includes(finalPriority)) {
+    const validPriorities = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL', 'EMERGENCY'];
+    if (!finalPriority || !validPriorities.includes(finalPriority)) {
       console.error('Invalid priority value detected:', finalPriority);
-      // Fallback to MEDIUM if priority is invalid
-      finalPriority = 'MEDIUM';
-      priorityWarnings.push('Priority was invalid and has been set to MEDIUM');
+      // Fallback to HIGH if priority is invalid (as requested by user)
+      finalPriority = 'HIGH';
+      priorityWarnings.push('Priority was invalid or missing, defaulting to HIGH');
     }
 
     // Auto-mark tickets as confidential for Security Analysts
