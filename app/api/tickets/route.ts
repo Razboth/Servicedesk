@@ -944,8 +944,11 @@ export async function GET(request: NextRequest) {
 
 // POST /api/tickets - Create new ticket
 export async function POST(request: NextRequest) {
+  // Declare session outside try block so it's accessible in catch block
+  let session: Awaited<ReturnType<typeof auth>> | null = null;
+
   try {
-    const session = await auth();
+    session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -1027,6 +1030,14 @@ export async function POST(request: NextRequest) {
     
     const validatedData = createTicketSchema.parse(body);
 
+    // Log request details for debugging
+    console.log('[TICKET CREATION] Request data:', {
+      serviceId: validatedData.serviceId,
+      priority: validatedData.priority,
+      userId: session.user.id,
+      userRole: session.user.role
+    });
+
     // Initialize priority validator
     const priorityValidator = new PriorityValidator(prisma);
     
@@ -1079,6 +1090,15 @@ export async function POST(request: NextRequest) {
     // Add any priority warnings to be logged
     if (priorityValidation.warnings.length > 0) {
       priorityWarnings.push(...priorityValidation.warnings);
+    }
+
+    // Validate that finalPriority is a valid TicketPriority enum value
+    const validPriorities = ['LOW', 'MEDIUM', 'HIGH', 'URGENT', 'CRITICAL'];
+    if (!validPriorities.includes(finalPriority)) {
+      console.error('Invalid priority value detected:', finalPriority);
+      // Fallback to MEDIUM if priority is invalid
+      finalPriority = 'MEDIUM';
+      priorityWarnings.push('Priority was invalid and has been set to MEDIUM');
     }
 
     // Auto-mark tickets as confidential for Security Analysts

@@ -326,7 +326,7 @@ export async function POST(request: NextRequest) {
           errorMessage: ticketError?.message,
           errorCode: ticketError?.code,
           atmCode: validatedData.atmCode,
-          hasSession: !!session?.user?.id,
+          hasUserId: !!userId,
           hasSystemUser: !!systemUser?.id,
           serviceFound: !!service
         });
