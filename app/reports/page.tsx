@@ -148,6 +148,15 @@ const standardReports: Report[] = [
     type: 'standard',
     roles: ['TECHNICIAN']
   },
+  {
+    title: 'Monthly Ticket Report',
+    description: 'Category-based ticket counts by status for monthly reporting',
+    href: '/reports/technician/monthly',
+    icon: Calendar,
+    type: 'standard',
+    roles: ['TECHNICIAN', 'MANAGER', 'ADMIN'],
+    badge: 'Monthly'
+  },
   // Manager Reports
   {
     title: 'Team Performance Analytics',
@@ -580,15 +589,27 @@ export default function ReportsPage() {
         description="Access standard reports or create your own custom analytics"
         icon={<BarChart3 className="h-6 w-6" />}
         action={
-          <Link href="/reports/builder">
-            <Button 
-              size="default" 
-              className="bg-gradient-to-r from-brown-400 to-brown-500 dark:from-brown-200 dark:to-brown-300 text-white dark:text-brown-950 hover:from-brown-500 hover:to-brown-600 dark:hover:from-brown-300 dark:hover:to-brown-400"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Create Custom Report
-            </Button>
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link href="/reports/technician/monthly">
+              <Button
+                variant="outline"
+                size="default"
+                className="border-primary/30 bg-primary/5 hover:bg-primary/10 hover:border-primary/50"
+              >
+                <Calendar className="h-4 w-4 mr-2" />
+                Monthly Reports
+              </Button>
+            </Link>
+            <Link href="/reports/builder">
+              <Button
+                size="default"
+                className="bg-gradient-to-r from-brown-400 to-brown-500 dark:from-brown-200 dark:to-brown-300 text-white dark:text-brown-950 hover:from-brown-500 hover:to-brown-600 dark:hover:from-brown-300 dark:hover:to-brown-400"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Create Custom Report
+              </Button>
+            </Link>
+          </div>
         }
       />
 
