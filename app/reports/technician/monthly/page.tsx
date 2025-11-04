@@ -9,8 +9,19 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { RefreshCw, Download, Calendar, FileText } from 'lucide-react'
+import { RefreshCw, Download, Calendar, FileText, ChevronRight, ChevronDown } from 'lucide-react'
 import { format } from 'date-fns'
+
+interface ServiceData {
+  name: string
+  open: number
+  inProgress: number
+  pending: number
+  resolved: number
+  closed: number
+  cancelled: number
+  total: number
+}
 
 interface CategoryData {
   name: string
@@ -21,6 +32,7 @@ interface CategoryData {
   closed: number
   cancelled: number
   total: number
+  services: ServiceData[]
 }
 
 interface ReportData {
@@ -60,6 +72,7 @@ export default function MonthlyReport() {
   const [exporting, setExporting] = useState(false)
   const [exportFormat, setExportFormat] = useState<'csv' | 'xlsx'>('csv')
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL')
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
 
   // Date filters - default to previous month
   const [startDate, setStartDate] = useState(() => {
@@ -154,6 +167,18 @@ export default function MonthlyReport() {
     const lastDay = new Date(now.getFullYear(), now.getMonth(), 0)
     setStartDate(format(firstDay, 'yyyy-MM-dd'))
     setEndDate(format(lastDay, 'yyyy-MM-dd'))
+  }
+
+  const toggleCategoryExpansion = (categoryName: string) => {
+    setExpandedCategories(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(categoryName)) {
+        newSet.delete(categoryName)
+      } else {
+        newSet.add(categoryName)
+      }
+      return newSet
+    })
   }
 
   if (!session || !['TECHNICIAN', 'MANAGER', 'ADMIN', 'SUPER_ADMIN'].includes(session.user?.role)) {
@@ -403,22 +428,81 @@ export default function MonthlyReport() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredCategories.map((category, index) => (
-                    <TableRow key={index} className="hover:bg-muted/30">
-                      <TableCell className="font-medium sticky left-0 bg-background">
-                        {category.name}
-                      </TableCell>
-                      <TableCell className="text-center">{category.open}</TableCell>
-                      <TableCell className="text-center">{category.inProgress}</TableCell>
-                      <TableCell className="text-center">{category.pending}</TableCell>
-                      <TableCell className="text-center">{category.resolved}</TableCell>
-                      <TableCell className="text-center">{category.closed}</TableCell>
-                      <TableCell className="text-center">{category.cancelled}</TableCell>
-                      <TableCell className="text-center font-bold bg-primary/5">
-                        {category.total}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {filteredCategories.map((category, index) => {
+                    const isExpanded = expandedCategories.has(category.name)
+                    const hasServices = category.services && category.services.length > 0
+
+                    return (
+                      <>
+                        {/* Category Row */}
+                        <TableRow
+                          key={index}
+                          className={`hover:bg-muted/30 ${hasServices ? 'cursor-pointer' : ''}`}
+                          onClick={() => hasServices && toggleCategoryExpansion(category.name)}
+                        >
+                          <TableCell className="font-medium sticky left-0 bg-background">
+                            <div className="flex items-center gap-2">
+                              {hasServices && (
+                                <button
+                                  className="p-0.5 hover:bg-muted rounded transition-colors"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    toggleCategoryExpansion(category.name)
+                                  }}
+                                >
+                                  {isExpanded ? (
+                                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                  ) : (
+                                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                  )}
+                                </button>
+                              )}
+                              {!hasServices && <span className="w-5" />}
+                              <span>{category.name}</span>
+                              {hasServices && (
+                                <span className="text-xs text-muted-foreground">
+                                  ({category.services.length})
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center">{category.open}</TableCell>
+                          <TableCell className="text-center">{category.inProgress}</TableCell>
+                          <TableCell className="text-center">{category.pending}</TableCell>
+                          <TableCell className="text-center">{category.resolved}</TableCell>
+                          <TableCell className="text-center">{category.closed}</TableCell>
+                          <TableCell className="text-center">{category.cancelled}</TableCell>
+                          <TableCell className="text-center font-bold bg-primary/5">
+                            {category.total}
+                          </TableCell>
+                        </TableRow>
+
+                        {/* Service Rows (when expanded) */}
+                        {isExpanded && hasServices && category.services.map((service, sIndex) => (
+                          <TableRow
+                            key={`${index}-service-${sIndex}`}
+                            className="bg-muted/20 hover:bg-muted/40 border-l-4 border-l-primary/30"
+                          >
+                            <TableCell className="pl-12 text-sm text-muted-foreground sticky left-0 bg-muted/20">
+                              <div className="flex items-center gap-2">
+                                <span className="text-muted-foreground/50">└─</span>
+                                {service.name}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-center text-sm">{service.open}</TableCell>
+                            <TableCell className="text-center text-sm">{service.inProgress}</TableCell>
+                            <TableCell className="text-center text-sm">{service.pending}</TableCell>
+                            <TableCell className="text-center text-sm">{service.resolved}</TableCell>
+                            <TableCell className="text-center text-sm">{service.closed}</TableCell>
+                            <TableCell className="text-center text-sm">{service.cancelled}</TableCell>
+                            <TableCell className="text-center text-sm font-medium bg-muted/30">
+                              {service.total}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </>
+                    )
+                  })}
 
                   {/* Totals Row */}
                   <TableRow className="bg-primary/20 hover:bg-primary/20 font-bold border-t-2 border-primary">

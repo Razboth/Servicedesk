@@ -166,6 +166,16 @@ export async function GET(request: NextRequest) {
       cancelled: number;
       total: number;
       sources: Set<string>; // Track which system(s) this category comes from
+      services: Map<string, {
+        name: string;
+        open: number;
+        inProgress: number;
+        pending: number;
+        resolved: number;
+        closed: number;
+        cancelled: number;
+        total: number;
+      }>;
     }>();
 
     // Process each ticket - merge both old and new categorization systems
@@ -201,7 +211,8 @@ export async function GET(request: NextRequest) {
           closed: 0,
           cancelled: 0,
           total: 0,
-          sources: new Set<string>()
+          sources: new Set<string>(),
+          services: new Map()
         });
       }
 
@@ -210,41 +221,67 @@ export async function GET(request: NextRequest) {
       // Track which system(s) this category data comes from
       category.sources.add(source);
 
-      // Count by status
+      // Track service-level statistics
+      const serviceName = ticket.service?.name || 'No Service';
+      if (!category.services.has(serviceName)) {
+        category.services.set(serviceName, {
+          name: serviceName,
+          open: 0,
+          inProgress: 0,
+          pending: 0,
+          resolved: 0,
+          closed: 0,
+          cancelled: 0,
+          total: 0
+        });
+      }
+
+      const service = category.services.get(serviceName)!;
+
+      // Count by status for both category and service
       switch (ticket.status) {
         case 'OPEN':
           category.open++;
+          service.open++;
           break;
         case 'IN_PROGRESS':
           category.inProgress++;
+          service.inProgress++;
           break;
         case 'PENDING':
         case 'PENDING_APPROVAL':
         case 'PENDING_VENDOR':
           category.pending++;
+          service.pending++;
           break;
         case 'RESOLVED':
           category.resolved++;
+          service.resolved++;
           break;
         case 'CLOSED':
           category.closed++;
+          service.closed++;
           break;
         case 'CANCELLED':
         case 'REJECTED':
           category.cancelled++;
+          service.cancelled++;
           break;
       }
 
       category.total++;
+      service.total++;
     });
 
     // Convert map to array and sort by total (descending)
-    // Remove 'sources' Set before sending to frontend (not JSON serializable)
+    // Remove 'sources' Set and convert services Map to array before sending to frontend
     const categoryData = Array.from(categoryMap.values())
-      .map(({ sources, ...rest }) => ({
+      .map(({ sources, services, ...rest }) => ({
         ...rest,
         // Convert sources Set to array for debugging (optional)
-        sourceSystems: Array.from(sources)
+        sourceSystems: Array.from(sources),
+        // Convert services Map to sorted array
+        services: Array.from(services.values()).sort((a, b) => b.total - a.total)
       }))
       .sort((a, b) => b.total - a.total);
 
@@ -263,9 +300,14 @@ export async function GET(request: NextRequest) {
     if (format === 'xlsx') {
       const XLSX = require('xlsx');
 
-      const worksheetData = [
-        ['Category', 'Open', 'In Progress', 'On Hold', 'Resolved', 'Closed', 'Cancelled', 'Total'],
-        ...categoryData.map(cat => [
+      const worksheetData: any[] = [
+        ['Category/Service', 'Open', 'In Progress', 'On Hold', 'Resolved', 'Closed', 'Cancelled', 'Total']
+      ];
+
+      // Add categories with their services
+      categoryData.forEach(cat => {
+        // Add category row
+        worksheetData.push([
           cat.name,
           cat.open,
           cat.inProgress,
@@ -274,9 +316,25 @@ export async function GET(request: NextRequest) {
           cat.closed,
           cat.cancelled,
           cat.total
-        ]),
-        ['TOTAL', totals.open, totals.inProgress, totals.pending, totals.resolved, totals.closed, totals.cancelled, totals.total]
-      ];
+        ]);
+
+        // Add service rows indented
+        cat.services.forEach(service => {
+          worksheetData.push([
+            `  └─ ${service.name}`,
+            service.open,
+            service.inProgress,
+            service.pending,
+            service.resolved,
+            service.closed,
+            service.cancelled,
+            service.total
+          ]);
+        });
+      });
+
+      // Add total row
+      worksheetData.push(['TOTAL', totals.open, totals.inProgress, totals.pending, totals.resolved, totals.closed, totals.cancelled, totals.total]);
 
       const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
       const workbook = XLSX.utils.book_new();
@@ -290,17 +348,39 @@ export async function GET(request: NextRequest) {
         }
       });
     } else if (format === 'csv') {
-      const headers = ['Category', 'Open', 'In Progress', 'On Hold', 'Resolved', 'Closed', 'Cancelled', 'Total'];
-      const rows = categoryData.map(cat => [
-        cat.name,
-        cat.open.toString(),
-        cat.inProgress.toString(),
-        cat.pending.toString(),
-        cat.resolved.toString(),
-        cat.closed.toString(),
-        cat.cancelled.toString(),
-        cat.total.toString()
-      ]);
+      const headers = ['Category/Service', 'Open', 'In Progress', 'On Hold', 'Resolved', 'Closed', 'Cancelled', 'Total'];
+      const rows: string[][] = [];
+
+      // Add categories with their services
+      categoryData.forEach(cat => {
+        // Add category row
+        rows.push([
+          cat.name,
+          cat.open.toString(),
+          cat.inProgress.toString(),
+          cat.pending.toString(),
+          cat.resolved.toString(),
+          cat.closed.toString(),
+          cat.cancelled.toString(),
+          cat.total.toString()
+        ]);
+
+        // Add service rows indented
+        cat.services.forEach(service => {
+          rows.push([
+            `  └─ ${service.name}`,
+            service.open.toString(),
+            service.inProgress.toString(),
+            service.pending.toString(),
+            service.resolved.toString(),
+            service.closed.toString(),
+            service.cancelled.toString(),
+            service.total.toString()
+          ]);
+        });
+      });
+
+      // Add total row
       rows.push([
         'TOTAL',
         totals.open.toString(),
