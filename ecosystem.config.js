@@ -75,8 +75,8 @@ module.exports = {
       PORT: 3000,
       HOSTNAME: '0.0.0.0',
       USE_HTTPS: 'true',
-      NEXTAUTH_URL: 'https://192.168.1.100:3000',
-      NEXT_PUBLIC_APP_URL: 'https://192.168.1.100:3000',
+      NEXTAUTH_URL: 'https://199.90.10.215:3000',
+      NEXT_PUBLIC_APP_URL: 'https://199.90.10.215:3000',
       DATABASE_URL: 'postgresql://postgres:admin@localhost:5432/servicedesk_database_development?schema=public'
     },
 
