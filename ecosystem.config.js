@@ -62,26 +62,37 @@ module.exports = {
   {
     // Development mode configuration
     name: 'bsg-servicedesk-dev',
-    script: 'npm',
-    args: 'run dev:https',
+    script: 'node',
+    args: 'server.js',
     instances: 1,
     exec_mode: 'fork',
-    autorestart: false,
-    watch: true,
-    
+    autorestart: true,
+    watch: false,
+    max_memory_restart: '1G',
+
     env: {
       NODE_ENV: 'development',
-      PORT: 3001,
-      USE_HTTPS: true,
-      HOSTNAME: 'localhost'
+      PORT: 3000,
+      HOSTNAME: '0.0.0.0',
+      USE_HTTPS: 'true',
+      NEXTAUTH_URL: 'https://192.168.1.100:3000',
+      NEXT_PUBLIC_APP_URL: 'https://192.168.1.100:3000',
+      DATABASE_URL: 'postgresql://postgres:admin@localhost:5432/servicedesk_database_development?schema=public'
     },
-    
+
     error_file: './logs/pm2-dev-error.log',
     out_file: './logs/pm2-dev-out.log',
     merge_logs: true,
     time: true,
-    
-    ignore_watch: ['node_modules', '.git', 'logs', '.next', 'public/uploads', '*.log']
+
+    restart_delay: 4000,
+    kill_timeout: 3000,
+    listen_timeout: 10000,
+    min_uptime: '10s',
+    max_restarts: 10,
+
+    ignore_watch: ['node_modules', '.git', 'logs', '.next', 'public/uploads'],
+    node_args: '--max-old-space-size=2048'
   },
   {
     // Network Monitoring Service
