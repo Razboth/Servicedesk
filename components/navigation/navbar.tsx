@@ -11,7 +11,7 @@ export function Navbar() {
   const pathname = usePathname();
 
   const handleLogout = async () => {
-    await signOut({ callbackUrl: 'https://hd.bsg.id/auth/signin' });
+    await signOut({ callbackUrl: '/auth/signin' });
   };
 
   // Don't render navbar while loading or if not authenticated

@@ -92,9 +92,9 @@ export function IdleTimeoutProvider({
     if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
     
     // Sign out user
-    await signOut({ 
-      redirect: true, 
-      callbackUrl: 'https://hd.bsg.id/auth/signin?message=Session expired due to inactivity' 
+    await signOut({
+      redirect: true,
+      callbackUrl: '/auth/signin?message=Session expired due to inactivity'
     });
   };
 
