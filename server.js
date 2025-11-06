@@ -54,7 +54,7 @@ var hostname = process.env.HOSTNAME || 'localhost';
 var port = parseInt(process.env.PORT || '3000', 10);
 var useHttps = process.env.USE_HTTPS !== 'false'; // Default to HTTPS
 // Configure Next.js
-var app = (0, next_1.default)({ dev: dev, hostname: hostname, port: port });
+var app = next_1(({ dev: dev, hostname: hostname, port: port }));
 var handle = app.getRequestHandler();
 // Certificate paths
 var certsDir = path.join(__dirname, 'certificates');
