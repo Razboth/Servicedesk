@@ -172,7 +172,7 @@ const authOptions = {
     csrfToken: {
       name: `bsg-auth.csrf-token-${process.env.PORT || '3000'}`,
       options: {
-        httpOnly: true,
+        httpOnly: false, // Changed to false to allow JavaScript access for CSRF token
         sameSite: 'lax' as const,
         path: '/',
         secure: process.env.NODE_ENV === 'production'
