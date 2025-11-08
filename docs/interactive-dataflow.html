@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bank SulutGo ServiceDesk - Interactive Data Flow Visualization</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .process-node {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .process-node:hover {
+            transform: scale(1.05);
+            filter: brightness(1.1);
+        }
+
+        .data-flow {
+            animation: dash 20s linear infinite;
+        }
+
+        @keyframes dash {
+            to {
+                stroke-dashoffset: -100;
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .zoom-controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .diagram-container {
+            transform-origin: center center;
+            transition: transform 0.3s ease;
+        }
+
+        /* Dark mode styles */
+        .dark {
+            background-color: #1a1a2e;
+            color: #eee;
+        }
+
+        .dark .bg-white {
+            background-color: #16213e !important;
+        }
+
+        .dark .bg-gray-50 {
+            background-color: #0f3460 !important;
+        }
+
+        .dark .bg-gray-100 {
+            background-color: #1a1a2e !important;
+        }
+
+        .dark .text-gray-900 {
+            color: #eee !important;
+        }
+
+        .dark .text-gray-700 {
+            color: #ccc !important;
+        }
+
+        .dark .text-gray-600 {
+            color: #aaa !important;
+        }
+
+        .dark .border-gray-200 {
+            border-color: #0f3460 !important;
+        }
+
+        .dark .shadow-lg {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5) !important;
+        }
+
+        /* Print styles */
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+
+            .diagram-container {
+                transform: scale(1) !important;
+            }
+
+            body {
+                background: white !important;
+            }
+        }
+
+        /* Scrollbar styles */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        .dark ::-webkit-scrollbar-track {
+            background: #0f3460;
+        }
+
+        .dark ::-webkit-scrollbar-thumb {
+            background: #4a90e2;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 transition-colors duration-300">
+    <!-- Header -->
+    <header class="bg-white shadow-md sticky top-0 z-50 no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">Bank SulutGo ServiceDesk</h1>
+                    <p class="text-sm text-gray-600">Interactive Data Flow Visualization</p>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="toggleDarkMode()" class="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition">
+                        <span id="theme-icon">🌙</span> Theme
+                    </button>
+                    <button onclick="exportToPDF()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                        📄 Export PDF
+                    </button>
+                    <button onclick="window.print()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+                        🖨️ Print
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation & Search -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 no-print">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Level Selection -->
+            <div class="bg-white rounded-lg shadow p-4">
+                <h3 class="font-semibold text-gray-900 mb-3">Navigation Levels</h3>
+                <div class="space-y-2">
+                    <button onclick="showLevel(0)" class="w-full text-left px-3 py-2 rounded bg-blue-50 hover:bg-blue-100 transition level-btn" data-level="0">
+                        Level 0: Context Diagram
+                    </button>
+                    <button onclick="showLevel(1)" class="w-full text-left px-3 py-2 rounded hover:bg-gray-100 transition level-btn" data-level="1">
+                        Level 1: Main Processes
+                    </button>
+                    <button onclick="showLevel(2)" class="w-full text-left px-3 py-2 rounded hover:bg-gray-100 transition level-btn" data-level="2">
+                        Level 2: Ticket Management
+                    </button>
+                    <button onclick="showLevel(3)" class="w-full text-left px-3 py-2 rounded hover:bg-gray-100 transition level-btn" data-level="3">
+                        Level 3: Network Monitoring
+                    </button>
+                    <button onclick="showLevel(4)" class="w-full text-left px-3 py-2 rounded hover:bg-gray-100 transition level-btn" data-level="4">
+                        Level 4: Reporting
+                    </button>
+                </div>
+            </div>
+
+            <!-- Search -->
+            <div class="bg-white rounded-lg shadow p-4">
+                <h3 class="font-semibold text-gray-900 mb-3">Search</h3>
+                <input type="text" id="searchInput" onkeyup="searchDiagram()"
+                    placeholder="Search processes, data stores..."
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                <div id="searchResults" class="mt-2 text-sm text-gray-600"></div>
+            </div>
+
+            <!-- Legend -->
+            <div class="bg-white rounded-lg shadow p-4">
+                <h3 class="font-semibold text-gray-900 mb-3">Legend</h3>
+                <div class="space-y-2 text-sm">
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 rounded bg-blue-400 border-2 border-blue-600"></div>
+                        <span>Process</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 rounded-full bg-green-400 border-2 border-green-600"></div>
+                        <span>Data Store</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 bg-purple-400 border-2 border-purple-600"></div>
+                        <span>External Entity</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <svg width="24" height="4"><line x1="0" y1="2" x2="24" y2="2" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)"/></svg>
+                        <span>Data Flow</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Diagram Area -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <div id="diagram-title" class="text-xl font-bold text-gray-900 mb-4">Level 0: Context Diagram</div>
+            <div id="diagram-description" class="text-sm text-gray-600 mb-6">
+                The highest-level view showing the ServiceDesk system and its external entities.
+            </div>
+
+            <!-- Diagram Container -->
+            <div class="overflow-auto bg-gray-50 rounded-lg p-8" id="diagram-viewport" style="max-height: 800px;">
+                <div class="diagram-container" id="diagram-container">
+                    <!-- Level 0 will be rendered here by default -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Process Details Panel -->
+        <div id="details-panel" class="bg-white rounded-lg shadow-lg p-6 hidden fade-in">
+            <h3 class="text-lg font-bold text-gray-900 mb-4">Process Details</h3>
+            <div id="details-content"></div>
+        </div>
+    </main>
+
+    <!-- Zoom Controls -->
+    <div class="zoom-controls no-print flex flex-col gap-2">
+        <button onclick="zoomIn()" class="bg-white shadow-lg rounded-full w-12 h-12 flex items-center justify-center hover:bg-gray-100 transition">
+            <span class="text-xl">+</span>
+        </button>
+        <button onclick="resetZoom()" class="bg-white shadow-lg rounded-full w-12 h-12 flex items-center justify-center hover:bg-gray-100 transition">
+            <span class="text-xl">⟲</span>
+        </button>
+        <button onclick="zoomOut()" class="bg-white shadow-lg rounded-full w-12 h-12 flex items-center justify-center hover:bg-gray-100 transition">
+            <span class="text-xl">−</span>
+        </button>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-200 mt-12 no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <p class="text-center text-sm text-gray-600">
+                Bank SulutGo ServiceDesk - ITIL v4 Compliant Service Management System
+                <br>Last Updated: November 2025
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        // Global state
+        let currentLevel = 0;
+        let currentZoom = 1;
+        let selectedNode = null;
+
+        // Data definitions
+        const levels = {
+            0: {
+                title: "Level 0: Context Diagram",
+                description: "The highest-level view showing the ServiceDesk system and its external entities.",
+                nodes: {
+                    servicedesk: { type: 'system', label: 'Bank SulutGo\nServiceDesk\nSystem', x: 400, y: 300, color: '#4a90e2' },
+                    users: { type: 'external', label: 'Users\n(Requesters, Technicians,\nManagers, Admins)', x: 100, y: 100, color: '#9b59b6' },
+                    manageengine: { type: 'external', label: 'ManageEngine\nServiceDesk Plus', x: 100, y: 300, color: '#9b59b6' },
+                    email: { type: 'external', label: 'Email System\n(SMTP)', x: 100, y: 500, color: '#9b59b6' },
+                    atm: { type: 'external', label: 'ATM Devices', x: 700, y: 100, color: '#9b59b6' },
+                    branch: { type: 'external', label: 'Branch Network\nInfrastructure', x: 700, y: 300, color: '#9b59b6' },
+                    api: { type: 'external', label: 'External Systems\n(API Consumers)', x: 700, y: 500, color: '#9b59b6' }
+                },
+                flows: [
+                    { from: 'users', to: 'servicedesk', label: 'Authentication\nRequests' },
+                    { from: 'users', to: 'servicedesk', label: 'Ticket\nCreation/Updates', offset: 20 },
+                    { from: 'users', to: 'servicedesk', label: 'Report\nRequests', offset: 40 },
+                    { from: 'servicedesk', to: 'email', label: 'Email\nNotifications' },
+                    { from: 'servicedesk', to: 'atm', label: 'Network\nMonitoring' },
+                    { from: 'servicedesk', to: 'branch', label: 'Network\nMonitoring' },
+                    { from: 'manageengine', to: 'servicedesk', label: 'Legacy Data\nImport' },
+                    { from: 'servicedesk', to: 'users', label: 'Ticket Status\nUpdates', offset: -20 },
+                    { from: 'servicedesk', to: 'users', label: 'Reports &\nAnalytics', offset: -40 },
+                    { from: 'api', to: 'servicedesk', label: 'API\nRequests' },
+                    { from: 'servicedesk', to: 'api', label: 'API\nResponses' }
+                ]
+            },
+            1: {
+                title: "Level 1: Main System Processes",
+                description: "Major functional areas of the ServiceDesk system with data stores.",
+                nodes: {
+                    // Processes
+                    p1: { type: 'process', label: 'P1.0\nAuthentication &\nAuthorization', x: 150, y: 100, color: '#ff9999' },
+                    p2: { type: 'process', label: 'P2.0\nTicket\nManagement', x: 300, y: 100, color: '#99ccff' },
+                    p3: { type: 'process', label: 'P3.0\nNetwork\nMonitoring', x: 450, y: 100, color: '#99ff99' },
+                    p4: { type: 'process', label: 'P4.0\nReporting &\nAnalytics', x: 600, y: 100, color: '#ffcc99' },
+                    p5: { type: 'process', label: 'P5.0\nKnowledge\nManagement', x: 150, y: 250, color: '#cc99ff' },
+                    p6: { type: 'process', label: 'P6.0\nAdmin\nManagement', x: 300, y: 250, color: '#ffff99' },
+                    p7: { type: 'process', label: 'P7.0\nApproval\nWorkflow', x: 450, y: 250, color: '#ff99cc' },
+
+                    // Data Stores
+                    d1: { type: 'datastore', label: 'D1: Users', x: 150, y: 400, color: '#3498db' },
+                    d2: { type: 'datastore', label: 'D2: Tickets', x: 300, y: 400, color: '#3498db' },
+                    d3: { type: 'datastore', label: 'D3: Assets\n(ATMs, Branches)', x: 450, y: 400, color: '#3498db' },
+                    d4: { type: 'datastore', label: 'D4: Monitoring\nData', x: 600, y: 400, color: '#3498db' },
+                    d5: { type: 'datastore', label: 'D5: Report\nTemplates', x: 150, y: 500, color: '#3498db' },
+                    d6: { type: 'datastore', label: 'D6: Knowledge\nBase', x: 300, y: 500, color: '#3498db' },
+                    d7: { type: 'datastore', label: 'D7: Audit\nLogs', x: 450, y: 500, color: '#3498db' },
+
+                    // External
+                    users: { type: 'external', label: 'Users', x: 50, y: 50, color: '#9b59b6' },
+                    atm: { type: 'external', label: 'ATMs &\nBranches', x: 700, y: 100, color: '#9b59b6' },
+                    email: { type: 'external', label: 'Email\nService', x: 700, y: 250, color: '#9b59b6' },
+                    legacy: { type: 'external', label: 'Legacy\nSystem', x: 50, y: 250, color: '#9b59b6' }
+                },
+                flows: [
+                    { from: 'users', to: 'p1', label: 'Login' },
+                    { from: 'p1', to: 'd1', label: 'Query' },
+                    { from: 'd1', to: 'p1', label: 'User Data' },
+                    { from: 'p1', to: 'users', label: 'Session' },
+
+                    { from: 'users', to: 'p2', label: 'Create Ticket' },
+                    { from: 'p2', to: 'd2', label: 'Save' },
+                    { from: 'd2', to: 'p2', label: 'Ticket Info' },
+                    { from: 'p2', to: 'email', label: 'Notify' },
+
+                    { from: 'atm', to: 'p3', label: 'Status' },
+                    { from: 'p3', to: 'd4', label: 'Log' },
+                    { from: 'd4', to: 'p3', label: 'Historical' },
+                    { from: 'p3', to: 'd3', label: 'Update' },
+                    { from: 'p3', to: 'p2', label: 'Alert' },
+
+                    { from: 'users', to: 'p4', label: 'Request' },
+                    { from: 'p4', to: 'd2', label: 'Query' },
+                    { from: 'p4', to: 'd4', label: 'Query' },
+                    { from: 'd5', to: 'p4', label: 'Template' },
+                    { from: 'p4', to: 'users', label: 'Report' },
+
+                    { from: 'users', to: 'p5', label: 'Search' },
+                    { from: 'p5', to: 'd6', label: 'Query' },
+                    { from: 'd6', to: 'p5', label: 'Articles' },
+
+                    { from: 'users', to: 'p6', label: 'Config' },
+                    { from: 'p6', to: 'd1', label: 'Update' },
+                    { from: 'p6', to: 'd3', label: 'Update' },
+                    { from: 'p6', to: 'd7', label: 'Log' },
+                    { from: 'legacy', to: 'p6', label: 'Import' },
+
+                    { from: 'p2', to: 'p7', label: 'Request' },
+                    { from: 'p7', to: 'd2', label: 'Status' },
+                    { from: 'p7', to: 'email', label: 'Notify' }
+                ]
+            },
+            2: {
+                title: "Level 2: Ticket Management Subsystem",
+                description: "Detailed view of ticket management processes.",
+                nodes: {
+                    // Processes
+                    p21: { type: 'process', label: 'P2.1\nCreate\nTicket', x: 150, y: 80, color: '#cce5ff' },
+                    p22: { type: 'process', label: 'P2.2\nAssign\nTicket', x: 300, y: 80, color: '#cce5ff' },
+                    p23: { type: 'process', label: 'P2.3\nUpdate\nStatus', x: 450, y: 80, color: '#cce5ff' },
+                    p24: { type: 'process', label: 'P2.4\nAdd\nComments', x: 600, y: 80, color: '#cce5ff' },
+                    p25: { type: 'process', label: 'P2.5\nResolve\nTicket', x: 150, y: 220, color: '#cce5ff' },
+                    p26: { type: 'process', label: 'P2.6\nClose\nTicket', x: 300, y: 220, color: '#cce5ff' },
+                    p27: { type: 'process', label: 'P2.7\nHandle\nAttachments', x: 450, y: 220, color: '#cce5ff' },
+                    p28: { type: 'process', label: 'P2.8\nSLA\nMonitoring', x: 600, y: 220, color: '#ffcccc' },
+
+                    // Data Stores
+                    d21: { type: 'datastore', label: 'D2.1: Tickets', x: 150, y: 360, color: '#3498db' },
+                    d22: { type: 'datastore', label: 'D2.2: Comments', x: 300, y: 360, color: '#3498db' },
+                    d23: { type: 'datastore', label: 'D2.3: Attachments', x: 450, y: 360, color: '#3498db' },
+                    d24: { type: 'datastore', label: 'D2.4: Services', x: 600, y: 360, color: '#3498db' },
+                    d25: { type: 'datastore', label: 'D2.5: Support Groups', x: 150, y: 460, color: '#3498db' },
+                    d26: { type: 'datastore', label: 'D2.6: Tasks', x: 300, y: 460, color: '#3498db' },
+                    d27: { type: 'datastore', label: 'D2.7: SLA Config', x: 450, y: 460, color: '#3498db' },
+                    d28: { type: 'datastore', label: 'D2.8: Approvals', x: 600, y: 460, color: '#3498db' },
+
+                    // External
+                    requester: { type: 'external', label: 'Requester', x: 50, y: 80, color: '#9b59b6' },
+                    technician: { type: 'external', label: 'Technician', x: 50, y: 180, color: '#9b59b6' },
+                    manager: { type: 'external', label: 'Manager', x: 50, y: 280, color: '#9b59b6' },
+                    email: { type: 'external', label: 'Email', x: 700, y: 150, color: '#9b59b6' }
+                },
+                flows: [
+                    { from: 'requester', to: 'p21', label: 'Details' },
+                    { from: 'p21', to: 'd24', label: 'Lookup' },
+                    { from: 'd24', to: 'p21', label: 'SLA' },
+                    { from: 'p21', to: 'd21', label: 'Save' },
+                    { from: 'p21', to: 'p22', label: 'Auto-assign' },
+                    { from: 'p21', to: 'email', label: 'Created' },
+
+                    { from: 'manager', to: 'p22', label: 'Assign' },
+                    { from: 'p22', to: 'd25', label: 'Query' },
+                    { from: 'd25', to: 'p22', label: 'Techs' },
+                    { from: 'p22', to: 'd21', label: 'Update' },
+                    { from: 'p22', to: 'email', label: 'Assigned' },
+
+                    { from: 'technician', to: 'p23', label: 'Update' },
+                    { from: 'p23', to: 'd21', label: 'Status' },
+                    { from: 'p23', to: 'p28', label: 'Check' },
+                    { from: 'p28', to: 'd27', label: 'Rules' },
+                    { from: 'p28', to: 'email', label: 'Breach' },
+                    { from: 'p23', to: 'email', label: 'Changed' },
+
+                    { from: 'requester', to: 'p24', label: 'Comment' },
+                    { from: 'technician', to: 'p24', label: 'Response' },
+                    { from: 'p24', to: 'd22', label: 'Save' },
+                    { from: 'd22', to: 'p24', label: 'History' },
+                    { from: 'p24', to: 'email', label: 'New Comment' },
+
+                    { from: 'technician', to: 'p25', label: 'Resolve' },
+                    { from: 'p25', to: 'd21', label: 'Resolved' },
+                    { from: 'p25', to: 'd26', label: 'Tasks' },
+                    { from: 'd26', to: 'p25', label: 'List' },
+                    { from: 'p25', to: 'email', label: 'Resolved' },
+
+                    { from: 'requester', to: 'p26', label: 'Confirm' },
+                    { from: 'manager', to: 'p26', label: 'Force' },
+                    { from: 'p26', to: 'd21', label: 'Closed' },
+                    { from: 'p26', to: 'email', label: 'Closed' },
+
+                    { from: 'requester', to: 'p27', label: 'Files' },
+                    { from: 'technician', to: 'p27', label: 'Screenshots' },
+                    { from: 'p27', to: 'd23', label: 'Save' },
+                    { from: 'd23', to: 'p27', label: 'Files' }
+                ]
+            },
+            3: {
+                title: "Level 3: Network Monitoring Subsystem",
+                description: "Detailed view of network monitoring processes.",
+                nodes: {
+                    // Processes
+                    p31: { type: 'process', label: 'P3.1\nConfigure\nMonitoring', x: 150, y: 80, color: '#ffffcc' },
+                    p32: { type: 'process', label: 'P3.2\nPing/Status\nCheck', x: 300, y: 80, color: '#ccffcc' },
+                    p33: { type: 'process', label: 'P3.3\nLog\nResults', x: 450, y: 80, color: '#ccffcc' },
+                    p34: { type: 'process', label: 'P3.4\nDetect\nIncidents', x: 600, y: 80, color: '#ffcccc' },
+                    p35: { type: 'process', label: 'P3.5\nCreate\nAlert', x: 250, y: 220, color: '#ffcccc' },
+                    p36: { type: 'process', label: 'P3.6\nUpdate\nMap View', x: 400, y: 220, color: '#ccccff' },
+                    p37: { type: 'process', label: 'P3.7\nGenerate\nPerf. Report', x: 550, y: 220, color: '#ffcc99' },
+
+                    // Data Stores
+                    d31: { type: 'datastore', label: 'D3.1: Assets', x: 150, y: 360, color: '#3498db' },
+                    d41: { type: 'datastore', label: 'D4.1: Monitor Logs', x: 300, y: 360, color: '#3498db' },
+                    d42: { type: 'datastore', label: 'D4.2: Incidents', x: 450, y: 360, color: '#3498db' },
+                    d43: { type: 'datastore', label: 'D4.3: Ping Results', x: 600, y: 360, color: '#3498db' },
+                    d44: { type: 'datastore', label: 'D4.4: Config', x: 300, y: 460, color: '#3498db' },
+                    d2: { type: 'datastore', label: 'D2: Tickets', x: 450, y: 460, color: '#3498db' },
+
+                    // External
+                    admin: { type: 'external', label: 'Admin', x: 50, y: 80, color: '#9b59b6' },
+                    tech: { type: 'external', label: 'Technician', x: 50, y: 220, color: '#9b59b6' },
+                    atm: { type: 'external', label: 'ATMs', x: 700, y: 80, color: '#9b59b6' },
+                    branch: { type: 'external', label: 'Branches', x: 700, y: 180, color: '#9b59b6' }
+                },
+                flows: [
+                    { from: 'admin', to: 'p31', label: 'Enable' },
+                    { from: 'p31', to: 'd31', label: 'Config' },
+                    { from: 'p31', to: 'd44', label: 'Params' },
+                    { from: 'd44', to: 'p31', label: 'Settings' },
+
+                    { from: 'd31', to: 'p32', label: 'IP List' },
+                    { from: 'p32', to: 'atm', label: 'Ping' },
+                    { from: 'p32', to: 'branch', label: 'Ping' },
+                    { from: 'atm', to: 'p32', label: 'Response' },
+                    { from: 'branch', to: 'p32', label: 'Response' },
+
+                    { from: 'p32', to: 'p33', label: 'Status' },
+                    { from: 'p33', to: 'd41', label: 'Log' },
+                    { from: 'p33', to: 'd43', label: 'Details' },
+
+                    { from: 'p33', to: 'p34', label: 'Check' },
+                    { from: 'd41', to: 'p34', label: 'Historical' },
+                    { from: 'p34', to: 'd42', label: 'Incident' },
+                    { from: 'p34', to: 'd31', label: 'Update' },
+
+                    { from: 'd42', to: 'p35', label: 'Critical' },
+                    { from: 'p35', to: 'd2', label: 'Ticket' },
+                    { from: 'p35', to: 'tech', label: 'Notify' },
+
+                    { from: 'd31', to: 'p36', label: 'Coords' },
+                    { from: 'd41', to: 'p36', label: 'Status' },
+                    { from: 'd42', to: 'p36', label: 'Active' },
+                    { from: 'p36', to: 'admin', label: 'Map' },
+                    { from: 'p36', to: 'tech', label: 'Map' },
+
+                    { from: 'd41', to: 'p37', label: 'Query' },
+                    { from: 'd43', to: 'p37', label: 'Metrics' },
+                    { from: 'd42', to: 'p37', label: 'Summary' },
+                    { from: 'p37', to: 'admin', label: 'Report' }
+                ]
+            },
+            4: {
+                title: "Level 4: Reporting Subsystem",
+                description: "Detailed view of reporting and analytics processes.",
+                nodes: {
+                    // Processes
+                    p41: { type: 'process', label: 'P4.1\nSelect\nReport Type', x: 150, y: 80, color: '#ffe6cc' },
+                    p42: { type: 'process', label: 'P4.2\nSet\nParameters', x: 300, y: 80, color: '#ffe6cc' },
+                    p43: { type: 'process', label: 'P4.3\nQuery\nData', x: 450, y: 80, color: '#ffe6cc' },
+                    p44: { type: 'process', label: 'P4.4\nProcess &\nAggregate', x: 600, y: 80, color: '#ffe6cc' },
+                    p45: { type: 'process', label: 'P4.5\nFormat\nOutput', x: 250, y: 220, color: '#ffe6cc' },
+                    p46: { type: 'process', label: 'P4.6\nExport\nPDF/Excel', x: 400, y: 220, color: '#ffe6cc' },
+                    p47: { type: 'process', label: 'P4.7\nSave Custom\nReport', x: 150, y: 360, color: '#ccffcc' },
+                    p48: { type: 'process', label: 'P4.8\nSchedule\nAuto-Report', x: 550, y: 220, color: '#ccffcc' },
+
+                    // Data Stores
+                    d51: { type: 'datastore', label: 'D5.1: Templates', x: 150, y: 500, color: '#3498db' },
+                    d2: { type: 'datastore', label: 'D2: Tickets', x: 300, y: 500, color: '#3498db' },
+                    d1: { type: 'datastore', label: 'D1: Users', x: 450, y: 500, color: '#3498db' },
+                    d24: { type: 'datastore', label: 'D2.4: Services', x: 600, y: 500, color: '#3498db' },
+                    d4: { type: 'datastore', label: 'D4: Monitoring', x: 100, y: 600, color: '#3498db' },
+                    d3: { type: 'datastore', label: 'D3: Assets', x: 250, y: 600, color: '#3498db' },
+                    d52: { type: 'datastore', label: 'D5.2: SLA Logs', x: 400, y: 600, color: '#3498db' },
+                    d53: { type: 'datastore', label: 'D5.3: Custom', x: 550, y: 600, color: '#3498db' },
+                    d54: { type: 'datastore', label: 'D5.4: Executions', x: 700, y: 600, color: '#3498db' },
+
+                    // External
+                    user: { type: 'external', label: 'User', x: 50, y: 150, color: '#9b59b6' },
+                    admin: { type: 'external', label: 'Admin', x: 50, y: 280, color: '#9b59b6' }
+                },
+                flows: [
+                    { from: 'user', to: 'p41', label: 'Select' },
+                    { from: 'd51', to: 'p41', label: 'Templates' },
+                    { from: 'p41', to: 'p42', label: 'Template' },
+
+                    { from: 'user', to: 'p42', label: 'Filters' },
+                    { from: 'p42', to: 'p43', label: 'Criteria' },
+
+                    { from: 'p43', to: 'd2', label: 'Query' },
+                    { from: 'd2', to: 'p43', label: 'Tickets' },
+                    { from: 'p43', to: 'd1', label: 'Query' },
+                    { from: 'd1', to: 'p43', label: 'Users' },
+                    { from: 'p43', to: 'd24', label: 'Query' },
+                    { from: 'd24', to: 'p43', label: 'Services' },
+                    { from: 'p43', to: 'd4', label: 'Query' },
+                    { from: 'd4', to: 'p43', label: 'Network' },
+                    { from: 'p43', to: 'd3', label: 'Query' },
+                    { from: 'd3', to: 'p43', label: 'Assets' },
+                    { from: 'p43', to: 'd52', label: 'Query' },
+                    { from: 'd52', to: 'p43', label: 'SLA' },
+
+                    { from: 'p43', to: 'p44', label: 'Raw Data' },
+                    { from: 'p44', to: 'p45', label: 'Stats' },
+
+                    { from: 'p45', to: 'user', label: 'Report' },
+                    { from: 'p45', to: 'p46', label: 'Data' },
+
+                    { from: 'user', to: 'p46', label: 'Export' },
+                    { from: 'p46', to: 'user', label: 'File' },
+
+                    { from: 'user', to: 'p47', label: 'Save' },
+                    { from: 'p47', to: 'd53', label: 'Config' },
+                    { from: 'd53', to: 'p41', label: 'Saved' },
+
+                    { from: 'admin', to: 'p48', label: 'Schedule' },
+                    { from: 'p48', to: 'd54', label: 'Schedule' },
+                    { from: 'd54', to: 'p43', label: 'Trigger' },
+                    { from: 'p48', to: 'user', label: 'Email' }
+                ]
+            }
+        };
+
+        // Process details
+        const processDetails = {
+            'P1.0': {
+                name: 'Authentication & Authorization',
+                description: 'Handles user login, session management, and role-based access control.',
+                inputs: ['Login credentials from users'],
+                outputs: ['Session tokens', 'User permissions'],
+                dataStores: ['D1: Users', 'D7: Audit Logs']
+            },
+            'P2.0': {
+                name: 'Ticket Management',
+                description: 'Core ticketing functionality including creation, assignment, updates, and resolution.',
+                inputs: ['Ticket requests from users', 'Status updates from technicians'],
+                outputs: ['Ticket status notifications', 'Email alerts'],
+                dataStores: ['D2: Tickets', 'D2.1-D2.8: Various ticket-related stores']
+            },
+            'P3.0': {
+                name: 'Network Monitoring',
+                description: 'Monitors ATMs and branch networks, detects incidents, and generates alerts.',
+                inputs: ['Ping responses from ATMs/branches'],
+                outputs: ['Network status updates', 'Incident alerts', 'Auto-created tickets'],
+                dataStores: ['D3: Assets', 'D4: Monitoring Data']
+            },
+            'P4.0': {
+                name: 'Reporting & Analytics',
+                description: 'Generates various reports and analytics across all system modules.',
+                inputs: ['Report requests from users', 'Filter parameters'],
+                outputs: ['Formatted reports', 'PDF/Excel exports'],
+                dataStores: ['D2: Tickets', 'D4: Monitoring', 'D5: Report Templates']
+            },
+            'P5.0': {
+                name: 'Knowledge Management',
+                description: 'Manages knowledge base articles and solutions.',
+                inputs: ['Article searches', 'New article submissions'],
+                outputs: ['Search results', 'Article content'],
+                dataStores: ['D6: Knowledge Base']
+            },
+            'P6.0': {
+                name: 'Admin Management',
+                description: 'System configuration, user management, and data import operations.',
+                inputs: ['Configuration changes', 'Import data from legacy systems'],
+                outputs: ['Updated configurations', 'Audit logs'],
+                dataStores: ['D1: Users', 'D3: Assets', 'D7: Audit Logs']
+            },
+            'P7.0': {
+                name: 'Approval Workflow',
+                description: 'Multi-level approval process for certain ticket types.',
+                inputs: ['Approval requests from ticket management'],
+                outputs: ['Approval decisions', 'Notifications'],
+                dataStores: ['D2.8: Approvals', 'D2: Tickets']
+            }
+        };
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            showLevel(0);
+
+            // Check for saved theme preference
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark');
+                document.getElementById('theme-icon').textContent = '☀️';
+            }
+        });
+
+        // Level navigation
+        function showLevel(level) {
+            currentLevel = level;
+            const data = levels[level];
+
+            // Update UI
+            document.getElementById('diagram-title').textContent = data.title;
+            document.getElementById('diagram-description').textContent = data.description;
+
+            // Update active button
+            document.querySelectorAll('.level-btn').forEach(btn => {
+                if (btn.dataset.level == level) {
+                    btn.classList.add('bg-blue-50');
+                    btn.classList.remove('hover:bg-gray-100');
+                } else {
+                    btn.classList.remove('bg-blue-50');
+                    btn.classList.add('hover:bg-gray-100');
+                }
+            });
+
+            // Render diagram
+            renderDiagram(data);
+
+            // Reset zoom
+            currentZoom = 1;
+            updateZoom();
+
+            // Hide details panel
+            document.getElementById('details-panel').classList.add('hidden');
+        }
+
+        // Render diagram
+        function renderDiagram(data) {
+            const container = document.getElementById('diagram-container');
+            const width = Math.max(800, ...Object.values(data.nodes).map(n => n.x + 100));
+            const height = Math.max(650, ...Object.values(data.nodes).map(n => n.y + 100));
+
+            let svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">`;
+
+            // Define arrow marker
+            svg += `
+                <defs>
+                    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                        <polygon points="0 0, 10 3, 0 6" fill="#666" />
+                    </marker>
+                </defs>
+            `;
+
+            // Draw flows first (behind nodes)
+            data.flows.forEach(flow => {
+                const from = data.nodes[flow.from];
+                const to = data.nodes[flow.to];
+                if (!from || !to) return;
+
+                const offset = flow.offset || 0;
+                const x1 = from.x;
+                const y1 = from.y + offset;
+                const x2 = to.x;
+                const y2 = to.y + offset;
+
+                // Calculate control points for curved line
+                const dx = x2 - x1;
+                const dy = y2 - y1;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                const cx = (x1 + x2) / 2;
+                const cy = (y1 + y2) / 2 - dist * 0.1;
+
+                svg += `
+                    <path d="M ${x1},${y1} Q ${cx},${cy} ${x2},${y2}"
+                        stroke="#666" stroke-width="2" fill="none"
+                        marker-end="url(#arrowhead)"
+                        class="data-flow"
+                        stroke-dasharray="5,5" />
+                `;
+
+                // Add label
+                if (flow.label) {
+                    const labelLines = flow.label.split('\n');
+                    const labelY = cy - (labelLines.length - 1) * 6;
+                    svg += `<text x="${cx}" y="${labelY}" text-anchor="middle" font-size="11" fill="#444">`;
+                    labelLines.forEach((line, i) => {
+                        svg += `<tspan x="${cx}" dy="${i === 0 ? 0 : 12}">${line}</tspan>`;
+                    });
+                    svg += `</text>`;
+                }
+            });
+
+            // Draw nodes
+            Object.entries(data.nodes).forEach(([id, node]) => {
+                const nodeHtml = renderNode(id, node);
+                svg += nodeHtml;
+            });
+
+            svg += '</svg>';
+            container.innerHTML = svg;
+
+            // Add click handlers
+            document.querySelectorAll('.process-node').forEach(el => {
+                el.addEventListener('click', function() {
+                    const nodeId = this.dataset.nodeId;
+                    showNodeDetails(nodeId);
+                });
+            });
+        }
+
+        // Render individual node
+        function renderNode(id, node) {
+            let svg = '';
+            const labels = node.label.split('\n');
+            const nodeWidth = 100;
+            const nodeHeight = 60;
+
+            if (node.type === 'process') {
+                // Rectangle for process
+                svg += `
+                    <g class="process-node" data-node-id="${id}">
+                        <rect x="${node.x - nodeWidth/2}" y="${node.y - nodeHeight/2}"
+                            width="${nodeWidth}" height="${nodeHeight}"
+                            fill="${node.color}" stroke="#333" stroke-width="2" rx="5" />
+                        <text x="${node.x}" y="${node.y - (labels.length - 1) * 5}"
+                            text-anchor="middle" font-size="11" font-weight="600" fill="#000">
+                `;
+                labels.forEach((line, i) => {
+                    svg += `<tspan x="${node.x}" dy="${i === 0 ? 0 : 12}">${line}</tspan>`;
+                });
+                svg += `</text></g>`;
+
+            } else if (node.type === 'datastore') {
+                // Cylinder for data store
+                svg += `
+                    <g class="process-node" data-node-id="${id}">
+                        <ellipse cx="${node.x}" cy="${node.y - nodeHeight/2}"
+                            rx="${nodeWidth/2}" ry="8" fill="${node.color}" stroke="#333" stroke-width="2" />
+                        <rect x="${node.x - nodeWidth/2}" y="${node.y - nodeHeight/2}"
+                            width="${nodeWidth}" height="${nodeHeight}"
+                            fill="${node.color}" stroke="none" />
+                        <line x1="${node.x - nodeWidth/2}" y1="${node.y - nodeHeight/2}"
+                            x2="${node.x - nodeWidth/2}" y2="${node.y + nodeHeight/2}"
+                            stroke="#333" stroke-width="2" />
+                        <line x1="${node.x + nodeWidth/2}" y1="${node.y - nodeHeight/2}"
+                            x2="${node.x + nodeWidth/2}" y2="${node.y + nodeHeight/2}"
+                            stroke="#333" stroke-width="2" />
+                        <ellipse cx="${node.x}" cy="${node.y + nodeHeight/2}"
+                            rx="${nodeWidth/2}" ry="8" fill="${node.color}" stroke="#333" stroke-width="2" />
+                        <text x="${node.x}" y="${node.y - (labels.length - 1) * 5}"
+                            text-anchor="middle" font-size="11" font-weight="600" fill="#fff">
+                `;
+                labels.forEach((line, i) => {
+                    svg += `<tspan x="${node.x}" dy="${i === 0 ? 0 : 12}">${line}</tspan>`;
+                });
+                svg += `</text></g>`;
+
+            } else if (node.type === 'external') {
+                // Rectangle with shadow for external entity
+                svg += `
+                    <g class="process-node" data-node-id="${id}">
+                        <rect x="${node.x - nodeWidth/2 + 3}" y="${node.y - nodeHeight/2 + 3}"
+                            width="${nodeWidth}" height="${nodeHeight}"
+                            fill="#000" opacity="0.2" rx="3" />
+                        <rect x="${node.x - nodeWidth/2}" y="${node.y - nodeHeight/2}"
+                            width="${nodeWidth}" height="${nodeHeight}"
+                            fill="${node.color}" stroke="#333" stroke-width="2" rx="3" />
+                        <text x="${node.x}" y="${node.y - (labels.length - 1) * 5}"
+                            text-anchor="middle" font-size="11" font-weight="600" fill="#fff">
+                `;
+                labels.forEach((line, i) => {
+                    svg += `<tspan x="${node.x}" dy="${i === 0 ? 0 : 12}">${line}</tspan>`;
+                });
+                svg += `</text></g>`;
+
+            } else if (node.type === 'system') {
+                // Large rounded rectangle for system
+                svg += `
+                    <g class="process-node" data-node-id="${id}">
+                        <rect x="${node.x - 120}" y="${node.y - 60}"
+                            width="240" height="120"
+                            fill="${node.color}" stroke="#333" stroke-width="4" rx="10" />
+                        <text x="${node.x}" y="${node.y - (labels.length - 1) * 8}"
+                            text-anchor="middle" font-size="16" font-weight="700" fill="#fff">
+                `;
+                labels.forEach((line, i) => {
+                    svg += `<tspan x="${node.x}" dy="${i === 0 ? 0 : 20}">${line}</tspan>`;
+                });
+                svg += `</text></g>`;
+            }
+
+            return svg;
+        }
+
+        // Show node details
+        function showNodeDetails(nodeId) {
+            const panel = document.getElementById('details-panel');
+            const content = document.getElementById('details-content');
+
+            // Extract process ID (e.g., P1.0, P2.1, etc.)
+            const processMatch = nodeId.match(/p\d+/i);
+            if (!processMatch) {
+                panel.classList.add('hidden');
+                return;
+            }
+
+            const processId = processMatch[0].toUpperCase().replace('P', 'P').replace(/(\d)(\d)/, '$1.$2');
+            const details = processDetails[processId];
+
+            if (!details) {
+                panel.classList.add('hidden');
+                return;
+            }
+
+            let html = `
+                <div class="space-y-4">
+                    <div>
+                        <h4 class="font-semibold text-lg text-blue-600">${processId}: ${details.name}</h4>
+                        <p class="text-gray-700 mt-2">${details.description}</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-green-50 p-4 rounded-lg">
+                            <h5 class="font-semibold text-green-800 mb-2">Inputs</h5>
+                            <ul class="list-disc list-inside text-sm text-gray-700 space-y-1">
+                                ${details.inputs.map(input => `<li>${input}</li>`).join('')}
+                            </ul>
+                        </div>
+
+                        <div class="bg-blue-50 p-4 rounded-lg">
+                            <h5 class="font-semibold text-blue-800 mb-2">Outputs</h5>
+                            <ul class="list-disc list-inside text-sm text-gray-700 space-y-1">
+                                ${details.outputs.map(output => `<li>${output}</li>`).join('')}
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="bg-purple-50 p-4 rounded-lg">
+                        <h5 class="font-semibold text-purple-800 mb-2">Data Stores Used</h5>
+                        <ul class="list-disc list-inside text-sm text-gray-700 space-y-1">
+                            ${details.dataStores.map(ds => `<li>${ds}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>
+            `;
+
+            content.innerHTML = html;
+            panel.classList.remove('hidden');
+
+            // Scroll to panel
+            panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // Search functionality
+        function searchDiagram() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const results = document.getElementById('searchResults');
+
+            if (!query) {
+                results.textContent = '';
+                return;
+            }
+
+            let matches = [];
+
+            // Search through all levels
+            Object.entries(levels).forEach(([levelNum, levelData]) => {
+                Object.entries(levelData.nodes).forEach(([id, node]) => {
+                    if (node.label.toLowerCase().includes(query)) {
+                        matches.push({
+                            level: levelNum,
+                            levelTitle: levelData.title,
+                            nodeLabel: node.label
+                        });
+                    }
+                });
+            });
+
+            if (matches.length === 0) {
+                results.textContent = 'No matches found';
+                results.className = 'mt-2 text-sm text-gray-600';
+            } else {
+                results.innerHTML = `Found ${matches.length} match(es)`;
+                results.className = 'mt-2 text-sm text-green-600';
+            }
+        }
+
+        // Zoom controls
+        function zoomIn() {
+            currentZoom = Math.min(currentZoom + 0.2, 3);
+            updateZoom();
+        }
+
+        function zoomOut() {
+            currentZoom = Math.max(currentZoom - 0.2, 0.5);
+            updateZoom();
+        }
+
+        function resetZoom() {
+            currentZoom = 1;
+            updateZoom();
+        }
+
+        function updateZoom() {
+            const container = document.getElementById('diagram-container');
+            container.style.transform = `scale(${currentZoom})`;
+        }
+
+        // Dark mode toggle
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark');
+            const icon = document.getElementById('theme-icon');
+
+            if (document.body.classList.contains('dark')) {
+                icon.textContent = '☀️';
+                localStorage.setItem('theme', 'dark');
+            } else {
+                icon.textContent = '🌙';
+                localStorage.setItem('theme', 'light');
+            }
+        }
+
+        // Export to PDF
+        async function exportToPDF() {
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('l', 'mm', 'a4');
+
+            // Title page
+            pdf.setFontSize(20);
+            pdf.text('Bank SulutGo ServiceDesk', 148, 30, { align: 'center' });
+            pdf.setFontSize(16);
+            pdf.text('Data Flow Visualization', 148, 40, { align: 'center' });
+            pdf.setFontSize(10);
+            pdf.text(`Generated: ${new Date().toLocaleString()}`, 148, 50, { align: 'center' });
+
+            // Export each level
+            for (let i = 0; i <= 4; i++) {
+                pdf.addPage();
+
+                showLevel(i);
+                await new Promise(resolve => setTimeout(resolve, 500)); // Wait for render
+
+                const diagram = document.getElementById('diagram-container');
+                const canvas = await html2canvas(diagram, {
+                    scale: 2,
+                    backgroundColor: '#ffffff'
+                });
+
+                const imgData = canvas.toDataURL('image/png');
+                const imgWidth = 270;
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+                pdf.setFontSize(14);
+                pdf.text(levels[i].title, 148, 15, { align: 'center' });
+                pdf.addImage(imgData, 'PNG', 15, 20, imgWidth, Math.min(imgHeight, 170));
+            }
+
+            pdf.save('servicedesk-dataflow.pdf');
+
+            // Return to original level
+            showLevel(0);
+        }
+    </script>
+</body>
+</html>
