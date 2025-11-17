@@ -1,246 +1,210 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __generator = (this && this.__generator) || function (thisArg, body) {
+    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g = Object.create((typeof Iterator === "function" ? Iterator : Object).prototype);
+    return g.next = verb(0), g["throw"] = verb(1), g["return"] = verb(2), typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
+    function verb(n) { return function (v) { return step([n, v]); }; }
+    function step(op) {
+        if (f) throw new TypeError("Generator is already executing.");
+        while (g && (g = 0, op[0] && (_ = 0)), _) try {
+            if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
+            if (y = 0, t) op = [op[0] & 2, t.value];
+            switch (op[0]) {
+                case 0: case 1: t = op; break;
+                case 4: _.label++; return { value: op[1], done: false };
+                case 5: _.label++; y = op[1]; op = [0]; continue;
+                case 7: op = _.ops.pop(); _.trys.pop(); continue;
+                default:
+                    if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
+                    if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
+                    if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
+                    if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
+                    if (t[2]) _.ops.pop();
+                    _.trys.pop(); continue;
+            }
+            op = body.call(thisArg, _);
+        } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
+        if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const https_1 = require("https");
-const http_1 = require("http");
-const url_1 = require("url");
-const next_1 = __importDefault(require("next"));
-const fs = __importStar(require("fs"));
-const path = __importStar(require("path"));
-const dotenv = __importStar(require("dotenv"));
-const socket_manager_1 = require("./lib/socket-manager");
-// Load environment variables
-dotenv.config();
-const dev = process.env.NODE_ENV !== 'production';
-const hostname = process.env.HOSTNAME || 'localhost';
-const port = parseInt(process.env.PORT || '4000', 10);
-const useHttps = process.env.USE_HTTPS !== 'false'; // Default to HTTPS
+var https_1 = require("https");
+var http_1 = require("http");
+var url_1 = require("url");
+var next_1 = require("next");
+var fs = require("fs");
+var path = require("path");
+var dotenv = require("dotenv");
+var socket_manager_1 = require("./lib/socket-manager");
+// Load environment variables based on NODE_ENV
+var envFile = process.env.NODE_ENV === 'development'
+    ? '.env.development'
+    : '.env';
+dotenv.config({ path: envFile });
+var dev = process.env.NODE_ENV !== 'production';
+var hostname = process.env.HOSTNAME || 'localhost';
+var port = parseInt(process.env.PORT || '3000', 10);
+var useHttps = process.env.USE_HTTPS !== 'false'; // Default to HTTPS
 // Configure Next.js
-const app = (0, next_1.default)({ dev, hostname, port });
-const handle = app.getRequestHandler();
+var app = next_1(({ dev: dev, hostname: hostname, port: port }));
+var handle = app.getRequestHandler();
 // Certificate paths
-const certsDir = path.join(__dirname, 'certificates');
-// Function to check if certificates exist and determine which to use
-const getCertificateConfig = () => {
-    // Check for production Bank SulutGo certificate first
-    const prodCertPath = path.join(certsDir, 'star_banksulutgo_co_id.crt');
-    const prodKeyPath = path.join(certsDir, 'star_banksulutgo_co_id.key');
-    const prodCaPath = path.join(certsDir, 'DigiCertCA.crt');
-    
-    if (fs.existsSync(prodCertPath) && fs.existsSync(prodKeyPath)) {
-        const config = {
-            cert: fs.readFileSync(prodCertPath),
-            key: fs.readFileSync(prodKeyPath)
-        };
-        // Include CA certificate if it exists
-        if (fs.existsSync(prodCaPath)) {
-            config.ca = fs.readFileSync(prodCaPath);
-        }
-        return { exists: true, config, type: 'production' };
-    }
-    
-    // Fallback to localhost certificate
-    const certPath = path.join(certsDir, 'localhost.pem');
-    const keyPath = path.join(certsDir, 'localhost-key.pem');
-    
-    if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
-        return {
-            exists: true,
-            config: {
-                cert: fs.readFileSync(certPath),
-                key: fs.readFileSync(keyPath)
-            },
-            type: 'localhost'
-        };
-    }
-    
-    return { exists: false, config: null, type: null };
+var certsDir = path.join(__dirname, 'certificates');
+// Function to check if certificates exist
+var certificatesExist = function () {
+    var certPath = path.join(certsDir, 'localhost.pem');
+    var keyPath = path.join(certsDir, 'localhost-key.pem');
+    return fs.existsSync(certPath) && fs.existsSync(keyPath);
 };
-// Function to initialize Prisma
-const initializePrisma = async () => {
-    try {
-        // Import Prisma client
-        const { PrismaClient } = require('@prisma/client');
-        const prisma = new PrismaClient({
-            log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-        });
-        
-        // Test connection with retry
-        let retries = 5;
-        while (retries > 0) {
-            try {
-                await prisma.$connect();
-                console.log('✅ Prisma client connected successfully');
-                
-                // Store in global for reuse
-                global.prisma = prisma;
-                return prisma;
-            } catch (error) {
-                retries--;
-                if (retries === 0) {
-                    console.error('❌ Failed to connect Prisma after all retries:', error);
-                    throw error;
-                }
-                console.warn(`⚠️ Prisma connection failed, retrying... (${retries} retries left)`);
-                await new Promise(resolve => setTimeout(resolve, 2000));
-            }
-        }
-    } catch (error) {
-        console.error('❌ Failed to initialize Prisma:', error);
-        throw error;
-    }
-};
-
 // Function to start the server
-const startServer = async () => {
-    try {
-        // Initialize Prisma first
-        await initializePrisma();
-        
-        await app.prepare();
-        let server;
-        const certConfig = getCertificateConfig();
-        if (useHttps && certConfig.exists) {
-            // HTTPS Server
-            const httpsOptions = certConfig.config;
-            server = (0, https_1.createServer)(httpsOptions, async (req, res) => {
-                try {
-                    const parsedUrl = (0, url_1.parse)(req.url, true);
-                    await handle(req, res, parsedUrl);
-                }
-                catch (err) {
-                    console.error('Error occurred handling', req.url, err);
-                    res.statusCode = 500;
-                    res.end('Internal server error');
-                }
-            });
-            server.once('error', (err) => {
-                console.error('Server error:', err);
-                process.exit(1);
-            });
-            server.listen(port, () => {
-                // Initialize Socket.io
-                const io = (0, socket_manager_1.initializeSocketServer)(server);
-                console.log('╔════════════════════════════════════════════════════════╗');
-                console.log('║                                                        ║');
-                console.log('║     🏦 Bank SulutGo ServiceDesk Server Started        ║');
-                console.log('║                                                        ║');
-                console.log('╚════════════════════════════════════════════════════════╝');
-                console.log();
-                console.log(`🔒 HTTPS Server ready on https://${hostname}:${port}`);
-                console.log(`🚀 Environment: ${dev ? 'development' : 'production'}`);
-                console.log(`🔌 Socket.io server initialized`);
-                console.log(`📜 Using ${certConfig.type === 'production' ? 'Bank SulutGo wildcard' : 'localhost'} certificate`);
-                console.log();
-                if (dev) {
-                    console.log('📝 Development Notes:');
-                    console.log('   - If you see a certificate warning, click "Advanced" → "Proceed"');
-                    console.log('   - Or run "npm run cert:generate" to regenerate certificates');
-                    console.log();
-                }
-                // Also create HTTP redirect server on port 80 (optional)
-                if (process.env.REDIRECT_HTTP === 'true') {
-                    const httpPort = 80;
-                    (0, http_1.createServer)((req, res) => {
-                        var _a;
-                        const host = (_a = req.headers.host) === null || _a === void 0 ? void 0 : _a.replace(/:\d+$/, '');
-                        res.writeHead(301, {
-                            Location: `https://${host}:${port}${req.url}`
+var startServer = function () { return __awaiter(void 0, void 0, void 0, function () {
+    var server_1, httpsOptions, error_1;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                return [4 /*yield*/, app.prepare()];
+            case 1:
+                _a.sent();
+                if (useHttps && certificatesExist()) {
+                    httpsOptions = {
+                        key: fs.readFileSync(path.join(certsDir, 'localhost-key.pem')),
+                        cert: fs.readFileSync(path.join(certsDir, 'localhost.pem')),
+                    };
+                    server_1 = (0, https_1.createServer)(httpsOptions, function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+                        var parsedUrl, err_1;
+                        return __generator(this, function (_a) {
+                            switch (_a.label) {
+                                case 0:
+                                    _a.trys.push([0, 2, , 3]);
+                                    parsedUrl = (0, url_1.parse)(req.url, true);
+                                    return [4 /*yield*/, handle(req, res, parsedUrl)];
+                                case 1:
+                                    _a.sent();
+                                    return [3 /*break*/, 3];
+                                case 2:
+                                    err_1 = _a.sent();
+                                    console.error('Error occurred handling', req.url, err_1);
+                                    res.statusCode = 500;
+                                    res.end('Internal server error');
+                                    return [3 /*break*/, 3];
+                                case 3: return [2 /*return*/];
+                            }
                         });
-                        res.end();
-                    }).listen(httpPort, () => {
-                        console.log(`🔄 HTTP redirect server running on port ${httpPort}`);
+                    }); });
+                    server_1.once('error', function (err) {
+                        console.error('Server error:', err);
+                        process.exit(1);
+                    });
+                    server_1.listen(port, function () {
+                        // Initialize Socket.io
+                        var io = (0, socket_manager_1.initializeSocketServer)(server_1);
+                        console.log('╔════════════════════════════════════════════════════════╗');
+                        console.log('║                                                        ║');
+                        console.log('║     🏦 Bank SulutGo ServiceDesk Server Started        ║');
+                        console.log('║                                                        ║');
+                        console.log('╚════════════════════════════════════════════════════════╝');
+                        console.log();
+                        console.log("\uD83D\uDD12 HTTPS Server ready on https://".concat(hostname, ":").concat(port));
+                        console.log("\uD83D\uDE80 Environment: ".concat(dev ? 'development' : 'production'));
+                        console.log("\uD83D\uDD0C Socket.io server initialized");
+                        console.log();
+                        if (dev) {
+                            console.log('📝 Development Notes:');
+                            console.log('   - If you see a certificate warning, click "Advanced" → "Proceed"');
+                            console.log('   - Or run "npm run cert:generate" to regenerate certificates');
+                            console.log();
+                        }
+                        // Also create HTTP redirect server on port 80 (optional)
+                        if (process.env.REDIRECT_HTTP === 'true') {
+                            var httpPort_1 = 80;
+                            (0, http_1.createServer)(function (req, res) {
+                                var _a;
+                                var host = (_a = req.headers.host) === null || _a === void 0 ? void 0 : _a.replace(/:\d+$/, '');
+                                res.writeHead(301, {
+                                    Location: "https://".concat(host, ":").concat(port).concat(req.url)
+                                });
+                                res.end();
+                            }).listen(httpPort_1, function () {
+                                console.log("\uD83D\uDD04 HTTP redirect server running on port ".concat(httpPort_1));
+                            });
+                        }
                     });
                 }
-            });
-        }
-        else {
-            // Fallback to HTTP if certificates don't exist or HTTPS is disabled
-            if (useHttps && !certConfig.exists) {
-                console.warn('⚠️  HTTPS certificates not found!');
-                console.log('   Run "npm run cert:generate" to create certificates');
-                console.log('   Falling back to HTTP...\n');
-            }
-            server = (0, http_1.createServer)(async (req, res) => {
-                try {
-                    const parsedUrl = (0, url_1.parse)(req.url, true);
-                    await handle(req, res, parsedUrl);
+                else {
+                    // Fallback to HTTP if certificates don't exist or HTTPS is disabled
+                    if (useHttps && !certificatesExist()) {
+                        console.warn('⚠️  HTTPS certificates not found!');
+                        console.log('   Run "npm run cert:generate" to create certificates');
+                        console.log('   Falling back to HTTP...\n');
+                    }
+                    server_1 = (0, http_1.createServer)(function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+                        var parsedUrl, err_2;
+                        return __generator(this, function (_a) {
+                            switch (_a.label) {
+                                case 0:
+                                    _a.trys.push([0, 2, , 3]);
+                                    parsedUrl = (0, url_1.parse)(req.url, true);
+                                    return [4 /*yield*/, handle(req, res, parsedUrl)];
+                                case 1:
+                                    _a.sent();
+                                    return [3 /*break*/, 3];
+                                case 2:
+                                    err_2 = _a.sent();
+                                    console.error('Error occurred handling', req.url, err_2);
+                                    res.statusCode = 500;
+                                    res.end('Internal server error');
+                                    return [3 /*break*/, 3];
+                                case 3: return [2 /*return*/];
+                            }
+                        });
+                    }); });
+                    server_1.once('error', function (err) {
+                        console.error('Server error:', err);
+                        process.exit(1);
+                    });
+                    server_1.listen(port, function () {
+                        // Initialize Socket.io
+                        var io = (0, socket_manager_1.initializeSocketServer)(server_1);
+                        console.log('╔════════════════════════════════════════════════════════╗');
+                        console.log('║                                                        ║');
+                        console.log('║     🏦 Bank SulutGo ServiceDesk Server Started        ║');
+                        console.log('║                                                        ║');
+                        console.log('╚════════════════════════════════════════════════════════╝');
+                        console.log();
+                        console.log("\u26A0\uFE0F  HTTP Server ready on http://".concat(hostname, ":").concat(port));
+                        console.log("\uD83D\uDE80 Environment: ".concat(dev ? 'development' : 'production'));
+                        console.log("\uD83D\uDD0C Socket.io server initialized");
+                        console.log();
+                        console.log('⚠️  WARNING: Running on HTTP (not secure)');
+                        console.log('   For HTTPS, run "npm run cert:generate" then restart');
+                        console.log();
+                    });
                 }
-                catch (err) {
-                    console.error('Error occurred handling', req.url, err);
-                    res.statusCode = 500;
-                    res.end('Internal server error');
-                }
-            });
-            server.once('error', (err) => {
-                console.error('Server error:', err);
+                return [3 /*break*/, 3];
+            case 2:
+                error_1 = _a.sent();
+                console.error('Failed to start server:', error_1);
                 process.exit(1);
-            });
-            server.listen(port, () => {
-                // Initialize Socket.io
-                const io = (0, socket_manager_1.initializeSocketServer)(server);
-                console.log('╔════════════════════════════════════════════════════════╗');
-                console.log('║                                                        ║');
-                console.log('║     🏦 Bank SulutGo ServiceDesk Server Started        ║');
-                console.log('║                                                        ║');
-                console.log('╚════════════════════════════════════════════════════════╝');
-                console.log();
-                console.log(`⚠️  HTTP Server ready on http://${hostname}:${port}`);
-                console.log(`🚀 Environment: ${dev ? 'development' : 'production'}`);
-                console.log(`🔌 Socket.io server initialized`);
-                console.log();
-                console.log('⚠️  WARNING: Running on HTTP (not secure)');
-                console.log('   For HTTPS, run "npm run cert:generate" then restart');
-                console.log();
-            });
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
         }
-    }
-    catch (error) {
-        console.error('Failed to start server:', error);
-        process.exit(1);
-    }
-};
+    });
+}); };
 // Handle graceful shutdown
-process.on('SIGTERM', () => {
+process.on('SIGTERM', function () {
     console.log('SIGTERM signal received: closing HTTP server');
     process.exit(0);
 });
-process.on('SIGINT', () => {
+process.on('SIGINT', function () {
     console.log('SIGINT signal received: closing HTTP server');
     process.exit(0);
 });

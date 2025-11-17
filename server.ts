@@ -8,8 +8,12 @@ import * as dotenv from 'dotenv';
 import { Server as SocketIOServer } from 'socket.io';
 import { initializeSocketServer } from './lib/socket-manager';
 
-// Load environment variables
-dotenv.config();
+// Load environment variables based on NODE_ENV
+const envFile = process.env.NODE_ENV === 'development'
+  ? '.env.development'
+  : '.env';
+
+dotenv.config({ path: envFile });
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = process.env.HOSTNAME || 'localhost';
