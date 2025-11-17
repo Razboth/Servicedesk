@@ -381,13 +381,22 @@ export async function GET(request: NextRequest) {
           }
         },
         comments: {
+          where: {
+            OR: [
+              { content: { contains: 'Ticket claimed by', mode: 'insensitive' } },
+              { content: { contains: 'Ticket assigned to', mode: 'insensitive' } }
+            ]
+          },
           select: {
-            id: true
-          }
+            createdAt: true
+          },
+          orderBy: { createdAt: 'asc' },
+          take: 1
         },
-        attachments: {
+        _count: {
           select: {
-            id: true
+            comments: true,
+            attachments: true
           }
         },
         vendorTickets: {
@@ -514,13 +523,14 @@ export async function GET(request: NextRequest) {
         updatedAt: ticket.updatedAt,
         resolvedAt: ticket.resolvedAt,
         closedAt: ticket.closedAt,
+        claimedAt: ticket.comments[0]?.createdAt || null,
         responseTime: null, // Field removed as firstResponseAt doesn't exist
         resolutionTime: ticket.resolvedAt ?
           Math.round((new Date(ticket.resolvedAt).getTime() - new Date(ticket.createdAt).getTime()) / (1000 * 60 * 60)) : null,
         approvalStatus: ticket.approvals[0]?.status || null,
         approvedBy: ticket.approvals[0]?.approver?.name || null,
-        commentCount: ticket.comments.length,
-        attachmentCount: ticket.attachments.length,
+        commentCount: ticket._count.comments,
+        attachmentCount: ticket._count.attachments,
         vendorTicketNumber: ticket.vendorTickets[0]?.vendorTicketNumber || null,
         vendorName: ticket.vendorTickets[0]?.vendor?.name || null,
         vendorStatus: ticket.vendorTickets[0]?.status || null
@@ -852,6 +862,19 @@ export async function POST(request: NextRequest) {
             }
           }
         },
+        comments: {
+          where: {
+            OR: [
+              { content: { contains: 'Ticket claimed by', mode: 'insensitive' } },
+              { content: { contains: 'Ticket assigned to', mode: 'insensitive' } }
+            ]
+          },
+          select: {
+            createdAt: true
+          },
+          orderBy: { createdAt: 'asc' },
+          take: 1
+        },
         vendorTickets: {
           select: {
             vendorTicketNumber: true,
@@ -924,6 +947,7 @@ export async function POST(request: NextRequest) {
         'Updated Date': new Date(t.updatedAt).toISOString(),
         'Resolved Date': t.resolvedAt ? new Date(t.resolvedAt).toISOString() : '',
         'Closed Date': t.closedAt ? new Date(t.closedAt).toISOString() : '',
+        'Claimed Date': t.comments[0]?.createdAt ? new Date(t.comments[0].createdAt).toISOString() : '',
         'Resolution Time (hrs)': t.resolvedAt ?
           Math.round((new Date(t.resolvedAt).getTime() - new Date(t.createdAt).getTime()) / (1000 * 60 * 60)) : ''
       };

@@ -55,6 +55,7 @@ interface Ticket {
   updatedAt: string
   resolvedAt: string | null
   closedAt: string | null
+  claimedAt: string | null
   responseTime: number | null
   resolutionTime: number | null
   approvalStatus: string | null
@@ -752,6 +753,7 @@ export default function AllTicketsReport() {
                     <TableHead className="hidden xl:table-cell font-semibold">Created By</TableHead>
                     <TableHead className="hidden 2xl:table-cell font-semibold">Assigned To</TableHead>
                     <TableHead className="font-semibold">Created</TableHead>
+                    <TableHead className="hidden lg:table-cell font-semibold">Claim Date</TableHead>
                     <TableHead className="hidden lg:table-cell font-semibold text-right">Time</TableHead>
                     <TableHead className="hidden xl:table-cell text-center font-semibold">Activity</TableHead>
                   </TableRow>
@@ -815,6 +817,9 @@ export default function AllTicketsReport() {
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
                         {format(new Date(ticket.createdAt), 'MMM dd, yyyy')}
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell text-sm text-muted-foreground whitespace-nowrap">
+                        {ticket.claimedAt ? format(new Date(ticket.claimedAt), 'MMM dd, yyyy HH:mm') : '-'}
                       </TableCell>
                       <TableCell className="hidden lg:table-cell text-sm text-right">
                         {ticket.resolutionTime ? (
