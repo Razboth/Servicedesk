@@ -41,6 +41,7 @@ function ReportWizardContent() {
     title: searchParams.get('title') || '',
     type: searchParams.get('type') || 'TABULAR',
     module: searchParams.get('module') || 'TICKETS',
+    selectedServices: [] as string[], // For service-based filtering
     columns: [] as string[],
     filters: [] as any[],
     groupBy: [] as string[],
@@ -49,6 +50,35 @@ function ReportWizardContent() {
     query: '',
     schedule: null as any
   })
+
+  const [services, setServices] = useState<any[]>([])
+  const [loadingServices, setLoadingServices] = useState(false)
+
+  // Load services when module is TICKETS
+  useEffect(() => {
+    if (reportConfig.module === 'TICKETS') {
+      loadServices()
+    }
+  }, [reportConfig.module])
+
+  const loadServices = async () => {
+    try {
+      setLoadingServices(true)
+      const response = await fetch('/api/services')
+
+      if (!response.ok) {
+        throw new Error('Failed to load services')
+      }
+
+      const data = await response.json()
+      setServices(data.services || data || [])
+    } catch (error) {
+      console.error('Error loading services:', error)
+      setServices([])
+    } finally {
+      setLoadingServices(false)
+    }
+  }
 
   const steps = [
     { id: 1, title: 'Data Source', icon: <Code className="w-4 h-4" /> },
@@ -88,7 +118,7 @@ function ReportWizardContent() {
 
       if (response.ok) {
         const data = await response.json()
-        router.push(`/reports/custom/${data.id}`)
+        router.push(`/reports/view/${data.id}`)
       } else {
         setValidationErrors(['Failed to save report'])
       }
@@ -258,7 +288,61 @@ function ReportWizardContent() {
                       </Tabs>
                     </div>
 
-                    <div className="flex justify-end">
+                    {/* Service Selection for TICKETS module */}
+                    {reportConfig.module === 'TICKETS' && (
+                      <div className="mt-6">
+                        <h3 className="text-base font-medium mb-2">Filter by Services (Optional)</h3>
+                        <p className="text-sm text-gray-500 mb-3">
+                          Select specific services to enable service-specific custom fields and filters.
+                          Leave empty to include all services.
+                        </p>
+
+                        <div className="border rounded-lg p-4 max-h-60 overflow-y-auto bg-gray-50">
+                          {loadingServices ? (
+                            <div className="text-sm text-gray-500 text-center py-4">Loading services...</div>
+                          ) : services.length > 0 ? (
+                            <div className="space-y-2">
+                              {services.map((service: any) => (
+                                <label key={service.id} className="flex items-center gap-2 cursor-pointer hover:bg-white px-2 py-1 rounded">
+                                  <input
+                                    type="checkbox"
+                                    checked={reportConfig.selectedServices.includes(service.id)}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setReportConfig({
+                                          ...reportConfig,
+                                          selectedServices: [...reportConfig.selectedServices, service.id]
+                                        })
+                                      } else {
+                                        setReportConfig({
+                                          ...reportConfig,
+                                          selectedServices: reportConfig.selectedServices.filter(id => id !== service.id)
+                                        })
+                                      }
+                                    }}
+                                    className="rounded border-gray-300"
+                                  />
+                                  <span className="text-sm">{service.name}</span>
+                                  {service.tier1Category && (
+                                    <span className="text-xs text-gray-500">({service.tier1Category.name})</span>
+                                  )}
+                                </label>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-sm text-gray-500 text-center py-4">No services available</div>
+                          )}
+                        </div>
+
+                        {reportConfig.selectedServices.length > 0 && (
+                          <div className="mt-2 text-sm text-blue-600">
+                            {reportConfig.selectedServices.length} service(s) selected
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="flex justify-end mt-6">
                       <Button onClick={() => handleStepChange(2)}>
                         Next: Select Columns
                         <ChevronRight className="w-4 h-4 ml-1" />
@@ -280,6 +364,7 @@ function ReportWizardContent() {
                         module={reportConfig.module}
                         selectedColumns={reportConfig.columns}
                         onColumnsChange={(columns) => setReportConfig({...reportConfig, columns})}
+                        selectedServices={reportConfig.selectedServices}
                       />
                     </div>
 
@@ -309,6 +394,7 @@ function ReportWizardContent() {
                         module={reportConfig.module}
                         filters={reportConfig.filters}
                         onFiltersChange={(filters) => setReportConfig({...reportConfig, filters})}
+                        selectedServices={reportConfig.selectedServices}
                       />
                     </div>
 

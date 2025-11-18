@@ -24,12 +24,16 @@ interface Column {
   label: string
   type: string
   category: string
+  isCustomField?: boolean
+  fieldId?: string
+  serviceName?: string
 }
 
 interface ColumnSelectorProps {
   module: string
   selectedColumns: string[]
   onColumnsChange: (columns: string[]) => void
+  selectedServices?: string[] // Service IDs for fetching custom fields
 }
 
 // Define available columns for each module
@@ -51,6 +55,10 @@ const getModuleColumns = (module: string): Column[] => {
         { id: 'priority', name: 'priority', label: 'Priority', type: 'enum', category: 'Status' },
         { id: 'category', name: 'category', label: 'Category', type: 'enum', category: 'Classification' },
         { id: 'service.name', name: 'service.name', label: 'Service', type: 'string', category: 'Service' },
+        { id: 'service.tier1Category.name', name: 'service.tier1Category.name', label: 'Service Category (Tier 1)', type: 'string', category: 'Service Hierarchy' },
+        { id: 'service.tier2Subcategory.name', name: 'service.tier2Subcategory.name', label: 'Service Subcategory (Tier 2)', type: 'string', category: 'Service Hierarchy' },
+        { id: 'service.tier3Item.name', name: 'service.tier3Item.name', label: 'Service Item (Tier 3)', type: 'string', category: 'Service Hierarchy' },
+        { id: 'service.supportGroup.name', name: 'service.supportGroup.name', label: 'Service Support Group', type: 'string', category: 'Service Hierarchy' },
         { id: 'createdBy.name', name: 'createdBy.name', label: 'Created By', type: 'string', category: 'People' },
         { id: 'assignedTo.name', name: 'assignedTo.name', label: 'Assigned To', type: 'string', category: 'People' },
         { id: 'branch.name', name: 'branch.name', label: 'Branch', type: 'string', category: 'Location' },
@@ -86,21 +94,68 @@ const getModuleColumns = (module: string): Column[] => {
   }
 }
 
-export function ColumnSelector({ module, selectedColumns, onColumnsChange }: ColumnSelectorProps) {
+export function ColumnSelector({ module, selectedColumns, onColumnsChange, selectedServices = [] }: ColumnSelectorProps) {
   const [availableColumns, setAvailableColumns] = useState<Column[]>([])
+  const [customFieldColumns, setCustomFieldColumns] = useState<Column[]>([])
+  const [loadingCustomFields, setLoadingCustomFields] = useState(false)
   const [displayColumns, setDisplayColumns] = useState<string[]>(selectedColumns)
   const [searchTerm, setSearchTerm] = useState('')
   const [draggedColumn, setDraggedColumn] = useState<string | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<string>('All')
 
+  // Load base columns for module
   useEffect(() => {
     const columns = getModuleColumns(module)
     setAvailableColumns(columns)
   }, [module])
 
-  const categories = ['All', ...new Set(availableColumns.map(col => col.category))]
+  // Load custom fields when services are selected
+  useEffect(() => {
+    if (module === 'TICKETS' && selectedServices && selectedServices.length > 0) {
+      loadCustomFields(selectedServices)
+    } else {
+      setCustomFieldColumns([])
+    }
+  }, [module, selectedServices])
 
-  const filteredColumns = availableColumns.filter(col => {
+  const loadCustomFields = async (serviceIds: string[]) => {
+    try {
+      setLoadingCustomFields(true)
+      const response = await fetch(`/api/reports/custom/fields?serviceIds=${serviceIds.join(',')}`)
+
+      if (!response.ok) {
+        throw new Error('Failed to load custom fields')
+      }
+
+      const data = await response.json()
+
+      // Transform custom fields into column format
+      const customCols: Column[] = data.fields.map((field: any) => ({
+        id: `customField_${field.id}`,
+        name: `customField_${field.id}`,
+        label: `${field.serviceName ? `[${field.serviceName}] ` : ''}${field.label}`,
+        type: field.type.toLowerCase(),
+        category: 'Custom Fields',
+        isCustomField: true,
+        fieldId: field.id,
+        serviceName: field.serviceName
+      }))
+
+      setCustomFieldColumns(customCols)
+    } catch (error) {
+      console.error('Error loading custom fields:', error)
+      setCustomFieldColumns([])
+    } finally {
+      setLoadingCustomFields(false)
+    }
+  }
+
+  // Combine base columns with custom field columns
+  const allColumns = [...availableColumns, ...customFieldColumns]
+
+  const categories = ['All', ...new Set(allColumns.map(col => col.category))]
+
+  const filteredColumns = allColumns.filter(col => {
     const matchesSearch = col.label.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesCategory = selectedCategory === 'All' || col.category === selectedCategory
     return matchesSearch && matchesCategory
@@ -243,7 +298,7 @@ export function ColumnSelector({ module, selectedColumns, onColumnsChange }: Col
               ) : (
                 <div className="space-y-2">
                   {displayColumns.map((columnId, index) => {
-                    const column = availableColumns.find(c => c.id === columnId)
+                    const column = allColumns.find(c => c.id === columnId)
                     if (!column) return null
 
                     return (

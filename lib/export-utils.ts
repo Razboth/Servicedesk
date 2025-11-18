@@ -240,25 +240,42 @@ export const generateFilename = (baseName: string, extension: string, includeTim
 
 // Format data for export (clean up and standardize)
 export const formatDataForExport = (
-  data: any[], 
+  data: any[],
   formatters: Record<string, (value: any) => string> = {},
   excludeFields: string[] = []
 ) => {
   return data.map(row => {
     const formattedRow: any = {};
-    
+
     Object.entries(row).forEach(([key, value]) => {
       // Skip excluded fields
       if (excludeFields.includes(key)) return;
-      
+
       // Apply custom formatter if available
       if (formatters[key]) {
         formattedRow[key] = formatters[key](value);
-      } 
+      }
+      // Handle nested objects (service hierarchy)
+      else if (value && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date)) {
+        // For nested objects, extract name or relevant field
+        formattedRow[key] = value.name || value.label || value.code || JSON.stringify(value);
+      }
+      // Handle arrays (multiselect custom fields)
+      else if (Array.isArray(value)) {
+        formattedRow[key] = value.join(', ');
+      }
       // Format dates
       else if (value instanceof Date) {
         formattedRow[key] = value.toLocaleDateString();
-      } 
+      }
+      // Format date strings (ISO format)
+      else if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value)) {
+        try {
+          formattedRow[key] = new Date(value).toLocaleDateString();
+        } catch {
+          formattedRow[key] = value;
+        }
+      }
       // Format numbers
       else if (typeof value === 'number') {
         formattedRow[key] = Number.isInteger(value) ? value : value.toFixed(2);
@@ -272,8 +289,40 @@ export const formatDataForExport = (
         formattedRow[key] = String(value);
       }
     });
-    
+
     return formattedRow;
+  });
+};
+
+// Flatten nested objects for export (service hierarchy)
+export const flattenNestedData = (data: any[], columns: string[]) => {
+  return data.map(row => {
+    const flatRow: any = {};
+
+    columns.forEach(column => {
+      // Handle nested paths like 'service.tier1Category.name'
+      if (column.includes('.')) {
+        const parts = column.split('.');
+        let value = row;
+
+        for (const part of parts) {
+          value = value?.[part];
+          if (value === null || value === undefined) break;
+        }
+
+        flatRow[column] = value;
+      }
+      // Handle custom field columns
+      else if (column.startsWith('customField_')) {
+        flatRow[column] = row[column];
+      }
+      // Regular columns
+      else {
+        flatRow[column] = row[column];
+      }
+    });
+
+    return flatRow;
   });
 };
 
@@ -297,4 +346,131 @@ export const analyticsExportFormatters = {
     const mins = minutes % 60;
     return `${hours}h ${mins}m`;
   }
+};
+
+// Custom field export formatters
+export const customFieldExportFormatters = {
+  // Format custom field values based on type
+  formatCustomFieldValue: (value: any, fieldType: string): string => {
+    if (value === null || value === undefined) return '';
+
+    switch (fieldType?.toUpperCase()) {
+      case 'NUMBER':
+      case 'CURRENCY':
+        return typeof value === 'number' ? value.toString() : String(value);
+
+      case 'DATE':
+        try {
+          return new Date(value).toLocaleDateString();
+        } catch {
+          return String(value);
+        }
+
+      case 'DATETIME':
+        try {
+          return new Date(value).toLocaleString();
+        } catch {
+          return String(value);
+        }
+
+      case 'CHECKBOX':
+      case 'TOGGLE':
+        return value === true || value === 'true' || value === '1' ? 'Yes' : 'No';
+
+      case 'MULTISELECT':
+        return Array.isArray(value) ? value.join(', ') : String(value);
+
+      case 'SELECT':
+      case 'RADIO':
+      case 'TEXT':
+      case 'TEXTAREA':
+      case 'EMAIL':
+      case 'PHONE':
+      case 'URL':
+      default:
+        return String(value);
+    }
+  }
+};
+
+// Service hierarchy export formatters
+export const serviceHierarchyFormatters = {
+  'service.name': (service: any) => service?.name || '',
+  'service.tier1Category.name': (value: any) => value?.name || '',
+  'service.tier2Subcategory.name': (value: any) => value?.name || '',
+  'service.tier3Item.name': (value: any) => value?.name || '',
+  'service.supportGroup.name': (value: any) => value?.name || '',
+};
+
+// Get human-readable column headers
+export const getColumnLabel = (column: string): string => {
+  // Custom field columns
+  if (column.startsWith('customField_')) {
+    // Label should be provided separately in the export metadata
+    return column.replace('customField_', 'Custom Field: ');
+  }
+
+  // Service hierarchy columns
+  const hierarchyLabels: Record<string, string> = {
+    'service.name': 'Service',
+    'service.tier1Category.name': 'Service Category (Tier 1)',
+    'service.tier2Subcategory.name': 'Service Subcategory (Tier 2)',
+    'service.tier3Item.name': 'Service Item (Tier 3)',
+    'service.supportGroup.name': 'Service Support Group'
+  };
+
+  if (hierarchyLabels[column]) {
+    return hierarchyLabels[column];
+  }
+
+  // Standard columns - convert camelCase to Title Case
+  return column
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/^./, str => str.toUpperCase())
+    .trim();
+};
+
+// Prepare report data for export with proper formatting
+export const prepareReportDataForExport = (
+  data: any[],
+  columns: string[],
+  columnMetadata?: Record<string, { label?: string; type?: string }>
+) => {
+  // First flatten nested data
+  const flattenedData = flattenNestedData(data, columns);
+
+  // Create formatters for custom fields if metadata is provided
+  const formatters: Record<string, (value: any) => string> = {};
+
+  columns.forEach(column => {
+    if (column.startsWith('customField_')) {
+      const fieldType = columnMetadata?.[column]?.type;
+      if (fieldType) {
+        formatters[column] = (value: any) =>
+          customFieldExportFormatters.formatCustomFieldValue(value, fieldType);
+      }
+    } else if (column.startsWith('service.')) {
+      const formatter = serviceHierarchyFormatters[column as keyof typeof serviceHierarchyFormatters];
+      if (formatter) {
+        formatters[column] = formatter;
+      }
+    }
+  });
+
+  // Format the data
+  const formattedData = formatDataForExport(flattenedData, formatters);
+
+  // Create header mappings
+  const headers = columns.map(column => {
+    if (columnMetadata?.[column]?.label) {
+      return columnMetadata[column].label!;
+    }
+    return getColumnLabel(column);
+  });
+
+  return {
+    data: formattedData,
+    headers,
+    columns
+  };
 };

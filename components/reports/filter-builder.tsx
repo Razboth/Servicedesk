@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -8,14 +8,17 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
-import { 
-  Plus, 
-  X, 
+import {
+  Plus,
+  X,
   Calendar as CalendarIcon,
   Filter,
-  ChevronDown
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react'
 
 interface Filter {
@@ -24,12 +27,34 @@ interface Filter {
   operator: string
   value: any
   logicalOperator?: 'AND' | 'OR'
+  columnType?: string // Track column type for proper filtering
+  fieldLabel?: string // Display label for custom fields
 }
 
 interface FilterBuilderProps {
   module: string
   filters: Filter[]
   onFiltersChange: (filters: Filter[]) => void
+  selectedServices?: string[] // For fetching custom fields
+}
+
+interface CustomField {
+  id: string
+  name: string
+  label: string
+  type: string
+  serviceName?: string
+  options?: any
+}
+
+interface ServiceHierarchy {
+  id: string
+  name: string
+  code: string
+  level: number
+  serviceCount: number
+  subcategories?: ServiceHierarchy[]
+  items?: ServiceHierarchy[]
 }
 
 const operators = {
@@ -77,11 +102,47 @@ const operators = {
   boolean: [
     { value: 'is_true', label: 'Is True' },
     { value: 'is_false', label: 'Is False' }
+  ],
+  hierarchy: [
+    { value: 'equals', label: 'Equals' },
+    { value: 'in', label: 'In' },
+    { value: 'not_in', label: 'Not In' }
   ]
 }
 
-const getColumnType = (column: string): string => {
-  // This should be determined based on the actual column metadata
+const getColumnType = (column: string, customFields: CustomField[] = []): string => {
+  // Check if this is a custom field
+  if (column.startsWith('customField_')) {
+    const fieldId = column.replace('customField_', '')
+    const customField = customFields.find(f => f.id === fieldId)
+    if (customField) {
+      // Map field types to filter types
+      switch (customField.type.toUpperCase()) {
+        case 'NUMBER':
+        case 'CURRENCY':
+          return 'number'
+        case 'DATE':
+        case 'DATETIME':
+          return 'date'
+        case 'SELECT':
+        case 'RADIO':
+        case 'MULTISELECT':
+          return 'enum'
+        case 'CHECKBOX':
+        case 'TOGGLE':
+          return 'boolean'
+        default:
+          return 'string'
+      }
+    }
+  }
+
+  // Check for service hierarchy filters
+  if (column === 'serviceId' || column.startsWith('service.tier') || column === 'service.supportGroupId') {
+    return 'hierarchy'
+  }
+
+  // Default type detection
   if (column.includes('date') || column.includes('At')) return 'date'
   if (column.includes('id') || column.includes('Time') || column.includes('duration')) return 'number'
   if (column === 'status' || column === 'priority' || column === 'category') return 'enum'
@@ -89,8 +150,67 @@ const getColumnType = (column: string): string => {
   return 'string'
 }
 
-export function FilterBuilder({ module, filters, onFiltersChange }: FilterBuilderProps) {
+export function FilterBuilder({ module, filters, onFiltersChange, selectedServices = [] }: FilterBuilderProps) {
   const [localFilters, setLocalFilters] = useState<Filter[]>(filters)
+  const [customFields, setCustomFields] = useState<CustomField[]>([])
+  const [serviceHierarchy, setServiceHierarchy] = useState<ServiceHierarchy[]>([])
+  const [services, setServices] = useState<any[]>([])
+  const [loadingFields, setLoadingFields] = useState(false)
+  const [loadingHierarchy, setLoadingHierarchy] = useState(false)
+
+  // Load custom fields when services are selected
+  useEffect(() => {
+    if (module === 'TICKETS' && selectedServices && selectedServices.length > 0) {
+      loadCustomFields(selectedServices)
+    } else {
+      setCustomFields([])
+    }
+  }, [module, selectedServices])
+
+  // Load service hierarchy
+  useEffect(() => {
+    if (module === 'TICKETS') {
+      loadServiceHierarchy()
+    }
+  }, [module])
+
+  const loadCustomFields = async (serviceIds: string[]) => {
+    try {
+      setLoadingFields(true)
+      const response = await fetch(`/api/reports/custom/fields?serviceIds=${serviceIds.join(',')}`)
+
+      if (!response.ok) {
+        throw new Error('Failed to load custom fields')
+      }
+
+      const data = await response.json()
+      setCustomFields(data.fields || [])
+    } catch (error) {
+      console.error('Error loading custom fields:', error)
+      setCustomFields([])
+    } finally {
+      setLoadingFields(false)
+    }
+  }
+
+  const loadServiceHierarchy = async () => {
+    try {
+      setLoadingHierarchy(true)
+      const response = await fetch('/api/services/hierarchy')
+
+      if (!response.ok) {
+        throw new Error('Failed to load service hierarchy')
+      }
+
+      const data = await response.json()
+      setServiceHierarchy(data.hierarchy || [])
+    } catch (error) {
+      console.error('Error loading service hierarchy:', error)
+      setServiceHierarchy([])
+    } finally {
+      setLoadingHierarchy(false)
+    }
+  }
 
   const addFilter = () => {
     const newFilter: Filter = {
@@ -124,22 +244,41 @@ export function FilterBuilder({ module, filters, onFiltersChange }: FilterBuilde
   }
 
   const getAvailableColumns = () => {
-    // This should be based on the actual module columns
+    const baseColumns = []
+
     switch (module) {
       case 'TICKETS':
-        return [
-          { value: 'status', label: 'Status' },
-          { value: 'priority', label: 'Priority' },
-          { value: 'category', label: 'Category' },
-          { value: 'createdAt', label: 'Created Date' },
-          { value: 'resolvedAt', label: 'Resolved Date' },
-          { value: 'assignedTo', label: 'Assigned To' },
-          { value: 'branch', label: 'Branch' },
-          { value: 'service', label: 'Service' }
-        ]
+        baseColumns.push(
+          { value: 'status', label: 'Status', category: 'Basic' },
+          { value: 'priority', label: 'Priority', category: 'Basic' },
+          { value: 'category', label: 'Category', category: 'Basic' },
+          { value: 'createdAt', label: 'Created Date', category: 'Dates' },
+          { value: 'resolvedAt', label: 'Resolved Date', category: 'Dates' },
+          { value: 'closedAt', label: 'Closed Date', category: 'Dates' },
+          { value: 'assignedTo', label: 'Assigned To', category: 'People' },
+          { value: 'createdBy', label: 'Created By', category: 'People' },
+          { value: 'branch', label: 'Branch', category: 'Location' },
+          // Service hierarchy filters
+          { value: 'serviceId', label: 'Service (Specific)', category: 'Service' },
+          { value: 'service.tier1CategoryId', label: 'Service Category (Tier 1)', category: 'Service Hierarchy' },
+          { value: 'service.tier2SubcategoryId', label: 'Service Subcategory (Tier 2)', category: 'Service Hierarchy' },
+          { value: 'service.tier3ItemId', label: 'Service Item (Tier 3)', category: 'Service Hierarchy' },
+          { value: 'service.supportGroupId', label: 'Support Group', category: 'Service Hierarchy' }
+        )
+        break
       default:
-        return []
+        break
     }
+
+    // Add custom field columns
+    const customFieldColumns = customFields.map(field => ({
+      value: `customField_${field.id}`,
+      label: `${field.serviceName ? `[${field.serviceName}] ` : ''}${field.label}`,
+      category: 'Custom Fields',
+      fieldType: field.type
+    }))
+
+    return [...baseColumns, ...customFieldColumns]
   }
 
   return (
@@ -213,7 +352,7 @@ export function FilterBuilder({ module, filters, onFiltersChange }: FilterBuilde
                         <SelectValue placeholder="Select operator" />
                       </SelectTrigger>
                       <SelectContent>
-                        {(operators[getColumnType(filter.column) as keyof typeof operators] || operators.string).map(op => (
+                        {(operators[getColumnType(filter.column, customFields) as keyof typeof operators] || operators.string).map(op => (
                           <SelectItem key={op.value} value={op.value}>
                             {op.label}
                           </SelectItem>
@@ -226,6 +365,8 @@ export function FilterBuilder({ module, filters, onFiltersChange }: FilterBuilde
                       operator={filter.operator}
                       value={filter.value}
                       onChange={(value) => updateFilter(filter.id, { value })}
+                      customFields={customFields}
+                      serviceHierarchy={serviceHierarchy}
                     />
                   </div>
 
@@ -266,17 +407,74 @@ export function FilterBuilder({ module, filters, onFiltersChange }: FilterBuilde
   )
 }
 
-function FilterValue({ column, operator, value, onChange }: {
+function FilterValue({
+  column,
+  operator,
+  value,
+  onChange,
+  customFields = [],
+  serviceHierarchy = []
+}: {
   column: string
   operator: string
   value: any
   onChange: (value: any) => void
+  customFields?: CustomField[]
+  serviceHierarchy?: ServiceHierarchy[]
 }) {
-  const columnType = getColumnType(column)
+  const columnType = getColumnType(column, customFields)
 
   // No value needed for these operators
   if (['is_empty', 'is_not_empty', 'is_true', 'is_false', 'today', 'yesterday', 'this_week', 'last_week', 'this_month', 'last_month'].includes(operator)) {
     return <div className="px-3 py-2 text-sm text-muted-foreground">No value needed</div>
+  }
+
+  // Handle hierarchy filter values
+  if (columnType === 'hierarchy') {
+    return (
+      <HierarchySelector
+        column={column}
+        operator={operator}
+        value={value}
+        onChange={onChange}
+        serviceHierarchy={serviceHierarchy}
+      />
+    )
+  }
+
+  // Handle custom field values with their specific options
+  if (column.startsWith('customField_')) {
+    const fieldId = column.replace('customField_', '')
+    const customField = customFields.find(f => f.id === fieldId)
+
+    if (customField && customField.type.toUpperCase() === 'SELECT' && customField.options) {
+      // Custom field with predefined options
+      if (operator === 'in' || operator === 'not_in') {
+        return (
+          <CustomFieldMultiSelect
+            options={customField.options}
+            value={value}
+            onChange={onChange}
+          />
+        )
+      }
+      return (
+        <Select value={value} onValueChange={onChange}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select value" />
+          </SelectTrigger>
+          <SelectContent>
+            {Array.isArray(customField.options) ? (
+              customField.options.map((opt: any) => (
+                <SelectItem key={typeof opt === 'string' ? opt : opt.value} value={typeof opt === 'string' ? opt : opt.value}>
+                  {typeof opt === 'string' ? opt : opt.label}
+                </SelectItem>
+              ))
+            ) : null}
+          </SelectContent>
+        </Select>
+      )
+    }
   }
 
   if (columnType === 'date') {
@@ -420,4 +618,218 @@ function getEnumValues(column: string): string[] {
     default:
       return []
   }
+}
+
+// Hierarchy Selector Component for service hierarchy filters
+function HierarchySelector({
+  column,
+  operator,
+  value,
+  onChange,
+  serviceHierarchy
+}: {
+  column: string
+  operator: string
+  value: any
+  onChange: (value: any) => void
+  serviceHierarchy: ServiceHierarchy[]
+}) {
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(
+    Array.isArray(value) ? value : value ? [value] : []
+  )
+  const [isOpen, setIsOpen] = useState(false)
+
+  // Determine what level we're filtering by
+  const getHierarchyLevel = (column: string): number => {
+    if (column === 'serviceId') return 0
+    if (column === 'service.tier1CategoryId') return 1
+    if (column === 'service.tier2SubcategoryId') return 2
+    if (column === 'service.tier3ItemId') return 3
+    if (column === 'service.supportGroupId') return 0
+    return 1
+  }
+
+  const level = getHierarchyLevel(column)
+
+  // Build flat list of items based on hierarchy level
+  const getHierarchyItems = (): Array<{ id: string; name: string; parent?: string }> => {
+    const items: Array<{ id: string; name: string; parent?: string }> = []
+
+    if (level === 1) {
+      // Tier 1 Categories
+      serviceHierarchy.forEach(cat => {
+        items.push({ id: cat.id, name: cat.name })
+      })
+    } else if (level === 2) {
+      // Tier 2 Subcategories
+      serviceHierarchy.forEach(cat => {
+        cat.subcategories?.forEach(sub => {
+          items.push({ id: sub.id, name: `${cat.name} > ${sub.name}`, parent: cat.name })
+        })
+      })
+    } else if (level === 3) {
+      // Tier 3 Items
+      serviceHierarchy.forEach(cat => {
+        cat.subcategories?.forEach(sub => {
+          sub.items?.forEach(item => {
+            items.push({
+              id: item.id,
+              name: `${cat.name} > ${sub.name} > ${item.name}`,
+              parent: `${cat.name} > ${sub.name}`
+            })
+          })
+        })
+      })
+    }
+
+    return items
+  }
+
+  const items = getHierarchyItems()
+
+  const handleValueChange = (selectedIds: string[]) => {
+    setSelectedCategories(selectedIds)
+
+    if (operator === 'in' || operator === 'not_in') {
+      onChange(selectedIds)
+    } else {
+      onChange(selectedIds[0] || '')
+    }
+  }
+
+  const handleToggle = (itemId: string) => {
+    if (operator === 'in' || operator === 'not_in') {
+      // Multi-select for 'in' and 'not_in'
+      const newSelection = selectedCategories.includes(itemId)
+        ? selectedCategories.filter(id => id !== itemId)
+        : [...selectedCategories, itemId]
+      handleValueChange(newSelection)
+    } else {
+      // Single select for 'equals'
+      handleValueChange([itemId])
+      setIsOpen(false)
+    }
+  }
+
+  const getDisplayText = () => {
+    if (selectedCategories.length === 0) return 'Select...'
+    if (selectedCategories.length === 1) {
+      const item = items.find(i => i.id === selectedCategories[0])
+      return item?.name || 'Selected'
+    }
+    return `${selectedCategories.length} selected`
+  }
+
+  return (
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={isOpen}
+          className="justify-between"
+        >
+          <span className="truncate">{getDisplayText()}</span>
+          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[400px] p-0">
+        <ScrollArea className="h-[300px]">
+          <div className="p-4 space-y-2">
+            {items.map(item => (
+              <div key={item.id} className="flex items-center space-x-2">
+                <Checkbox
+                  checked={selectedCategories.includes(item.id)}
+                  onCheckedChange={() => handleToggle(item.id)}
+                  id={`hier-${item.id}`}
+                />
+                <Label
+                  htmlFor={`hier-${item.id}`}
+                  className="text-sm cursor-pointer flex-1"
+                >
+                  {item.name}
+                </Label>
+              </div>
+            ))}
+            {items.length === 0 && (
+              <div className="text-sm text-muted-foreground text-center py-4">
+                No items available
+              </div>
+            )}
+          </div>
+        </ScrollArea>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+// Custom Field Multi-Select Component
+function CustomFieldMultiSelect({
+  options,
+  value,
+  onChange
+}: {
+  options: any
+  value: any
+  onChange: (value: any) => void
+}) {
+  const [selectedValues, setSelectedValues] = useState<string[]>(
+    Array.isArray(value) ? value : value ? value.split(',') : []
+  )
+  const [isOpen, setIsOpen] = useState(false)
+
+  const handleToggle = (optValue: string) => {
+    const newSelection = selectedValues.includes(optValue)
+      ? selectedValues.filter(v => v !== optValue)
+      : [...selectedValues, optValue]
+
+    setSelectedValues(newSelection)
+    onChange(newSelection)
+  }
+
+  const optionsArray = Array.isArray(options) ? options : []
+
+  return (
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={isOpen}
+          className="justify-between"
+        >
+          {selectedValues.length === 0
+            ? 'Select values...'
+            : `${selectedValues.length} selected`}
+          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[300px] p-0">
+        <ScrollArea className="h-[200px]">
+          <div className="p-4 space-y-2">
+            {optionsArray.map((opt: any) => {
+              const optValue = typeof opt === 'string' ? opt : opt.value
+              const optLabel = typeof opt === 'string' ? opt : opt.label
+
+              return (
+                <div key={optValue} className="flex items-center space-x-2">
+                  <Checkbox
+                    checked={selectedValues.includes(optValue)}
+                    onCheckedChange={() => handleToggle(optValue)}
+                    id={`opt-${optValue}`}
+                  />
+                  <Label
+                    htmlFor={`opt-${optValue}`}
+                    className="text-sm cursor-pointer flex-1"
+                  >
+                    {optLabel}
+                  </Label>
+                </div>
+              )
+            })}
+          </div>
+        </ScrollArea>
+      </PopoverContent>
+    </Popover>
+  )
 }

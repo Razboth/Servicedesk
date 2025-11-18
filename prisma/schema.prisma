@@ -241,6 +241,12 @@ model Service {
   tickets                    Ticket[]
   favoritedBy                UserFavoriteService[]
 
+  @@index([tier1CategoryId])
+  @@index([tier2SubcategoryId])
+  @@index([tier3ItemId])
+  @@index([supportGroupId])
+  @@index([isActive])
+  @@index([tier1CategoryId, tier2SubcategoryId, tier3ItemId])
   @@map("services")
 }
 
@@ -377,6 +383,16 @@ model Ticket {
   supportGroup           SupportGroup?         @relation(fields: [supportGroupId], references: [id])
   vendorTickets          VendorTicket[]
 
+  @@index([serviceId])
+  @@index([status])
+  @@index([priority])
+  @@index([createdAt])
+  @@index([supportGroupId])
+  @@index([assignedToId])
+  @@index([branchId])
+  @@index([createdById])
+  @@index([status, priority])
+  @@index([serviceId, status])
   @@map("tickets")
 }
 
@@ -389,6 +405,9 @@ model TicketFieldValue {
   ticket   Ticket       @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
   @@unique([ticketId, fieldId])
+  @@index([ticketId])
+  @@index([fieldId])
+  @@index([fieldId, value])
   @@map("ticket_field_values")
 }
 

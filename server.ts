@@ -25,7 +25,7 @@ const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
 // Certificate paths
-const certsDir = path.join(__dirname, 'certificates');
+const certsDir = path.join(process.cwd(), 'certificates');
 
 // Function to check if certificates exist
 const certificatesExist = (): boolean => {

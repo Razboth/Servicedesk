@@ -84,15 +84,15 @@ export function Sidebar() {
   };
 
   const linkClass = (path: string) => `
-    flex items-center ${isCollapsed ? 'px-2 py-3 justify-center' : 'px-3 py-2'} rounded-lg text-sm font-medium transition-all duration-200
+    flex items-center ${isCollapsed ? 'px-3 py-4 justify-center' : 'px-3 py-2'} rounded-lg text-sm font-medium transition-all duration-200
     ${isActive(path)
       ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sm'
       : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
     }
-    ${isCollapsed ? 'hover:scale-110' : ''}
+    ${isCollapsed ? 'hover:scale-105' : ''}
   `;
 
-  const iconClass = `${isCollapsed ? 'w-6 h-6' : 'w-5 h-5 mr-3'}`;
+  const iconClass = `${isCollapsed ? 'w-7 h-7' : 'w-5 h-5 mr-3'}`;
 
   // Handle mobile menu closure when clicking links
   const handleLinkClick = () => {
@@ -114,9 +114,9 @@ export function Sidebar() {
       {/* Sidebar */}
       <div className={`
         bg-sidebar shadow-lg border-r border-sidebar-border transition-all duration-300 h-screen fixed left-0 top-0 z-50 flex flex-col
-        ${isMobile 
-          ? `w-64 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}` 
-          : `${isCollapsed ? 'w-16' : 'w-64'}`
+        ${isMobile
+          ? `w-64 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`
+          : `${isCollapsed ? 'w-20' : 'w-64'}`
         }
       `}>
       {/* Header */}
@@ -135,11 +135,11 @@ export function Sidebar() {
               </div>
             </Link>
           ) : (
-            <Link href="/" className="flex items-center justify-center" onClick={handleLinkClick}>
-              <img 
-                src="/logo-bsg.png" 
-                alt="BSG" 
-                className="h-8 w-auto"
+            <Link href="/" className="flex items-center justify-center w-full" onClick={handleLinkClick}>
+              <img
+                src="/BSG Logo.png"
+                alt="BSG"
+                className="h-14 w-14 object-contain"
               />
             </Link>
           )}

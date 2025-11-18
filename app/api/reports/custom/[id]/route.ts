@@ -23,6 +23,17 @@ export async function GET(
             name: true,
             email: true
           }
+        },
+        favorites: {
+          where: {
+            userId: session.user.id
+          }
+        },
+        _count: {
+          select: {
+            executions: true,
+            favorites: true
+          }
         }
       }
     })
@@ -39,7 +50,26 @@ export async function GET(
       }
     }
 
-    return NextResponse.json(report)
+    // Format response with additional computed fields
+    const response = {
+      ...report,
+      isFavorite: report.favorites.length > 0,
+      executionCount: report._count.executions,
+      configuration: {
+        columns: report.columns || [],
+        filters: report.filters || [],
+        groupBy: report.groupBy || [],
+        orderBy: report.orderBy || {},
+        chartConfig: report.chartConfig
+      },
+      schedules: [] // TODO: Add schedules relation when implemented
+    }
+
+    // Remove internal fields
+    delete (response as any).favorites
+    delete (response as any)._count
+
+    return NextResponse.json(response)
   } catch (error) {
     console.error('Error fetching report:', error)
     return NextResponse.json(

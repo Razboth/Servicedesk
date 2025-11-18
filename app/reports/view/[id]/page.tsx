@@ -102,9 +102,17 @@ export default function ReportViewPage() {
     try {
       setIsExecuting(true)
       setError(null)
-      
+
       const response = await fetch(`/api/reports/custom/${reportId}/execute`, {
-        method: 'POST'
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          page: 1,
+          pageSize: 1000,
+          exportMode: false
+        })
       })
       
       if (!response.ok) {
