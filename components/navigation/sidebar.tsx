@@ -530,26 +530,12 @@ export function Sidebar() {
                   <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-green-500 border-2 border-sidebar" />
                 </div>
 
-                {/* User Info */}
+                {/* User Info - Name only, role shown in dropdown */}
                 <div className="flex-1 min-w-0 text-left">
-                  <p className="text-sm font-semibold truncate text-sidebar-foreground">
+                  <p className="text-sm font-semibold truncate text-sidebar-foreground" title={session.user?.name}>
                     {session.user?.name}
                   </p>
                 </div>
-
-                {/* Role Badge */}
-                <Badge
-                  className={`text-xs font-medium px-2 py-0.5 ${
-                    session.user?.role === 'SUPER_ADMIN' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-200' :
-                    session.user?.role === 'ADMIN' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200' :
-                    session.user?.role === 'MANAGER' ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200' :
-                    session.user?.role === 'TECHNICIAN' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200' :
-                    session.user?.role === 'AGENT' ? 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/40 dark:text-cyan-200' :
-                    'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
-                  }`}
-                >
-                  {session.user?.role}
-                </Badge>
 
                 {/* Notification Badge */}
                 {unreadCount > 0 && (
