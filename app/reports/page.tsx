@@ -79,6 +79,16 @@ const standardReports: Report[] = [
     badge: 'Daily',
     lastRun: 'Live'
   },
+  {
+    title: 'Monthly Summary Report',
+    description: 'Monthly ticket statistics with category breakdown, claimed/unclaimed analysis, and duration metrics',
+    href: '/reports/monthly',
+    icon: Calendar,
+    type: 'standard',
+    roles: ['TECHNICIAN', 'MANAGER', 'ADMIN'],
+    badge: 'Monthly',
+    lastRun: 'Live'
+  },
   // Service Reports - NEW
   {
     title: 'Service Status Breakdown',
@@ -590,14 +600,14 @@ export default function ReportsPage() {
         icon={<BarChart3 className="h-6 w-6" />}
         action={
           <div className="flex items-center gap-3">
-            <Link href="/reports/technician/monthly">
+            <Link href="/reports/monthly">
               <Button
                 variant="outline"
                 size="default"
                 className="border-primary/30 bg-primary/5 hover:bg-primary/10 hover:border-primary/50"
               >
                 <Calendar className="h-4 w-4 mr-2" />
-                Monthly Reports
+                Monthly Summary
               </Button>
             </Link>
             <Link href="/reports/builder">
