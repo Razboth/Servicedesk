@@ -148,60 +148,91 @@ export default function MonthlyReport() {
     }
   }
 
-  const exportReport = async () => {
+  const exportToExcel = async () => {
     if (!data) return
 
-    const reportContent = `
-MONTHLY TICKET REPORT
-Period: ${MONTHS[selectedMonth - 1]} ${selectedYear}
-Generated: ${format(new Date(), 'MMMM dd, yyyy HH:mm')}
+    const XLSX = await import('xlsx')
+    const workbook = XLSX.utils.book_new()
 
-================================================================================
-SUMMARY
-================================================================================
-Total Tickets: ${data.summary.totalTickets}
-Claimed Tickets: ${data.summary.claimedTickets} (${data.summary.claimedPercentage}%)
-Unclaimed Tickets: ${data.summary.unclaimedTickets} (${data.summary.unclaimedPercentage}%)
+    // Sheet 1: Summary
+    const summaryData = [
+      { 'Metric': 'Report Period', 'Value': `${MONTHS[selectedMonth - 1]} ${selectedYear}` },
+      { 'Metric': 'Generated On', 'Value': format(new Date(), 'MMMM dd, yyyy HH:mm') },
+      { 'Metric': '', 'Value': '' },
+      { 'Metric': 'Total Tickets', 'Value': data.summary.totalTickets },
+      { 'Metric': 'Claimed Tickets', 'Value': data.summary.claimedTickets },
+      { 'Metric': 'Claimed Percentage', 'Value': `${data.summary.claimedPercentage}%` },
+      { 'Metric': 'Unclaimed Tickets', 'Value': data.summary.unclaimedTickets },
+      { 'Metric': 'Unclaimed Percentage', 'Value': `${data.summary.unclaimedPercentage}%` },
+      { 'Metric': '', 'Value': '' },
+      { 'Metric': 'Avg Duration (Approval to Close)', 'Value': formatDuration(data.durationMetrics.averageApprovalToClose) }
+    ]
+    const summarySheet = XLSX.utils.json_to_sheet(summaryData)
+    summarySheet['!cols'] = [{ wch: 30 }, { wch: 25 }]
+    XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary')
 
-================================================================================
-CATEGORY BREAKDOWN
-================================================================================
-${data.categoryBreakdown.map(cat =>
-  `${cat.categoryName}: ${cat.count} tickets (${cat.percentage}%)`
-).join('\n')}
+    // Sheet 2: Category Breakdown
+    const categoryData = data.categoryBreakdown.map(cat => ({
+      'Category': cat.categoryName,
+      'Ticket Count': cat.count,
+      'Percentage': `${cat.percentage}%`
+    }))
+    const categorySheet = XLSX.utils.json_to_sheet(categoryData)
+    categorySheet['!cols'] = [{ wch: 30 }, { wch: 15 }, { wch: 12 }]
+    XLSX.utils.book_append_sheet(workbook, categorySheet, 'Category Breakdown')
 
-================================================================================
-MOST COMMON SERVICES BY CATEGORY
-================================================================================
-${data.commonServicesByCategory?.map(item =>
-  `${item.categoryName}: ${item.serviceName} (${item.ticketCount} of ${item.totalInCategory}, ${item.percentage}%)`
-).join('\n') || 'No data'}
+    // Sheet 3: Most Common Services
+    if (data.commonServicesByCategory && data.commonServicesByCategory.length > 0) {
+      const servicesData = data.commonServicesByCategory.map(item => ({
+        'Category': item.categoryName,
+        'Most Common Service': item.serviceName,
+        'Service Count': item.ticketCount,
+        'Total in Category': item.totalInCategory,
+        'Percentage': `${item.percentage}%`
+      }))
+      const servicesSheet = XLSX.utils.json_to_sheet(servicesData)
+      servicesSheet['!cols'] = [{ wch: 25 }, { wch: 40 }, { wch: 15 }, { wch: 18 }, { wch: 12 }]
+      XLSX.utils.book_append_sheet(workbook, servicesSheet, 'Common Services')
+    }
 
-================================================================================
-MOST COMMON STATUS BY CATEGORY
-================================================================================
-${data.commonIssues.map(issue =>
-  `${issue.categoryName}: ${STATUS_LABELS[issue.mostCommonStatus] || issue.mostCommonStatus} (${issue.statusCount} of ${issue.totalInCategory})`
-).join('\n')}
+    // Sheet 4: Most Common Status
+    const statusData = data.commonIssues.map(issue => {
+      const durationData = data.durationMetrics.byCategory.find(d => d.categoryId === issue.categoryId)
+      return {
+        'Category': issue.categoryName,
+        'Most Common Status': STATUS_LABELS[issue.mostCommonStatus] || issue.mostCommonStatus,
+        'Status Count': issue.statusCount,
+        'Total in Category': issue.totalInCategory,
+        'Avg Duration': durationData ? formatDuration(durationData.avgDuration) : '-'
+      }
+    })
+    const statusSheet = XLSX.utils.json_to_sheet(statusData)
+    statusSheet['!cols'] = [{ wch: 25 }, { wch: 20 }, { wch: 15 }, { wch: 18 }, { wch: 15 }]
+    XLSX.utils.book_append_sheet(workbook, statusSheet, 'Common Status')
 
-================================================================================
-DURATION METRICS (Approval to Close)
-================================================================================
-Overall Average: ${formatDuration(data.durationMetrics.averageApprovalToClose)}
+    // Sheet 5: Duration by Category
+    const durationData = data.durationMetrics.byCategory.map(cat => ({
+      'Category': cat.categoryName,
+      'Average Duration': formatDuration(cat.avgDuration),
+      'Duration (Hours)': cat.avgDuration,
+      'Ticket Count': cat.ticketCount
+    }))
+    const durationSheet = XLSX.utils.json_to_sheet(durationData)
+    durationSheet['!cols'] = [{ wch: 25 }, { wch: 18 }, { wch: 18 }, { wch: 15 }]
+    XLSX.utils.book_append_sheet(workbook, durationSheet, 'Duration Metrics')
 
-By Category:
-${data.durationMetrics.byCategory.map(cat =>
-  `${cat.categoryName}: ${formatDuration(cat.avgDuration)} (${cat.ticketCount} tickets)`
-).join('\n')}
-    `.trim()
+    // Sheet 6: Status Distribution
+    const distributionData = data.statusDistribution.map(s => ({
+      'Status': STATUS_LABELS[s.status] || s.status,
+      'Count': s.count
+    }))
+    const distributionSheet = XLSX.utils.json_to_sheet(distributionData)
+    distributionSheet['!cols'] = [{ wch: 20 }, { wch: 12 }]
+    XLSX.utils.book_append_sheet(workbook, distributionSheet, 'Status Distribution')
 
-    const blob = new Blob([reportContent], { type: 'text/plain' })
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `monthly-report-${selectedYear}-${String(selectedMonth).padStart(2, '0')}.txt`
-    a.click()
-    window.URL.revokeObjectURL(url)
+    // Save file
+    const filename = `monthly-report-${selectedYear}-${String(selectedMonth).padStart(2, '0')}.xlsx`
+    XLSX.writeFile(workbook, filename)
   }
 
   if (!session) return null
@@ -277,9 +308,9 @@ ${data.durationMetrics.byCategory.map(cat =>
               <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
-            <Button onClick={exportReport} variant="outline" size="sm">
+            <Button onClick={exportToExcel} variant="outline" size="sm">
               <FileDown className="h-4 w-4 mr-2" />
-              Export
+              Export Excel
             </Button>
           </div>
         </div>
