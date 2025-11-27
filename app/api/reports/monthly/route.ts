@@ -25,6 +25,16 @@ interface DurationByCategory {
   ticketCount: number;
 }
 
+interface CommonServiceByCategory {
+  categoryId: string;
+  categoryName: string;
+  serviceId: string;
+  serviceName: string;
+  ticketCount: number;
+  totalInCategory: number;
+  percentage: number;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
@@ -123,7 +133,59 @@ export async function GET(request: NextRequest) {
       }))
       .sort((a, b) => b.count - a.count);
 
-    // 3. Get most common status by category
+    // 3. Get most common service by category
+    const categoryServiceMap = new Map<string, Map<string, { serviceName: string; count: number }>>();
+
+    for (const ticket of ticketsByService) {
+      const service = services.find(s => s.id === ticket.serviceId);
+      const categoryId = service?.tier1Category?.id || 'uncategorized';
+
+      if (!categoryServiceMap.has(categoryId)) {
+        categoryServiceMap.set(categoryId, new Map());
+      }
+
+      const serviceMap = categoryServiceMap.get(categoryId)!;
+      const existing = serviceMap.get(ticket.serviceId);
+      if (existing) {
+        existing.count += ticket._count.id;
+      } else {
+        serviceMap.set(ticket.serviceId, {
+          serviceName: service?.name || 'Unknown Service',
+          count: ticket._count.id
+        });
+      }
+    }
+
+    const commonServicesByCategory: CommonServiceByCategory[] = Array.from(categoryServiceMap.entries())
+      .map(([categoryId, serviceMap]) => {
+        let mostCommonServiceId = '';
+        let mostCommonServiceName = '';
+        let maxCount = 0;
+        let totalInCat = 0;
+
+        for (const [serviceId, data] of serviceMap.entries()) {
+          totalInCat += data.count;
+          if (data.count > maxCount) {
+            maxCount = data.count;
+            mostCommonServiceId = serviceId;
+            mostCommonServiceName = data.serviceName;
+          }
+        }
+
+        const categoryData = categoryMap.get(categoryId);
+        return {
+          categoryId,
+          categoryName: categoryData?.name || 'Uncategorized',
+          serviceId: mostCommonServiceId,
+          serviceName: mostCommonServiceName,
+          ticketCount: maxCount,
+          totalInCategory: totalInCat,
+          percentage: totalInCat > 0 ? Math.round((maxCount / totalInCat) * 100 * 10) / 10 : 0
+        };
+      })
+      .sort((a, b) => b.totalInCategory - a.totalInCategory);
+
+    // 4. Get most common status by category
     const ticketsByServiceAndStatus = await prisma.ticket.groupBy({
       by: ['serviceId', 'status'],
       where: {
@@ -269,6 +331,7 @@ export async function GET(request: NextRequest) {
         unclaimedPercentage: totalTickets > 0 ? Math.round((unclaimedTickets / totalTickets) * 100 * 10) / 10 : 0
       },
       categoryBreakdown,
+      commonServicesByCategory,
       commonIssues,
       durationMetrics: {
         averageApprovalToClose,

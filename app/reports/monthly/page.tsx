@@ -16,7 +16,8 @@ import {
   Clock,
   BarChart3,
   AlertCircle,
-  Calendar
+  Calendar,
+  Layers
 } from 'lucide-react'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts'
 import { format } from 'date-fns'
@@ -33,6 +34,15 @@ interface MonthlyReportData {
     categoryId: string
     categoryName: string
     count: number
+    percentage: number
+  }[]
+  commonServicesByCategory: {
+    categoryId: string
+    categoryName: string
+    serviceId: string
+    serviceName: string
+    ticketCount: number
+    totalInCategory: number
     percentage: number
   }[]
   commonIssues: {
@@ -159,6 +169,13 @@ CATEGORY BREAKDOWN
 ${data.categoryBreakdown.map(cat =>
   `${cat.categoryName}: ${cat.count} tickets (${cat.percentage}%)`
 ).join('\n')}
+
+================================================================================
+MOST COMMON SERVICES BY CATEGORY
+================================================================================
+${data.commonServicesByCategory?.map(item =>
+  `${item.categoryName}: ${item.serviceName} (${item.ticketCount} of ${item.totalInCategory}, ${item.percentage}%)`
+).join('\n') || 'No data'}
 
 ================================================================================
 MOST COMMON STATUS BY CATEGORY
@@ -401,6 +418,55 @@ ${data.durationMetrics.byCategory.map(cat =>
             </CardContent>
           </Card>
         </div>
+
+        {/* Most Common Services by Category */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Layers className="h-4 w-4" />
+              Most Common Services by Category
+            </CardTitle>
+            <CardDescription>
+              Shows the most frequently requested service for each tier-1 category
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Most Common Service</TableHead>
+                  <TableHead className="text-right">Service Count</TableHead>
+                  <TableHead className="text-right">Total in Category</TableHead>
+                  <TableHead className="text-right">Percentage</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data.commonServicesByCategory && data.commonServicesByCategory.length > 0 ? (
+                  data.commonServicesByCategory.map((item) => (
+                    <TableRow key={item.categoryId}>
+                      <TableCell className="font-medium">{item.categoryName}</TableCell>
+                      <TableCell>
+                        <span className="text-sm">{item.serviceName}</span>
+                      </TableCell>
+                      <TableCell className="text-right">{item.ticketCount}</TableCell>
+                      <TableCell className="text-right">{item.totalInCategory}</TableCell>
+                      <TableCell className="text-right">
+                        <Badge variant="secondary">{item.percentage}%</Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                      No data available
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
 
         {/* Most Common Issues */}
         <Card className="mb-6">
