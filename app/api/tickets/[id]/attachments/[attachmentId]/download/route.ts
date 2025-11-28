@@ -83,8 +83,9 @@ export async function GET(
 
     // Check access permissions (same logic as ticket access)
     let canAccess = false;
-    
-    if (session.user.role === 'ADMIN') {
+
+    if (session.user.role === 'ADMIN' || session.user.role === 'MANAGER_IT') {
+      // ADMIN and MANAGER_IT have full access
       canAccess = true;
     } else if (session.user.role === 'MANAGER') {
       canAccess = userWithDetails?.branchId === ticket.branchId;
