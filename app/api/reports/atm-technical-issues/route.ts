@@ -61,12 +61,13 @@ export async function GET(request: NextRequest) {
     const monthStart = startOfMonth(targetDate);
     const monthEnd = endOfMonth(targetDate);
 
-    // 1. Find ATM Technical Issue services
+    // 1. Find ATM Technical Issue services (using startsWith to handle trailing spaces)
     const atmServices = await prisma.service.findMany({
       where: {
-        name: {
-          in: ['ATM - Permasalahan Teknis', 'ATM Technical Issue']
-        },
+        OR: [
+          { name: { startsWith: 'ATM - Permasalahan Teknis' } },
+          { name: { startsWith: 'ATM Technical Issue' } }
+        ],
         isActive: true
       },
       select: { id: true, name: true }
