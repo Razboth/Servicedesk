@@ -65,7 +65,8 @@ export async function GET(
     // Check access permissions (matching ticket visibility logic)
     let canAccess = false;
 
-    if (session.user.role === 'ADMIN' || session.user.role === 'SUPER_ADMIN') {
+    if (session.user.role === 'ADMIN' || session.user.role === 'SUPER_ADMIN' || session.user.role === 'MANAGER_IT') {
+      // ADMIN, SUPER_ADMIN, and MANAGER_IT have full access
       canAccess = true;
     } else if (session.user.role === 'SECURITY_ANALYST') {
       // Security analysts can access their own tickets and tickets in their support group
