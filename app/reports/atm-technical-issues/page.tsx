@@ -17,7 +17,14 @@ import {
   XCircle,
   Building2,
   BarChart3,
-  Loader2
+  Loader2,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Wifi,
+  WifiOff,
+  AlertTriangle,
+  Server
 } from 'lucide-react'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts'
 import { format } from 'date-fns'
@@ -42,6 +49,36 @@ interface TicketData {
   customFields: Record<string, string>
 }
 
+interface ATMMetrics {
+  atmCode: string
+  atmName: string
+  atmLocation: string
+  branchName: string
+  branchCode: string
+  currentMonthTickets: number
+  lastMonthTickets: number
+  changeFromLastMonth: number
+  changePercentage: number
+  openTickets: number
+  inProgressTickets: number
+  resolvedTickets: number
+  closedTickets: number
+  avgResolutionTime: number
+  availability: number | null
+  totalDowntimeHours: number
+  activeIncidents: number
+  lastPingStatus: string | null
+  networkVendor: string | null
+  ipAddress: string | null
+  errorTypes: { type: string; count: number }[]
+}
+
+interface ErrorTypeBreakdown {
+  errorType: string
+  count: number
+  percentage: number
+}
+
 interface ATMReportData {
   summary: {
     totalTickets: number
@@ -50,6 +87,8 @@ interface ATMReportData {
     resolvedTickets: number
     closedTickets: number
     avgResolutionTime: number
+    lastMonthTotal: number
+    changeFromLastMonth: number
   }
   statusDistribution: {
     status: string
@@ -66,6 +105,8 @@ interface ATMReportData {
     branchCode: string
     count: number
   }[]
+  atmMetrics: ATMMetrics[]
+  errorTypeBreakdown: ErrorTypeBreakdown[]
   tickets: TicketData[]
   customFieldDefinitions: CustomFieldDefinition[]
   period: {
@@ -164,6 +205,19 @@ export default function ATMTechnicalIssuesReport() {
     }
   }
 
+  const getChangeIcon = (change: number) => {
+    if (change > 0) return <TrendingUp className="h-4 w-4 text-red-500" />
+    if (change < 0) return <TrendingDown className="h-4 w-4 text-green-500" />
+    return <Minus className="h-4 w-4 text-gray-500" />
+  }
+
+  const getAvailabilityColor = (availability: number | null) => {
+    if (availability === null) return 'text-gray-400'
+    if (availability >= 99) return 'text-green-600'
+    if (availability >= 95) return 'text-yellow-600'
+    return 'text-red-600'
+  }
+
   const exportToExcel = async () => {
     if (!data) return
 
@@ -178,6 +232,9 @@ export default function ATMTechnicalIssuesReport() {
         { 'Metric': 'Generated On', 'Value': format(new Date(), 'MMMM dd, yyyy HH:mm') },
         { 'Metric': '', 'Value': '' },
         { 'Metric': 'Total Tickets', 'Value': data.summary.totalTickets },
+        { 'Metric': 'Last Month Total', 'Value': data.summary.lastMonthTotal },
+        { 'Metric': 'Change from Last Month', 'Value': data.summary.changeFromLastMonth },
+        { 'Metric': '', 'Value': '' },
         { 'Metric': 'Open Tickets', 'Value': data.summary.openTickets },
         { 'Metric': 'In Progress Tickets', 'Value': data.summary.inProgressTickets },
         { 'Metric': 'Resolved Tickets', 'Value': data.summary.resolvedTickets },
@@ -189,7 +246,49 @@ export default function ATMTechnicalIssuesReport() {
       summarySheet['!cols'] = [{ wch: 25 }, { wch: 30 }]
       XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary')
 
-      // Sheet 2: Status Distribution
+      // Sheet 2: ATM Metrics (Most Problematic ATMs)
+      const atmData = data.atmMetrics.map(atm => ({
+        'ATM Code': atm.atmCode,
+        'ATM Name': atm.atmName,
+        'Location': atm.atmLocation,
+        'Branch': atm.branchName,
+        'This Month': atm.currentMonthTickets,
+        'Last Month': atm.lastMonthTickets,
+        'Change': atm.changeFromLastMonth,
+        'Change %': `${atm.changePercentage}%`,
+        'Open': atm.openTickets,
+        'In Progress': atm.inProgressTickets,
+        'Resolved': atm.resolvedTickets,
+        'Closed': atm.closedTickets,
+        'Avg Resolution': formatDuration(atm.avgResolutionTime),
+        'Availability %': atm.availability !== null ? `${atm.availability}%` : 'N/A',
+        'Downtime (hrs)': atm.totalDowntimeHours,
+        'Active Incidents': atm.activeIncidents,
+        'Network Vendor': atm.networkVendor || '-',
+        'IP Address': atm.ipAddress || '-',
+        'Error Types': atm.errorTypes.map(e => `${e.type} (${e.count})`).join(', ')
+      }))
+      const atmSheet = XLSX.utils.json_to_sheet(atmData)
+      atmSheet['!cols'] = [
+        { wch: 12 }, { wch: 30 }, { wch: 25 }, { wch: 20 },
+        { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 10 },
+        { wch: 8 }, { wch: 12 }, { wch: 10 }, { wch: 10 },
+        { wch: 15 }, { wch: 14 }, { wch: 14 }, { wch: 15 },
+        { wch: 15 }, { wch: 15 }, { wch: 40 }
+      ]
+      XLSX.utils.book_append_sheet(workbook, atmSheet, 'ATM Metrics')
+
+      // Sheet 3: Error Type Breakdown
+      const errorData = data.errorTypeBreakdown.map(e => ({
+        'Error Type': e.errorType,
+        'Count': e.count,
+        'Percentage': `${e.percentage}%`
+      }))
+      const errorSheet = XLSX.utils.json_to_sheet(errorData)
+      errorSheet['!cols'] = [{ wch: 30 }, { wch: 12 }, { wch: 12 }]
+      XLSX.utils.book_append_sheet(workbook, errorSheet, 'Error Types')
+
+      // Sheet 4: Status Distribution
       const statusData = data.statusDistribution.map(s => ({
         'Status': STATUS_LABELS[s.status] || s.status,
         'Count': s.count,
@@ -199,7 +298,7 @@ export default function ATMTechnicalIssuesReport() {
       statusSheet['!cols'] = [{ wch: 20 }, { wch: 12 }, { wch: 12 }]
       XLSX.utils.book_append_sheet(workbook, statusSheet, 'Status Distribution')
 
-      // Sheet 3: Priority Distribution
+      // Sheet 5: Priority Distribution
       const priorityData = data.priorityDistribution.map(p => ({
         'Priority': PRIORITY_LABELS[p.priority] || p.priority,
         'Count': p.count,
@@ -209,7 +308,7 @@ export default function ATMTechnicalIssuesReport() {
       prioritySheet['!cols'] = [{ wch: 15 }, { wch: 12 }, { wch: 12 }]
       XLSX.utils.book_append_sheet(workbook, prioritySheet, 'Priority Distribution')
 
-      // Sheet 4: Branch Breakdown
+      // Sheet 6: Branch Breakdown
       const branchData = data.branchBreakdown.map(b => ({
         'Branch': b.branchName,
         'Code': b.branchCode,
@@ -219,7 +318,7 @@ export default function ATMTechnicalIssuesReport() {
       branchSheet['!cols'] = [{ wch: 30 }, { wch: 10 }, { wch: 10 }]
       XLSX.utils.book_append_sheet(workbook, branchSheet, 'Branch Breakdown')
 
-      // Sheet 5: Tickets (with custom fields)
+      // Sheet 7: Tickets (with custom fields)
       const ticketsData = data.tickets.map(t => {
         const row: Record<string, string> = {
           'Ticket #': t.ticketNumber,
@@ -227,7 +326,6 @@ export default function ATMTechnicalIssuesReport() {
           'Status': STATUS_LABELS[t.status] || t.status,
           'Priority': PRIORITY_LABELS[t.priority] || t.priority,
           'Branch': t.branch?.name || '-',
-          'Branch Code': t.branch?.code || '-',
           'Assigned To': t.assignedTo?.name || 'Unassigned',
           'Created': format(new Date(t.createdAt), 'yyyy-MM-dd HH:mm'),
           'Resolved': t.resolvedAt ? format(new Date(t.resolvedAt), 'yyyy-MM-dd HH:mm') : '-',
@@ -240,24 +338,6 @@ export default function ATMTechnicalIssuesReport() {
         return row
       })
       const ticketsSheet = XLSX.utils.json_to_sheet(ticketsData)
-      // Set column widths
-      const ticketsCols = [
-        { wch: 15 }, // Ticket #
-        { wch: 40 }, // Title
-        { wch: 15 }, // Status
-        { wch: 12 }, // Priority
-        { wch: 25 }, // Branch
-        { wch: 12 }, // Branch Code
-        { wch: 20 }, // Assigned To
-        { wch: 18 }, // Created
-        { wch: 18 }, // Resolved
-        { wch: 18 }  // Closed
-      ]
-      // Add custom field columns
-      for (const field of data.customFieldDefinitions) {
-        ticketsCols.push({ wch: 20 })
-      }
-      ticketsSheet['!cols'] = ticketsCols
       XLSX.utils.book_append_sheet(workbook, ticketsSheet, 'Tickets')
 
       // Save file
@@ -355,7 +435,7 @@ export default function ATMTechnicalIssuesReport() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
           <Card className="border-l-4 border-l-blue-500">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
@@ -364,6 +444,12 @@ export default function ATMTechnicalIssuesReport() {
                   <p className="text-xs text-muted-foreground">Total</p>
                 </div>
                 <Ticket className="h-8 w-8 text-blue-500/20" />
+              </div>
+              <div className="mt-2 flex items-center text-xs">
+                {getChangeIcon(data.summary.changeFromLastMonth)}
+                <span className={`ml-1 ${data.summary.changeFromLastMonth > 0 ? 'text-red-500' : data.summary.changeFromLastMonth < 0 ? 'text-green-500' : 'text-gray-500'}`}>
+                  {data.summary.changeFromLastMonth > 0 ? '+' : ''}{data.summary.changeFromLastMonth} vs last month
+                </span>
               </div>
             </CardContent>
           </Card>
@@ -415,7 +501,223 @@ export default function ATMTechnicalIssuesReport() {
               </div>
             </CardContent>
           </Card>
+
+          <Card className="border-l-4 border-l-purple-500">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-2xl font-bold">{formatDuration(data.summary.avgResolutionTime)}</p>
+                  <p className="text-xs text-muted-foreground">Avg Resolution</p>
+                </div>
+                <Clock className="h-8 w-8 text-purple-500/20" />
+              </div>
+            </CardContent>
+          </Card>
         </div>
+
+        {/* ATM Metrics - Most Problematic ATMs */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Server className="h-4 w-4" />
+              Most Problematic ATMs
+            </CardTitle>
+            <CardDescription>
+              ATMs ranked by number of technical issues with comparison to last month
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="whitespace-nowrap">ATM Code</TableHead>
+                    <TableHead className="min-w-[150px]">Name / Location</TableHead>
+                    <TableHead className="text-center">This Month</TableHead>
+                    <TableHead className="text-center">Last Month</TableHead>
+                    <TableHead className="text-center">Change</TableHead>
+                    <TableHead className="text-center">Open</TableHead>
+                    <TableHead className="text-center">Availability</TableHead>
+                    <TableHead className="text-center">Downtime</TableHead>
+                    <TableHead className="text-center">Incidents</TableHead>
+                    <TableHead>Error Types</TableHead>
+                    <TableHead>Network</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {data.atmMetrics.length > 0 ? (
+                    data.atmMetrics.slice(0, 20).map((atm) => (
+                      <TableRow key={atm.atmCode}>
+                        <TableCell className="font-mono font-medium">
+                          {atm.atmCode}
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm font-medium">{atm.atmName}</div>
+                          <div className="text-xs text-muted-foreground">{atm.atmLocation}</div>
+                          <div className="text-xs text-muted-foreground">{atm.branchName}</div>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <span className="font-bold text-lg">{atm.currentMonthTickets}</span>
+                        </TableCell>
+                        <TableCell className="text-center text-muted-foreground">
+                          {atm.lastMonthTickets}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            {getChangeIcon(atm.changeFromLastMonth)}
+                            <span className={`text-sm ${atm.changeFromLastMonth > 0 ? 'text-red-500' : atm.changeFromLastMonth < 0 ? 'text-green-500' : 'text-gray-500'}`}>
+                              {atm.changeFromLastMonth > 0 ? '+' : ''}{atm.changeFromLastMonth}
+                            </span>
+                          </div>
+                          {atm.changePercentage !== 0 && (
+                            <div className={`text-xs ${atm.changePercentage > 0 ? 'text-red-500' : 'text-green-500'}`}>
+                              ({atm.changePercentage > 0 ? '+' : ''}{atm.changePercentage}%)
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {atm.openTickets > 0 ? (
+                            <Badge variant="destructive">{atm.openTickets}</Badge>
+                          ) : (
+                            <span className="text-muted-foreground">0</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {atm.availability !== null ? (
+                            <div className="flex items-center justify-center gap-1">
+                              {atm.availability >= 95 ? (
+                                <Wifi className="h-4 w-4 text-green-500" />
+                              ) : (
+                                <WifiOff className="h-4 w-4 text-red-500" />
+                              )}
+                              <span className={`font-medium ${getAvailabilityColor(atm.availability)}`}>
+                                {atm.availability}%
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">N/A</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {atm.totalDowntimeHours > 0 ? (
+                            <span className="text-red-600 font-medium">
+                              {formatDuration(atm.totalDowntimeHours)}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {atm.activeIncidents > 0 ? (
+                            <div className="flex items-center justify-center gap-1">
+                              <AlertTriangle className="h-4 w-4 text-red-500" />
+                              <span className="text-red-600 font-medium">{atm.activeIncidents}</span>
+                            </div>
+                          ) : (
+                            <span className="text-green-600">✓</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1 max-w-[200px]">
+                            {atm.errorTypes.slice(0, 3).map((error, idx) => (
+                              <Badge key={idx} variant="outline" className="text-xs">
+                                {error.type} ({error.count})
+                              </Badge>
+                            ))}
+                            {atm.errorTypes.length > 3 && (
+                              <Badge variant="secondary" className="text-xs">
+                                +{atm.errorTypes.length - 3} more
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-xs">
+                            {atm.networkVendor && (
+                              <div className="text-muted-foreground">{atm.networkVendor}</div>
+                            )}
+                            {atm.ipAddress && (
+                              <div className="font-mono text-muted-foreground">{atm.ipAddress}</div>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
+                        No ATM data found for this period
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+            {data.atmMetrics.length > 20 && (
+              <p className="text-sm text-muted-foreground mt-4 text-center">
+                Showing top 20 of {data.atmMetrics.length} ATMs. Export to Excel for full list.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Error Type Breakdown */}
+        {data.errorTypeBreakdown.length > 0 && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4" />
+                Error Type Distribution
+              </CardTitle>
+              <CardDescription>Most common ATM error types this month</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <ResponsiveContainer width="100%" height={280}>
+                  <PieChart>
+                    <Pie
+                      data={data.errorTypeBreakdown.slice(0, 8)}
+                      dataKey="count"
+                      nameKey="errorType"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={90}
+                      label={({ errorType, percentage }) =>
+                        `${errorType.length > 15 ? errorType.slice(0, 15) + '...' : errorType}: ${percentage}%`
+                      }
+                    >
+                      {data.errorTypeBreakdown.slice(0, 8).map((_, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={CHART_COLORS[index % CHART_COLORS.length]}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="space-y-2">
+                  {data.errorTypeBreakdown.map((error, index) => (
+                    <div key={error.errorType} className="flex items-center justify-between p-2 bg-muted/50 rounded">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }}
+                        />
+                        <span className="text-sm">{error.errorType}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="font-medium">{error.count}</span>
+                        <span className="text-muted-foreground text-xs ml-2">({error.percentage}%)</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Charts Row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
@@ -668,21 +970,6 @@ export default function ATMTechnicalIssuesReport() {
             </div>
           </CardContent>
         </Card>
-
-        {/* Resolution Time Summary */}
-        {data.summary.avgResolutionTime > 0 && (
-          <Card className="mt-6">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-4">
-                <Clock className="h-8 w-8 text-muted-foreground/50" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Average Resolution Time</p>
-                  <p className="text-2xl font-bold">{formatDuration(data.summary.avgResolutionTime)}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
       </div>
     </div>
   )
