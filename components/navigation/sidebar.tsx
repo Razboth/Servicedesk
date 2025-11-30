@@ -510,19 +510,26 @@ export function Sidebar() {
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
-                className="w-full rounded-xl px-4 py-3 flex items-center justify-between bg-sidebar border border-sidebar-border shadow-sm hover:bg-sidebar-accent transition-colors duration-200"
+                className="w-full rounded-xl px-4 py-3 flex items-center gap-2 bg-sidebar border border-sidebar-border shadow-sm hover:bg-sidebar-accent transition-colors duration-200"
                 aria-label={`User menu. ${session.user?.name}, ${session.user?.role}${unreadCount > 0 ? `, ${unreadCount} unread notifications` : ''}`}
               >
-                {/* User Name */}
-                <span className="text-sm font-semibold truncate text-sidebar-foreground" title={session.user?.name}>
-                  {session.user?.name}
+                {/* User Name - truncate to first two words if too long */}
+                <span className="text-sm font-semibold truncate flex-1 min-w-0 text-left text-sidebar-foreground" title={session.user?.name}>
+                  {(() => {
+                    const name = session.user?.name || '';
+                    const words = name.split(' ');
+                    if (words.length > 2) {
+                      return `${words.slice(0, 2).join(' ')}...`;
+                    }
+                    return name;
+                  })()}
                 </span>
 
-                {/* Notification Badge */}
+                {/* Notification Badge - always visible */}
                 {unreadCount > 0 && (
                   <Badge
                     variant="destructive"
-                    className="text-xs px-1.5 py-0.5 min-w-[20px] flex items-center justify-center ml-2"
+                    className="text-xs px-1.5 py-0.5 min-w-[20px] flex-shrink-0 flex items-center justify-center"
                   >
                     {unreadCount > 99 ? '99+' : unreadCount}
                   </Badge>
