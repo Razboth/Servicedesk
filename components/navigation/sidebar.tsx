@@ -510,43 +510,22 @@ export function Sidebar() {
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
-                className="w-full rounded-xl p-3.5 flex items-center gap-4 bg-sidebar border border-sidebar-border shadow-sm transition-colors duration-200"
+                className="w-full rounded-xl px-4 py-3 flex items-center justify-between bg-sidebar border border-sidebar-border shadow-sm hover:bg-sidebar-accent transition-colors duration-200"
                 aria-label={`User menu. ${session.user?.name}, ${session.user?.role}${unreadCount > 0 ? `, ${unreadCount} unread notifications` : ''}`}
               >
-                {/* Avatar with Status Indicator */}
-                <div className="relative flex-shrink-0">
-                  <Avatar className="h-10 w-10 ring-2 ring-primary/50">
-                    {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
-                      <div className="h-full w-full">
-                        {getAvatarById((session.user as any).avatar)?.component}
-                      </div>
-                    ) : (
-                      <AvatarFallback className="bg-gradient-to-br from-amber-500 to-orange-600 text-white font-semibold">
-                        {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
-                      </AvatarFallback>
-                    )}
-                  </Avatar>
-                  {/* Online Status Indicator - Positioned cleanly on avatar edge */}
-                  <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 border-2 border-sidebar ring-1 ring-green-500/20" />
-                </div>
+                {/* User Name */}
+                <span className="text-sm font-semibold truncate text-sidebar-foreground" title={session.user?.name}>
+                  {session.user?.name}
+                </span>
 
-                {/* User Info - Name only, role shown in dropdown */}
-                <div className="flex-1 min-w-0 text-left">
-                  <p className="text-sm font-semibold truncate text-sidebar-foreground" title={session.user?.name}>
-                    {session.user?.name}
-                  </p>
-                </div>
-
-                {/* Notification Badge - Floats with spacing */}
+                {/* Notification Badge */}
                 {unreadCount > 0 && (
-                  <div className="relative flex-shrink-0 -mt-2">
-                    <Badge
-                      variant="destructive"
-                      className="text-xs px-1.5 py-0.5 min-w-[20px] flex items-center justify-center shadow-md"
-                    >
-                      {unreadCount > 99 ? '99+' : unreadCount}
-                    </Badge>
-                  </div>
+                  <Badge
+                    variant="destructive"
+                    className="text-xs px-1.5 py-0.5 min-w-[20px] flex items-center justify-center ml-2"
+                  >
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </Badge>
                 )}
               </Button>
             </DropdownMenuTrigger>
@@ -681,32 +660,20 @@ export function Sidebar() {
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="outline"
-                  className="w-16 h-16 p-0 rounded-xl flex flex-col items-center justify-center gap-1.5 bg-sidebar border border-sidebar-border shadow-sm transition-colors duration-200"
+                  className="w-12 h-12 p-0 rounded-xl flex items-center justify-center bg-sidebar border border-sidebar-border shadow-sm hover:bg-sidebar-accent transition-colors duration-200 relative"
                   aria-label={`User menu. ${session.user?.name}, ${session.user?.role}${unreadCount > 0 ? `, ${unreadCount} unread notifications` : ''}`}
                   title={`${session.user?.name} - ${session.user?.role}`}
                 >
-                  {/* Avatar with Status Indicator */}
-                  <div className="relative">
-                    <Avatar className="h-9 w-9 ring-2 ring-primary/50">
-                      {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
-                        <div className="h-full w-full">
-                          {getAvatarById((session.user as any).avatar)?.component}
-                        </div>
-                      ) : (
-                        <AvatarFallback className="bg-gradient-to-br from-amber-500 to-orange-600 text-white font-semibold text-xs">
-                          {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
-                        </AvatarFallback>
-                      )}
-                    </Avatar>
-                    {/* Online Status Indicator - Positioned cleanly on avatar edge */}
-                    <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-green-500 border-2 border-sidebar ring-1 ring-green-500/20" />
-                  </div>
+                  {/* Initials */}
+                  <span className="text-sm font-semibold text-sidebar-foreground">
+                    {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'U'}
+                  </span>
 
-                  {/* Notification Badge - Positioned below with spacing */}
+                  {/* Notification Badge */}
                   {unreadCount > 0 && (
                     <Badge
                       variant="destructive"
-                      className="text-[10px] px-1 py-0 min-w-[16px] h-4 flex items-center justify-center shadow-md"
+                      className="absolute -top-1 -right-1 text-[10px] px-1 py-0 min-w-[16px] h-4 flex items-center justify-center"
                     >
                       {unreadCount > 99 ? '99+' : unreadCount}
                     </Badge>
