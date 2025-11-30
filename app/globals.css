@@ -7,35 +7,35 @@
   .rdp {
     --rdp-cell-size: 40px;
   }
-  
+
   .rdp-months {
     display: flex;
     gap: 1rem;
   }
-  
+
   .rdp-month {
     display: flex;
     flex-direction: column;
     gap: 1rem;
   }
-  
+
   .rdp-table {
     width: 100%;
     border-collapse: collapse;
   }
-  
+
   .rdp-head_row,
   .rdp-row {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     gap: 0;
   }
-  
+
   .rdp-cell {
     text-align: center;
     padding: 0;
   }
-  
+
   .rdp-day {
     display: inline-flex;
     align-items: center;
@@ -52,71 +52,71 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
-  
+
   /* Responsive Typography Utilities */
   .text-responsive-xs {
     @apply text-xs sm:text-sm;
   }
-  
+
   .text-responsive-sm {
     @apply text-sm sm:text-base;
   }
-  
+
   .text-responsive-base {
     @apply text-base sm:text-lg;
   }
-  
+
   .text-responsive-lg {
     @apply text-lg sm:text-xl;
   }
-  
+
   .text-responsive-xl {
     @apply text-xl sm:text-2xl;
   }
-  
+
   .text-responsive-2xl {
     @apply text-2xl sm:text-3xl;
   }
-  
+
   .text-responsive-3xl {
     @apply text-3xl sm:text-4xl;
   }
-  
+
   /* Responsive Spacing Utilities */
   .space-responsive-x {
     @apply space-x-2 sm:space-x-4;
   }
-  
+
   .space-responsive-y {
     @apply space-y-4 sm:space-y-6;
   }
-  
+
   .gap-responsive {
     @apply gap-4 sm:gap-6;
   }
-  
+
   .p-responsive {
     @apply p-4 sm:p-6;
   }
-  
+
   .px-responsive {
     @apply px-4 sm:px-6;
   }
-  
+
   .py-responsive {
     @apply py-4 sm:py-6;
   }
-  
+
   /* Mobile-first touch targets */
   .touch-target {
     @apply min-h-[44px] min-w-[44px] sm:min-h-[40px] sm:min-w-[40px];
   }
-  
+
   /* Responsive margins */
   .mb-responsive {
     @apply mb-4 sm:mb-6 lg:mb-8;
   }
-  
+
   .mt-responsive {
     @apply mt-4 sm:mt-6 lg:mt-8;
   }
@@ -514,6 +514,11 @@
     --tracking-normal: 0em;
     --spacing: 0.25rem;
   }
+  .theme {
+    --animate-shimmer-slide: shimmer-slide var(--speed) ease-in-out infinite alternate;
+    --animate-spin-around: spin-around calc(var(--speed) * 2) infinite linear;
+    --animate-shiny-text: shiny-text 8s infinite;
+  }
 }
 
 @layer base {
@@ -530,44 +535,44 @@
   .bank-gradient {
     @apply bg-gradient-to-r from-bank-primary to-bank-secondary;
   }
-  
+
   .bank-card {
     @apply bg-card border border-border rounded-lg shadow-sm hover:shadow-md transition-shadow;
   }
-  
+
   /* Data Table Styles */
   [data-table] {
     @apply bg-card rounded-lg overflow-hidden;
   }
-  
+
   table {
     @apply bg-card;
   }
-  
+
   thead {
     @apply bg-muted/50 border-b border-border;
   }
-  
+
   tbody tr {
     @apply border-b border-border hover:bg-muted/30 transition-colors;
   }
-  
+
   tbody tr:last-child {
     @apply border-0;
   }
-  
+
   th {
     @apply text-muted-foreground font-medium bg-muted/50;
   }
-  
+
   td {
     @apply text-foreground;
   }
-  
+
   .status-badge {
     @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
   }
-  
+
   /* Status badges with theme colors */
   .status-open {
     @apply bg-primary/20 text-primary dark:bg-primary/30 dark:text-primary;
@@ -605,17 +610,17 @@
   .priority-emergency {
     @apply bg-destructive text-destructive-foreground font-bold;
   }
-  
+
   /* Card styles */
   .card {
     @apply bg-card text-card-foreground border-border;
   }
-  
+
   /* Button styles */
   .btn-primary {
     @apply bg-primary text-primary-foreground hover:bg-primary/90;
   }
-  
+
   .btn-secondary {
     @apply bg-secondary text-secondary-foreground hover:bg-secondary/90;
   }
@@ -646,7 +651,7 @@
   .no-print {
     display: none !important;
   }
-  
+
   .print-break {
     page-break-before: always;
   }
@@ -664,4 +669,34 @@
 
 .form-success {
   @apply text-green-600 text-sm mt-1;
+}
+
+@theme inline {
+  @keyframes shimmer-slide {
+  to {
+    transform: translate(calc(100cqw - 100%), 0);
+    }
+  }
+  @keyframes spin-around {
+  0% {
+    transform: translateZ(0) rotate(0);
+    }
+  15%, 35% {
+    transform: translateZ(0) rotate(90deg);
+    }
+  65%, 85% {
+    transform: translateZ(0) rotate(270deg);
+    }
+  100% {
+    transform: translateZ(0) rotate(360deg);
+    }
+  }
+  @keyframes shiny-text {
+  0%, 90%, 100% {
+    background-position: calc(-100% - var(--shiny-width)) 0;
+    }
+  30%, 60% {
+    background-position: calc(100% + var(--shiny-width)) 0;
+    }
+  }
 }

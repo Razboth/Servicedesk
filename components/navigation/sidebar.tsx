@@ -23,6 +23,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { ShimmerButton } from '@/components/ui/shimmer-button';
+import { NumberTicker } from '@/components/ui/number-ticker';
+import { AnimatedShinyText } from '@/components/ui/animated-shiny-text';
 
 export function Sidebar() {
   const { data: session, status } = useSession();
@@ -508,13 +511,26 @@ export function Sidebar() {
         {(!isCollapsed || isMobile) ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                className="w-full rounded-xl px-4 py-3 flex items-center gap-2 bg-sidebar border border-sidebar-border shadow-sm hover:bg-sidebar-accent transition-colors duration-200"
+              <ShimmerButton
+                shimmerColor="rgba(255, 255, 255, 0.1)"
+                shimmerSize="0.1em"
+                shimmerDuration="4s"
+                borderRadius="0.75rem"
+                background="hsl(var(--sidebar))"
+                className="w-full rounded-xl px-4 py-3 flex items-center gap-3 border border-sidebar-border/50 hover:border-sidebar-border transition-all duration-300"
                 aria-label={`User menu. ${session.user?.name}, ${session.user?.role}${unreadCount > 0 ? `, ${unreadCount} unread notifications` : ''}`}
               >
-                {/* User Name - truncate to first two words if too long */}
-                <span className="text-sm font-semibold truncate flex-1 min-w-0 text-left text-sidebar-foreground" title={session.user?.name}>
+                {/* User Avatar Icon with gradient background */}
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center border border-white/10">
+                  <User className="w-4 h-4 text-sidebar-foreground" />
+                </div>
+
+                {/* User Name with Animated Shiny Text - truncate to first two words if too long */}
+                <AnimatedShinyText
+                  shimmerWidth={80}
+                  className="text-sm font-semibold truncate flex-1 min-w-0 text-left !text-sidebar-foreground dark:!text-sidebar-foreground"
+                  title={session.user?.name}
+                >
                   {(() => {
                     const name = session.user?.name || '';
                     const words = name.split(' ');
@@ -523,18 +539,22 @@ export function Sidebar() {
                     }
                     return name;
                   })()}
-                </span>
+                </AnimatedShinyText>
 
-                {/* Notification Badge - always visible */}
+                {/* Notification Badge with NumberTicker */}
                 {unreadCount > 0 && (
-                  <Badge
-                    variant="destructive"
-                    className="text-xs px-1.5 py-0.5 min-w-[20px] flex-shrink-0 flex items-center justify-center"
-                  >
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </Badge>
+                  <div className="flex-shrink-0 min-w-[28px] h-7 rounded-full bg-gradient-to-r from-red-500 to-pink-500 flex items-center justify-center px-2 shadow-lg shadow-red-500/20">
+                    {unreadCount > 99 ? (
+                      <span className="text-xs font-bold text-white">99+</span>
+                    ) : (
+                      <NumberTicker
+                        value={unreadCount}
+                        className="text-xs font-bold !text-white tabular-nums"
+                      />
+                    )}
+                  </div>
                 )}
-              </Button>
+              </ShimmerButton>
             </DropdownMenuTrigger>
 
           <DropdownMenuContent
