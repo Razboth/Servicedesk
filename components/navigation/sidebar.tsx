@@ -510,7 +510,7 @@ export function Sidebar() {
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
-                className="w-full rounded-xl p-2.5 flex items-center gap-3 bg-sidebar border border-sidebar-border shadow-sm transition-colors duration-200"
+                className="w-full rounded-xl p-3.5 flex items-center gap-4 bg-sidebar border border-sidebar-border shadow-sm transition-colors duration-200"
                 aria-label={`User menu. ${session.user?.name}, ${session.user?.role}${unreadCount > 0 ? `, ${unreadCount} unread notifications` : ''}`}
               >
                 {/* Avatar with Status Indicator */}
@@ -526,8 +526,8 @@ export function Sidebar() {
                       </AvatarFallback>
                     )}
                   </Avatar>
-                  {/* Online Status Indicator */}
-                  <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-green-500 border-2 border-sidebar" />
+                  {/* Online Status Indicator - Positioned cleanly on avatar edge */}
+                  <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 border-2 border-sidebar ring-1 ring-green-500/20" />
                 </div>
 
                 {/* User Info - Name only, role shown in dropdown */}
@@ -537,14 +537,16 @@ export function Sidebar() {
                   </p>
                 </div>
 
-                {/* Notification Badge */}
+                {/* Notification Badge - Floats with spacing */}
                 {unreadCount > 0 && (
-                  <Badge
-                    variant="destructive"
-                    className="text-xs px-1.5 py-0.5 min-w-[20px] flex items-center justify-center"
-                  >
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </Badge>
+                  <div className="relative flex-shrink-0 -mt-2">
+                    <Badge
+                      variant="destructive"
+                      className="text-xs px-1.5 py-0.5 min-w-[20px] flex items-center justify-center shadow-md"
+                    >
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </Badge>
+                  </div>
                 )}
               </Button>
             </DropdownMenuTrigger>
@@ -679,7 +681,7 @@ export function Sidebar() {
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="outline"
-                  className="w-14 h-14 p-0 rounded-xl flex flex-col items-center justify-center gap-1 bg-sidebar border border-sidebar-border shadow-sm transition-colors duration-200"
+                  className="w-16 h-16 p-0 rounded-xl flex flex-col items-center justify-center gap-1.5 bg-sidebar border border-sidebar-border shadow-sm transition-colors duration-200"
                   aria-label={`User menu. ${session.user?.name}, ${session.user?.role}${unreadCount > 0 ? `, ${unreadCount} unread notifications` : ''}`}
                   title={`${session.user?.name} - ${session.user?.role}`}
                 >
@@ -696,15 +698,15 @@ export function Sidebar() {
                         </AvatarFallback>
                       )}
                     </Avatar>
-                    {/* Online Status Indicator */}
-                    <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-green-500 border-2 border-sidebar" />
+                    {/* Online Status Indicator - Positioned cleanly on avatar edge */}
+                    <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-green-500 border-2 border-sidebar ring-1 ring-green-500/20" />
                   </div>
 
-                  {/* Notification Badge */}
+                  {/* Notification Badge - Positioned below with spacing */}
                   {unreadCount > 0 && (
                     <Badge
                       variant="destructive"
-                      className="text-[10px] px-1 py-0 min-w-[16px] h-4 flex items-center justify-center"
+                      className="text-[10px] px-1 py-0 min-w-[16px] h-4 flex items-center justify-center shadow-md"
                     >
                       {unreadCount > 99 ? '99+' : unreadCount}
                     </Badge>
