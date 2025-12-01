@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
           select: {
             content: true,
             createdAt: true,
-            author: {
+            user: {
               select: { name: true }
             }
           }
