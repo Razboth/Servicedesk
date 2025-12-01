@@ -23,6 +23,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { ShimmerButton } from '@/components/ui/shimmer-button';
+import { NumberTicker } from '@/components/ui/number-ticker';
+import { AnimatedShinyText } from '@/components/ui/animated-shiny-text';
 
 export function Sidebar() {
   const { data: session, status } = useSession();
@@ -508,45 +511,58 @@ export function Sidebar() {
         {(!isCollapsed || isMobile) ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                className="w-full rounded-xl p-2.5 flex items-center gap-3 bg-sidebar border border-sidebar-border shadow-sm transition-colors duration-200"
+              <ShimmerButton
+                shimmerColor="rgba(255, 255, 255, 0.1)"
+                shimmerSize="0.1em"
+                shimmerDuration="4s"
+                borderRadius="0.75rem"
+                background="hsl(var(--sidebar))"
+                className="w-full rounded-xl px-4 py-3 flex items-center gap-3 border border-sidebar-border/50 hover:border-sidebar-border transition-all duration-300"
                 aria-label={`User menu. ${session.user?.name}, ${session.user?.role}${unreadCount > 0 ? `, ${unreadCount} unread notifications` : ''}`}
               >
-                {/* Avatar with Status Indicator */}
-                <div className="relative flex-shrink-0">
-                  <Avatar className="h-10 w-10 ring-2 ring-primary/50">
-                    {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
-                      <div className="h-full w-full">
-                        {getAvatarById((session.user as any).avatar)?.component}
-                      </div>
-                    ) : (
-                      <AvatarFallback className="bg-gradient-to-br from-amber-500 to-orange-600 text-white font-semibold">
-                        {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
-                      </AvatarFallback>
-                    )}
-                  </Avatar>
-                  {/* Online Status Indicator */}
-                  <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-green-500 border-2 border-sidebar" />
+                {/* User Avatar - show custom avatar or initials */}
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-sm overflow-hidden">
+                  {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
+                    <div className="w-full h-full">
+                      {getAvatarById((session.user as any).avatar)?.component}
+                    </div>
+                  ) : (
+                    <span className="text-xs font-bold text-white">
+                      {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'U'}
+                    </span>
+                  )}
                 </div>
 
-                {/* User Info - Name only, role shown in dropdown */}
-                <div className="flex-1 min-w-0 text-left">
-                  <p className="text-sm font-semibold truncate text-sidebar-foreground" title={session.user?.name}>
-                    {session.user?.name}
-                  </p>
-                </div>
+                {/* User Name with Animated Shiny Text - truncate to first two words if too long */}
+                <AnimatedShinyText
+                  shimmerWidth={80}
+                  className="text-sm font-semibold truncate flex-1 min-w-0 text-left !text-sidebar-foreground dark:!text-sidebar-foreground"
+                  title={session.user?.name}
+                >
+                  {(() => {
+                    const name = session.user?.name || '';
+                    const words = name.split(' ');
+                    if (words.length > 2) {
+                      return `${words.slice(0, 2).join(' ')}...`;
+                    }
+                    return name;
+                  })()}
+                </AnimatedShinyText>
 
-                {/* Notification Badge */}
+                {/* Notification Badge with NumberTicker */}
                 {unreadCount > 0 && (
-                  <Badge
-                    variant="destructive"
-                    className="text-xs px-1.5 py-0.5 min-w-[20px] flex items-center justify-center"
-                  >
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </Badge>
+                  <div className="flex-shrink-0 min-w-[28px] h-7 rounded-full bg-gradient-to-r from-red-500 to-pink-500 flex items-center justify-center px-2 shadow-lg shadow-red-500/20">
+                    {unreadCount > 99 ? (
+                      <span className="text-xs font-bold text-white">99+</span>
+                    ) : (
+                      <NumberTicker
+                        value={unreadCount}
+                        className="text-xs font-bold !text-white tabular-nums"
+                      />
+                    )}
+                  </div>
                 )}
-              </Button>
+              </ShimmerButton>
             </DropdownMenuTrigger>
 
           <DropdownMenuContent
@@ -679,32 +695,20 @@ export function Sidebar() {
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="outline"
-                  className="w-14 h-14 p-0 rounded-xl flex flex-col items-center justify-center gap-1 bg-sidebar border border-sidebar-border shadow-sm transition-colors duration-200"
+                  className="w-12 h-12 p-0 rounded-xl flex items-center justify-center bg-sidebar border border-sidebar-border shadow-sm hover:bg-sidebar-accent transition-colors duration-200 relative"
                   aria-label={`User menu. ${session.user?.name}, ${session.user?.role}${unreadCount > 0 ? `, ${unreadCount} unread notifications` : ''}`}
                   title={`${session.user?.name} - ${session.user?.role}`}
                 >
-                  {/* Avatar with Status Indicator */}
-                  <div className="relative">
-                    <Avatar className="h-9 w-9 ring-2 ring-primary/50">
-                      {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
-                        <div className="h-full w-full">
-                          {getAvatarById((session.user as any).avatar)?.component}
-                        </div>
-                      ) : (
-                        <AvatarFallback className="bg-gradient-to-br from-amber-500 to-orange-600 text-white font-semibold text-xs">
-                          {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
-                        </AvatarFallback>
-                      )}
-                    </Avatar>
-                    {/* Online Status Indicator */}
-                    <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-green-500 border-2 border-sidebar" />
-                  </div>
+                  {/* Initials */}
+                  <span className="text-sm font-semibold text-sidebar-foreground">
+                    {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'U'}
+                  </span>
 
                   {/* Notification Badge */}
                   {unreadCount > 0 && (
                     <Badge
                       variant="destructive"
-                      className="text-[10px] px-1 py-0 min-w-[16px] h-4 flex items-center justify-center"
+                      className="absolute -top-1 -right-1 text-[10px] px-1 py-0 min-w-[16px] h-4 flex items-center justify-center"
                     >
                       {unreadCount > 99 ? '99+' : unreadCount}
                     </Badge>
