@@ -521,8 +521,8 @@ export function Sidebar() {
                 aria-label={`User menu. ${session.user?.name}, ${session.user?.role}${unreadCount > 0 ? `, ${unreadCount} unread notifications` : ''}`}
               >
                 {/* User Avatar Icon with gradient background */}
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center border border-white/10">
-                  <User className="w-4 h-4 text-sidebar-foreground" />
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-sm">
+                  <User className="w-4 h-4 text-white" />
                 </div>
 
                 {/* User Name with Animated Shiny Text - truncate to first two words if too long */}
