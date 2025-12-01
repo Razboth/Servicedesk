@@ -520,9 +520,17 @@ export function Sidebar() {
                 className="w-full rounded-xl px-4 py-3 flex items-center gap-3 border border-sidebar-border/50 hover:border-sidebar-border transition-all duration-300"
                 aria-label={`User menu. ${session.user?.name}, ${session.user?.role}${unreadCount > 0 ? `, ${unreadCount} unread notifications` : ''}`}
               >
-                {/* User Avatar Icon with gradient background */}
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-sm">
-                  <User className="w-4 h-4 text-white" />
+                {/* User Avatar - show custom avatar or initials */}
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-sm overflow-hidden">
+                  {(session.user as any)?.avatar && getAvatarById((session.user as any).avatar) ? (
+                    <div className="w-full h-full">
+                      {getAvatarById((session.user as any).avatar)?.component}
+                    </div>
+                  ) : (
+                    <span className="text-xs font-bold text-white">
+                      {session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'U'}
+                    </span>
+                  )}
                 </div>
 
                 {/* User Name with Animated Shiny Text - truncate to first two words if too long */}
