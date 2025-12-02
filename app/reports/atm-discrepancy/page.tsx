@@ -307,12 +307,12 @@ export default function ATMDiscrepancyReportPage() {
             </div>
             <div className="space-y-2">
               <Label>Status</Label>
-              <Select value={status} onValueChange={setStatus}>
+              <Select value={status || "all"} onValueChange={(val) => setStatus(val === "all" ? "" : val)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Semua Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Semua Status</SelectItem>
+                  <SelectItem value="all">Semua Status</SelectItem>
                   <SelectItem value="OPEN">Open</SelectItem>
                   <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
                   <SelectItem value="ON_HOLD">On Hold</SelectItem>
