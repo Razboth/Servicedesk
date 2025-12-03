@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
       where: {
         serviceId: service.id,
         status: {
-          in: ['OPEN', 'IN_PROGRESS', 'ON_HOLD', 'RESOLVED']
+          notIn: ['CLOSED', 'CANCELLED']
         },
         createdAt: {
           lt: threeDaysAgo

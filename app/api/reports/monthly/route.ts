@@ -55,30 +55,22 @@ export async function GET(request: NextRequest) {
     const monthStart = startOfMonth(targetDate);
     const monthEnd = endOfMonth(targetDate);
 
-    // Get the service ID for "ATM Monitoring Alert" to exclude it
-    const excludedService = await prisma.service.findFirst({
-      where: { name: 'ATM Monitoring Alert' },
-      select: { id: true }
-    });
-    const excludedServiceIds = excludedService ? [excludedService.id] : [];
-
-    // Base filter for all queries - excludes "ATM Monitoring Alert" service
-    const baseFilter = {
-      createdAt: {
-        gte: monthStart,
-        lte: monthEnd
-      },
-      ...(excludedServiceIds.length > 0 ? { serviceId: { notIn: excludedServiceIds } } : {})
-    };
-
     // 1. Get total tickets, claimed, and unclaimed
     const totalTickets = await prisma.ticket.count({
-      where: baseFilter
+      where: {
+        createdAt: {
+          gte: monthStart,
+          lte: monthEnd
+        }
+      }
     });
 
     const claimedTickets = await prisma.ticket.count({
       where: {
-        ...baseFilter,
+        createdAt: {
+          gte: monthStart,
+          lte: monthEnd
+        },
         assignedToId: { not: null }
       }
     });
@@ -88,7 +80,12 @@ export async function GET(request: NextRequest) {
     // 2. Get category breakdown
     const ticketsByService = await prisma.ticket.groupBy({
       by: ['serviceId'],
-      where: baseFilter,
+      where: {
+        createdAt: {
+          gte: monthStart,
+          lte: monthEnd
+        }
+      },
       _count: { id: true }
     });
 
@@ -191,7 +188,12 @@ export async function GET(request: NextRequest) {
     // 4. Get most common status by category
     const ticketsByServiceAndStatus = await prisma.ticket.groupBy({
       by: ['serviceId', 'status'],
-      where: baseFilter,
+      where: {
+        createdAt: {
+          gte: monthStart,
+          lte: monthEnd
+        }
+      },
       _count: { id: true }
     });
 
@@ -241,7 +243,10 @@ export async function GET(request: NextRequest) {
     // 4. Calculate duration metrics (approval to close)
     const closedTickets = await prisma.ticket.findMany({
       where: {
-        ...baseFilter,
+        createdAt: {
+          gte: monthStart,
+          lte: monthEnd
+        },
         closedAt: { not: null }
       },
       include: {
@@ -308,7 +313,12 @@ export async function GET(request: NextRequest) {
     // 5. Get status distribution for all tickets in the period
     const statusDistribution = await prisma.ticket.groupBy({
       by: ['status'],
-      where: baseFilter,
+      where: {
+        createdAt: {
+          gte: monthStart,
+          lte: monthEnd
+        }
+      },
       _count: { id: true }
     });
 

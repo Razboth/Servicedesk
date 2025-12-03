@@ -38,7 +38,7 @@ async function main() {
       where: {
         serviceId: service.id,
         status: {
-          in: ['OPEN', 'IN_PROGRESS', 'ON_HOLD', 'RESOLVED']
+          notIn: ['CLOSED', 'CANCELLED']
         },
         createdAt: {
           lt: threeDaysAgo
