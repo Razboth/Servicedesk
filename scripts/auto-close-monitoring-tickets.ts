@@ -14,18 +14,25 @@ async function main() {
   console.log(`\n[${new Date().toISOString()}] Starting auto-close task for ATM Monitoring Alert tickets...\n`);
 
   try {
-    // Find the ATM Monitoring Alert service
-    const service = await prisma.service.findFirst({
-      where: { name: 'ATM Monitoring Alert' },
+    // Find the services to auto-close
+    const services = await prisma.service.findMany({
+      where: {
+        name: {
+          in: ['ATM Monitoring Alert', 'ATM - Automatic Report']
+        }
+      },
       select: { id: true, name: true }
     });
 
-    if (!service) {
-      console.log('❌ ATM Monitoring Alert service not found');
+    if (services.length === 0) {
+      console.log('❌ No auto-close services found');
       return;
     }
 
-    console.log(`✅ Found service: ${service.name} (${service.id})`);
+    console.log(`✅ Found ${services.length} services to auto-close:`);
+    services.forEach(s => console.log(`   - ${s.name} (${s.id})`));
+
+    const serviceIds = services.map(s => s.id);
 
     // Calculate the cutoff date (3 days ago)
     const threeDaysAgo = new Date();
@@ -33,10 +40,10 @@ async function main() {
 
     console.log(`📅 Cutoff date: ${threeDaysAgo.toISOString()}`);
 
-    // Find all open/in-progress ATM Monitoring Alert tickets older than 3 days
+    // Find all open/in-progress tickets for these services older than 3 days
     const ticketsToClose = await prisma.ticket.findMany({
       where: {
-        serviceId: service.id,
+        serviceId: { in: serviceIds },
         status: {
           notIn: ['CLOSED', 'CANCELLED']
         },

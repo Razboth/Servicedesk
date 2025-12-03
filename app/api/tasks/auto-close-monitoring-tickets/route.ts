@@ -16,28 +16,34 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Find the ATM Monitoring Alert service
-    const service = await prisma.service.findFirst({
-      where: { name: 'ATM Monitoring Alert' },
+    // Find the services to auto-close
+    const services = await prisma.service.findMany({
+      where: {
+        name: {
+          in: ['ATM Monitoring Alert', 'ATM - Automatic Report']
+        }
+      },
       select: { id: true, name: true }
     });
 
-    if (!service) {
+    if (services.length === 0) {
       return NextResponse.json({
         success: false,
-        message: 'ATM Monitoring Alert service not found',
+        message: 'No auto-close services found',
         closedCount: 0
       });
     }
+
+    const serviceIds = services.map(s => s.id);
 
     // Calculate the cutoff date (3 days ago)
     const threeDaysAgo = new Date();
     threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
 
-    // Find all open/in-progress ATM Monitoring Alert tickets older than 3 days
+    // Find all open/in-progress tickets for these services older than 3 days
     const ticketsToClose = await prisma.ticket.findMany({
       where: {
-        serviceId: service.id,
+        serviceId: { in: serviceIds },
         status: {
           notIn: ['CLOSED', 'CANCELLED']
         },
