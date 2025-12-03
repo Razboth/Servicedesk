@@ -95,15 +95,16 @@ async function main() {
     const errors: string[] = [];
     const now = new Date();
 
-    // Close each ticket with a comment
+    // Claim and close each ticket with a comment
     for (const ticket of ticketsToClose) {
       try {
         await prisma.$transaction(async (tx) => {
-          // Update ticket status to CLOSED
+          // Update ticket - claim (assign) and close
           await tx.ticket.update({
             where: { id: ticket.id },
             data: {
               status: 'CLOSED',
+              assignedToId: systemUser!.id, // Claim the ticket
               closedAt: now,
               resolvedAt: ticket.status !== 'RESOLVED' ? now : undefined
             }
@@ -114,7 +115,7 @@ async function main() {
             data: {
               ticketId: ticket.id,
               userId: systemUser!.id,
-              content: 'Closed By System - Auto-closed after 3 days as per ATM Monitoring Alert policy.',
+              content: 'Claimed and Closed By System - Auto-closed after 3 days as per ATM Monitoring/Automatic Report policy.',
               isInternal: false
             }
           });
