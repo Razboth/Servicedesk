@@ -60,11 +60,28 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    if (ticketsToClose.length === 0) {
+    // Find all closed tickets that are not claimed (no assignee)
+    const unclaimedClosedTickets = await prisma.ticket.findMany({
+      where: {
+        serviceId: { in: serviceIds },
+        status: 'CLOSED',
+        assignedToId: null
+      },
+      select: {
+        id: true,
+        ticketNumber: true,
+        title: true,
+        status: true,
+        createdAt: true
+      }
+    });
+
+    if (ticketsToClose.length === 0 && unclaimedClosedTickets.length === 0) {
       return NextResponse.json({
         success: true,
-        message: 'No tickets to close',
-        closedCount: 0
+        message: 'No tickets to process',
+        closedCount: 0,
+        claimedCount: 0
       });
     }
 
@@ -124,14 +141,52 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    console.log(`[Auto-Close] Closed ${closedTickets.length} ATM Monitoring Alert tickets`);
+    // Claim already closed tickets that have no assignee
+    const claimedTickets: string[] = [];
+    const claimErrors: string[] = [];
+
+    for (const ticket of unclaimedClosedTickets) {
+      try {
+        await prisma.$transaction(async (tx) => {
+          // Update ticket - claim only
+          await tx.ticket.update({
+            where: { id: ticket.id },
+            data: {
+              assignedToId: systemUser?.id
+            }
+          });
+
+          // Add a system comment
+          if (systemUser) {
+            await tx.ticketComment.create({
+              data: {
+                ticketId: ticket.id,
+                userId: systemUser.id,
+                content: 'Claimed By System - Retroactively assigned to System User.',
+                isInternal: false
+              }
+            });
+          }
+        });
+
+        claimedTickets.push(ticket.ticketNumber);
+      } catch (err) {
+        console.error(`Failed to claim ticket ${ticket.ticketNumber}:`, err);
+        claimErrors.push(ticket.ticketNumber);
+      }
+    }
+
+    console.log(`[Auto-Close] Closed ${closedTickets.length}, Claimed ${claimedTickets.length} ATM Monitoring Alert tickets`);
 
     return NextResponse.json({
       success: true,
-      message: `Successfully closed ${closedTickets.length} tickets`,
+      message: `Successfully closed ${closedTickets.length} tickets, claimed ${claimedTickets.length} tickets`,
       closedCount: closedTickets.length,
+      claimedCount: claimedTickets.length,
       closedTickets,
+      claimedTickets,
       errors: errors.length > 0 ? errors : undefined,
+      claimErrors: claimErrors.length > 0 ? claimErrors : undefined,
       timestamp: now.toISOString()
     });
 
