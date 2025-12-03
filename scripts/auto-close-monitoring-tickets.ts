@@ -60,10 +60,28 @@ async function main() {
       }
     });
 
-    console.log(`📋 Found ${ticketsToClose.length} tickets to close\n`);
+    console.log(`📋 Found ${ticketsToClose.length} tickets to close`);
 
-    if (ticketsToClose.length === 0) {
-      console.log('✅ No tickets to close. Task completed.');
+    // Find all closed tickets that are not claimed (no assignee)
+    const unclaimedClosedTickets = await prisma.ticket.findMany({
+      where: {
+        serviceId: { in: serviceIds },
+        status: 'CLOSED',
+        assignedToId: null
+      },
+      select: {
+        id: true,
+        ticketNumber: true,
+        title: true,
+        status: true,
+        createdAt: true
+      }
+    });
+
+    console.log(`📋 Found ${unclaimedClosedTickets.length} closed tickets to claim\n`);
+
+    if (ticketsToClose.length === 0 && unclaimedClosedTickets.length === 0) {
+      console.log('✅ No tickets to process. Task completed.');
       return;
     }
 
@@ -95,15 +113,16 @@ async function main() {
     const errors: string[] = [];
     const now = new Date();
 
-    // Close each ticket with a comment
+    // Claim and close each ticket with a comment
     for (const ticket of ticketsToClose) {
       try {
         await prisma.$transaction(async (tx) => {
-          // Update ticket status to CLOSED
+          // Update ticket - claim (assign) and close
           await tx.ticket.update({
             where: { id: ticket.id },
             data: {
               status: 'CLOSED',
+              assignedToId: systemUser!.id, // Claim the ticket
               closedAt: now,
               resolvedAt: ticket.status !== 'RESOLVED' ? now : undefined
             }
@@ -114,7 +133,7 @@ async function main() {
             data: {
               ticketId: ticket.id,
               userId: systemUser!.id,
-              content: 'Closed By System - Auto-closed after 3 days as per ATM Monitoring Alert policy.',
+              content: 'Claimed and Closed By System - Auto-closed after 3 days as per ATM Monitoring/Automatic Report policy.',
               isInternal: false
             }
           });
@@ -128,10 +147,48 @@ async function main() {
       }
     }
 
+    // Claim already closed tickets that have no assignee
+    const claimedTickets: string[] = [];
+    const claimErrors: string[] = [];
+
+    for (const ticket of unclaimedClosedTickets) {
+      try {
+        await prisma.$transaction(async (tx) => {
+          // Update ticket - claim only
+          await tx.ticket.update({
+            where: { id: ticket.id },
+            data: {
+              assignedToId: systemUser!.id
+            }
+          });
+
+          // Add a system comment
+          await tx.ticketComment.create({
+            data: {
+              ticketId: ticket.id,
+              userId: systemUser!.id,
+              content: 'Claimed By System - Retroactively assigned to System User.',
+              isInternal: false
+            }
+          });
+        });
+
+        console.log(`✅ Claimed: ${ticket.ticketNumber} - ${ticket.title.substring(0, 50)}...`);
+        claimedTickets.push(ticket.ticketNumber);
+      } catch (err) {
+        console.error(`❌ Failed to claim ticket ${ticket.ticketNumber}:`, err);
+        claimErrors.push(ticket.ticketNumber);
+      }
+    }
+
     console.log(`\n📊 Summary:`);
     console.log(`   ✅ Successfully closed: ${closedTickets.length}`);
+    console.log(`   ✅ Successfully claimed (already closed): ${claimedTickets.length}`);
     if (errors.length > 0) {
-      console.log(`   ❌ Failed: ${errors.length} (${errors.join(', ')})`);
+      console.log(`   ❌ Failed to close: ${errors.length}`);
+    }
+    if (claimErrors.length > 0) {
+      console.log(`   ❌ Failed to claim: ${claimErrors.length}`);
     }
     console.log(`\n[${new Date().toISOString()}] Task completed.\n`);
 
