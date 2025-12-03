@@ -32,6 +32,7 @@
     "monitoring:stop": "tsx scripts/start-monitoring.ts stop",
     "monitoring:status": "tsx scripts/start-monitoring.ts status",
     "monitoring:setup": "tsx scripts/enable-monitoring.ts",
+    "tasks:auto-close-monitoring": "tsx scripts/auto-close-monitoring-tickets.ts",
     "type-check": "tsc --noEmit",
     "security:audit": "npm audit --audit-level=moderate",
     "security:audit:fix": "npm audit fix",

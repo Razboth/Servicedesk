@@ -377,6 +377,27 @@ const standardReports: Report[] = [
     roles: ['USER', 'TECHNICIAN', 'MANAGER', 'ADMIN'],
     badge: 'Claims',
     lastRun: 'Live'
+  },
+  // ATM Service Reports
+  {
+    title: 'ATM Technical Issues Report',
+    description: 'Monthly report for ATM technical issues with detailed ATM metrics, availability, and downtime analysis',
+    href: '/reports/atm-technical-issues',
+    icon: Monitor,
+    type: 'standard',
+    roles: ['TECHNICIAN', 'MANAGER', 'ADMIN', 'MANAGER_IT'],
+    badge: 'ATM',
+    lastRun: 'Live'
+  },
+  {
+    title: 'ATM Discrepancy Resolution Report',
+    description: 'Comprehensive report for ATM discrepancy resolution requests with custom fields and transaction amounts',
+    href: '/reports/atm-discrepancy',
+    icon: AlertTriangle,
+    type: 'standard',
+    roles: ['TECHNICIAN', 'MANAGER', 'ADMIN', 'MANAGER_IT'],
+    badge: 'ATM',
+    lastRun: 'Live'
   }
 ]
 
