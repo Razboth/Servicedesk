@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ArrowLeft, Mail, Loader2, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Mail, Loader2, CheckCircle, KeyRound } from 'lucide-react';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -34,11 +34,10 @@ export default function ForgotPasswordPage() {
       if (data.success) {
         setIsSubmitted(true);
       } else {
-        // Should not happen due to generic response, but handle just in case
-        setError('An error occurred. Please try again.');
+        setError('Terjadi kesalahan. Silakan coba lagi.');
       }
     } catch (error) {
-      setError('An error occurred. Please try again.');
+      setError('Terjadi kesalahan. Silakan coba lagi.');
     } finally {
       setIsLoading(false);
     }
@@ -68,31 +67,49 @@ export default function ForgotPasswordPage() {
                   <CheckCircle className="h-8 w-8 text-green-600" />
                 </div>
               </div>
-              <CardTitle className="text-center">Check Your Email</CardTitle>
+              <CardTitle className="text-center">Cek Email Anda</CardTitle>
               <CardDescription className="text-center">
-                We've sent password reset instructions to your email
+                Password sementara telah dikirim ke email Anda
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <Alert>
-                <Mail className="h-4 w-4" />
+                <KeyRound className="h-4 w-4" />
                 <AlertDescription>
-                  If an account exists with <strong>{email}</strong>, you will receive an email with instructions to reset your password.
+                  Jika akun dengan email <strong>{email}</strong> terdaftar, Anda akan menerima password sementara untuk login.
                 </AlertDescription>
               </Alert>
 
               <div className="bg-blue-50 border border-blue-200 p-4 rounded-md">
-                <p className="text-sm text-blue-800">
-                  <strong>Didn't receive an email?</strong>
+                <p className="text-sm text-blue-800 font-medium">
+                  Langkah selanjutnya:
                 </p>
-                <ul className="text-sm text-blue-700 mt-2 space-y-1 list-disc list-inside">
-                  <li>Check your spam or junk folder</li>
-                  <li>Make sure you entered the correct email address</li>
-                  <li>Contact IT Support if you continue to have issues</li>
+                <ol className="text-sm text-blue-700 mt-2 space-y-1 list-decimal list-inside">
+                  <li>Cek email Anda (termasuk folder spam)</li>
+                  <li>Login menggunakan password sementara</li>
+                  <li>Anda akan diminta membuat password baru</li>
+                </ol>
+              </div>
+
+              <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-md">
+                <p className="text-sm text-yellow-800">
+                  <strong>Tidak menerima email?</strong>
+                </p>
+                <ul className="text-sm text-yellow-700 mt-2 space-y-1 list-disc list-inside">
+                  <li>Periksa folder spam atau junk</li>
+                  <li>Pastikan alamat email sudah benar</li>
+                  <li>Hubungi IT Support jika masih bermasalah</li>
                 </ul>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-3 pt-2">
+                <Link href="/auth/signin" className="block">
+                  <Button variant="default" className="w-full">
+                    <Mail className="mr-2 h-4 w-4" />
+                    Login Sekarang
+                  </Button>
+                </Link>
+
                 <Button
                   onClick={() => {
                     setIsSubmitted(false);
@@ -101,15 +118,8 @@ export default function ForgotPasswordPage() {
                   variant="outline"
                   className="w-full"
                 >
-                  Try Another Email
+                  Coba Email Lain
                 </Button>
-
-                <Link href="/auth/signin" className="block">
-                  <Button variant="default" className="w-full">
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back to Sign In
-                  </Button>
-                </Link>
               </div>
             </CardContent>
           </Card>
@@ -136,9 +146,9 @@ export default function ForgotPasswordPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Forgot Password?</CardTitle>
+            <CardTitle>Lupa Password?</CardTitle>
             <CardDescription>
-              Enter your email address and we'll send you instructions to reset your password
+              Masukkan email Anda dan kami akan mengirimkan password sementara untuk login
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -150,7 +160,7 @@ export default function ForgotPasswordPage() {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
+                <Label htmlFor="email">Alamat Email</Label>
                 <Input
                   id="email"
                   name="email"
@@ -159,14 +169,14 @@ export default function ForgotPasswordPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email address"
+                  placeholder="Masukkan alamat email Anda"
                   disabled={isLoading}
                 />
               </div>
 
               <Alert>
                 <AlertDescription>
-                  For security reasons, we will send a password reset link to your registered email address if it exists in our system.
+                  Password sementara akan dikirim ke email terdaftar. Anda harus mengganti password setelah login.
                 </AlertDescription>
               </Alert>
 
@@ -179,12 +189,12 @@ export default function ForgotPasswordPage() {
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Sending...
+                      Mengirim...
                     </>
                   ) : (
                     <>
-                      <Mail className="mr-2 h-4 w-4" />
-                      Send Reset Instructions
+                      <KeyRound className="mr-2 h-4 w-4" />
+                      Kirim Password Sementara
                     </>
                   )}
                 </Button>
@@ -192,7 +202,7 @@ export default function ForgotPasswordPage() {
                 <Link href="/auth/signin" className="block">
                   <Button type="button" variant="outline" className="w-full">
                     <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back to Sign In
+                    Kembali ke Login
                   </Button>
                 </Link>
               </div>
@@ -200,7 +210,7 @@ export default function ForgotPasswordPage() {
 
             <div className="mt-6 text-center">
               <p className="text-xs text-gray-500">
-                Need immediate help? Contact IT Support at ext. 1234
+                Butuh bantuan? Hubungi IT Support
               </p>
             </div>
           </CardContent>
