@@ -11,11 +11,12 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Allow admin roles and TECH_SUPPORT group members
+    // Allow admin roles, TECH_SUPPORT, and PC_AUDITOR group members
     const isAdmin = ['SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(session.user.role);
     const isTechSupport = session.user.supportGroupCode === 'TECH_SUPPORT';
-    
-    if (!isAdmin && !isTechSupport) {
+    const isPCAuditor = session.user.supportGroupCode === 'PC_AUDITOR';
+
+    if (!isAdmin && !isTechSupport && !isPCAuditor) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -26,12 +27,36 @@ export async function GET(request: Request) {
     const search = searchParams.get('search');
     const includeServiceLogs = searchParams.get('includeServiceLogs') === 'true';
 
+    // New filter parameters
+    const status = searchParams.get('status');
+    const formFactor = searchParams.get('formFactor');
+    const warrantyStatus = searchParams.get('warrantyStatus');
+
     const where: any = {};
 
     if (branchId) where.branchId = branchId;
     if (assignedToId) where.assignedToId = assignedToId;
     if (isActive !== null) where.isActive = isActive === 'true';
-    
+
+    // Apply new filters
+    if (status) where.status = status;
+    if (formFactor) where.formFactor = formFactor;
+
+    // Warranty status filter
+    if (warrantyStatus) {
+      const today = new Date();
+      const thirtyDaysFromNow = new Date(today);
+      thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+
+      if (warrantyStatus === 'EXPIRING') {
+        where.warrantyExpiry = { gte: today, lte: thirtyDaysFromNow };
+      } else if (warrantyStatus === 'EXPIRED') {
+        where.warrantyExpiry = { lt: today };
+      } else if (warrantyStatus === 'ACTIVE') {
+        where.warrantyExpiry = { gt: thirtyDaysFromNow };
+      }
+    }
+
     if (search) {
       where.OR = [
         { pcName: { contains: search, mode: 'insensitive' } },
@@ -40,11 +65,13 @@ export async function GET(request: Request) {
         { serialNumber: { contains: search, mode: 'insensitive' } },
         { assetTag: { contains: search, mode: 'insensitive' } },
         { ipAddress: { contains: search, mode: 'insensitive' } },
-        { macAddress: { contains: search, mode: 'insensitive' } }
+        { macAddress: { contains: search, mode: 'insensitive' } },
+        { assignedUserName: { contains: search, mode: 'insensitive' } },
+        { department: { contains: search, mode: 'insensitive' } }
       ];
     }
 
-    const pcAssets = await prisma.PCAsset.findMany({
+    const pcAssets = await prisma.pCAsset.findMany({
       where,
       include: {
         branch: {
@@ -66,6 +93,22 @@ export async function GET(request: Request) {
             id: true,
             name: true,
             email: true
+          }
+        },
+        operatingSystem: {
+          select: {
+            id: true,
+            name: true,
+            version: true,
+            type: true
+          }
+        },
+        officeProduct: {
+          select: {
+            id: true,
+            name: true,
+            version: true,
+            type: true
           }
         },
         _count: {
@@ -124,7 +167,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     
     // Validate required fields
-    const requiredFields = ['pcName', 'brand', 'processor', 'ram', 'branchId', 'osName', 'osLicenseType'];
+    const requiredFields = ['pcName', 'brand', 'processor', 'ram', 'branchId'];
     for (const field of requiredFields) {
       if (!body[field]) {
         return NextResponse.json(
@@ -135,7 +178,7 @@ export async function POST(request: Request) {
     }
 
     // Check for duplicate PC name
-    const existingPC = await prisma.PCAsset.findUnique({
+    const existingPC = await prisma.pCAsset.findUnique({
       where: { pcName: body.pcName }
     });
 
@@ -148,7 +191,7 @@ export async function POST(request: Request) {
 
     // Check for duplicate asset tag if provided
     if (body.assetTag) {
-      const existingAssetTag = await prisma.PCAsset.findUnique({
+      const existingAssetTag = await prisma.pCAsset.findUnique({
         where: { assetTag: body.assetTag }
       });
 
@@ -160,36 +203,49 @@ export async function POST(request: Request) {
       }
     }
 
-    // Create PC asset
-    const pcAsset = await prisma.PCAsset.create({
+    // Create PC asset with new fields
+    const pcAsset = await prisma.pCAsset.create({
       data: {
         pcName: body.pcName,
         brand: body.brand,
         model: body.model,
         serialNumber: body.serialNumber,
         processor: body.processor,
-        ram: body.ram,
-        storageDevices: body.storageDevices || [],
+        ram: parseInt(body.ram) || 0,
+        formFactor: body.formFactor || null,
+        storageType: body.storageType || null,
+        storageCapacity: body.storageCapacity,
+        storageDevices: body.storageDevices || null,
         macAddress: body.macAddress,
         ipAddress: body.ipAddress,
         branchId: body.branchId,
+        department: body.department,
         assignedToId: body.assignedToId,
+        assignedUserName: body.assignedUserName,
+        status: body.status || 'IN_USE',
         purchaseDate: body.purchaseDate ? new Date(body.purchaseDate) : null,
         purchaseOrderNumber: body.purchaseOrderNumber,
         warrantyExpiry: body.warrantyExpiry ? new Date(body.warrantyExpiry) : null,
         assetTag: body.assetTag,
-        osName: body.osName,
-        osVersion: body.osVersion,
+        // Operating System
+        operatingSystemId: body.operatingSystemId,
         osLicenseType: body.osLicenseType,
+        osProductKey: body.osProductKey,
+        osInstallationDate: body.osInstallationDate ? new Date(body.osInstallationDate) : null,
         osSerialNumber: body.osSerialNumber,
-        officeProduct: body.officeProduct,
-        officeVersion: body.officeVersion,
-        officeProductType: body.officeProductType,
+        // Office Suite
+        officeProductId: body.officeProductId,
         officeLicenseType: body.officeLicenseType,
+        officeLicenseAccount: body.officeLicenseAccount,
+        officeLicenseStatus: body.officeLicenseStatus,
         officeSerialNumber: body.officeSerialNumber,
+        // Antivirus
         antivirusName: body.antivirusName,
         antivirusVersion: body.antivirusVersion,
         antivirusLicenseExpiry: body.antivirusLicenseExpiry ? new Date(body.antivirusLicenseExpiry) : null,
+        avRealTimeProtection: body.avRealTimeProtection ?? true,
+        avDefinitionDate: body.avDefinitionDate ? new Date(body.avDefinitionDate) : null,
+        // Metadata
         notes: body.notes,
         createdById: session.user.id,
         isActive: true
@@ -197,7 +253,9 @@ export async function POST(request: Request) {
       include: {
         branch: true,
         assignedTo: true,
-        createdBy: true
+        createdBy: true,
+        operatingSystem: true,
+        officeProduct: true
       }
     });
 

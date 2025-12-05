@@ -9,8 +9,17 @@ export async function GET(
 ) {
   try {
     const session = await auth();
-    
+
     if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Allow admin roles, TECH_SUPPORT, and PC_AUDITOR group members
+    const isAdmin = ['SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(session.user.role);
+    const isTechSupport = session.user.supportGroupCode === 'TECH_SUPPORT';
+    const isPCAuditor = session.user.supportGroupCode === 'PC_AUDITOR';
+
+    if (!isAdmin && !isTechSupport && !isPCAuditor) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -91,7 +100,7 @@ export async function POST(
     }
 
     // Check if PC asset exists
-    const pcAsset = await prisma.PCAsset.findUnique({
+    const pcAsset = await prisma.pCAsset.findUnique({
       where: { id: params.id },
       include: {
         branch: true,
@@ -181,7 +190,7 @@ export async function POST(
         });
       }
 
-      // Create the service log
+      // Create the service log with new fields
       const serviceLog = await tx.pCServiceLog.create({
         data: {
           pcAssetId: params.id,
@@ -194,7 +203,12 @@ export async function POST(
           beforeStatus: body.beforeStatus,
           afterStatus: body.afterStatus,
           attachments: body.attachments,
-          performedAt: body.performedAt ? new Date(body.performedAt) : new Date()
+          performedAt: body.performedAt ? new Date(body.performedAt) : new Date(),
+          // New fields
+          issueReported: body.issueReported,
+          cost: body.cost ? parseFloat(body.cost) : null,
+          status: body.status || 'OPEN',
+          technicianName: body.technicianName || session.user.name
         },
         include: {
           pcAsset: true,

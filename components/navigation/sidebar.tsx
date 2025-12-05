@@ -262,14 +262,14 @@ export function Sidebar() {
               </svg>
               {(!isCollapsed || isMobile) && 'My Shifts'}
             </Link>
-            {/* PC Assets and License Management for TECH_SUPPORT group and SUPER_ADMIN */}
-            {(session.user?.supportGroupCode === 'TECH_SUPPORT' || session.user?.role === 'SUPER_ADMIN') && (
+            {/* PC Management for TECH_SUPPORT, PC_AUDITOR groups and SUPER_ADMIN */}
+            {(session.user?.supportGroupCode === 'TECH_SUPPORT' || session.user?.supportGroupCode === 'PC_AUDITOR' || session.user?.role === 'SUPER_ADMIN') && (
               <>
-                <Link href="/admin/pc-assets" className={linkClass('/admin/pc-assets')} onClick={handleLinkClick}>
+                <Link href="/admin/pc-management" className={linkClass('/admin/pc-management')} onClick={handleLinkClick}>
                   <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
-                  {(!isCollapsed || isMobile) && 'PC Assets'}
+                  {(!isCollapsed || isMobile) && 'PC Management'}
                 </Link>
               </>
             )}
@@ -389,11 +389,11 @@ export function Sidebar() {
               </svg>
               {(!isCollapsed || isMobile) && 'Tier Categories'}
             </Link>
-            <Link href="/admin/pc-assets" className={linkClass('/admin/pc-assets')} onClick={handleLinkClick}>
+            <Link href="/admin/pc-management" className={linkClass('/admin/pc-management')} onClick={handleLinkClick}>
               <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
-              {(!isCollapsed || isMobile) && 'PC Assets'}
+              {(!isCollapsed || isMobile) && 'PC Management'}
             </Link>
             <Link href="/admin/branches" className={linkClass('/admin/branches')} onClick={handleLinkClick}>
               <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -9,17 +9,42 @@ export async function GET(
 ) {
   try {
     const session = await auth();
-    
+
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const pcAsset = await prisma.PCAsset.findUnique({
+    // Allow admin roles, TECH_SUPPORT, and PC_AUDITOR group members
+    const isAdmin = ['SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(session.user.role);
+    const isTechSupport = session.user.supportGroupCode === 'TECH_SUPPORT';
+    const isPCAuditor = session.user.supportGroupCode === 'PC_AUDITOR';
+
+    if (!isAdmin && !isTechSupport && !isPCAuditor) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const pcAsset = await prisma.pCAsset.findUnique({
       where: { id: params.id },
       include: {
         branch: true,
         assignedTo: true,
         createdBy: true,
+        operatingSystem: {
+          select: {
+            id: true,
+            name: true,
+            version: true,
+            type: true
+          }
+        },
+        officeProduct: {
+          select: {
+            id: true,
+            name: true,
+            version: true,
+            type: true
+          }
+        },
         serviceLogs: {
           orderBy: { performedAt: 'desc' },
           include: {
@@ -97,7 +122,7 @@ export async function PUT(
 ) {
   try {
     const session = await auth();
-    
+
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -105,7 +130,7 @@ export async function PUT(
     // Allow admin roles and TECH_SUPPORT group members
     const isAdmin = ['SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(session.user.role);
     const isTechSupport = session.user.supportGroupCode === 'TECH_SUPPORT';
-    
+
     if (!isAdmin && !isTechSupport) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -113,7 +138,7 @@ export async function PUT(
     const body = await request.json();
 
     // Check if PC exists
-    const existingPC = await prisma.PCAsset.findUnique({
+    const existingPC = await prisma.pCAsset.findUnique({
       where: { id: params.id }
     });
 
@@ -123,7 +148,7 @@ export async function PUT(
 
     // Check for duplicate PC name if changed
     if (body.pcName && body.pcName !== existingPC.pcName) {
-      const duplicateName = await prisma.PCAsset.findUnique({
+      const duplicateName = await prisma.pCAsset.findUnique({
         where: { pcName: body.pcName }
       });
 
@@ -137,7 +162,7 @@ export async function PUT(
 
     // Check for duplicate asset tag if changed
     if (body.assetTag && body.assetTag !== existingPC.assetTag) {
-      const duplicateTag = await prisma.PCAsset.findUnique({
+      const duplicateTag = await prisma.pCAsset.findUnique({
         where: { assetTag: body.assetTag }
       });
 
@@ -149,8 +174,8 @@ export async function PUT(
       }
     }
 
-    // Update PC asset
-    const updatedPC = await prisma.PCAsset.update({
+    // Update PC asset with all fields including new ones
+    const updatedPC = await prisma.pCAsset.update({
       where: { id: params.id },
       data: {
         pcName: body.pcName,
@@ -158,28 +183,45 @@ export async function PUT(
         model: body.model,
         serialNumber: body.serialNumber,
         processor: body.processor,
-        ram: body.ram,
+        ram: typeof body.ram === 'string' ? parseInt(body.ram) || 0 : body.ram,
+        // New fields
+        formFactor: body.formFactor || undefined,
+        storageType: body.storageType || undefined,
+        storageCapacity: body.storageCapacity,
         storageDevices: body.storageDevices,
+        department: body.department,
+        assignedUserName: body.assignedUserName,
+        status: body.status || undefined,
+        // Network
         macAddress: body.macAddress,
         ipAddress: body.ipAddress,
+        // Location & Assignment
         branchId: body.branchId,
         assignedToId: body.assignedToId,
+        // Purchase & Warranty
         purchaseDate: body.purchaseDate ? new Date(body.purchaseDate) : undefined,
         purchaseOrderNumber: body.purchaseOrderNumber,
         warrantyExpiry: body.warrantyExpiry ? new Date(body.warrantyExpiry) : undefined,
         assetTag: body.assetTag,
-        osName: body.osName,
-        osVersion: body.osVersion,
+        // Operating System
+        operatingSystemId: body.operatingSystemId,
         osLicenseType: body.osLicenseType,
+        osProductKey: body.osProductKey,
+        osInstallationDate: body.osInstallationDate ? new Date(body.osInstallationDate) : undefined,
         osSerialNumber: body.osSerialNumber,
-        officeProduct: body.officeProduct,
-        officeVersion: body.officeVersion,
-        officeProductType: body.officeProductType,
+        // Office Suite
+        officeProductId: body.officeProductId,
         officeLicenseType: body.officeLicenseType,
+        officeLicenseAccount: body.officeLicenseAccount,
+        officeLicenseStatus: body.officeLicenseStatus,
         officeSerialNumber: body.officeSerialNumber,
+        // Antivirus & Security
         antivirusName: body.antivirusName,
         antivirusVersion: body.antivirusVersion,
         antivirusLicenseExpiry: body.antivirusLicenseExpiry ? new Date(body.antivirusLicenseExpiry) : undefined,
+        avRealTimeProtection: body.avRealTimeProtection,
+        avDefinitionDate: body.avDefinitionDate ? new Date(body.avDefinitionDate) : undefined,
+        // Metadata
         notes: body.notes,
         isActive: body.isActive !== undefined ? body.isActive : undefined,
         lastAuditDate: body.lastAuditDate ? new Date(body.lastAuditDate) : undefined
@@ -187,7 +229,9 @@ export async function PUT(
       include: {
         branch: true,
         assignedTo: true,
-        createdBy: true
+        createdBy: true,
+        operatingSystem: true,
+        officeProduct: true
       }
     });
 
@@ -223,7 +267,7 @@ export async function DELETE(
 ) {
   try {
     const session = await auth();
-    
+
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -234,7 +278,7 @@ export async function DELETE(
     }
 
     // Check if PC exists
-    const existingPC = await prisma.PCAsset.findUnique({
+    const existingPC = await prisma.pCAsset.findUnique({
       where: { id: params.id },
       include: {
         _count: {
@@ -253,7 +297,7 @@ export async function DELETE(
     // Don't delete if there are service logs or hardening checklists
     if (existingPC._count.serviceLogs > 0 || existingPC._count.hardeningChecklists > 0) {
       // Soft delete instead
-      const updatedPC = await prisma.PCAsset.update({
+      const updatedPC = await prisma.pCAsset.update({
         where: { id: params.id },
         data: { isActive: false }
       });
@@ -268,14 +312,14 @@ export async function DELETE(
         }
       });
 
-      return NextResponse.json({ 
+      return NextResponse.json({
         message: 'PC asset deactivated (soft delete due to related records)',
-        pcAsset: updatedPC 
+        pcAsset: updatedPC
       });
     }
 
     // Hard delete if no related records
-    await prisma.PCAsset.delete({
+    await prisma.pCAsset.delete({
       where: { id: params.id }
     });
 
