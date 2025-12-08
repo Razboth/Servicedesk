@@ -1628,6 +1628,46 @@ enum PCServiceType {
   DECOMMISSION
 }
 
+// PC Management System Enums
+enum PCFormFactor {
+  LAPTOP
+  DESKTOP
+  AIO
+  WORKSTATION
+  SERVER
+  THIN_CLIENT
+}
+
+enum PCStorageType {
+  HDD
+  SSD
+  NVME
+  HYBRID
+}
+
+enum PCAssetStatus {
+  IN_USE
+  STOCK
+  BROKEN
+  DISPOSED
+  MAINTENANCE
+  RESERVED
+}
+
+enum ServiceLogStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  PENDING_PARTS
+  CANCELLED
+}
+
+enum OfficeLicenseStatus {
+  ACTIVE
+  EXPIRED
+  UNLICENSED
+}
+
 enum HardeningCategory {
   USER_ACCOUNTS
   NETWORK_SECURITY
@@ -1648,41 +1688,55 @@ model PCAsset {
   brand                 String
   model                 String?
   serialNumber          String?
-  
+
   // Hardware specifications
   processor             String
-  ram                   String            // e.g., "16GB DDR4"
-  storageDevices        Json              // Array of {type: "SSD/HDD", size: "512GB", brand: "Samsung"}
+  ram                   Int               // RAM in GB (e.g., 16 for 16GB)
+  formFactor            PCFormFactor?     // Laptop, Desktop, AIO, Workstation, etc.
+  storageType           PCStorageType?    // HDD, SSD, NVMe, Hybrid
+  storageCapacity       String?           // e.g., "512GB"
+  storageDevices        Json?             // Array of {type: "SSD/HDD", size: "512GB", brand: "Samsung"} - for multiple drives
   macAddress            String?
   ipAddress             String?
-  
+
   // Location and assignment
   branchId              String
+  department            String?           // Department within the branch
   assignedToId          String?
-  
+  assignedUserName      String?           // For quick display without join
+  status                PCAssetStatus     @default(IN_USE)
+
   // Purchase information
   purchaseDate          DateTime?
   purchaseOrderNumber   String?
   warrantyExpiry        DateTime?
   assetTag              String?           @unique
-  
+
   // Operating System
   operatingSystemId     String?           // Reference to OperatingSystem
-  osLicenseType         OSLicenseType?    // Keep for license type tracking
+  osLicenseType         OSLicenseType?    // OEM, Volume, Retail, etc.
+  osProductKey          String?           // Encrypted product key
+  osInstallationDate    DateTime?         // When OS was installed
   osSerialNumber        String?           // Keep for serial number if needed
-  
-  // Office Suite  
+
+  // Office Suite
   officeProductId       String?           // Reference to OfficeProduct
   officeLicenseType     OfficeLicenseType? // Keep for license type tracking
+  officeLicenseAccount  String?           // Email associated with license
+  officeLicenseStatus   OfficeLicenseStatus? // Active, Expired, Unlicensed
   officeSerialNumber    String?           // Keep for serial number if needed
-  
-  // Security
+
+  // Security - Antivirus
   antivirusName         String?
   antivirusVersion      String?
   antivirusLicenseExpiry DateTime?
+  avRealTimeProtection  Boolean?          @default(true)
+  avDefinitionDate      DateTime?         // Virus definition last updated
+
+  // Security - Hardening
   lastHardeningDate     DateTime?
   hardeningCompliant    Boolean           @default(false)
-  
+
   // Metadata
   isActive              Boolean           @default(true)
   createdAt             DateTime          @default(now())
@@ -1706,6 +1760,8 @@ model PCAsset {
   @@index([branchId])
   @@index([assignedToId])
   @@index([isActive])
+  @@index([status])
+  @@index([formFactor])
   @@index([operatingSystemId])
   @@index([officeProductId])
   @@index([antivirusLicenseExpiry])
@@ -1720,24 +1776,31 @@ model PCServiceLog {
   serviceType           PCServiceType
   performedById         String
   performedAt           DateTime          @default(now())
-  
+
   // Service details
-  description           String
+  issueReported         String?           // Issue reported by user
+  description           String            // Action taken / description
   findings              String?
   recommendations       String?
   beforeStatus          Json?             // Snapshot of PC status before service
   afterStatus           Json?             // Snapshot of PC status after service
   attachments           Json?             // Array of file paths/URLs
-  
+
+  // Cost and status tracking
+  cost                  Decimal?          @db.Decimal(15, 2) // Cost in IDR
+  status                ServiceLogStatus  @default(OPEN)
+  technicianName        String?           // For quick display
+
   // Relations
   pcAsset               PCAsset           @relation(fields: [pcAssetId], references: [id], onDelete: Cascade)
   ticket                Ticket?           @relation(fields: [ticketId], references: [id])
   performedBy           User              @relation(fields: [performedById], references: [id])
   hardeningChecklist    HardeningChecklist?
-  
+
   @@index([pcAssetId, performedAt])
   @@index([ticketId])
   @@index([serviceType])
+  @@index([status])
   @@map("pc_service_logs")
 }
 

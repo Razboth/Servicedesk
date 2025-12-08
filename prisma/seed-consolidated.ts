@@ -294,6 +294,18 @@ async function seedSupportGroups() {
       name: 'Hardware Support',
       description: 'Hardware maintenance and troubleshooting',
       isActive: true
+    },
+    {
+      code: 'TECH_SUPPORT',
+      name: 'Technical Support',
+      description: 'Technical support for PC assets, licenses, and hardware',
+      isActive: true
+    },
+    {
+      code: 'PC_AUDITOR',
+      name: 'PC Auditor',
+      description: 'Read-only access to PC Management system for audit purposes',
+      isActive: true
     }
   ];
 

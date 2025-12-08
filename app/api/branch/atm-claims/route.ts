@@ -355,6 +355,23 @@ export async function GET(request: NextRequest) {
       baseWhereForStats.branchId = user.branchId;
     }
 
+    // Build separate query bases for internal vs external stats
+    // Internal = claims created by user's branch
+    // External = claims for user's branch ATMs but created by other branches
+    const internalWhereForStats: any = { ...baseWhereForStats };
+    const externalWhereForStats: any = { ...baseWhereForStats };
+
+    // Remove branchId from base (we'll apply it differently for internal vs external)
+    if (!isCallCenterAgent && !isTransactionClaimsSupport && user?.branchId) {
+      // For internal: claims created by user's branch (regardless of ATM location)
+      delete internalWhereForStats.branchId;
+      internalWhereForStats.createdBy = { branchId: user.branchId };
+
+      // For external: claims for user's branch ATMs, but created by other branches
+      externalWhereForStats.branchId = user.branchId;
+      externalWhereForStats.createdBy = { branchId: { not: user.branchId } };
+    }
+
     // Calculate statistics separately for each context
     const [
       totalClaims,
@@ -364,58 +381,62 @@ export async function GET(request: NextRequest) {
       internalPendingVerifications,
       externalPendingVerifications
     ] = await Promise.all([
-      // Total claims for the branch
+      // Total claims for the branch (using original baseWhereForStats)
       prisma.ticket.count({ where: baseWhereForStats }),
-      
-      // Internal claims (from same branch)
+
+      // Internal claims (created by user's branch)
       !isCallCenterAgent && !isTransactionClaimsSupport && user?.branchId ? prisma.ticket.count({
-        where: {
-          ...baseWhereForStats,
-          createdBy: { branchId: user.branchId }
-        }
+        where: internalWhereForStats
       }) : (isCallCenterAgent || isTransactionClaimsSupport) ? prisma.ticket.count({
         where: baseWhereForStats
       }) : 0,
-      
-      // External claims (from other branches)
+
+      // External claims (for user's ATMs but from other branches)
       !isCallCenterAgent && !isTransactionClaimsSupport && user?.branchId ? prisma.ticket.count({
-        where: {
-          ...baseWhereForStats,
-          createdBy: { branchId: { not: user.branchId } }
-        }
+        where: externalWhereForStats
       }) : 0,
-      
-      // All pending verifications
+
+      // All pending verifications (for user's branch ATMs)
       prisma.ticket.count({
         where: {
           ...baseWhereForStats,
-          OR: [
-            { atmClaimVerification: null },
-            { atmClaimVerification: { verifiedAt: null } }
+          AND: [
+            {
+              OR: [
+                { atmClaimVerification: null },
+                { atmClaimVerification: { verifiedAt: null } }
+              ]
+            }
           ]
         }
       }),
-      
-      // Internal pending verifications
-      user?.branchId ? prisma.ticket.count({
+
+      // Internal pending verifications (claims created by user's branch that are not verified)
+      !isCallCenterAgent && !isTransactionClaimsSupport && user?.branchId ? prisma.ticket.count({
         where: {
-          ...baseWhereForStats,
-          createdBy: { branchId: user.branchId },
-          OR: [
-            { atmClaimVerification: null },
-            { atmClaimVerification: { verifiedAt: null } }
+          ...internalWhereForStats,
+          AND: [
+            {
+              OR: [
+                { atmClaimVerification: null },
+                { atmClaimVerification: { verifiedAt: null } }
+              ]
+            }
           ]
         }
       }) : 0,
-      
-      // External pending verifications
-      user?.branchId ? prisma.ticket.count({
+
+      // External pending verifications (claims from other branches for user's ATMs)
+      !isCallCenterAgent && !isTransactionClaimsSupport && user?.branchId ? prisma.ticket.count({
         where: {
-          ...baseWhereForStats,
-          createdBy: { branchId: { not: user.branchId } },
-          OR: [
-            { atmClaimVerification: null },
-            { atmClaimVerification: { verifiedAt: null } }
+          ...externalWhereForStats,
+          AND: [
+            {
+              OR: [
+                { atmClaimVerification: null },
+                { atmClaimVerification: { verifiedAt: null } }
+              ]
+            }
           ]
         }
       }) : 0

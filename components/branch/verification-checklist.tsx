@@ -34,10 +34,8 @@ export default function VerificationChecklist({ ticketId, onUpdate, readOnly = f
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploadingJournal, setUploadingJournal] = useState(false);
-  const [uploadingEvidence, setUploadingEvidence] = useState(false);
   const [hasJournalFile, setHasJournalFile] = useState(false);
   const journalFileInputRef = useRef<HTMLInputElement>(null);
-  const evidenceFileInputRef = useRef<HTMLInputElement>(null);
   
   const [verification, setVerification] = useState<any>({
     journalChecked: false,
@@ -183,59 +181,6 @@ export default function VerificationChecklist({ ticketId, onUpdate, readOnly = f
       }
     } catch (error) {
       console.error('Error checking journal availability:', error);
-    }
-  };
-
-  const handleEvidenceUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    // Validate file type and size
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'video/mp4', 'video/avi'];
-    const maxSize = 50 * 1024 * 1024; // 50MB for video
-
-    if (!allowedTypes.includes(file.type)) {
-      toast.error('Tipe file tidak diizinkan. Silakan unggah file gambar atau video.');
-      return;
-    }
-
-    if (file.size > maxSize) {
-      toast.error('Ukuran file melebihi batas 50MB.');
-      return;
-    }
-
-    setUploadingEvidence(true);
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('type', 'cctv_evidence');
-
-    try {
-      const response = await fetch(`/api/branch/atm-claims/${ticketId}/upload`, {
-        method: 'POST',
-        body: formData
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        toast.success('Bukti berhasil diunggah');
-
-        // Update verification state with uploaded file URL
-        setVerification({
-          ...verification,
-          cctvEvidenceUrl: data.file.url || data.file.path
-        });
-
-        if (onUpdate) onUpdate();
-      } else {
-        toast.error('Gagal mengunggah bukti');
-      }
-    } catch (error) {
-      toast.error('Kesalahan saat mengunggah bukti');
-    } finally {
-      setUploadingEvidence(false);
-      if (evidenceFileInputRef.current) {
-        evidenceFileInputRef.current.value = '';
-      }
     }
   };
 
@@ -591,25 +536,6 @@ export default function VerificationChecklist({ ticketId, onUpdate, readOnly = f
                 />
               </div>
 
-              {!readOnly && (
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => evidenceFileInputRef.current?.click()}
-                    disabled={uploadingEvidence}
-                  >
-                    {uploadingEvidence ? 'Mengunggah...' : 'Unggah Bukti'}
-                  </Button>
-                  <input
-                    ref={evidenceFileInputRef}
-                    type="file"
-                    className="hidden"
-                    accept="image/*,video/*"
-                    onChange={handleEvidenceUpload}
-                  />
-                </div>
-              )}
             </>
           )}
         </CardContent>

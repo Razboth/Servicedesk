@@ -398,6 +398,17 @@ const standardReports: Report[] = [
     roles: ['TECHNICIAN', 'MANAGER', 'ADMIN', 'MANAGER_IT'],
     badge: 'ATM',
     lastRun: 'Live'
+  },
+  // Operational Reports
+  {
+    title: 'Perpanjangan Waktu Operasional',
+    description: 'Laporan permintaan perpanjangan waktu operasional cabang dengan detail nomor surat, jam selesai, dan alasan',
+    href: '/reports/operational-extension',
+    icon: Clock,
+    type: 'standard',
+    roles: ['USER', 'TECHNICIAN', 'MANAGER', 'ADMIN'],
+    badge: 'Operasional',
+    lastRun: 'Live'
   }
 ]
 
