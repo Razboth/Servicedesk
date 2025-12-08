@@ -1793,9 +1793,9 @@ export default function TicketDetailPage() {
             <div className="space-y-4">
               {/* Actions - Moved to top and beautified */}
               {(canUpdateStatus() || canClaimTicket() || canReleaseTicket()) && (
-                <Card className="bg-gradient-to-br from-cream-50 to-cream-100 dark:from-warm-dark-300 dark:to-warm-dark-400 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-xl overflow-hidden">
-                  <CardHeader className="bg-gradient-to-r from-cream-100 to-cream-200 dark:from-warm-dark-400 dark:to-warm-dark-500 border-b border-cream-300 dark:border-warm-dark-200 py-4">
-                    <CardTitle className="text-base font-semibold text-gray-800 dark:text-gray-100">
+                <Card className="bg-card dark:bg-gray-900 backdrop-blur-sm border-border shadow-xl overflow-hidden">
+                  <CardHeader className="bg-muted dark:bg-gray-800 border-b border-border py-4">
+                    <CardTitle className="text-base font-semibold text-foreground">
                       Actions
                     </CardTitle>
                   </CardHeader>
@@ -1837,7 +1837,8 @@ export default function TicketDetailPage() {
                         <Button
                           onClick={handleResolveClick}
                           disabled={isUpdatingStatus}
-                          className="w-full flex items-center gap-2"
+                          variant="outline"
+                          className="w-full flex items-center justify-center gap-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg py-2.5"
                         >
                           <Edit className="h-4 w-4" />
                           Update Status
@@ -1911,8 +1912,8 @@ export default function TicketDetailPage() {
               )}
 
               {/* Ticket Progress & Status - Beautified */}
-              <Card className="bg-gradient-to-br from-cream-50 to-amber-50/20 dark:from-warm-dark-300 dark:to-amber-900/10 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-xl overflow-hidden">
-                <CardHeader className="bg-gradient-to-r from-amber-50 to-cream-100 dark:from-amber-900/20 dark:to-warm-dark-400 border-b border-amber-200 dark:border-amber-800 py-3">
+              <Card className="bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-gray-900 dark:to-gray-800 backdrop-blur-sm border-amber-200 dark:border-gray-700 shadow-xl overflow-hidden">
+                <CardHeader className="bg-gradient-to-r from-amber-50 to-amber-100 dark:from-gray-800 dark:to-gray-700 border-b border-amber-200 dark:border-gray-600 py-3">
                   <CardTitle className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Sparkles className="h-4 w-4 text-purple-600 dark:text-purple-400" />
@@ -1955,8 +1956,8 @@ export default function TicketDetailPage() {
               </Card>
 
               {/* Ticket Information - Enhanced */}
-              <Card className="bg-gradient-to-br from-cream-50 to-amber-50/30 dark:from-warm-dark-300 dark:to-warm-dark-400 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-xl overflow-hidden">
-                <CardHeader className="bg-gradient-to-r from-amber-600/10 to-brown-600/10 dark:from-amber-900/20 dark:to-brown-900/20 border-b border-amber-200 dark:border-amber-900">
+              <Card className="bg-gradient-to-br from-amber-50 to-amber-100/30 dark:from-gray-900 dark:to-gray-800 backdrop-blur-sm border-amber-200 dark:border-gray-700 shadow-xl overflow-hidden">
+                <CardHeader className="bg-gradient-to-r from-amber-100/50 to-amber-50 dark:from-gray-800 dark:to-gray-700 border-b border-amber-200 dark:border-gray-600">
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <Hash className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                     Ticket Information

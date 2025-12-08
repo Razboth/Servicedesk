@@ -85,6 +85,8 @@ const config: Config = {
           100: '#59493e', // accent dark
           200: '#4a4039', // secondary/border dark
           300: '#3a322c', // card/muted dark
+          400: '#322b26', // darker shade for gradients
+          500: '#2a2420', // darkest shade for gradients
         },
         // Sidebar colors
         sidebar: {
