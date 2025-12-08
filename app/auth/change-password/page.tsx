@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertCircle, CheckCircle2, Eye, EyeOff, Lock } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { AlertCircle, CheckCircle2, Eye, EyeOff, Lock, Check, X, Info } from 'lucide-react';
 
 export default function ChangePasswordPage() {
   const [currentPassword, setCurrentPassword] = useState('');
@@ -20,7 +22,6 @@ export default function ChangePasswordPage() {
   const router = useRouter();
   const { data: session, update } = useSession();
 
-  // Password strength indicators
   const getPasswordStrength = (password: string) => {
     const checks = {
       length: password.length >= 8,
@@ -29,7 +30,7 @@ export default function ChangePasswordPage() {
       number: /\d/.test(password),
       special: /[@$!%*?&]/.test(password)
     };
-    
+
     return checks;
   };
 
@@ -70,7 +71,6 @@ export default function ChangePasswordPage() {
         setError(data.error || 'Failed to change password');
       } else {
         setSuccess(true);
-        // Sign out and redirect to login to get fresh JWT token
         setTimeout(async () => {
           await signOut({
             callbackUrl: '/auth/signin?message=Password changed successfully. Please sign in again.'
@@ -86,172 +86,187 @@ export default function ChangePasswordPage() {
 
   const isFirstLogin = session?.user?.mustChangePassword;
 
+  const RequirementItem = ({ met, text }: { met: boolean; text: string }) => (
+    <div className={`flex items-center gap-2 text-sm ${met ? 'text-[hsl(var(--success))]' : 'text-muted-foreground'}`}>
+      {met ? (
+        <Check className="h-4 w-4" />
+      ) : (
+        <X className="h-4 w-4" />
+      )}
+      {text}
+    </div>
+  );
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="w-full max-w-md space-y-6">
+        {/* Logo */}
         <div className="text-center">
-          <div className="mx-auto flex justify-center mb-4">
-            <img 
-              src="/logo-bsg.png" 
-              alt="Bank SulutGo" 
-              className="h-16 w-auto"
-            />
-          </div>
-          <h2 className="mt-4 text-3xl font-extrabold text-gray-900">
+          <img
+            src="/logo-bsg.png"
+            alt="Bank SulutGo"
+            className="h-16 w-auto mx-auto"
+          />
+          <h1 className="mt-4 text-2xl font-bold text-foreground">
             Change Your Password
-          </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            {isFirstLogin 
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {isFirstLogin
               ? 'You must change your password before continuing'
               : 'Please enter your current password and choose a new one'}
           </p>
         </div>
 
-        <Card>
+        <Card className="border-border bg-card">
           <CardHeader>
-            <CardTitle>Password Requirements</CardTitle>
-            <CardDescription>
-              Your new password must meet all of the following criteria:
+            <CardTitle className="text-foreground">Password Requirements</CardTitle>
+            <CardDescription className="text-muted-foreground">
+              Your new password must meet all of the following criteria
             </CardDescription>
           </CardHeader>
           <CardContent>
             {success ? (
-              <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-md flex items-center">
-                <CheckCircle2 className="h-5 w-5 mr-2" />
-                Password changed successfully! Redirecting...
+              <div className="flex items-start gap-3 p-4 rounded-lg bg-[hsl(var(--success)/0.1)] border border-[hsl(var(--success)/0.2)]">
+                <CheckCircle2 className="h-5 w-5 text-[hsl(var(--success))] flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-[hsl(var(--success))]">
+                  Password changed successfully! Redirecting...
+                </p>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-6">
                 {error && (
-                  <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm flex items-center">
-                    <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
-                    {error}
+                  <div className="flex items-start gap-3 p-4 rounded-lg bg-destructive/10 border border-destructive/20">
+                    <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-destructive">{error}</p>
                   </div>
                 )}
 
                 {isFirstLogin && (
-                  <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-md text-sm">
-                    <strong>First Login:</strong> For security reasons, you must set a new password before accessing the system.
+                  <div className="flex items-start gap-3 p-4 rounded-lg bg-[hsl(var(--warning)/0.1)] border border-[hsl(var(--warning)/0.2)]">
+                    <Info className="h-5 w-5 text-[hsl(var(--warning))] flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-[hsl(var(--warning))]">
+                      <strong>First Login:</strong> For security reasons, you must set a new password before accessing the system.
+                    </p>
                   </div>
                 )}
 
-                <div>
-                  <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700">
+                <div className="space-y-2">
+                  <Label htmlFor="currentPassword" className="text-foreground font-medium">
                     Current Password
-                  </label>
-                  <div className="mt-1 relative">
-                    <input
+                  </Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
                       id="currentPassword"
                       name="currentPassword"
                       type={showCurrentPassword ? 'text' : 'password'}
                       required
                       value={currentPassword}
                       onChange={(e) => setCurrentPassword(e.target.value)}
-                      className="block w-full px-3 py-2 pr-10 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                       placeholder="Enter current password"
+                      className="pl-10 pr-10 h-12 bg-background border-input"
                     />
                     <button
                       type="button"
                       onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground transition-colors"
                     >
                       {showCurrentPassword ? (
-                        <EyeOff className="h-4 w-4 text-gray-400" />
+                        <EyeOff className="h-4 w-4" />
                       ) : (
-                        <Eye className="h-4 w-4 text-gray-400" />
+                        <Eye className="h-4 w-4" />
                       )}
                     </button>
                   </div>
                 </div>
 
-                <div>
-                  <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700">
+                <div className="space-y-2">
+                  <Label htmlFor="newPassword" className="text-foreground font-medium">
                     New Password
-                  </label>
-                  <div className="mt-1 relative">
-                    <input
+                  </Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
                       id="newPassword"
                       name="newPassword"
                       type={showNewPassword ? 'text' : 'password'}
                       required
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
-                      className="block w-full px-3 py-2 pr-10 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                       placeholder="Enter new password"
+                      className="pl-10 pr-10 h-12 bg-background border-input"
                     />
                     <button
                       type="button"
                       onClick={() => setShowNewPassword(!showNewPassword)}
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground transition-colors"
                     >
                       {showNewPassword ? (
-                        <EyeOff className="h-4 w-4 text-gray-400" />
+                        <EyeOff className="h-4 w-4" />
                       ) : (
-                        <Eye className="h-4 w-4 text-gray-400" />
+                        <Eye className="h-4 w-4" />
                       )}
                     </button>
                   </div>
 
                   {newPassword && (
-                    <div className="mt-2 space-y-1">
-                      <div className="text-xs space-y-1">
-                        <div className={`flex items-center ${passwordStrength.length ? 'text-green-600' : 'text-gray-400'}`}>
-                          {passwordStrength.length ? '✓' : '○'} At least 8 characters
-                        </div>
-                        <div className={`flex items-center ${passwordStrength.uppercase ? 'text-green-600' : 'text-gray-400'}`}>
-                          {passwordStrength.uppercase ? '✓' : '○'} One uppercase letter
-                        </div>
-                        <div className={`flex items-center ${passwordStrength.lowercase ? 'text-green-600' : 'text-gray-400'}`}>
-                          {passwordStrength.lowercase ? '✓' : '○'} One lowercase letter
-                        </div>
-                        <div className={`flex items-center ${passwordStrength.number ? 'text-green-600' : 'text-gray-400'}`}>
-                          {passwordStrength.number ? '✓' : '○'} One number
-                        </div>
-                        <div className={`flex items-center ${passwordStrength.special ? 'text-green-600' : 'text-gray-400'}`}>
-                          {passwordStrength.special ? '✓' : '○'} One special character (@$!%*?&)
-                        </div>
-                      </div>
+                    <div className="mt-3 p-3 rounded-lg bg-muted border border-border space-y-2">
+                      <RequirementItem met={passwordStrength.length} text="At least 8 characters" />
+                      <RequirementItem met={passwordStrength.uppercase} text="One uppercase letter" />
+                      <RequirementItem met={passwordStrength.lowercase} text="One lowercase letter" />
+                      <RequirementItem met={passwordStrength.number} text="One number" />
+                      <RequirementItem met={passwordStrength.special} text="One special character (@$!%*?&)" />
                     </div>
                   )}
                 </div>
 
-                <div>
-                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword" className="text-foreground font-medium">
                     Confirm New Password
-                  </label>
-                  <div className="mt-1 relative">
-                    <input
+                  </Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
                       id="confirmPassword"
                       name="confirmPassword"
                       type={showConfirmPassword ? 'text' : 'password'}
                       required
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="block w-full px-3 py-2 pr-10 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                       placeholder="Confirm new password"
+                      className="pl-10 pr-10 h-12 bg-background border-input"
                     />
                     <button
                       type="button"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground transition-colors"
                     >
                       {showConfirmPassword ? (
-                        <EyeOff className="h-4 w-4 text-gray-400" />
+                        <EyeOff className="h-4 w-4" />
                       ) : (
-                        <Eye className="h-4 w-4 text-gray-400" />
+                        <Eye className="h-4 w-4" />
                       )}
                     </button>
                   </div>
                   {confirmPassword && newPassword !== confirmPassword && (
-                    <p className="mt-1 text-xs text-red-600">Passwords do not match</p>
+                    <p className="mt-1 text-xs text-destructive flex items-center gap-1">
+                      <X className="h-3 w-3" />
+                      Passwords do not match
+                    </p>
+                  )}
+                  {confirmPassword && newPassword === confirmPassword && newPassword && (
+                    <p className="mt-1 text-xs text-[hsl(var(--success))] flex items-center gap-1">
+                      <Check className="h-3 w-3" />
+                      Passwords match
+                    </p>
                   )}
                 </div>
 
-                <div className="flex space-x-4">
+                <div className="flex gap-3">
                   <Button
                     type="submit"
                     disabled={isLoading || !allChecksPassed || newPassword !== confirmPassword}
-                    className="flex-1"
+                    className="flex-1 h-12 bg-primary text-primary-foreground hover:bg-primary/90"
                   >
                     {isLoading ? 'Changing Password...' : 'Change Password'}
                   </Button>
@@ -261,7 +276,7 @@ export default function ChangePasswordPage() {
                       variant="outline"
                       onClick={() => router.push('/')}
                       disabled={isLoading}
-                      className="flex-1"
+                      className="flex-1 h-12 border-border text-foreground hover:bg-muted"
                     >
                       Cancel
                     </Button>

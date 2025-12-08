@@ -7,8 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ArrowLeft, Mail, Loader2, CheckCircle, KeyRound } from 'lucide-react';
+import { ArrowLeft, Mail, Loader2, CheckCircle, KeyRound, AlertCircle, Info } from 'lucide-react';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -45,66 +44,68 @@ export default function ForgotPasswordPage() {
 
   if (isSubmitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full space-y-8">
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="w-full max-w-md space-y-6">
+          {/* Logo */}
           <div className="text-center">
-            <div className="mx-auto flex justify-center">
-              <img
-                src="/logo-bsg.png"
-                alt="Bank SulutGo"
-                className="h-20 w-auto"
-              />
-            </div>
-            <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+            <img
+              src="/logo-bsg.png"
+              alt="Bank SulutGo"
+              className="h-16 w-auto mx-auto"
+            />
+            <h1 className="mt-4 text-2xl font-bold text-foreground">
               ServiceDesk Portal
-            </h2>
+            </h1>
           </div>
 
-          <Card>
-            <CardHeader>
-              <div className="flex justify-center mb-4">
-                <div className="rounded-full bg-green-100 p-3">
-                  <CheckCircle className="h-8 w-8 text-green-600" />
-                </div>
+          {/* Success Card */}
+          <Card className="border-border bg-card">
+            <CardHeader className="text-center pb-4">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[hsl(var(--success)/0.1)]">
+                <CheckCircle className="h-8 w-8 text-[hsl(var(--success))]" />
               </div>
-              <CardTitle className="text-center">Cek Email Anda</CardTitle>
-              <CardDescription className="text-center">
+              <CardTitle className="text-foreground">Cek Email Anda</CardTitle>
+              <CardDescription className="text-muted-foreground">
                 Password sementara telah dikirim ke email Anda
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Alert>
-                <KeyRound className="h-4 w-4" />
-                <AlertDescription>
-                  Jika akun dengan email <strong>{email}</strong> terdaftar, Anda akan menerima password sementara untuk login.
-                </AlertDescription>
-              </Alert>
+              {/* Info Alert */}
+              <div className="flex items-start gap-3 p-4 rounded-lg bg-muted border border-border">
+                <Info className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-muted-foreground">
+                  Jika akun dengan email <strong className="text-foreground">{email}</strong> terdaftar, Anda akan menerima password sementara untuk login.
+                </p>
+              </div>
 
-              <div className="bg-blue-50 border border-blue-200 p-4 rounded-md">
-                <p className="text-sm text-blue-800 font-medium">
+              {/* Steps */}
+              <div className="p-4 rounded-lg bg-[hsl(var(--info)/0.1)] border border-[hsl(var(--info)/0.2)]">
+                <p className="text-sm font-medium text-[hsl(var(--info))]">
                   Langkah selanjutnya:
                 </p>
-                <ol className="text-sm text-blue-700 mt-2 space-y-1 list-decimal list-inside">
+                <ol className="text-sm text-[hsl(var(--info)/0.8)] mt-2 space-y-1 list-decimal list-inside">
                   <li>Cek email Anda (termasuk folder spam)</li>
                   <li>Login menggunakan password sementara</li>
                   <li>Anda akan diminta membuat password baru</li>
                 </ol>
               </div>
 
-              <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-md">
-                <p className="text-sm text-yellow-800">
-                  <strong>Tidak menerima email?</strong>
+              {/* Warning */}
+              <div className="p-4 rounded-lg bg-[hsl(var(--warning)/0.1)] border border-[hsl(var(--warning)/0.2)]">
+                <p className="text-sm font-medium text-[hsl(var(--warning))]">
+                  Tidak menerima email?
                 </p>
-                <ul className="text-sm text-yellow-700 mt-2 space-y-1 list-disc list-inside">
+                <ul className="text-sm text-[hsl(var(--warning)/0.8)] mt-2 space-y-1 list-disc list-inside">
                   <li>Periksa folder spam atau junk</li>
                   <li>Pastikan alamat email sudah benar</li>
                   <li>Hubungi IT Support jika masih bermasalah</li>
                 </ul>
               </div>
 
+              {/* Actions */}
               <div className="space-y-3 pt-2">
                 <Link href="/auth/signin" className="block">
-                  <Button variant="default" className="w-full">
+                  <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
                     <Mail className="mr-2 h-4 w-4" />
                     Login Sekarang
                   </Button>
@@ -116,7 +117,7 @@ export default function ForgotPasswordPage() {
                     setEmail('');
                   }}
                   variant="outline"
-                  className="w-full"
+                  className="w-full border-border text-foreground hover:bg-muted"
                 >
                   Coba Email Lain
                 </Button>
@@ -129,62 +130,71 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="w-full max-w-md space-y-6">
+        {/* Logo */}
         <div className="text-center">
-          <div className="mx-auto flex justify-center">
-            <img
-              src="/logo-bsg.png"
-              alt="Bank SulutGo"
-              className="h-20 w-auto"
-            />
-          </div>
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+          <img
+            src="/logo-bsg.png"
+            alt="Bank SulutGo"
+            className="h-16 w-auto mx-auto"
+          />
+          <h1 className="mt-4 text-2xl font-bold text-foreground">
             ServiceDesk Portal
-          </h2>
+          </h1>
         </div>
 
-        <Card>
+        {/* Form Card */}
+        <Card className="border-border bg-card">
           <CardHeader>
-            <CardTitle>Lupa Password?</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-foreground">Lupa Password?</CardTitle>
+            <CardDescription className="text-muted-foreground">
               Masukkan email Anda dan kami akan mengirimkan password sementara untuk login
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               {error && (
-                <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm">
-                  {error}
+                <div className="flex items-start gap-3 p-4 rounded-lg bg-destructive/10 border border-destructive/20">
+                  <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-destructive">{error}</p>
                 </div>
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="email">Alamat Email</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Masukkan alamat email Anda"
-                  disabled={isLoading}
-                />
+                <Label htmlFor="email" className="text-foreground font-medium">
+                  Alamat Email
+                </Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Masukkan alamat email Anda"
+                    disabled={isLoading}
+                    className="pl-10 h-12 bg-background border-input"
+                  />
+                </div>
               </div>
 
-              <Alert>
-                <AlertDescription>
+              {/* Info */}
+              <div className="flex items-start gap-3 p-4 rounded-lg bg-muted border border-border">
+                <Info className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-muted-foreground">
                   Password sementara akan dikirim ke email terdaftar. Anda harus mengganti password setelah login.
-                </AlertDescription>
-              </Alert>
+                </p>
+              </div>
 
               <div className="space-y-3">
                 <Button
                   type="submit"
                   disabled={isLoading || !email}
-                  className="w-full"
+                  className="w-full h-12 bg-primary text-primary-foreground hover:bg-primary/90"
                 >
                   {isLoading ? (
                     <>
@@ -200,7 +210,11 @@ export default function ForgotPasswordPage() {
                 </Button>
 
                 <Link href="/auth/signin" className="block">
-                  <Button type="button" variant="outline" className="w-full">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full h-12 border-border text-foreground hover:bg-muted"
+                  >
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Kembali ke Login
                   </Button>
@@ -209,7 +223,7 @@ export default function ForgotPasswordPage() {
             </form>
 
             <div className="mt-6 text-center">
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-muted-foreground">
                 Butuh bantuan? Hubungi IT Support
               </p>
             </div>

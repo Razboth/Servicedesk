@@ -438,15 +438,23 @@
     /* Radius */
     --radius: 0.25rem;
 
-    /* Shadows */
-    --shadow-2xs: 2px 3px 0px 0px hsl(28 13% 20% / 0.00);
-    --shadow-xs: 2px 3px 0px 0px hsl(28 13% 20% / 0.00);
-    --shadow-sm: 2px 3px 0px 0px hsl(28 13% 20% / 0.00), 2px 1px 2px -1px hsl(28 13% 20% / 0.00);
-    --shadow: 2px 3px 0px 0px hsl(28 13% 20% / 0.00), 2px 1px 2px -1px hsl(28 13% 20% / 0.00);
-    --shadow-md: 2px 3px 0px 0px hsl(28 13% 20% / 0.00), 2px 2px 4px -1px hsl(28 13% 20% / 0.00);
-    --shadow-lg: 2px 3px 0px 0px hsl(28 13% 20% / 0.00), 2px 4px 6px -1px hsl(28 13% 20% / 0.00);
-    --shadow-xl: 2px 3px 0px 0px hsl(28 13% 20% / 0.00), 2px 8px 10px -1px hsl(28 13% 20% / 0.00);
-    --shadow-2xl: 2px 3px 0px 0px hsl(28 13% 20% / 0.00);
+    /* Shadows - Subtle warm shadows */
+    --shadow-2xs: 0 1px 2px 0 hsl(var(--foreground) / 0.03);
+    --shadow-xs: 0 1px 3px 0 hsl(var(--foreground) / 0.04);
+    --shadow-sm: 0 1px 2px 0 hsl(var(--foreground) / 0.05), 0 1px 3px 0 hsl(var(--foreground) / 0.03);
+    --shadow: 0 2px 4px 0 hsl(var(--foreground) / 0.06), 0 1px 2px 0 hsl(var(--foreground) / 0.04);
+    --shadow-md: 0 4px 8px -2px hsl(var(--foreground) / 0.08), 0 2px 4px -1px hsl(var(--foreground) / 0.05);
+    --shadow-lg: 0 8px 16px -4px hsl(var(--foreground) / 0.1), 0 4px 8px -2px hsl(var(--foreground) / 0.06);
+    --shadow-xl: 0 16px 32px -8px hsl(var(--foreground) / 0.12), 0 8px 16px -4px hsl(var(--foreground) / 0.08);
+    --shadow-2xl: 0 24px 48px -12px hsl(var(--foreground) / 0.15);
+
+    /* Success, Warning, Info colors for semantic states */
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
 
     /* Spacing and tracking */
     --tracking-normal: 0em;
@@ -469,7 +477,7 @@
     --muted-foreground: 38.4000 17.7305% 72.3529%;
     --accent: 24.4444 17.8808% 29.6078%;
     --accent-foreground: 39 34.4828% 88.6275%;
-    --destructive: 9.8438 54.7009% 45.8824%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
     --border: 24.7059 12.9771% 25.6863%;
     --input: 24.7059 12.9771% 25.6863%;
@@ -500,15 +508,23 @@
     /* Radius */
     --radius: 0.25rem;
 
-    /* Shadows */
-    --shadow-2xs: 2px 3px 0px 0px hsl(28 13% 20% / 0.00);
-    --shadow-xs: 2px 3px 0px 0px hsl(28 13% 20% / 0.00);
-    --shadow-sm: 2px 3px 0px 0px hsl(28 13% 20% / 0.00), 2px 1px 2px -1px hsl(28 13% 20% / 0.00);
-    --shadow: 2px 3px 0px 0px hsl(28 13% 20% / 0.00), 2px 1px 2px -1px hsl(28 13% 20% / 0.00);
-    --shadow-md: 2px 3px 0px 0px hsl(28 13% 20% / 0.00), 2px 2px 4px -1px hsl(28 13% 20% / 0.00);
-    --shadow-lg: 2px 3px 0px 0px hsl(28 13% 20% / 0.00), 2px 4px 6px -1px hsl(28 13% 20% / 0.00);
-    --shadow-xl: 2px 3px 0px 0px hsl(28 13% 20% / 0.00), 2px 8px 10px -1px hsl(28 13% 20% / 0.00);
-    --shadow-2xl: 2px 3px 0px 0px hsl(28 13% 20% / 0.00);
+    /* Shadows - Deeper shadows for dark mode */
+    --shadow-2xs: 0 1px 2px 0 hsl(0 0% 0% / 0.15);
+    --shadow-xs: 0 1px 3px 0 hsl(0 0% 0% / 0.2);
+    --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.25), 0 1px 3px 0 hsl(0 0% 0% / 0.15);
+    --shadow: 0 2px 4px 0 hsl(0 0% 0% / 0.3), 0 1px 2px 0 hsl(0 0% 0% / 0.2);
+    --shadow-md: 0 4px 8px -2px hsl(0 0% 0% / 0.35), 0 2px 4px -1px hsl(0 0% 0% / 0.25);
+    --shadow-lg: 0 8px 16px -4px hsl(0 0% 0% / 0.4), 0 4px 8px -2px hsl(0 0% 0% / 0.3);
+    --shadow-xl: 0 16px 32px -8px hsl(0 0% 0% / 0.45), 0 8px 16px -4px hsl(0 0% 0% / 0.35);
+    --shadow-2xl: 0 24px 48px -12px hsl(0 0% 0% / 0.5);
+
+    /* Success, Warning, Info colors for semantic states */
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
 
     /* Spacing and tracking */
     --tracking-normal: 0em;

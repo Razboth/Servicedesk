@@ -12,20 +12,20 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "relative rounded-2xl backdrop-blur-md transition-all duration-300",
-      !glassy && "bg-white/95 dark:bg-neutral-900/95",
-      glassy && "bg-white/10 dark:bg-neutral-900/10 backdrop-blur-xl",
-      "border border-neutral-200/50 dark:border-neutral-700/50",
-      "shadow-[0_8px_32px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.3)]",
-      hoverable && "hover:shadow-[0_16px_48px_rgba(0,0,0,0.1)] dark:hover:shadow-[0_16px_48px_rgba(0,0,0,0.4)]",
-      hoverable && "hover:scale-[1.02] hover:-translate-y-1 cursor-pointer",
+      "relative rounded-xl transition-all duration-300",
+      !glassy && "bg-card",
+      glassy && "bg-card/50 backdrop-blur-xl",
+      "border border-border",
+      "shadow-sm",
+      hoverable && "hover:shadow-md hover:border-border/80",
+      hoverable && "hover:scale-[1.01] cursor-pointer",
       gradient && "overflow-hidden",
       className
     )}
     {...props}
   >
     {gradient && (
-      <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-blue-500/5 dark:from-purple-500/10 dark:to-blue-500/10 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 pointer-events-none" />
     )}
     {children}
   </div>
@@ -42,7 +42,7 @@ const CardHeader = React.forwardRef<
     ref={ref}
     className={cn(
       "flex flex-col space-y-1.5 p-6",
-      !transparent && "border-b border-neutral-200/50 dark:border-neutral-700/50",
+      !transparent && "border-b border-border",
       transparent && "pb-0",
       className
     )}
@@ -60,9 +60,9 @@ const CardTitle = React.forwardRef<
   <h3
     ref={ref}
     className={cn(
-      "text-2xl font-semibold leading-none tracking-tight",
-      gradient && "bg-gradient-to-r from-neutral-900 to-neutral-600 dark:from-neutral-100 dark:to-neutral-400 bg-clip-text text-transparent",
-      !gradient && "text-neutral-900 dark:text-neutral-100",
+      "text-lg font-semibold leading-none tracking-tight",
+      gradient && "bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent",
+      !gradient && "text-card-foreground",
       className
     )}
     {...props}
@@ -79,7 +79,7 @@ const CardDescription = React.forwardRef<
   <p
     ref={ref}
     className={cn(
-      "text-sm text-neutral-500 dark:text-neutral-400",
+      "text-sm text-muted-foreground",
       className
     )}
     {...props}
@@ -105,7 +105,7 @@ const CardFooter = React.forwardRef<
     ref={ref}
     className={cn(
       "flex items-center p-6 pt-0",
-      !transparent && "border-t border-neutral-200/50 dark:border-neutral-700/50 pt-6",
+      !transparent && "border-t border-border pt-6",
       className
     )}
     {...props}
