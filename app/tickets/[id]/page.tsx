@@ -960,11 +960,11 @@ export default function TicketDetailPage() {
 
   if (status === 'loading' || loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading ticket...</p>
+            <p className="text-gray-600 dark:text-gray-400">Loading ticket...</p>
           </div>
         </div>
       </div>
@@ -977,11 +977,11 @@ export default function TicketDetailPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <main className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-6">
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Error</h1>
-            <p className="text-gray-600 mb-4">{error}</p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">Error</h1>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
             <Button onClick={() => router.back()} className="flex items-center gap-2">
               <ArrowLeft className="h-4 w-4" />
               Go Back
@@ -999,11 +999,11 @@ export default function TicketDetailPage() {
   // Check if user can view this ticket after it's loaded
   if (!canViewTicket()) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <main className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-6">
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
-            <p className="text-gray-600 mb-4">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">Access Denied</h1>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
               {ticket.service?.requiresApproval && !getLatestApproval() 
                 ? 'This ticket requires manager approval before it can be viewed by technicians.'
                 : ticket.service?.requiresApproval && getLatestApproval()?.status === 'PENDING'
@@ -1037,9 +1037,9 @@ export default function TicketDetailPage() {
               Back
             </Button>
             <div className="flex-1">
-              <h1 className="text-3xl font-bold text-gray-900">{ticket.title}</h1>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{ticket.title}</h1>
               <div className="flex items-center gap-3">
-                <p className="text-gray-600">Ticket #{ticket.ticketNumber}</p>
+                <p className="text-gray-600 dark:text-gray-400">Ticket #{ticket.ticketNumber}</p>
                 {!ticket.assignedToId && (
                   <Badge variant="outline" className="border-orange-300 text-orange-600">
                     <AlertCircle className="h-3 w-3 mr-1" />
@@ -1084,7 +1084,7 @@ export default function TicketDetailPage() {
                   <CardTitle>Description</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-gray-700 whitespace-pre-wrap">{ticket.description}</p>
+                  <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{ticket.description}</p>
                 </CardContent>
               </Card>
 
