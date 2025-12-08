@@ -33,7 +33,8 @@
       "Read(/C:\\Project\\Service-Desk\\Servicedesk\\components\\tickets\\data-table/**)",
       "Read(/C:\\Project\\Service-Desk\\Servicedesk\\components\\tickets\\data-table/**)",
       "WebSearch",
-      "Bash(npx prisma db seed:*)"
+      "Bash(npx prisma db seed:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "additionalDirectories": [

@@ -298,10 +298,11 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json(pcAsset, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating PC asset:', error);
+    console.error('Error details:', JSON.stringify(error, null, 2));
     return NextResponse.json(
-      { error: 'Failed to create PC asset' },
+      { error: 'Failed to create PC asset', details: error?.message || String(error) },
       { status: 500 }
     );
   }

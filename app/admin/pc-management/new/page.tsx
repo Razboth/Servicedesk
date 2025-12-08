@@ -534,13 +534,14 @@ export default function NewPCAssetPage() {
             <CardContent className="space-y-4">
               <div>
                 <Label htmlFor="officeType">Select Office Product (Optional)</Label>
-                <Select 
-                  value={selectedOfficeType} 
+                <Select
+                  value={selectedOfficeType || "none"}
                   onValueChange={(value) => {
-                    setSelectedOfficeType(value);
+                    const actualValue = value === "none" ? "" : value;
+                    setSelectedOfficeType(actualValue);
                     setFormData(prev => ({
                       ...prev,
-                      officeProductId: value || null
+                      officeProductId: actualValue || null
                     }));
                   }}
                 >
@@ -548,7 +549,7 @@ export default function NewPCAssetPage() {
                     <SelectValue placeholder="Select an Office product (optional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No Office Product</SelectItem>
+                    <SelectItem value="none">No Office Product</SelectItem>
                     {officeTypes.map(office => (
                       <SelectItem 
                         key={office.id} 
