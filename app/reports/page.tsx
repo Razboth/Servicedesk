@@ -535,9 +535,9 @@ export default function ReportsPage() {
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'custom': return 'bg-purple-100 text-purple-700 border-purple-200'
-      case 'template': return 'bg-green-100 text-green-700 border-green-200'
-      default: return 'bg-blue-100 text-blue-700 border-blue-200'
+      case 'custom': return 'bg-primary/10 text-primary border-primary/20 dark:bg-primary/20 dark:text-primary dark:border-primary/30'
+      case 'template': return 'bg-success/10 text-success border-success/20 dark:bg-success/20 dark:text-success dark:border-success/30'
+      default: return 'bg-info/10 text-info border-info/20 dark:bg-info/20 dark:text-info dark:border-info/30'
     }
   }
 
@@ -554,18 +554,18 @@ export default function ReportsPage() {
     
     return (
       <Link href={report.href}>
-        <Card className="h-full hover:shadow-lg transition-all duration-200 hover:-translate-y-1 cursor-pointer group">
+        <Card className="h-full hover:shadow-md transition-all duration-300 hover:-translate-y-1 cursor-pointer group border-border bg-card">
           <CardHeader className="pb-3">
             <div className="flex items-start justify-between mb-2">
-              <div className="p-2 bg-gradient-to-br from-primary/10 to-primary/5 rounded-lg group-hover:from-primary/20 group-hover:to-primary/10 transition-colors">
+              <div className="p-2.5 bg-gradient-to-br from-primary/10 to-primary/5 dark:from-primary/20 dark:to-primary/10 rounded-lg group-hover:from-primary/15 group-hover:to-primary/10 dark:group-hover:from-primary/25 dark:group-hover:to-primary/15 transition-all shadow-sm">
                 <Icon className="h-5 w-5 text-primary" />
               </div>
               <div className="flex items-center gap-2">
                 {report.isFavorite && (
-                  <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                  <Star className="h-4 w-4 text-warning fill-warning" />
                 )}
                 {report.isScheduled && (
-                  <Calendar className="h-4 w-4 text-green-600" />
+                  <Calendar className="h-4 w-4 text-success" />
                 )}
                 <Badge variant="outline" className={`text-xs ${getTypeColor(report.type)}`}>
                   <span className="flex items-center gap-1">
@@ -575,7 +575,7 @@ export default function ReportsPage() {
                 </Badge>
               </div>
             </div>
-            <CardTitle className="text-base group-hover:text-primary transition-colors line-clamp-1">
+            <CardTitle className="text-base group-hover:text-primary transition-colors line-clamp-1 text-foreground">
               {report.title}
             </CardTitle>
             <CardDescription className="text-sm line-clamp-2 mt-1">
@@ -660,14 +660,14 @@ export default function ReportsPage() {
           {isLoading && !dashboardStats ? (
             // Loading skeleton
             Array.from({ length: 6 }).map((_, i) => (
-              <Card key={i} className="border-gray-200/20 bg-gradient-to-br from-gray-100/5 to-transparent">
+              <Card key={i} className="border-border/30 bg-gradient-to-br from-muted/20 to-transparent">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="h-8 w-16 bg-gray-200 animate-pulse rounded mb-2"></div>
-                      <div className="h-3 w-20 bg-gray-200 animate-pulse rounded"></div>
+                      <div className="h-8 w-16 bg-muted animate-pulse rounded mb-2"></div>
+                      <div className="h-3 w-20 bg-muted animate-pulse rounded"></div>
                     </div>
-                    <div className="h-8 w-8 bg-gray-200 animate-pulse rounded"></div>
+                    <div className="h-8 w-8 bg-muted animate-pulse rounded"></div>
                   </div>
                 </CardContent>
               </Card>
@@ -675,11 +675,11 @@ export default function ReportsPage() {
           ) : (
             // Actual data
             <>
-          <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+          <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent dark:from-primary/10 dark:to-transparent shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-2xl font-bold">
+                  <p className="text-2xl font-bold text-foreground">
                     {dashboardStats?.overview?.totalTickets || 0}
                   </p>
                   <p className="text-xs text-muted-foreground">Total Tickets</p>
@@ -688,68 +688,68 @@ export default function ReportsPage() {
               </div>
             </CardContent>
           </Card>
-          <Card className="border-red-500/20 bg-gradient-to-br from-red-500/5 to-transparent">
+          <Card className="border-destructive/20 bg-gradient-to-br from-destructive/5 to-transparent dark:from-destructive/10 dark:to-transparent shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-2xl font-bold">
+                  <p className="text-2xl font-bold text-foreground">
                     {dashboardStats?.overview?.openTickets || 0}
                   </p>
                   <p className="text-xs text-muted-foreground">Open Tickets</p>
                 </div>
-                <AlertTriangle className="h-8 w-8 text-red-500/20" />
+                <AlertTriangle className="h-8 w-8 text-destructive/20" />
               </div>
             </CardContent>
           </Card>
-          <Card className="border-blue-500/20 bg-gradient-to-br from-blue-500/5 to-transparent">
+          <Card className="border-info/20 bg-gradient-to-br from-info/5 to-transparent dark:from-info/10 dark:to-transparent shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-2xl font-bold">
+                  <p className="text-2xl font-bold text-foreground">
                     {dashboardStats?.overview?.inProgressTickets || 0}
                   </p>
                   <p className="text-xs text-muted-foreground">In Progress</p>
                 </div>
-                <Activity className="h-8 w-8 text-blue-500/20" />
+                <Activity className="h-8 w-8 text-info/20" />
               </div>
             </CardContent>
           </Card>
-          <Card className="border-green-500/20 bg-gradient-to-br from-green-500/5 to-transparent">
+          <Card className="border-success/20 bg-gradient-to-br from-success/5 to-transparent dark:from-success/10 dark:to-transparent shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-2xl font-bold">
+                  <p className="text-2xl font-bold text-foreground">
                     {dashboardStats?.overview?.resolvedTickets || 0}
                   </p>
                   <p className="text-xs text-muted-foreground">Resolved</p>
                 </div>
-                <CheckCircle className="h-8 w-8 text-green-500/20" />
+                <CheckCircle className="h-8 w-8 text-success/20" />
               </div>
             </CardContent>
           </Card>
-          <Card className="border-amber-500/20 bg-gradient-to-br from-amber-500/5 to-transparent">
+          <Card className="border-warning/20 bg-gradient-to-br from-warning/5 to-transparent dark:from-warning/10 dark:to-transparent shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xl font-bold">
+                  <p className="text-xl font-bold text-foreground">
                     {dashboardStats?.performance?.avgResolutionTime || '0.0 hours'}
                   </p>
                   <p className="text-xs text-muted-foreground">Avg Resolution</p>
                 </div>
-                <Clock className="h-8 w-8 text-amber-500/20" />
+                <Clock className="h-8 w-8 text-warning/20" />
               </div>
             </CardContent>
           </Card>
-          <Card className="border-purple-500/20 bg-gradient-to-br from-purple-500/5 to-transparent">
+          <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent dark:from-primary/10 dark:to-transparent shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-2xl font-bold">
+                  <p className="text-2xl font-bold text-foreground">
                     {dashboardStats?.performance?.slaCompliance || 0}%
                   </p>
                   <p className="text-xs text-muted-foreground">SLA Compliance</p>
                 </div>
-                <Target className="h-8 w-8 text-purple-500/20" />
+                <Target className="h-8 w-8 text-primary/20" />
               </div>
             </CardContent>
           </Card>
@@ -759,47 +759,47 @@ export default function ReportsPage() {
 
         {/* Report Collections Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <Card className="border-slate-500/20 bg-gradient-to-br from-slate-500/5 to-transparent">
+          <Card className="border-muted/40 bg-gradient-to-br from-muted/20 to-transparent shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-2xl font-bold">{tabCounts.all}</p>
+                  <p className="text-2xl font-bold text-foreground">{tabCounts.all}</p>
                   <p className="text-xs text-muted-foreground">Available Reports</p>
                 </div>
-                <BarChart3 className="h-8 w-8 text-slate-500/20" />
+                <BarChart3 className="h-8 w-8 text-muted-foreground/30" />
               </div>
             </CardContent>
           </Card>
-          <Card className="border-indigo-500/20 bg-gradient-to-br from-indigo-500/5 to-transparent">
+          <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent dark:from-primary/10 dark:to-transparent shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-2xl font-bold">{tabCounts.custom}</p>
+                  <p className="text-2xl font-bold text-foreground">{tabCounts.custom}</p>
                   <p className="text-xs text-muted-foreground">Custom Reports</p>
                 </div>
-                <Zap className="h-8 w-8 text-indigo-500/20" />
+                <Zap className="h-8 w-8 text-primary/20" />
               </div>
             </CardContent>
           </Card>
-          <Card className="border-emerald-500/20 bg-gradient-to-br from-emerald-500/5 to-transparent">
+          <Card className="border-success/20 bg-gradient-to-br from-success/5 to-transparent dark:from-success/10 dark:to-transparent shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-2xl font-bold">{tabCounts.scheduled}</p>
+                  <p className="text-2xl font-bold text-foreground">{tabCounts.scheduled}</p>
                   <p className="text-xs text-muted-foreground">Scheduled</p>
                 </div>
-                <Calendar className="h-8 w-8 text-emerald-500/20" />
+                <Calendar className="h-8 w-8 text-success/20" />
               </div>
             </CardContent>
           </Card>
-          <Card className="border-yellow-500/20 bg-gradient-to-br from-yellow-500/5 to-transparent">
+          <Card className="border-warning/20 bg-gradient-to-br from-warning/5 to-transparent dark:from-warning/10 dark:to-transparent shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-2xl font-bold">{tabCounts.favorites}</p>
+                  <p className="text-2xl font-bold text-foreground">{tabCounts.favorites}</p>
                   <p className="text-xs text-muted-foreground">Favorites</p>
                 </div>
-                <Star className="h-8 w-8 text-yellow-500/20" />
+                <Star className="h-8 w-8 text-warning/20" />
               </div>
             </CardContent>
           </Card>

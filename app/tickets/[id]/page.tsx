@@ -960,12 +960,17 @@ export default function TicketDetailPage() {
 
   if (status === 'loading' || loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="min-h-screen bg-background">
         <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
-            <p className="text-gray-600 dark:text-gray-400">Loading ticket...</p>
-          </div>
+          <Card className="max-w-md mx-4">
+            <CardContent className="p-12 text-center">
+              <div className="relative mx-auto mb-4 w-12 h-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-muted"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent absolute top-0 left-0"></div>
+              </div>
+              <p className="text-muted-foreground">Loading ticket...</p>
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
@@ -977,16 +982,21 @@ export default function TicketDetailPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <main className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-6">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">Error</h1>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
-            <Button onClick={() => router.back()} className="flex items-center gap-2">
-              <ArrowLeft className="h-4 w-4" />
-              Go Back
-            </Button>
-          </div>
+      <div className="min-h-screen bg-background">
+        <main className="w-full px-responsive py-6">
+          <Card className="max-w-2xl mx-auto">
+            <CardContent className="p-12 text-center">
+              <div className="mx-auto w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
+                <AlertCircle className="h-8 w-8 text-destructive" />
+              </div>
+              <h1 className="text-2xl font-bold text-foreground mb-2">Error</h1>
+              <p className="text-muted-foreground mb-6">{error}</p>
+              <Button onClick={() => router.back()} variant="outline" size="lg">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Go Back
+              </Button>
+            </CardContent>
+          </Card>
         </main>
       </div>
     );
@@ -999,77 +1009,86 @@ export default function TicketDetailPage() {
   // Check if user can view this ticket after it's loaded
   if (!canViewTicket()) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <main className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-6">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">Access Denied</h1>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
-              {ticket.service?.requiresApproval && !getLatestApproval() 
-                ? 'This ticket requires manager approval before it can be viewed by technicians.'
-                : ticket.service?.requiresApproval && getLatestApproval()?.status === 'PENDING'
-                ? 'This ticket is pending approval from a manager.'
-                : ticket.service?.requiresApproval && getLatestApproval()?.status === 'REJECTED'
-                ? 'This ticket has been rejected by a manager.'
-                : 'You do not have permission to view this ticket.'}
-            </p>
-            <Button onClick={() => router.back()} className="flex items-center gap-2">
-              <ArrowLeft className="h-4 w-4" />
-              Go Back
-            </Button>
-          </div>
+      <div className="min-h-screen bg-background">
+        <main className="w-full px-responsive py-6">
+          <Card className="max-w-2xl mx-auto border-warning/50">
+            <CardContent className="p-12 text-center">
+              <div className="mx-auto w-16 h-16 rounded-full bg-warning/10 flex items-center justify-center mb-4">
+                <Shield className="h-8 w-8 text-warning" />
+              </div>
+              <h1 className="text-2xl font-bold text-foreground mb-2">Access Denied</h1>
+              <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                {ticket.service?.requiresApproval && !getLatestApproval()
+                  ? 'This ticket requires manager approval before it can be viewed by technicians.'
+                  : ticket.service?.requiresApproval && getLatestApproval()?.status === 'PENDING'
+                  ? 'This ticket is pending approval from a manager.'
+                  : ticket.service?.requiresApproval && getLatestApproval()?.status === 'REJECTED'
+                  ? 'This ticket has been rejected by a manager.'
+                  : 'You do not have permission to view this ticket.'}
+              </p>
+              <Button onClick={() => router.back()} variant="outline" size="lg">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Go Back
+              </Button>
+            </CardContent>
+          </Card>
         </main>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-cream-100 dark:bg-brown-950">
-      <main className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-6">
-        <div className="space-y-6">
+    <div className="min-h-screen bg-background">
+      <main className="w-full px-responsive py-6">
+        <div className="space-y-6 max-w-7xl mx-auto">
           {/* Header */}
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
             <Button
-              variant="outline"
+              variant="ghost"
+              size="sm"
               onClick={() => router.back()}
-              className="flex items-center gap-2"
+              className="shrink-0"
             >
-              <ArrowLeft className="h-4 w-4" />
+              <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
-            <div className="flex-1">
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{ticket.title}</h1>
-              <div className="flex items-center gap-3">
-                <p className="text-gray-600 dark:text-gray-400">Ticket #{ticket.ticketNumber}</p>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-responsive-2xl font-bold text-foreground truncate">{ticket.title}</h1>
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                <p className="text-sm text-muted-foreground">Ticket #{ticket.ticketNumber}</p>
                 {!ticket.assignedToId && (
-                  <Badge variant="outline" className="border-orange-300 text-orange-600">
+                  <Badge variant="warning-soft" size="sm">
                     <AlertCircle className="h-3 w-3 mr-1" />
                     Unassigned
                   </Badge>
                 )}
                 {isTransactionClaimsSupport() && (
-                  <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+                  <Badge variant="info-soft" size="sm">
                     <Eye className="h-3 w-3 mr-1" />
-                    Read-Only Access
+                    Read-Only
                   </Badge>
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {/* Prominent Claim Button for unclaimed tickets */}
               {canClaimTicket() && (
                 <Button
                   onClick={handleClaimTicket}
+                  loading={isUpdatingStatus}
                   disabled={isUpdatingStatus}
-                  className="flex items-center gap-2 bg-gradient-to-r from-brown-400 to-brown-500 dark:from-brown-200 dark:to-brown-300 text-white dark:text-brown-950 hover:from-brown-500 hover:to-brown-600 dark:hover:from-brown-300 dark:hover:to-brown-400 shadow-md hover:shadow-lg transition-all duration-300"
+                  variant="default"
+                  size="default"
+                  className="shadow-lg hover:shadow-xl"
                 >
-                  <UserCheck className="h-4 w-4" />
+                  <UserCheck className="h-4 w-4 mr-2" />
                   Claim Ticket
                 </Button>
               )}
-              <Badge variant={getStatusBadgeVariant(ticket.status)}>
+              <Badge variant={getStatusBadgeVariant(ticket.status)} size="default">
                 {ticket.status.replace('_', ' ')}
               </Badge>
-              <Badge variant={getPriorityBadgeVariant(ticket.priority)}>
+              <Badge variant={getPriorityBadgeVariant(ticket.priority)} size="default">
                 {ticket.priority}
               </Badge>
             </div>
@@ -1084,7 +1103,7 @@ export default function TicketDetailPage() {
                   <CardTitle>Description</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{ticket.description}</p>
+                  <p className="text-foreground whitespace-pre-wrap leading-relaxed">{ticket.description}</p>
                 </CardContent>
               </Card>
 
@@ -1119,7 +1138,7 @@ export default function TicketDetailPage() {
                               );
                               
                             case 'FILE':
-                              if (!value) return <span className="text-gray-400 italic">No file attached</span>;
+                              if (!value) return <span className="text-muted-foreground italic">No file attached</span>;
 
                               // Parse the file data (format: "filename|base64data" or just "filename")
                               const fileData = value.includes('|') ? value.split('|') : [value, ''];
@@ -1216,9 +1235,9 @@ export default function TicketDetailPage() {
                               return (
                                 <div className="flex items-center gap-2">
                                   {value === 'true' ? (
-                                    <CheckCircle className="h-4 w-4 text-green-500" />
+                                    <CheckCircle className="h-4 w-4 text-success" />
                                   ) : (
-                                    <X className="h-4 w-4 text-gray-400" />
+                                    <X className="h-4 w-4 text-muted-foreground" />
                                   )}
                                   <span>{value === 'true' ? 'Yes' : 'No'}</span>
                                 </div>
@@ -1227,7 +1246,7 @@ export default function TicketDetailPage() {
                             case 'DATE':
                               return (
                                 <div className="flex items-center gap-2">
-                                  <Clock className="h-4 w-4 text-gray-400" />
+                                  <Clock className="h-4 w-4 text-muted-foreground" />
                                   <span>{value ? new Date(value).toLocaleDateString() : '-'}</span>
                                 </div>
                               );
@@ -1235,7 +1254,7 @@ export default function TicketDetailPage() {
                             case 'DATETIME':
                               return (
                                 <div className="flex items-center gap-2">
-                                  <Clock className="h-4 w-4 text-gray-400" />
+                                  <Clock className="h-4 w-4 text-muted-foreground" />
                                   <span>{value ? new Date(value).toLocaleString() : '-'}</span>
                                 </div>
                               );
@@ -1252,7 +1271,7 @@ export default function TicketDetailPage() {
                                   <Eye className="h-3 w-3" />
                                 </a>
                               ) : (
-                                <span className="text-gray-400 italic">-</span>
+                                <span className="text-muted-foreground italic">-</span>
                               );
                               
                             case 'EMAIL':
@@ -1264,7 +1283,7 @@ export default function TicketDetailPage() {
                                   {value}
                                 </a>
                               ) : (
-                                <span className="text-gray-400 italic">-</span>
+                                <span className="text-muted-foreground italic">-</span>
                               );
                               
                             case 'PHONE':
@@ -1276,7 +1295,7 @@ export default function TicketDetailPage() {
                                   {value}
                                 </a>
                               ) : (
-                                <span className="text-gray-400 italic">-</span>
+                                <span className="text-muted-foreground italic">-</span>
                               );
                               
                             case 'NUMBER':
@@ -1306,9 +1325,9 @@ export default function TicketDetailPage() {
                             default:
                               // Handle empty or undefined values better
                               if (!value || value.trim() === '') {
-                                return <span className="text-gray-400 italic">Not provided</span>;
+                                return <span className="text-muted-foreground italic">Not provided</span>;
                               }
-                              return <span className="text-gray-700 dark:text-gray-300">{value}</span>;
+                              return <span className="text-foreground">{value}</span>;
                           }
                         };
                         
@@ -1316,7 +1335,7 @@ export default function TicketDetailPage() {
                         if (fieldValue.field.type === 'TEXTAREA') {
                           return (
                             <div key={fieldValue.id} className="border-b border-gray-200 dark:border-gray-700 pb-4 last:border-0">
-                              <Label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 block">
+                              <Label className="text-sm font-semibold text-foreground mb-2 block">
                                 {fieldValue.field.label}
                               </Label>
                               {renderFieldValue()}
@@ -1328,7 +1347,7 @@ export default function TicketDetailPage() {
                         return (
                           <div key={fieldValue.id} className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-start border-b border-gray-100 dark:border-gray-800 pb-3 last:border-0">
                             <div className="sm:col-span-1">
-                              <Label className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                              <Label className="text-sm font-medium text-muted-foreground">
                                 {fieldValue.field.label}
                               </Label>
                             </div>
@@ -1521,9 +1540,9 @@ export default function TicketDetailPage() {
                   <div className="space-y-4">
                     {ticket.comments.length === 0 ? (
                       <div className="text-center py-12">
-                        <MessageSquare className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                        <p className="text-gray-500">No comments yet</p>
-                        <p className="text-sm text-gray-400 mt-1">Be the first to comment on this ticket</p>
+                        <MessageSquare className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
+                        <p className="text-muted-foreground">No comments yet</p>
+                        <p className="text-sm text-muted-foreground/70 mt-1">Be the first to comment on this ticket</p>
                       </div>
                     ) : (
                       ticket.comments.map((comment) => (
@@ -1545,14 +1564,14 @@ export default function TicketDetailPage() {
                               </div>
                               <div>
                                 <div className="flex items-center gap-2">
-                                  <span className="font-semibold text-gray-900 dark:text-gray-100">
+                                  <span className="font-semibold text-foreground">
                                     {comment.user.name}
                                   </span>
                                   <Badge variant="outline" className="text-xs">
                                     {comment.user.role}
                                   </Badge>
                                   {comment.isInternal && (
-                                    <Badge variant="secondary" className="text-xs bg-yellow-100 text-yellow-800">
+                                    <Badge variant="warning-soft" size="sm">
                                       Internal
                                     </Badge>
                                   )}
@@ -1580,12 +1599,12 @@ export default function TicketDetailPage() {
                           
                           {/* Comment Content */}
                           <div className="pl-13">
-                            <RichTextViewer content={comment.content} className="text-gray-700 dark:text-gray-300" />
+                            <RichTextViewer content={comment.content} className="text-foreground" />
                             
                             {/* Attachments */}
                             {comment.attachments && comment.attachments.length > 0 && (
                               <div className="mt-4 p-4 bg-gradient-to-r from-cream-50 to-cream-100 dark:from-warm-dark-300 dark:to-warm-dark-200 rounded-lg border border-cream-300 dark:border-warm-dark-100">
-                                <div className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                                <div className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                                   <Paperclip className="h-4 w-4" />
                                   Attached Files ({comment.attachments.length})
                                 </div>
@@ -1609,10 +1628,10 @@ export default function TicketDetailPage() {
                                           <Icon className="h-5 w-5" />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                                          <p className="text-sm font-medium text-foreground truncate">
                                             {attachment.originalName}
                                           </p>
-                                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                                          <p className="text-xs text-muted-foreground">
                                             {attachment.size < 1024 
                                               ? `${attachment.size} B`
                                               : attachment.size < 1024 * 1024
@@ -1702,7 +1721,7 @@ export default function TicketDetailPage() {
                           placeholder="Type your comment here... (You can paste images directly)"
                         />
                       </div>
-                      <div className="text-xs text-gray-500 mt-1">
+                      <div className="text-xs text-muted-foreground mt-1">
                         Tip: You can paste images directly from clipboard or drag & drop them into the editor
                       </div>
                       
@@ -1793,9 +1812,9 @@ export default function TicketDetailPage() {
             <div className="space-y-4">
               {/* Actions - Moved to top and beautified */}
               {(canUpdateStatus() || canClaimTicket() || canReleaseTicket()) && (
-                <Card className="bg-card dark:bg-gray-900 backdrop-blur-sm border-border shadow-xl overflow-hidden">
-                  <CardHeader className="bg-muted dark:bg-gray-800 border-b border-border py-4">
-                    <CardTitle className="text-base font-semibold text-foreground">
+                <Card hoverable className="border-border/50 shadow-lg overflow-hidden">
+                  <CardHeader className="bg-muted/50 border-b border-border">
+                    <CardTitle className="text-base font-semibold">
                       Actions
                     </CardTitle>
                   </CardHeader>
@@ -1805,72 +1824,91 @@ export default function TicketDetailPage() {
                       {canClaimTicket() && (
                         <Button
                           onClick={handleClaimTicket}
+                          loading={isUpdatingStatus}
                           disabled={isUpdatingStatus}
-                          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-brown-400 to-brown-500 dark:from-brown-200 dark:to-brown-300 text-white dark:text-brown-950 hover:from-brown-500 hover:to-brown-600 dark:hover:from-brown-300 dark:hover:to-brown-400 shadow-md transition-all duration-200 hover:shadow-lg rounded-lg py-2.5"
+                          variant="default"
+                          size="lg"
+                          className="w-full shadow-md hover:shadow-lg"
                         >
-                          <UserCheck className="h-4 w-4" />
-                          <span className="font-medium">Claim Ticket</span>
+                          <UserCheck className="h-4 w-4 mr-2" />
+                          Claim Ticket
                         </Button>
                       )}
                       {canReleaseTicket() && (
                         <Button
                           onClick={handleReleaseTicket}
+                          loading={isUpdatingStatus}
                           disabled={isUpdatingStatus}
-                          variant="outline"
-                          className="w-full flex items-center justify-center gap-2 border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20 rounded-lg py-2.5"
+                          variant="destructive"
+                          size="lg"
+                          className="w-full"
                         >
-                          <UserX className="h-4 w-4" />
-                          <span className="font-medium">Release Ticket</span>
+                          <UserX className="h-4 w-4 mr-2" />
+                          Release Ticket
                         </Button>
                       )}
                       {ticket.status === 'OPEN' && (
                         <Button
                           onClick={() => updateTicketStatus('IN_PROGRESS')}
+                          loading={isUpdatingStatus}
                           disabled={isUpdatingStatus}
-                          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 dark:from-amber-400 dark:to-amber-500 text-white dark:text-brown-950 hover:from-amber-600 hover:to-amber-700 dark:hover:from-amber-500 dark:hover:to-amber-600 shadow-md transition-all duration-200 hover:shadow-lg rounded-lg py-2.5"
+                          variant="warning"
+                          size="lg"
+                          className="w-full shadow-md hover:shadow-lg"
                         >
-                          <AlertCircle className="h-4 w-4" />
-                          <span className="font-medium">Start Work</span>
+                          <AlertCircle className="h-4 w-4 mr-2" />
+                          Start Work
                         </Button>
                       )}
                       {(ticket.status === 'IN_PROGRESS' || ticket.status === 'RESOLVED') && (
                         <Button
                           onClick={handleResolveClick}
+                          loading={isUpdatingStatus}
                           disabled={isUpdatingStatus}
                           variant="outline"
-                          className="w-full flex items-center justify-center gap-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg py-2.5"
+                          size="lg"
+                          className="w-full"
                         >
-                          <Edit className="h-4 w-4" />
+                          <Edit className="h-4 w-4 mr-2" />
                           Update Status
                         </Button>
                       )}
-                      {(ticket.status === 'IN_PROGRESS' || ticket.status === 'OPEN') && 
+                      {(ticket.status === 'IN_PROGRESS' || ticket.status === 'OPEN') &&
                        ['TECHNICIAN', 'SECURITY_ANALYST'].includes(session?.user?.role || '') && (
                         <Button
                           onClick={handleResolveAndClose}
+                          loading={isUpdatingStatus}
                           disabled={isUpdatingStatus}
-                          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-green-600 to-green-700 dark:from-green-500 dark:to-green-600 text-white hover:from-green-700 hover:to-green-800 dark:hover:from-green-600 dark:hover:to-green-700 shadow-md transition-all duration-200 hover:shadow-lg rounded-lg py-2.5"
+                          variant="success"
+                          size="lg"
+                          className="w-full shadow-md hover:shadow-lg"
                         >
-                          <CheckCheck className="h-4 w-4" />
-                          <span className="font-medium">Resolve + Close</span>
+                          <CheckCheck className="h-4 w-4 mr-2" />
+                          Resolve + Close
                         </Button>
                       )}
                       {ticket.status === 'PENDING_VENDOR' && canUpdateStatus() && (
                         <>
                           <Button
                             onClick={() => updateTicketStatus('IN_PROGRESS')}
+                            loading={isUpdatingStatus}
                             disabled={isUpdatingStatus}
-                            className="w-full flex items-center gap-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-400 dark:hover:bg-blue-500 text-white"
+                            variant="info"
+                            size="lg"
+                            className="w-full"
                           >
-                            <PlayCircle className="h-4 w-4" />
+                            <PlayCircle className="h-4 w-4 mr-2" />
                             Resume Work
                           </Button>
                           <Button
                             onClick={() => updateTicketStatus('RESOLVED')}
+                            loading={isUpdatingStatus}
                             disabled={isUpdatingStatus}
-                            className="w-full flex items-center gap-2 bg-green-600 hover:bg-green-700 dark:bg-green-400 dark:hover:bg-green-500 text-white"
+                            variant="success"
+                            size="lg"
+                            className="w-full"
                           >
-                            <CheckCircle className="h-4 w-4" />
+                            <CheckCircle className="h-4 w-4 mr-2" />
                             Resolve Ticket
                           </Button>
                           <Button

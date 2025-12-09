@@ -124,29 +124,32 @@ export default function SimpleCreateTicketPage() {
 
   if (!session) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Required</h2>
-          <p className="text-gray-600">Please sign in to create tickets.</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Card className="max-w-md mx-4">
+          <CardContent className="p-8 text-center">
+            <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-foreground mb-2">Access Required</h2>
+            <p className="text-muted-foreground">Please sign in to create tickets.</p>
+          </CardContent>
+        </Card>
       </div>
     )
   }
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="bg-card shadow-sm border-b">
-        <div className="w-full px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center py-6">
+      <div className="bg-card border-b border-border sticky top-0 z-10 backdrop-blur-sm bg-card/80">
+        <div className="w-full px-responsive">
+          <div className="flex items-center py-6 gap-4">
             <Link href="/tickets/simple">
-              <Button variant="ghost" size="sm" className="mr-4">
+              <Button variant="ghost" size="sm">
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Tickets
+                Back
               </Button>
             </Link>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Create New Ticket</h1>
-              <p className="text-gray-600 mt-1">
+            <div className="flex-1">
+              <h1 className="text-responsive-2xl font-bold text-foreground">Create New Ticket</h1>
+              <p className="text-responsive-sm text-muted-foreground mt-1">
                 Submit a new service request or report an issue
               </p>
             </div>
@@ -154,41 +157,43 @@ export default function SimpleCreateTicketPage() {
         </div>
       </div>
 
-      <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Send className="h-5 w-5 mr-2" />
+      <div className="w-full px-responsive py-8">
+        <Card className="max-w-4xl mx-auto border-border/50 shadow-lg">
+          <CardHeader className="space-y-2">
+            <CardTitle className="flex items-center gap-2 text-xl">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Send className="h-5 w-5 text-primary" />
+              </div>
               Ticket Details
             </CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Title */}
-              <div>
-                <Label htmlFor="title" className="text-base font-medium">
-                  Title <span className="text-red-500">*</span>
+              <div className="space-y-2">
+                <Label htmlFor="title" className="text-base font-medium text-foreground">
+                  Title <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="title"
                   value={formData.title}
                   onChange={(e) => handleInputChange('title', e.target.value)}
                   placeholder="Brief description of your issue or request"
-                  className="mt-2"
+                  className="h-12"
                   required
                 />
               </div>
 
               {/* Service */}
-              <div>
-                <Label htmlFor="service" className="text-base font-medium">
-                  Service Type <span className="text-red-500">*</span>
+              <div className="space-y-2">
+                <Label htmlFor="service" className="text-base font-medium text-foreground">
+                  Service Type <span className="text-destructive">*</span>
                 </Label>
                 <select
                   id="service"
                   value={formData.serviceId}
                   onChange={(e) => handleInputChange('serviceId', e.target.value)}
-                  className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="mt-2 w-full h-12 px-4 py-2 bg-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all"
                   required
                 >
                   <option value="">Select a service...</option>
@@ -201,15 +206,15 @@ export default function SimpleCreateTicketPage() {
               </div>
 
               {/* Priority */}
-              <div>
-                <Label htmlFor="priority" className="text-base font-medium">
+              <div className="space-y-2">
+                <Label htmlFor="priority" className="text-base font-medium text-foreground">
                   Priority Level
                 </Label>
                 <select
                   id="priority"
                   value={formData.priority}
                   onChange={(e) => handleInputChange('priority', e.target.value)}
-                  className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="mt-2 w-full h-12 px-4 py-2 bg-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all"
                 >
                   <option value="LOW">Low - General inquiry or minor issue</option>
                   <option value="MEDIUM">Medium - Standard service request</option>
@@ -220,15 +225,15 @@ export default function SimpleCreateTicketPage() {
 
               {/* Branch (if user has admin/manager role) */}
               {(['ADMIN', 'MANAGER'].includes(session?.user?.role || '') && branches.length > 0) && (
-                <div>
-                  <Label htmlFor="branch" className="text-base font-medium">
+                <div className="space-y-2">
+                  <Label htmlFor="branch" className="text-base font-medium text-foreground">
                     Branch
                   </Label>
                   <select
                     id="branch"
                     value={formData.branchId}
                     onChange={(e) => handleInputChange('branchId', e.target.value)}
-                    className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="mt-2 w-full h-12 px-4 py-2 bg-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all"
                   >
                     <option value="">Use my default branch</option>
                     {branches.map((branch) => (
@@ -241,57 +246,55 @@ export default function SimpleCreateTicketPage() {
               )}
 
               {/* Description */}
-              <div>
-                <Label htmlFor="description" className="text-base font-medium">
-                  Description <span className="text-red-500">*</span>
+              <div className="space-y-2">
+                <Label htmlFor="description" className="text-base font-medium text-foreground">
+                  Description <span className="text-destructive">*</span>
                 </Label>
                 <Textarea
                   id="description"
                   value={formData.description}
                   onChange={(e) => handleInputChange('description', e.target.value)}
                   placeholder="Please provide detailed information about your issue or request..."
-                  className="mt-2 min-h-[120px]"
+                  className="mt-2 min-h-[160px] resize-none"
                   required
                 />
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-sm text-muted-foreground">
                   Include steps to reproduce the issue, error messages, and any relevant details
                 </p>
               </div>
 
               {/* Form Actions */}
-              <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t">
+              <div className="flex flex-col sm:flex-row gap-4 pt-8 border-t border-border">
                 <Button
                   type="submit"
+                  loading={loading}
                   disabled={loading}
+                  size="lg"
                   className="flex-1 sm:flex-none"
                 >
-                  {loading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Creating...
-                    </>
-                  ) : (
-                    <>
-                      <Send className="h-4 w-4 mr-2" />
-                      Create Ticket
-                    </>
-                  )}
+                  <Send className="h-4 w-4 mr-2" />
+                  Create Ticket
                 </Button>
-                <Link href="/tickets/simple">
-                  <Button type="button" variant="outline" className="w-full sm:w-auto">
+                <Link href="/tickets/simple" className="flex-1 sm:flex-none">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="lg"
+                    className="w-full"
+                  >
                     Cancel
                   </Button>
                 </Link>
               </div>
 
               {/* Help Text */}
-              <div className="bg-emerald-50 border border-emerald-200 rounded-md p-4 mt-6">
-                <div className="flex">
-                  <AlertCircle className="h-5 w-5 text-emerald-600 mt-0.5 mr-3 flex-shrink-0" />
-                  <div className="text-sm text-emerald-700">
-                    <p className="font-medium mb-1">Need help?</p>
-                    <p>
-                      For urgent issues, contact IT support directly. For general questions, 
+              <div className="bg-info/10 border border-info/20 rounded-lg p-4">
+                <div className="flex gap-3">
+                  <AlertCircle className="h-5 w-5 text-info mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-info-foreground">
+                    <p className="font-semibold mb-1 text-foreground">Need help?</p>
+                    <p className="text-muted-foreground">
+                      For urgent issues, contact IT support directly. For general questions,
                       provide as much detail as possible to help us resolve your request quickly.
                     </p>
                   </div>

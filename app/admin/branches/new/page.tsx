@@ -90,11 +90,11 @@ export default function NewBranchPage() {
           </Button>
         </Link>
         
-        <h1 className="text-3xl font-bold flex items-center gap-2">
+        <h1 className="text-3xl font-bold flex items-center gap-2 text-foreground">
           <Building2 className="h-8 w-8" />
           Create New Branch
         </h1>
-        <p className="text-gray-600 mt-1">Add a new branch to the system</p>
+        <p className="text-muted-foreground mt-1">Add a new branch to the system</p>
       </div>
 
       <Form {...form}>
