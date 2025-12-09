@@ -231,18 +231,30 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Calculate SLA compliance
-    const slaCompliantTickets = await prisma.ticket.count({
-      where: combineFilters({
-        status: { in: ['RESOLVED', 'CLOSED'] },
-        slaBreached: false
-      })
-    });
-
+    // Calculate SLA compliance using SLATracking relation
+    // Count tickets that were resolved/closed and have NO breached SLA tracking
     const totalResolved = resolvedTickets + closedTickets;
-    const slaCompliance = totalResolved > 0
-      ? Math.round((slaCompliantTickets / totalResolved) * 100)
-      : 100;
+    let slaCompliance = 100;
+
+    if (totalResolved > 0) {
+      // Count tickets with breached SLA (either response or resolution breached)
+      const breachedTickets = await prisma.ticket.count({
+        where: combineFilters({
+          status: { in: ['RESOLVED', 'CLOSED'] },
+          slaTracking: {
+            some: {
+              OR: [
+                { isResponseBreached: true },
+                { isResolutionBreached: true }
+              ]
+            }
+          }
+        })
+      });
+
+      const slaCompliantTickets = totalResolved - breachedTickets;
+      slaCompliance = Math.round((slaCompliantTickets / totalResolved) * 100);
+    }
 
     // Calculate trends
     const ticketTrend = lastMonthTickets > 0
