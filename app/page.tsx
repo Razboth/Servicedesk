@@ -14,12 +14,8 @@ import { ShiftScheduleNotification } from '@/components/dashboard/shift-schedule
 import {
   LayoutDashboard,
   Ticket,
-  BookOpen,
-  FileBarChart,
-  Zap,
   Clock,
   AlertTriangle,
-  Shield,
   TrendingUp,
   TrendingDown,
   CheckCircle2,
@@ -29,15 +25,9 @@ import {
   ArrowRight,
   RefreshCw,
   Plus,
-  Eye,
-  Settings,
   ClipboardCheck,
-  Building,
   Activity,
-  ChevronRight,
-  FileText,
-  Loader2,
-  BarChart3
+  Loader2
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getTicketUrlId } from '@/lib/utils/ticket-utils'
@@ -294,51 +284,6 @@ function StatCard({ title, value, description, trend, icon: Icon, variant, href 
   return content
 }
 
-// Quick Action Card Component
-interface QuickActionProps {
-  title: string
-  description: string
-  icon: React.ElementType
-  href: string
-  variant?: 'default' | 'primary' | 'secondary' | 'outline'
-  buttonText: string
-}
-
-function QuickActionCard({
-  title,
-  description,
-  icon: Icon,
-  href,
-  variant = 'default',
-  buttonText
-}: QuickActionProps) {
-  const router = useRouter()
-
-  return (
-    <Card hoverable className="group h-full">
-      <CardHeader transparent className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-            <Icon className="h-5 w-5" />
-          </div>
-          <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-        </div>
-        <CardTitle className="text-base mt-3 text-foreground">{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Button
-          className="w-full"
-          variant={variant as any}
-          onClick={() => router.push(href)}
-        >
-          {buttonText}
-        </Button>
-      </CardContent>
-    </Card>
-  )
-}
-
 // Recent Ticket Item Component
 function RecentTicketItem({ ticket, onClick }: { ticket: RecentTicket; onClick: () => void }) {
   const StatusIcon = getStatusIcon(ticket.status)
@@ -463,7 +408,6 @@ export default function Dashboard() {
   const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(userRole)
   const isManager = userRole === 'MANAGER'
   const isTechnician = userRole === 'TECHNICIAN'
-  const isSecurityAnalyst = userRole === 'SECURITY_ANALYST' || session.user?.supportGroupCode === 'SECURITY_OPS'
 
   // Get role-specific greeting
   const getRoleGreeting = () => {
@@ -652,151 +596,6 @@ export default function Dashboard() {
             />
           </div>
         </div>
-
-        {/* Quick Actions Section */}
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">Quick Actions</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <QuickActionCard
-              title="Create Ticket"
-              description="Report an issue or request"
-              icon={Plus}
-              href="/tickets/simple/create"
-              variant="primary"
-              buttonText="New Ticket"
-            />
-            <QuickActionCard
-              title="My Tickets"
-              description="View your open tickets"
-              icon={Ticket}
-              href="/tickets"
-              variant="outline"
-              buttonText="View Tickets"
-            />
-            <QuickActionCard
-              title="Knowledge Base"
-              description="Browse solutions and guides"
-              icon={BookOpen}
-              href="/knowledge"
-              variant="secondary"
-              buttonText="Browse Articles"
-            />
-            <QuickActionCard
-              title="Reports"
-              description="View analytics and insights"
-              icon={FileBarChart}
-              href="/reports"
-              variant="outline"
-              buttonText="View Reports"
-            />
-          </div>
-        </div>
-
-        {/* Role-specific Quick Actions */}
-        {isManager && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-foreground">Manager Tools</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <QuickActionCard
-                title="Approvals"
-                description="Review pending requests"
-                icon={ClipboardCheck}
-                href="/manager/approvals"
-                variant="primary"
-                buttonText="Review Approvals"
-              />
-              <QuickActionCard
-                title="Team Performance"
-                description="View team analytics"
-                icon={BarChart3}
-                href="/reports/manager/team-performance"
-                variant="outline"
-                buttonText="View Performance"
-              />
-              <QuickActionCard
-                title="Branch Operations"
-                description="Monitor branch metrics"
-                icon={Building}
-                href="/reports/manager/branch-operations"
-                variant="outline"
-                buttonText="View Operations"
-              />
-            </div>
-          </div>
-        )}
-
-        {isAdmin && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-foreground">Admin Tools</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <QuickActionCard
-                title="User Management"
-                description="Manage system users"
-                icon={Users}
-                href="/admin/users"
-                variant="outline"
-                buttonText="Manage Users"
-              />
-              <QuickActionCard
-                title="Service Catalog"
-                description="Configure services"
-                icon={Settings}
-                href="/admin/services"
-                variant="outline"
-                buttonText="Manage Services"
-              />
-              <QuickActionCard
-                title="Branches"
-                description="Manage branch offices"
-                icon={Building}
-                href="/admin/branches"
-                variant="outline"
-                buttonText="View Branches"
-              />
-              <QuickActionCard
-                title="System Reports"
-                description="Comprehensive analytics"
-                icon={BarChart3}
-                href="/reports/admin/sla-performance"
-                variant="outline"
-                buttonText="View Reports"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Security Tools - Only visible for Security Analysts */}
-        {isSecurityAnalyst && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-foreground">Security Tools</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <QuickActionCard
-                title="SOC Parser"
-                description="Parse security alerts and create SOC tickets"
-                icon={Shield}
-                href="/security/soc-parser"
-                variant="secondary"
-                buttonText="Open SOC Parser"
-              />
-              <QuickActionCard
-                title="Antivirus Alert"
-                description="Report antivirus detections"
-                icon={AlertTriangle}
-                href="/security/antivirus-alert"
-                variant="destructive"
-                buttonText="Report Alert"
-              />
-              <QuickActionCard
-                title="Security Reports"
-                description="View security analytics"
-                icon={FileText}
-                href="/reports/security-analyst"
-                variant="outline"
-                buttonText="View Reports"
-              />
-            </div>
-          </div>
-        )}
 
         {/* Recent Tickets Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
