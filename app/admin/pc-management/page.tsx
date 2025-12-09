@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { PageHeader } from '@/components/ui/page-header';
 import {
   Table,
   TableBody,
@@ -48,7 +49,10 @@ import {
   FileSpreadsheet,
   LayoutDashboard,
   Activity,
-  Settings
+  Settings,
+  Filter,
+  XCircle,
+  RefreshCw
 } from 'lucide-react';
 import { format } from 'date-fns';
 import OSTypesTab from '@/components/pc-assets/os-types-tab';
@@ -126,6 +130,56 @@ interface DashboardStats {
   recentServiceLogs: any[];
   assetsByBranch: any[];
   assetsByFormFactor: any[];
+}
+
+// Stat Card Component
+function StatCard({
+  title,
+  value,
+  icon: Icon,
+  description,
+  variant = 'default'
+}: {
+  title: string;
+  value: number | string;
+  icon: React.ElementType;
+  description?: string;
+  variant?: 'default' | 'success' | 'warning' | 'destructive' | 'info';
+}) {
+  const variantStyles = {
+    default: 'bg-card border-border',
+    success: 'bg-[hsl(var(--success)/0.1)] border-[hsl(var(--success)/0.3)]',
+    warning: 'bg-[hsl(var(--warning)/0.1)] border-[hsl(var(--warning)/0.3)]',
+    destructive: 'bg-destructive/10 border-destructive/30',
+    info: 'bg-[hsl(var(--info)/0.1)] border-[hsl(var(--info)/0.3)]',
+  };
+
+  const iconStyles = {
+    default: 'text-primary',
+    success: 'text-[hsl(var(--success))]',
+    warning: 'text-[hsl(var(--warning))]',
+    destructive: 'text-destructive',
+    info: 'text-[hsl(var(--info))]',
+  };
+
+  return (
+    <Card className={`${variantStyles[variant]} transition-all duration-200 hover:shadow-md`}>
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-muted-foreground">{title}</p>
+            <p className="text-2xl font-bold text-foreground">{value}</p>
+            {description && (
+              <p className="text-xs text-muted-foreground">{description}</p>
+            )}
+          </div>
+          <div className={`p-3 rounded-xl bg-background/50 ${iconStyles[variant]}`}>
+            <Icon className="h-6 w-6" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function PCManagementPage() {
@@ -252,13 +306,13 @@ export default function PCManagementPage() {
   };
 
   const getStatusBadge = (status: string) => {
-    const statusConfig: Record<string, { variant: 'default' | 'success' | 'warning' | 'destructive' | 'secondary' | 'outline'; label: string }> = {
+    const statusConfig: Record<string, { variant: "default" | "destructive" | "warning" | "success" | "info" | "secondary" | "outline" | "ghost"; label: string }> = {
       'IN_USE': { variant: 'success', label: 'In Use' },
       'STOCK': { variant: 'secondary', label: 'Stock' },
       'BROKEN': { variant: 'destructive', label: 'Broken' },
       'DISPOSED': { variant: 'outline', label: 'Disposed' },
       'MAINTENANCE': { variant: 'warning', label: 'Maintenance' },
-      'RESERVED': { variant: 'default', label: 'Reserved' }
+      'RESERVED': { variant: 'info', label: 'Reserved' }
     };
     const config = statusConfig[status] || { variant: 'secondary', label: status };
     return <Badge variant={config.variant}>{config.label}</Badge>;
@@ -266,435 +320,453 @@ export default function PCManagementPage() {
 
   const getFormFactorIcon = (formFactor: string | null) => {
     switch (formFactor) {
-      case 'LAPTOP': return <Laptop className="h-4 w-4" />;
-      case 'DESKTOP': return <Monitor className="h-4 w-4" />;
-      case 'AIO': return <Monitor className="h-4 w-4" />;
-      case 'WORKSTATION': return <Cpu className="h-4 w-4" />;
-      case 'SERVER': return <HardDrive className="h-4 w-4" />;
-      default: return <Monitor className="h-4 w-4" />;
+      case 'LAPTOP': return <Laptop className="h-4 w-4 text-muted-foreground" />;
+      case 'DESKTOP': return <Monitor className="h-4 w-4 text-muted-foreground" />;
+      case 'AIO': return <Monitor className="h-4 w-4 text-muted-foreground" />;
+      case 'WORKSTATION': return <Cpu className="h-4 w-4 text-muted-foreground" />;
+      case 'SERVER': return <HardDrive className="h-4 w-4 text-muted-foreground" />;
+      default: return <Monitor className="h-4 w-4 text-muted-foreground" />;
     }
   };
 
   const getAVStatus = (asset: PCAsset) => {
     if (!asset.antivirusName) {
-      return <Badge variant="destructive">No AV</Badge>;
+      return <Badge variant="destructive" size="sm">No AV</Badge>;
     }
     if (asset.avRealTimeProtection === false) {
-      return <Badge variant="warning">AV Disabled</Badge>;
+      return <Badge variant="warning" size="sm">AV Disabled</Badge>;
     }
     if (asset.avDefinitionDate) {
       const defDate = new Date(asset.avDefinitionDate);
       const daysOld = Math.floor((Date.now() - defDate.getTime()) / (1000 * 60 * 60 * 24));
       if (daysOld > 7) {
-        return <Badge variant="warning">AV Outdated</Badge>;
+        return <Badge variant="warning" size="sm">AV Outdated</Badge>;
       }
     }
-    return <Badge variant="success">AV Active</Badge>;
+    return <Badge variant="success" size="sm">AV Active</Badge>;
   };
 
-  const StatCard = ({ title, value, icon: Icon, description, variant = 'default' }: {
-    title: string;
-    value: number;
-    icon: any;
-    description?: string;
-    variant?: 'default' | 'warning' | 'danger';
-  }) => {
-    const bgColor = variant === 'warning' ? 'bg-yellow-50 dark:bg-yellow-900/20' :
-                    variant === 'danger' ? 'bg-red-50 dark:bg-red-900/20' : '';
-    const iconColor = variant === 'warning' ? 'text-yellow-600' :
-                      variant === 'danger' ? 'text-red-600' : 'text-primary';
-    return (
-      <Card className={bgColor}>
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">{title}</p>
-              <p className="text-2xl font-bold">{value}</p>
-              {description && <p className="text-xs text-muted-foreground">{description}</p>}
-            </div>
-            <Icon className={`h-8 w-8 ${iconColor}`} />
-          </div>
-        </CardContent>
-      </Card>
-    );
+  const clearFilters = () => {
+    setSearch('');
+    setFilterBranch('');
+    setFilterStatus('');
+    setFilterFormFactor('');
+    setFilterWarrantyStatus('');
   };
+
+  const hasActiveFilters = search || filterBranch || filterStatus || filterFormFactor || filterWarrantyStatus;
 
   return (
-    <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Monitor className="h-8 w-8" />
-            IT PC Management System
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Manage PC assets, licenses, and service history
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => handleExport('csv')}
-            disabled={exporting}
-          >
-            <Download className="h-4 w-4 mr-2" />
-            CSV
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => handleExport('xlsx')}
-            disabled={exporting}
-          >
-            <FileSpreadsheet className="h-4 w-4 mr-2" />
-            Excel
-          </Button>
-          <Button onClick={() => router.push('/admin/pc-management/new')}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add PC
-          </Button>
-        </div>
-      </div>
+    <div className="min-h-screen bg-background">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
+        {/* Page Header */}
+        <PageHeader
+          title="IT PC Management System"
+          description="Manage PC assets, licenses, and service history"
+          icon={<Monitor className="h-6 w-6" />}
+          action={
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => handleExport('csv')}
+                disabled={exporting}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                CSV
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => handleExport('xlsx')}
+                disabled={exporting}
+              >
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Excel
+              </Button>
+              <Button onClick={() => router.push('/admin/pc-management/new')}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add PC
+              </Button>
+            </div>
+          }
+        />
 
-      {/* Dashboard Stats */}
-      {dashboardLoading ? (
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
-          {[...Array(6)].map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="p-4 h-20 bg-muted" />
-            </Card>
-          ))}
-        </div>
-      ) : dashboardStats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
-          <StatCard
-            title="Total Assets"
-            value={dashboardStats.summary.totalAssets}
-            icon={Monitor}
-          />
-          <StatCard
-            title="In Use"
-            value={dashboardStats.summary.statusCounts.IN_USE || 0}
-            icon={CheckCircle}
-          />
-          <StatCard
-            title="Stock"
-            value={dashboardStats.summary.statusCounts.STOCK || 0}
-            icon={Box}
-          />
-          <StatCard
-            title="Warranty Expiring"
-            value={dashboardStats.summary.warrantyExpiringSoon}
-            icon={Clock}
-            description="Within 30 days"
-            variant="warning"
-          />
-          <StatCard
-            title="AV Outdated"
-            value={dashboardStats.summary.avOutdated}
-            icon={ShieldAlert}
-            variant={dashboardStats.summary.avOutdated > 0 ? 'danger' : 'default'}
-          />
-          <StatCard
-            title="Open Service Logs"
-            value={dashboardStats.summary.openServiceLogs}
-            icon={Wrench}
-            variant={dashboardStats.summary.openServiceLogs > 0 ? 'warning' : 'default'}
-          />
-        </div>
-      )}
+        {/* Dashboard Stats */}
+        {dashboardLoading ? (
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
+            {[...Array(6)].map((_, i) => (
+              <Card key={i} className="animate-pulse">
+                <CardContent className="p-4 h-20 bg-muted/30" />
+              </Card>
+            ))}
+          </div>
+        ) : dashboardStats && (
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
+            <StatCard
+              title="Total Assets"
+              value={dashboardStats.summary.totalAssets}
+              icon={Monitor}
+              description="PC inventory"
+            />
+            <StatCard
+              title="In Use"
+              value={dashboardStats.summary.statusCounts.IN_USE || 0}
+              icon={CheckCircle}
+              variant="success"
+            />
+            <StatCard
+              title="Stock"
+              value={dashboardStats.summary.statusCounts.STOCK || 0}
+              icon={Box}
+              variant="info"
+            />
+            <StatCard
+              title="Warranty Expiring"
+              value={dashboardStats.summary.warrantyExpiringSoon}
+              icon={Clock}
+              description="Within 30 days"
+              variant={dashboardStats.summary.warrantyExpiringSoon > 0 ? 'warning' : 'default'}
+            />
+            <StatCard
+              title="AV Outdated"
+              value={dashboardStats.summary.avOutdated}
+              icon={ShieldAlert}
+              variant={dashboardStats.summary.avOutdated > 0 ? 'destructive' : 'default'}
+            />
+            <StatCard
+              title="Open Service Logs"
+              value={dashboardStats.summary.openServiceLogs}
+              icon={Wrench}
+              variant={dashboardStats.summary.openServiceLogs > 0 ? 'warning' : 'default'}
+            />
+          </div>
+        )}
 
-      <Tabs defaultValue="inventory" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="inventory" className="flex items-center gap-2">
-            <LayoutDashboard className="h-4 w-4" />
-            Inventory
-          </TabsTrigger>
-          <TabsTrigger value="os-types" className="flex items-center gap-2">
-            <Shield className="h-4 w-4" />
-            OS Types
-          </TabsTrigger>
-          <TabsTrigger value="office-types" className="flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            Office Products
-          </TabsTrigger>
-          <TabsTrigger value="service-logs" className="flex items-center gap-2">
-            <Activity className="h-4 w-4" />
-            Recent Services
-          </TabsTrigger>
-        </TabsList>
+        <Tabs defaultValue="inventory" className="space-y-6">
+          <TabsList className="bg-muted/50">
+            <TabsTrigger value="inventory" className="flex items-center gap-2">
+              <LayoutDashboard className="h-4 w-4" />
+              Inventory
+            </TabsTrigger>
+            <TabsTrigger value="os-types" className="flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              OS Types
+            </TabsTrigger>
+            <TabsTrigger value="office-types" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Office Products
+            </TabsTrigger>
+            <TabsTrigger value="service-logs" className="flex items-center gap-2">
+              <Activity className="h-4 w-4" />
+              Recent Services
+            </TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="inventory" className="space-y-6">
-          {/* Filters */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Search & Filter</CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              <div className="md:col-span-2 relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search hostname, serial, user, IP, MAC..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Select value={filterBranch || "all"} onValueChange={(value) => setFilterBranch(value === "all" ? "" : value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Branches" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Branches</SelectItem>
-                  {branches.map((branch) => (
-                    <SelectItem key={branch.id} value={branch.id}>
-                      {branch.code} - {branch.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={filterStatus || "all"} onValueChange={(value) => setFilterStatus(value === "all" ? "" : value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="IN_USE">In Use</SelectItem>
-                  <SelectItem value="STOCK">Stock</SelectItem>
-                  <SelectItem value="BROKEN">Broken</SelectItem>
-                  <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
-                  <SelectItem value="DISPOSED">Disposed</SelectItem>
-                  <SelectItem value="RESERVED">Reserved</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={filterFormFactor || "all"} onValueChange={(value) => setFilterFormFactor(value === "all" ? "" : value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Form Factors" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Form Factors</SelectItem>
-                  <SelectItem value="LAPTOP">Laptop</SelectItem>
-                  <SelectItem value="DESKTOP">Desktop</SelectItem>
-                  <SelectItem value="AIO">All-in-One</SelectItem>
-                  <SelectItem value="WORKSTATION">Workstation</SelectItem>
-                  <SelectItem value="SERVER">Server</SelectItem>
-                  <SelectItem value="THIN_CLIENT">Thin Client</SelectItem>
-                </SelectContent>
-              </Select>
-            </CardContent>
-          </Card>
-
-          {/* PC Assets Table */}
-          <Card>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Asset</TableHead>
-                    <TableHead>Specs</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead>User</TableHead>
-                    <TableHead>Software</TableHead>
-                    <TableHead>Security</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8">
-                        Loading PC assets...
-                      </TableCell>
-                    </TableRow>
-                  ) : pcAssets.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8">
-                        No PC assets found
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    pcAssets.map((asset) => (
-                      <TableRow key={asset.id}>
-                        <TableCell>
-                          <div className="flex items-start gap-2">
-                            {getFormFactorIcon(asset.formFactor)}
-                            <div>
-                              <span className="font-medium">{asset.pcName}</span>
-                              {asset.assetTag && (
-                                <span className="text-xs text-muted-foreground block">
-                                  {asset.assetTag}
-                                </span>
-                              )}
-                              <span className="text-xs text-muted-foreground">
-                                {asset.brand} {asset.model}
-                              </span>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm space-y-0.5">
-                            <div className="flex items-center gap-1">
-                              <Cpu className="h-3 w-3 text-muted-foreground" />
-                              <span className="truncate max-w-[150px]">{asset.processor}</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <HardDrive className="h-3 w-3 text-muted-foreground" />
-                              {asset.ram}GB RAM
-                              {asset.storageCapacity && ` / ${asset.storageCapacity}`}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-start gap-1">
-                            <MapPin className="h-3 w-3 mt-0.5 text-muted-foreground" />
-                            <div>
-                              <span className="text-sm">{asset.branch.name}</span>
-                              {asset.department && (
-                                <span className="text-xs text-muted-foreground block">{asset.department}</span>
-                              )}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {asset.assignedTo ? (
-                            <div>
-                              <span className="text-sm">{asset.assignedTo.name}</span>
-                              <span className="text-xs text-muted-foreground block">
-                                {asset.assignedTo.email}
-                              </span>
-                            </div>
-                          ) : asset.assignedUserName ? (
-                            <span className="text-sm">{asset.assignedUserName}</span>
-                          ) : (
-                            <span className="text-muted-foreground">Unassigned</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="space-y-1">
-                            {asset.operatingSystem && (
-                              <Badge variant="outline" className="text-xs">
-                                {asset.operatingSystem.name}
-                              </Badge>
-                            )}
-                            {asset.officeProduct && (
-                              <Badge variant="outline" className="text-xs">
-                                {asset.officeProduct.name}
-                              </Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="space-y-1">
-                            {getAVStatus(asset)}
-                            {asset.hardeningCompliant ? (
-                              <Badge variant="success" className="flex items-center gap-1 w-fit">
-                                <CheckCircle className="h-3 w-3" />
-                                Hardened
-                              </Badge>
-                            ) : asset.lastHardeningDate ? (
-                              <Badge variant="warning" className="flex items-center gap-1 w-fit">
-                                <AlertTriangle className="h-3 w-3" />
-                                Non-compliant
-                              </Badge>
-                            ) : null}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {getStatusBadge(asset.status)}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => router.push(`/admin/pc-management/${asset.id}`)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDelete(asset.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
+          <TabsContent value="inventory" className="space-y-6">
+            {/* Filters Card */}
+            <Card>
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Filter className="h-5 w-5 text-muted-foreground" />
+                    <CardTitle className="text-base">Search & Filter</CardTitle>
+                  </div>
+                  {hasActiveFilters && (
+                    <Button variant="ghost" size="sm" onClick={clearFilters}>
+                      <XCircle className="h-4 w-4 mr-1" />
+                      Clear
+                    </Button>
                   )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                  <div className="md:col-span-2 relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search hostname, serial, user, IP, MAC..."
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  <Select value={filterBranch || "all"} onValueChange={(value) => setFilterBranch(value === "all" ? "" : value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All Branches" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Branches</SelectItem>
+                      {branches.map((branch) => (
+                        <SelectItem key={branch.id} value={branch.id}>
+                          {branch.code} - {branch.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={filterStatus || "all"} onValueChange={(value) => setFilterStatus(value === "all" ? "" : value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="IN_USE">In Use</SelectItem>
+                      <SelectItem value="STOCK">Stock</SelectItem>
+                      <SelectItem value="BROKEN">Broken</SelectItem>
+                      <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
+                      <SelectItem value="DISPOSED">Disposed</SelectItem>
+                      <SelectItem value="RESERVED">Reserved</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={filterFormFactor || "all"} onValueChange={(value) => setFilterFormFactor(value === "all" ? "" : value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All Form Factors" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Form Factors</SelectItem>
+                      <SelectItem value="LAPTOP">Laptop</SelectItem>
+                      <SelectItem value="DESKTOP">Desktop</SelectItem>
+                      <SelectItem value="AIO">All-in-One</SelectItem>
+                      <SelectItem value="WORKSTATION">Workstation</SelectItem>
+                      <SelectItem value="SERVER">Server</SelectItem>
+                      <SelectItem value="THIN_CLIENT">Thin Client</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {hasActiveFilters && (
+                  <div className="mt-3 text-sm text-muted-foreground">
+                    Showing {pcAssets.length} PC assets
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
-        <TabsContent value="os-types">
-          <OSTypesTab />
-        </TabsContent>
-
-        <TabsContent value="office-types">
-          <OfficeTypesTab />
-        </TabsContent>
-
-        <TabsContent value="service-logs">
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Service Logs</CardTitle>
-              <CardDescription>Latest 10 service activities across all PC assets</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {dashboardStats?.recentServiceLogs && dashboardStats.recentServiceLogs.length > 0 ? (
+            {/* PC Assets Table */}
+            <Card>
+              <CardContent className="p-0">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>PC Asset</TableHead>
-                      <TableHead>Branch</TableHead>
-                      <TableHead>Service Type</TableHead>
-                      <TableHead>Technician</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Cost</TableHead>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="font-semibold">Asset</TableHead>
+                      <TableHead className="font-semibold">Specs</TableHead>
+                      <TableHead className="font-semibold">Location</TableHead>
+                      <TableHead className="font-semibold">User</TableHead>
+                      <TableHead className="font-semibold">Software</TableHead>
+                      <TableHead className="font-semibold">Security</TableHead>
+                      <TableHead className="font-semibold">Status</TableHead>
+                      <TableHead className="font-semibold">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {dashboardStats.recentServiceLogs.map((log) => (
-                      <TableRow key={log.id}>
-                        <TableCell>
-                          {format(new Date(log.performedAt), 'dd/MM/yyyy')}
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <span className="font-medium">{log.pcName}</span>
-                            {log.assetTag && (
-                              <span className="text-xs text-muted-foreground block">{log.assetTag}</span>
-                            )}
+                    {loading ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8">
+                          <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                            <RefreshCw className="h-4 w-4 animate-spin" />
+                            Loading PC assets...
                           </div>
                         </TableCell>
-                        <TableCell>{log.branchName}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{log.serviceType}</Badge>
-                        </TableCell>
-                        <TableCell>{log.performedBy}</TableCell>
-                        <TableCell>
-                          <Badge variant={log.status === 'RESOLVED' ? 'success' : 'warning'}>
-                            {log.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {log.cost ? `Rp ${Number(log.cost).toLocaleString('id-ID')}` : '-'}
+                      </TableRow>
+                    ) : pcAssets.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8">
+                          <div className="text-muted-foreground">
+                            <Monitor className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                            No PC assets found
+                          </div>
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ) : (
+                      pcAssets.map((asset) => (
+                        <TableRow key={asset.id} className="hover:bg-muted/30">
+                          <TableCell>
+                            <div className="flex items-start gap-2">
+                              {getFormFactorIcon(asset.formFactor)}
+                              <div>
+                                <span className="font-medium text-foreground">{asset.pcName}</span>
+                                {asset.assetTag && (
+                                  <span className="text-xs text-muted-foreground block">
+                                    {asset.assetTag}
+                                  </span>
+                                )}
+                                <span className="text-xs text-muted-foreground">
+                                  {asset.brand} {asset.model}
+                                </span>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm space-y-0.5">
+                              <div className="flex items-center gap-1 text-foreground">
+                                <Cpu className="h-3 w-3 text-muted-foreground" />
+                                <span className="truncate max-w-[150px]">{asset.processor}</span>
+                              </div>
+                              <div className="flex items-center gap-1 text-muted-foreground">
+                                <HardDrive className="h-3 w-3" />
+                                {asset.ram}GB RAM
+                                {asset.storageCapacity && ` / ${asset.storageCapacity}`}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-start gap-1">
+                              <MapPin className="h-3 w-3 mt-0.5 text-muted-foreground flex-shrink-0" />
+                              <div>
+                                <span className="text-sm text-foreground">{asset.branch.name}</span>
+                                {asset.department && (
+                                  <span className="text-xs text-muted-foreground block">{asset.department}</span>
+                                )}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {asset.assignedTo ? (
+                              <div>
+                                <span className="text-sm text-foreground">{asset.assignedTo.name}</span>
+                                <span className="text-xs text-muted-foreground block">
+                                  {asset.assignedTo.email}
+                                </span>
+                              </div>
+                            ) : asset.assignedUserName ? (
+                              <span className="text-sm text-foreground">{asset.assignedUserName}</span>
+                            ) : (
+                              <span className="text-muted-foreground">Unassigned</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-1">
+                              {asset.operatingSystem && (
+                                <Badge variant="outline" size="sm">
+                                  {asset.operatingSystem.name}
+                                </Badge>
+                              )}
+                              {asset.officeProduct && (
+                                <Badge variant="outline" size="sm">
+                                  {asset.officeProduct.name}
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-1">
+                              {getAVStatus(asset)}
+                              {asset.hardeningCompliant ? (
+                                <Badge variant="success-soft" size="sm" className="flex items-center gap-1 w-fit">
+                                  <CheckCircle className="h-3 w-3" />
+                                  Hardened
+                                </Badge>
+                              ) : asset.lastHardeningDate ? (
+                                <Badge variant="warning-soft" size="sm" className="flex items-center gap-1 w-fit">
+                                  <AlertTriangle className="h-3 w-3" />
+                                  Non-compliant
+                                </Badge>
+                              ) : null}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {getStatusBadge(asset.status)}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="iconSm"
+                                onClick={() => router.push(`/admin/pc-management/${asset.id}`)}
+                                title="Edit PC Asset"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="iconSm"
+                                onClick={() => handleDelete(asset.id)}
+                                title="Delete PC Asset"
+                                className="text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
-              ) : (
-                <p className="text-center text-muted-foreground py-8">No recent service logs</p>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="os-types">
+            <OSTypesTab />
+          </TabsContent>
+
+          <TabsContent value="office-types">
+            <OfficeTypesTab />
+          </TabsContent>
+
+          <TabsContent value="service-logs">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="h-5 w-5" />
+                  Recent Service Logs
+                </CardTitle>
+                <CardDescription>Latest 10 service activities across all PC assets</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {dashboardStats?.recentServiceLogs && dashboardStats.recentServiceLogs.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="font-semibold">Date</TableHead>
+                        <TableHead className="font-semibold">PC Asset</TableHead>
+                        <TableHead className="font-semibold">Branch</TableHead>
+                        <TableHead className="font-semibold">Service Type</TableHead>
+                        <TableHead className="font-semibold">Technician</TableHead>
+                        <TableHead className="font-semibold">Status</TableHead>
+                        <TableHead className="font-semibold">Cost</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {dashboardStats.recentServiceLogs.map((log) => (
+                        <TableRow key={log.id} className="hover:bg-muted/30">
+                          <TableCell className="text-foreground">
+                            {format(new Date(log.performedAt), 'dd/MM/yyyy')}
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <span className="font-medium text-foreground">{log.pcName}</span>
+                              {log.assetTag && (
+                                <span className="text-xs text-muted-foreground block">{log.assetTag}</span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">{log.branchName}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{log.serviceType}</Badge>
+                          </TableCell>
+                          <TableCell className="text-foreground">{log.performedBy}</TableCell>
+                          <TableCell>
+                            <Badge variant={log.status === 'RESOLVED' ? 'success' : 'warning'}>
+                              {log.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-foreground">
+                            {log.cost ? `Rp ${Number(log.cost).toLocaleString('id-ID')}` : '-'}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Activity className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                    No recent service logs
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 }
