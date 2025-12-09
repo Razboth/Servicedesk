@@ -27,7 +27,8 @@ import {
   Plus,
   ClipboardCheck,
   Activity,
-  Loader2
+  Loader2,
+  ChevronRight
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getTicketUrlId } from '@/lib/utils/ticket-utils'
