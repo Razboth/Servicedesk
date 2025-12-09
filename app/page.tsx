@@ -79,7 +79,7 @@ interface RecentTicket {
   ticketNumber: string
   title: string
   description: string
-  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | 'EMERGENCY'
   status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED' | 'ON_HOLD'
   service: string
   assignee: string
@@ -113,7 +113,8 @@ const getPriorityColor = (priority: string) => {
     LOW: 'bg-info/10 text-info border-info/20',
     MEDIUM: 'bg-warning/10 text-warning border-warning/20',
     HIGH: 'bg-destructive/10 text-destructive border-destructive/20',
-    URGENT: 'bg-destructive text-destructive-foreground border-destructive'
+    CRITICAL: 'bg-destructive text-destructive-foreground border-destructive',
+    EMERGENCY: 'bg-destructive text-destructive-foreground border-destructive'
   }
   return colors[priority] || colors.MEDIUM
 }
@@ -537,7 +538,7 @@ export default function Dashboard() {
                 <Button
                   variant="destructive"
                   size="sm"
-                  onClick={() => router.push('/tickets?priority=URGENT,HIGH&status=OPEN,IN_PROGRESS')}
+                  onClick={() => router.push('/tickets?priority=CRITICAL,EMERGENCY,HIGH&status=OPEN,IN_PROGRESS')}
                 >
                   View Now
                 </Button>

@@ -27,26 +27,35 @@ export async function GET(request: NextRequest) {
     const isUser = userRole === 'USER';
 
     // Build where clause for ticket statistics based on role
-    let ticketStatsWhere: any = {};
+    // Using a base filter that can be combined with AND
+    let ticketBaseFilter: any = {};
     let myTicketsWhere: any = {};
 
     if (isUser && branchId) {
       // Users see their own tickets
-      ticketStatsWhere = { createdById: userId };
+      ticketBaseFilter = { createdById: userId };
       myTicketsWhere = { createdById: userId };
     } else if (isManager && branchId) {
       // Managers see tickets from their branch
-      ticketStatsWhere = { branchId: branchId };
+      ticketBaseFilter = { branchId: branchId };
       myTicketsWhere = { branchId: branchId };
     } else if (isTechnician) {
       // Technicians see tickets assigned to them or their support group
       const supportGroupId = user?.supportGroupId;
-      ticketStatsWhere = supportGroupId
+      ticketBaseFilter = supportGroupId
         ? { OR: [{ assignedToId: userId }, { supportGroupId }] }
         : { assignedToId: userId };
       myTicketsWhere = { assignedToId: userId };
     }
     // Admins see all tickets (no additional filtering)
+
+    // Helper function to combine base filter with additional conditions
+    const combineFilters = (additionalFilters: any) => {
+      if (Object.keys(ticketBaseFilter).length === 0) {
+        return additionalFilters;
+      }
+      return { AND: [ticketBaseFilter, additionalFilters] };
+    };
 
     // Date ranges for trends
     const now = new Date();
@@ -78,85 +87,78 @@ export async function GET(request: NextRequest) {
       recentTickets
     ] = await Promise.all([
       // Total tickets count
-      prisma.ticket.count({ where: ticketStatsWhere }),
+      prisma.ticket.count({ where: ticketBaseFilter.OR ? ticketBaseFilter : ticketBaseFilter }),
 
       // Open tickets count
       prisma.ticket.count({
-        where: { ...ticketStatsWhere, status: 'OPEN' }
+        where: combineFilters({ status: 'OPEN' })
       }),
 
       // In Progress tickets count
       prisma.ticket.count({
-        where: { ...ticketStatsWhere, status: 'IN_PROGRESS' }
+        where: combineFilters({ status: 'IN_PROGRESS' })
       }),
 
       // Resolved tickets count
       prisma.ticket.count({
-        where: { ...ticketStatsWhere, status: 'RESOLVED' }
+        where: combineFilters({ status: 'RESOLVED' })
       }),
 
       // Closed tickets count
       prisma.ticket.count({
-        where: { ...ticketStatsWhere, status: 'CLOSED' }
+        where: combineFilters({ status: 'CLOSED' })
       }),
 
-      // Urgent tickets (open only)
+      // Critical/Emergency tickets (open only)
       prisma.ticket.count({
-        where: {
-          ...ticketStatsWhere,
-          priority: 'URGENT',
+        where: combineFilters({
+          priority: { in: ['CRITICAL', 'EMERGENCY'] },
           status: { in: ['OPEN', 'IN_PROGRESS'] }
-        }
+        })
       }),
 
       // High priority tickets (open only)
       prisma.ticket.count({
-        where: {
-          ...ticketStatsWhere,
+        where: combineFilters({
           priority: 'HIGH',
           status: { in: ['OPEN', 'IN_PROGRESS'] }
-        }
+        })
       }),
 
       // This month's tickets
       prisma.ticket.count({
-        where: {
-          ...ticketStatsWhere,
+        where: combineFilters({
           createdAt: { gte: thisMonthStart }
-        }
+        })
       }),
 
       // Last month's tickets
       prisma.ticket.count({
-        where: {
-          ...ticketStatsWhere,
+        where: combineFilters({
           createdAt: { gte: lastMonthStart, lte: lastMonthEnd }
-        }
+        })
       }),
 
       // This week's tickets
       prisma.ticket.count({
-        where: {
-          ...ticketStatsWhere,
+        where: combineFilters({
           createdAt: { gte: thisWeekStart }
-        }
+        })
       }),
 
       // Last week's tickets
       prisma.ticket.count({
-        where: {
-          ...ticketStatsWhere,
+        where: combineFilters({
           createdAt: { gte: lastWeekStart, lt: thisWeekStart }
-        }
+        })
       }),
 
       // Resolved this month
       prisma.ticket.count({
-        where: {
-          ...ticketStatsWhere,
+        where: combineFilters({
           status: { in: ['RESOLVED', 'CLOSED'] },
           resolvedAt: { gte: thisMonthStart }
-        }
+        })
       }),
 
       // My open tickets (for technicians)
@@ -182,7 +184,7 @@ export async function GET(request: NextRequest) {
 
       // Recent tickets (last 10)
       prisma.ticket.findMany({
-        where: ticketStatsWhere,
+        where: Object.keys(ticketBaseFilter).length > 0 ? ticketBaseFilter : undefined,
         take: 10,
         orderBy: { createdAt: 'desc' },
         include: {
@@ -196,11 +198,10 @@ export async function GET(request: NextRequest) {
 
     // Calculate average resolution time
     const resolvedTicketsWithTime = await prisma.ticket.findMany({
-      where: {
-        ...ticketStatsWhere,
+      where: combineFilters({
         status: { in: ['RESOLVED', 'CLOSED'] },
         resolvedAt: { not: null }
-      },
+      }),
       select: {
         createdAt: true,
         resolvedAt: true
@@ -232,11 +233,10 @@ export async function GET(request: NextRequest) {
 
     // Calculate SLA compliance
     const slaCompliantTickets = await prisma.ticket.count({
-      where: {
-        ...ticketStatsWhere,
+      where: combineFilters({
         status: { in: ['RESOLVED', 'CLOSED'] },
         slaBreached: false
-      }
+      })
     });
 
     const totalResolved = resolvedTickets + closedTickets;
