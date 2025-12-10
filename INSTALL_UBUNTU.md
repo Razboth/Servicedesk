@@ -347,15 +347,21 @@ Untuk menjalankan aplikasi dengan HTTPS di port 443 menggunakan sertifikat Bank 
 mkdir -p /var/www/servicedesk/certificates
 
 # Copy sertifikat Bank SulutGo ke folder certificates
-# Ganti dengan path sertifikat Anda
-sudo cp /path/to/your/certificate.pem /var/www/servicedesk/certificates/banksulutgo.pem
-sudo cp /path/to/your/private-key.pem /var/www/servicedesk/certificates/banksulutgo-key.pem
+# Format yang didukung: .crt/.key atau .pem
+sudo cp /path/to/your/banksulutgo.crt /var/www/servicedesk/certificates/
+sudo cp /path/to/your/banksulutgo.key /var/www/servicedesk/certificates/
 
 # Set permission yang benar
-sudo chmod 644 /var/www/servicedesk/certificates/banksulutgo.pem
-sudo chmod 600 /var/www/servicedesk/certificates/banksulutgo-key.pem
+sudo chmod 644 /var/www/servicedesk/certificates/banksulutgo.crt
+sudo chmod 600 /var/www/servicedesk/certificates/banksulutgo.key
 sudo chown -R $USER:$USER /var/www/servicedesk/certificates/
 ```
+
+> **Catatan Format Sertifikat:**
+> - `.crt` / `.cer` - File sertifikat (public)
+> - `.key` - File private key
+> - `.pem` - Bisa berisi sertifikat atau key (format Base64)
+> - Semua format di atas kompatibel dengan Node.js
 
 ### Langkah 2: Konfigurasi Environment Variables
 
@@ -373,10 +379,10 @@ env: {
   PORT: 443,
   HOSTNAME: '0.0.0.0',
   USE_HTTPS: 'true',
-  // SSL Certificate configuration
+  // SSL Certificate configuration (.crt dan .key)
   SSL_CERT_DIR: './certificates',
-  SSL_CERT_FILE: 'banksulutgo.pem',       // Nama file sertifikat
-  SSL_KEY_FILE: 'banksulutgo-key.pem',    // Nama file private key
+  SSL_CERT_FILE: 'banksulutgo.crt',       // File sertifikat (.crt atau .pem)
+  SSL_KEY_FILE: 'banksulutgo.key',        // File private key (.key atau .pem)
   NEXTAUTH_URL: 'https://hd.bsg.id',
   NEXT_PUBLIC_APP_URL: 'https://hd.bsg.id',
   // ... konfigurasi lainnya
@@ -389,8 +395,8 @@ Atau melalui file `.env`:
 USE_HTTPS=true
 PORT=443
 SSL_CERT_DIR=./certificates
-SSL_CERT_FILE=banksulutgo.pem
-SSL_KEY_FILE=banksulutgo-key.pem
+SSL_CERT_FILE=banksulutgo.crt
+SSL_KEY_FILE=banksulutgo.key
 NEXTAUTH_URL=https://hd.bsg.id
 ```
 
