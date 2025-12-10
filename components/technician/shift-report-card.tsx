@@ -36,6 +36,7 @@ import { ServerMetricsDisplay } from './server-metrics-display';
 import { ShiftChecklist } from './shift-checklist';
 import { BackupChecklist } from './backup-checklist';
 import { ShiftIssues } from './shift-issues';
+import { PendingIssuesAlert } from './pending-issues-alert';
 
 interface ShiftAssignment {
   id: string;
@@ -860,7 +861,11 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
             </TabsContent>
 
             {/* Issues Tab */}
-            <TabsContent value="issues" className="mt-4">
+            <TabsContent value="issues" className="mt-4 space-y-4">
+              {/* Alert for pending issues from previous shifts */}
+              {!isCompleted && (
+                <PendingIssuesAlert onAddIssue={handleCreateIssue} />
+              )}
               <ShiftIssues
                 ongoingIssues={ongoingIssues}
                 resolvedIssues={resolvedIssues}
