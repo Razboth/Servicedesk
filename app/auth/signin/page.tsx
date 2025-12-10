@@ -40,7 +40,7 @@ function SignInForm() {
 
       if (result?.error) {
         if (result.error.includes('locked') || result.error.includes('administrator')) {
-          setError('Your account has been locked due to too many failed login attempts. Please contact your administrator to unlock your account.');
+          setError('Akun Anda telah dikunci karena terlalu banyak percobaan login gagal. Silakan hubungi administrator untuk membuka kunci akun Anda.');
         } else {
           try {
             const response = await fetch('/api/auth/login-attempts', {
@@ -51,14 +51,14 @@ function SignInForm() {
             const data = await response.json();
 
             if (data.isLocked) {
-              setError('Your account has been locked due to too many failed login attempts. Please contact your administrator to unlock your account.');
+              setError('Akun Anda telah dikunci karena terlalu banyak percobaan login gagal. Silakan hubungi administrator untuk membuka kunci akun Anda.');
             } else if (data.remainingAttempts !== undefined && data.remainingAttempts > 0) {
-              setError(`Invalid credentials. ${data.remainingAttempts} attempts remaining before account lockout.`);
+              setError(`Kredensial tidak valid. ${data.remainingAttempts} percobaan tersisa sebelum akun dikunci.`);
             } else {
-              setError('Invalid credentials');
+              setError('Kredensial tidak valid');
             }
           } catch {
-            setError('Invalid credentials');
+            setError('Kredensial tidak valid');
           }
         }
       } else {
@@ -72,7 +72,7 @@ function SignInForm() {
         }
       }
     } catch (error) {
-      setError('An error occurred during login');
+      setError('Terjadi kesalahan saat login');
     } finally {
       setIsLoading(false);
     }
@@ -118,12 +118,12 @@ function SignInForm() {
           <div className="space-y-8">
             <div className="space-y-4">
               <h1 className="text-4xl font-bold leading-tight">
-                IT Service Management
+                Portal Layanan
                 <br />
-                <span className="text-primary-foreground/80">Portal</span>
+                <span className="text-primary-foreground/80">TI Bank SulutGo</span>
               </h1>
               <p className="text-lg text-primary-foreground/70 max-w-md">
-                Streamlined IT support and service delivery for Bank SulutGo across 250+ branches.
+                Dukungan TI dan layanan yang efisien untuk Bank SulutGo di 250+ cabang.
               </p>
             </div>
 
@@ -134,8 +134,8 @@ function SignInForm() {
                   <Shield className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="font-medium">ITIL v4 Compliant</p>
-                  <p className="text-sm text-primary-foreground/60">Enterprise-grade service management</p>
+                  <p className="font-medium">Sesuai ITIL v4</p>
+                  <p className="text-sm text-primary-foreground/60">Manajemen layanan kelas enterprise</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -143,8 +143,8 @@ function SignInForm() {
                   <Sparkles className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="font-medium">Real-time Monitoring</p>
-                  <p className="text-sm text-primary-foreground/60">ATM & network status tracking</p>
+                  <p className="font-medium">Monitoring Real-time</p>
+                  <p className="text-sm text-primary-foreground/60">Pemantauan status ATM & jaringan</p>
                 </div>
               </div>
             </div>
@@ -171,10 +171,10 @@ function SignInForm() {
           {/* Header */}
           <div className="text-center lg:text-left">
             <h2 className="text-2xl font-bold tracking-tight text-foreground">
-              Welcome back
+              Selamat Datang
             </h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Sign in to your ServiceDesk account
+              Masuk ke akun ServiceDesk Anda
             </p>
           </div>
 
@@ -197,7 +197,7 @@ function SignInForm() {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="username" className="text-foreground font-medium">
-                  Username
+                  Nama Pengguna
                 </Label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -210,14 +210,14 @@ function SignInForm() {
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     className="pl-10 h-12 bg-background border-input"
-                    placeholder="Enter your username"
+                    placeholder="Masukkan nama pengguna"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-foreground font-medium">
-                  Password
+                  Kata Sandi
                 </Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -230,7 +230,7 @@ function SignInForm() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-10 h-12 bg-background border-input"
-                    placeholder="Enter your password"
+                    placeholder="Masukkan kata sandi"
                   />
                 </div>
               </div>
@@ -240,7 +240,7 @@ function SignInForm() {
                   href="/auth/forgot-password"
                   className="text-sm font-medium text-primary hover:text-primary/80 transition-colors"
                 >
-                  Forgot password?
+                  Lupa kata sandi?
                 </Link>
               </div>
             </div>
@@ -253,12 +253,12 @@ function SignInForm() {
               {isLoading ? (
                 <>
                   <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
-                  Signing in...
+                  Sedang masuk...
                 </>
               ) : (
                 <>
                   <LogIn className="mr-2 h-4 w-4" />
-                  Sign in
+                  Masuk
                 </>
               )}
             </Button>
@@ -271,7 +271,7 @@ function SignInForm() {
             </div>
             <div className="relative flex justify-center text-xs uppercase">
               <span className="bg-background px-3 text-muted-foreground">
-                Need assistance?
+                Butuh bantuan?
               </span>
             </div>
           </div>
@@ -279,13 +279,13 @@ function SignInForm() {
           {/* Help Text */}
           <div className="text-center space-y-2">
             <p className="text-sm text-muted-foreground">
-              Contact IT Support for account issues
+              Hubungi IT Support untuk masalah akun
             </p>
             <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
               <span>{getVersionString()}</span>
               <span>|</span>
               <Link href="/about" className="hover:text-foreground transition-colors">
-                About
+                Tentang
               </Link>
             </div>
           </div>
@@ -301,7 +301,7 @@ export default function SignInPage() {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex items-center gap-3">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          <span className="text-foreground">Loading...</span>
+          <span className="text-foreground">Memuat...</span>
         </div>
       </div>
     }>
