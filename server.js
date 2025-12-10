@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -35,14 +68,17 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 var https_1 = require("https");
 var http_1 = require("http");
 var url_1 = require("url");
-var next_1 = require("next");
-var fs = require("fs");
-var path = require("path");
-var dotenv = require("dotenv");
+var next_1 = __importDefault(require("next"));
+var fs = __importStar(require("fs"));
+var path = __importStar(require("path"));
+var dotenv = __importStar(require("dotenv"));
 var socket_manager_1 = require("./lib/socket-manager");
 // Load environment variables based on NODE_ENV
 var envFile = process.env.NODE_ENV === 'development'
@@ -54,19 +90,28 @@ var hostname = process.env.HOSTNAME || 'localhost';
 var port = parseInt(process.env.PORT || '3000', 10);
 var useHttps = process.env.USE_HTTPS !== 'false'; // Default to HTTPS
 // Configure Next.js
-var app = next_1(({ dev: dev, hostname: hostname, port: port }));
+var app = (0, next_1.default)({ dev: dev, hostname: hostname, port: port });
 var handle = app.getRequestHandler();
-// Certificate paths
-var certsDir = path.join(__dirname, 'certificates');
+// Certificate paths - configurable via environment variables
+var certsDir = process.env.SSL_CERT_DIR || path.join(process.cwd(), 'certificates');
+var sslCertFile = process.env.SSL_CERT_FILE || 'localhost.pem';
+var sslKeyFile = process.env.SSL_KEY_FILE || 'localhost-key.pem';
 // Function to check if certificates exist
 var certificatesExist = function () {
-    var certPath = path.join(certsDir, 'localhost.pem');
-    var keyPath = path.join(certsDir, 'localhost-key.pem');
+    var certPath = path.join(certsDir, sslCertFile);
+    var keyPath = path.join(certsDir, sslKeyFile);
     return fs.existsSync(certPath) && fs.existsSync(keyPath);
+};
+// Function to get certificate paths
+var getCertificatePaths = function () {
+    return {
+        cert: path.join(certsDir, sslCertFile),
+        key: path.join(certsDir, sslKeyFile),
+    };
 };
 // Function to start the server
 var startServer = function () { return __awaiter(void 0, void 0, void 0, function () {
-    var server_1, httpsOptions, error_1;
+    var server_1, certPaths, httpsOptions, error_1;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -75,10 +120,14 @@ var startServer = function () { return __awaiter(void 0, void 0, void 0, functio
             case 1:
                 _a.sent();
                 if (useHttps && certificatesExist()) {
+                    certPaths = getCertificatePaths();
                     httpsOptions = {
-                        key: fs.readFileSync(path.join(certsDir, 'localhost-key.pem')),
-                        cert: fs.readFileSync(path.join(certsDir, 'localhost.pem')),
+                        key: fs.readFileSync(certPaths.key),
+                        cert: fs.readFileSync(certPaths.cert),
                     };
+                    console.log("\uD83D\uDCDC Loading SSL certificates from:");
+                    console.log("   Certificate: ".concat(certPaths.cert));
+                    console.log("   Key: ".concat(certPaths.key));
                     server_1 = (0, https_1.createServer)(httpsOptions, function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
                         var parsedUrl, err_1;
                         return __generator(this, function (_a) {

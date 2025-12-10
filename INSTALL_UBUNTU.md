@@ -244,6 +244,133 @@ sudo ufw allow 3000
 
 ---
 
+## Setup SSL Certificate (HTTPS Port 443)
+
+Untuk menjalankan aplikasi dengan HTTPS di port 443 menggunakan sertifikat Bank SulutGo:
+
+### Langkah 1: Siapkan Sertifikat
+
+```bash
+# Buat folder certificates jika belum ada
+mkdir -p /var/www/servicedesk/certificates
+
+# Copy sertifikat Bank SulutGo ke folder certificates
+# Ganti dengan path sertifikat Anda
+sudo cp /path/to/your/certificate.pem /var/www/servicedesk/certificates/banksulutgo.pem
+sudo cp /path/to/your/private-key.pem /var/www/servicedesk/certificates/banksulutgo-key.pem
+
+# Set permission yang benar
+sudo chmod 644 /var/www/servicedesk/certificates/banksulutgo.pem
+sudo chmod 600 /var/www/servicedesk/certificates/banksulutgo-key.pem
+sudo chown -R $USER:$USER /var/www/servicedesk/certificates/
+```
+
+### Langkah 2: Konfigurasi Environment Variables
+
+Edit file `ecosystem.config.js` atau `.env`:
+
+```bash
+nano ecosystem.config.js
+```
+
+Pastikan konfigurasi berikut sudah benar:
+
+```javascript
+env: {
+  NODE_ENV: 'production',
+  PORT: 443,
+  HOSTNAME: '0.0.0.0',
+  USE_HTTPS: 'true',
+  // SSL Certificate configuration
+  SSL_CERT_DIR: './certificates',
+  SSL_CERT_FILE: 'banksulutgo.pem',       // Nama file sertifikat
+  SSL_KEY_FILE: 'banksulutgo-key.pem',    // Nama file private key
+  NEXTAUTH_URL: 'https://hd.bsg.id',
+  NEXT_PUBLIC_APP_URL: 'https://hd.bsg.id',
+  // ... konfigurasi lainnya
+}
+```
+
+Atau melalui file `.env`:
+
+```env
+USE_HTTPS=true
+PORT=443
+SSL_CERT_DIR=./certificates
+SSL_CERT_FILE=banksulutgo.pem
+SSL_KEY_FILE=banksulutgo-key.pem
+NEXTAUTH_URL=https://hd.bsg.id
+```
+
+### Langkah 3: Jalankan dengan Sudo (Port 443 memerlukan root)
+
+```bash
+# Stop PM2 jika sudah berjalan
+pm2 stop all
+
+# Jalankan dengan sudo untuk akses port 443
+sudo pm2 start ecosystem.config.js
+
+# Simpan konfigurasi PM2
+sudo pm2 save
+
+# Setup startup otomatis
+sudo pm2 startup
+```
+
+### Langkah 4: Verifikasi
+
+```bash
+# Cek status
+sudo pm2 status
+
+# Lihat logs
+sudo pm2 logs bsg-servicedesk
+
+# Test HTTPS
+curl -k https://localhost:443
+```
+
+Buka browser dan akses: `https://hd.bsg.id`
+
+### Format Sertifikat yang Didukung
+
+- **PEM Format** (.pem, .crt, .cer): Format paling umum
+- **Certificate Chain**: Gabungkan certificate + intermediate + root CA dalam satu file
+
+Contoh menggabungkan certificate chain:
+
+```bash
+cat your-certificate.crt intermediate.crt root.crt > banksulutgo.pem
+```
+
+### Troubleshooting SSL
+
+**Error: EACCES permission denied (port 443)**
+```bash
+# Gunakan sudo atau berikan capability
+sudo setcap 'cap_net_bind_service=+ep' $(which node)
+```
+
+**Error: SSL certificate not found**
+```bash
+# Periksa file sertifikat
+ls -la /var/www/servicedesk/certificates/
+```
+
+**Error: SSL certificate invalid**
+```bash
+# Verifikasi sertifikat
+openssl x509 -in certificates/banksulutgo.pem -text -noout
+
+# Verifikasi key match dengan certificate
+openssl x509 -noout -modulus -in certificates/banksulutgo.pem | openssl md5
+openssl rsa -noout -modulus -in certificates/banksulutgo-key.pem | openssl md5
+# Output MD5 harus sama
+```
+
+---
+
 ## Setup Nginx (Opsional - Rekomendasi untuk Production)
 
 ```bash

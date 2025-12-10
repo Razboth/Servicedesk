@@ -24,14 +24,24 @@ const useHttps = process.env.USE_HTTPS !== 'false'; // Default to HTTPS
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
-// Certificate paths
-const certsDir = path.join(process.cwd(), 'certificates');
+// Certificate paths - configurable via environment variables
+const certsDir = process.env.SSL_CERT_DIR || path.join(process.cwd(), 'certificates');
+const sslCertFile = process.env.SSL_CERT_FILE || 'localhost.pem';
+const sslKeyFile = process.env.SSL_KEY_FILE || 'localhost-key.pem';
 
 // Function to check if certificates exist
 const certificatesExist = (): boolean => {
-  const certPath = path.join(certsDir, 'localhost.pem');
-  const keyPath = path.join(certsDir, 'localhost-key.pem');
+  const certPath = path.join(certsDir, sslCertFile);
+  const keyPath = path.join(certsDir, sslKeyFile);
   return fs.existsSync(certPath) && fs.existsSync(keyPath);
+};
+
+// Function to get certificate paths
+const getCertificatePaths = () => {
+  return {
+    cert: path.join(certsDir, sslCertFile),
+    key: path.join(certsDir, sslKeyFile),
+  };
 };
 
 // Function to start the server
@@ -43,10 +53,15 @@ const startServer = async () => {
     
     if (useHttps && certificatesExist()) {
       // HTTPS Server
+      const certPaths = getCertificatePaths();
       const httpsOptions = {
-        key: fs.readFileSync(path.join(certsDir, 'localhost-key.pem')),
-        cert: fs.readFileSync(path.join(certsDir, 'localhost.pem')),
+        key: fs.readFileSync(certPaths.key),
+        cert: fs.readFileSync(certPaths.cert),
       };
+
+      console.log(`📜 Loading SSL certificates from:`);
+      console.log(`   Certificate: ${certPaths.cert}`);
+      console.log(`   Key: ${certPaths.key}`);
       
       server = createHttpsServer(httpsOptions, async (req, res) => {
         try {
