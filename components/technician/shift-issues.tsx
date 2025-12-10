@@ -22,8 +22,29 @@ import {
   Trash2,
   ChevronDown,
   ChevronRight,
+  Ticket,
+  ExternalLink,
+  User,
+  Calendar,
 } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+
+interface TicketInfo {
+  id: string;
+  ticketNumber: string;
+  title: string;
+  status: string;
+  priority: string;
+  service: { name: string } | null;
+  assignedTo: { name: string } | null;
+  createdAt: string;
+}
 
 interface ShiftIssue {
   id: string;
@@ -34,13 +55,16 @@ interface ShiftIssue {
   resolution: string | null;
   resolvedAt: string | null;
   createdAt: string;
+  ticketNumber: string | null;
+  ticketId: string | null;
+  ticket: TicketInfo | null;
 }
 
 interface ShiftIssuesProps {
   ongoingIssues: ShiftIssue[];
   resolvedIssues: ShiftIssue[];
-  onCreateIssue: (issue: { title: string; description?: string; priority?: string }) => Promise<void>;
-  onUpdateIssue: (issue: { id: string; title?: string; description?: string; status?: string; priority?: string; resolution?: string }) => Promise<void>;
+  onCreateIssue: (issue: { title: string; description?: string; priority?: string; ticketNumber?: string }) => Promise<void>;
+  onUpdateIssue: (issue: { id: string; title?: string; description?: string; status?: string; priority?: string; resolution?: string; ticketNumber?: string }) => Promise<void>;
   onDeleteIssue: (id: string) => Promise<void>;
   isLoading?: boolean;
   readOnly?: boolean;
@@ -63,9 +87,9 @@ export function ShiftIssues({
   readOnly = false,
 }: ShiftIssuesProps) {
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newIssue, setNewIssue] = useState({ title: '', description: '', priority: 'MEDIUM' });
+  const [newIssue, setNewIssue] = useState({ title: '', description: '', priority: 'MEDIUM', ticketNumber: '' });
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editData, setEditData] = useState<Partial<ShiftIssue>>({});
+  const [editData, setEditData] = useState<Partial<ShiftIssue> & { ticketNumber?: string }>({});
   const [showResolved, setShowResolved] = useState(false);
   const [localLoading, setLocalLoading] = useState(false);
 
@@ -73,8 +97,11 @@ export function ShiftIssues({
     if (!newIssue.title.trim() || localLoading) return;
     setLocalLoading(true);
     try {
-      await onCreateIssue(newIssue);
-      setNewIssue({ title: '', description: '', priority: 'MEDIUM' });
+      await onCreateIssue({
+        ...newIssue,
+        ticketNumber: newIssue.ticketNumber || undefined,
+      });
+      setNewIssue({ title: '', description: '', priority: 'MEDIUM', ticketNumber: '' });
       setShowAddForm(false);
     } finally {
       setLocalLoading(false);
@@ -118,6 +145,7 @@ export function ShiftIssues({
       description: issue.description || '',
       priority: issue.priority,
       resolution: issue.resolution || '',
+      ticketNumber: issue.ticketNumber || '',
     });
   };
 
@@ -152,20 +180,28 @@ export function ShiftIssues({
             placeholder="Deskripsi masalah"
             className="min-h-[60px] text-sm"
           />
-          <Select
-            value={editData.priority}
-            onValueChange={(value) => setEditData({ ...editData, priority: value })}
-          >
-            <SelectTrigger className="h-8 text-sm">
-              <SelectValue placeholder="Prioritas" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="LOW">Rendah</SelectItem>
-              <SelectItem value="MEDIUM">Sedang</SelectItem>
-              <SelectItem value="HIGH">Tinggi</SelectItem>
-              <SelectItem value="CRITICAL">Kritis</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex gap-2">
+            <Select
+              value={editData.priority}
+              onValueChange={(value) => setEditData({ ...editData, priority: value })}
+            >
+              <SelectTrigger className="h-8 text-sm flex-1">
+                <SelectValue placeholder="Prioritas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="LOW">Rendah</SelectItem>
+                <SelectItem value="MEDIUM">Sedang</SelectItem>
+                <SelectItem value="HIGH">Tinggi</SelectItem>
+                <SelectItem value="CRITICAL">Kritis</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input
+              value={editData.ticketNumber || ''}
+              onChange={(e) => setEditData({ ...editData, ticketNumber: e.target.value })}
+              placeholder="No. Tiket (opsional)"
+              className="h-8 text-sm flex-1"
+            />
+          </div>
           {isResolved && (
             <Textarea
               value={editData.resolution || ''}
@@ -186,6 +222,14 @@ export function ShiftIssues({
       );
     }
 
+    const ticketStatusColors: Record<string, string> = {
+      OPEN: 'text-blue-600',
+      IN_PROGRESS: 'text-yellow-600',
+      RESOLVED: 'text-green-600',
+      CLOSED: 'text-gray-600',
+      ON_HOLD: 'text-orange-600',
+    };
+
     return (
       <div
         key={issue.id}
@@ -203,6 +247,62 @@ export function ShiftIssues({
               <Badge className={cn('text-[10px] h-4 px-1', priority.color)}>
                 {priority.label}
               </Badge>
+              {/* Ticket Number Badge with Tooltip */}
+              {issue.ticketNumber && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <a
+                        href={issue.ticket ? `/tickets/${issue.ticketNumber}` : '#'}
+                        className={cn(
+                          'inline-flex items-center gap-1 text-[10px] h-4 px-1.5 rounded-md',
+                          'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300',
+                          'hover:bg-indigo-200 dark:hover:bg-indigo-800 transition-colors',
+                          !issue.ticket && 'opacity-60 cursor-default'
+                        )}
+                        onClick={(e) => !issue.ticket && e.preventDefault()}
+                      >
+                        <Ticket className="h-2.5 w-2.5" />
+                        {issue.ticketNumber}
+                        {issue.ticket && <ExternalLink className="h-2 w-2" />}
+                      </a>
+                    </TooltipTrigger>
+                    {issue.ticket ? (
+                      <TooltipContent side="top" className="max-w-xs">
+                        <div className="space-y-1.5 text-xs">
+                          <div className="font-medium">{issue.ticket.title}</div>
+                          <div className="flex items-center gap-3 text-muted-foreground">
+                            <span className={cn('font-medium', ticketStatusColors[issue.ticket.status] || 'text-gray-600')}>
+                              {issue.ticket.status}
+                            </span>
+                            <span>•</span>
+                            <span>{issue.ticket.priority}</span>
+                          </div>
+                          {issue.ticket.service && (
+                            <div className="text-muted-foreground">
+                              Layanan: {issue.ticket.service.name}
+                            </div>
+                          )}
+                          {issue.ticket.assignedTo && (
+                            <div className="flex items-center gap-1 text-muted-foreground">
+                              <User className="h-3 w-3" />
+                              {issue.ticket.assignedTo.name}
+                            </div>
+                          )}
+                          <div className="flex items-center gap-1 text-muted-foreground">
+                            <Calendar className="h-3 w-3" />
+                            {new Date(issue.ticket.createdAt).toLocaleDateString('id-ID')}
+                          </div>
+                        </div>
+                      </TooltipContent>
+                    ) : (
+                      <TooltipContent side="top">
+                        <p className="text-xs">Tiket tidak ditemukan di sistem</p>
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                </TooltipProvider>
+              )}
             </div>
             {issue.description && (
               <p className="text-xs text-muted-foreground mt-1">{issue.description}</p>
@@ -303,20 +403,28 @@ export function ShiftIssues({
               placeholder="Deskripsi masalah (opsional)"
               className="min-h-[60px] text-sm"
             />
-            <Select
-              value={newIssue.priority}
-              onValueChange={(value) => setNewIssue({ ...newIssue, priority: value })}
-            >
-              <SelectTrigger className="h-8 text-sm">
-                <SelectValue placeholder="Prioritas" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="LOW">Rendah</SelectItem>
-                <SelectItem value="MEDIUM">Sedang</SelectItem>
-                <SelectItem value="HIGH">Tinggi</SelectItem>
-                <SelectItem value="CRITICAL">Kritis</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex gap-2">
+              <Select
+                value={newIssue.priority}
+                onValueChange={(value) => setNewIssue({ ...newIssue, priority: value })}
+              >
+                <SelectTrigger className="h-8 text-sm flex-1">
+                  <SelectValue placeholder="Prioritas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="LOW">Rendah</SelectItem>
+                  <SelectItem value="MEDIUM">Sedang</SelectItem>
+                  <SelectItem value="HIGH">Tinggi</SelectItem>
+                  <SelectItem value="CRITICAL">Kritis</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input
+                value={newIssue.ticketNumber}
+                onChange={(e) => setNewIssue({ ...newIssue, ticketNumber: e.target.value })}
+                placeholder="No. Tiket (opsional)"
+                className="h-8 text-sm flex-1"
+              />
+            </div>
             <div className="flex gap-2">
               <Button size="sm" className="h-7 text-xs" onClick={handleCreate} disabled={localLoading || !newIssue.title.trim()}>
                 Simpan

@@ -43,6 +43,22 @@ export async function POST(
       );
     }
 
+    // If ticket number is provided, look up the ticket
+    let ticketId = null;
+    let ticketNumber = body.ticketNumber || null;
+
+    if (ticketNumber) {
+      const ticket = await prisma.ticket.findUnique({
+        where: { ticketNumber: ticketNumber },
+        select: { id: true, ticketNumber: true },
+      });
+
+      if (ticket) {
+        ticketId = ticket.id;
+        ticketNumber = ticket.ticketNumber;
+      }
+    }
+
     // Create the issue
     const newIssue = await prisma.shiftIssue.create({
       data: {
@@ -51,6 +67,22 @@ export async function POST(
         description: body.description || null,
         status: body.status || 'ONGOING',
         priority: body.priority || 'MEDIUM',
+        ticketId,
+        ticketNumber,
+      },
+      include: {
+        ticket: {
+          select: {
+            id: true,
+            ticketNumber: true,
+            title: true,
+            status: true,
+            priority: true,
+            service: { select: { name: true } },
+            assignedTo: { select: { name: true } },
+            createdAt: true,
+          },
+        },
       },
     });
 
@@ -115,6 +147,30 @@ export async function PUT(
       );
     }
 
+    // If ticket number is being updated, look up the ticket
+    let ticketUpdateData: { ticketId?: string | null; ticketNumber?: string | null } = {};
+    if (body.ticketNumber !== undefined) {
+      if (body.ticketNumber) {
+        const ticket = await prisma.ticket.findUnique({
+          where: { ticketNumber: body.ticketNumber },
+          select: { id: true, ticketNumber: true },
+        });
+
+        if (ticket) {
+          ticketUpdateData.ticketId = ticket.id;
+          ticketUpdateData.ticketNumber = ticket.ticketNumber;
+        } else {
+          // Ticket number provided but not found - still store it
+          ticketUpdateData.ticketId = null;
+          ticketUpdateData.ticketNumber = body.ticketNumber;
+        }
+      } else {
+        // Clear ticket link
+        ticketUpdateData.ticketId = null;
+        ticketUpdateData.ticketNumber = null;
+      }
+    }
+
     // Update the issue
     const updatedIssue = await prisma.shiftIssue.update({
       where: { id: body.id },
@@ -125,6 +181,21 @@ export async function PUT(
         priority: body.priority !== undefined ? body.priority : undefined,
         resolution: body.resolution !== undefined ? body.resolution : undefined,
         resolvedAt: body.status === 'RESOLVED' ? new Date() : body.status === 'ONGOING' ? null : undefined,
+        ...ticketUpdateData,
+      },
+      include: {
+        ticket: {
+          select: {
+            id: true,
+            ticketNumber: true,
+            title: true,
+            status: true,
+            priority: true,
+            service: { select: { name: true } },
+            assignedTo: { select: { name: true } },
+            createdAt: true,
+          },
+        },
       },
     });
 

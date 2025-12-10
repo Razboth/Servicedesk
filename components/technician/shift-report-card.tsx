@@ -299,7 +299,7 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
     }
   };
 
-  const handleCreateIssue = async (issue: { title: string; description?: string; priority?: string }) => {
+  const handleCreateIssue = async (issue: { title: string; description?: string; priority?: string; ticketNumber?: string }) => {
     try {
       setIsUpdating(true);
       const response = await fetch(
@@ -323,7 +323,7 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
     }
   };
 
-  const handleUpdateIssue = async (issue: { id: string; title?: string; description?: string; status?: string; priority?: string; resolution?: string }) => {
+  const handleUpdateIssue = async (issue: { id: string; title?: string; description?: string; status?: string; priority?: string; resolution?: string; ticketNumber?: string }) => {
     try {
       setIsUpdating(true);
       const response = await fetch(

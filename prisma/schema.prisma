@@ -382,6 +382,7 @@ model Ticket {
   service                Service               @relation(fields: [serviceId], references: [id])
   supportGroup           SupportGroup?         @relation(fields: [supportGroupId], references: [id])
   vendorTickets          VendorTicket[]
+  shiftIssues            ShiftIssue[]
 
   @@index([serviceId])
   @@index([status])
@@ -2923,14 +2924,20 @@ model ShiftIssue {
   resolvedAt            DateTime?
   resolution            String?                 @db.Text
 
+  // Optional linked ticket
+  ticketId              String?
+  ticketNumber          String?
+
   // Metadata
   createdAt             DateTime                @default(now())
   updatedAt             DateTime                @updatedAt
 
   // Relations
   shiftReport           ShiftReport             @relation(fields: [shiftReportId], references: [id], onDelete: Cascade)
+  ticket                Ticket?                 @relation(fields: [ticketId], references: [id], onDelete: SetNull)
 
   @@index([shiftReportId, status])
+  @@index([ticketId])
   @@map("shift_issues")
 }
 

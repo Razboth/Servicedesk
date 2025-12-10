@@ -37,6 +37,20 @@ export async function GET(
             },
             issues: {
               orderBy: { createdAt: 'desc' },
+              include: {
+                ticket: {
+                  select: {
+                    id: true,
+                    ticketNumber: true,
+                    title: true,
+                    status: true,
+                    priority: true,
+                    service: { select: { name: true } },
+                    assignedTo: { select: { name: true } },
+                    createdAt: true,
+                  },
+                },
+              },
             },
           },
         },
@@ -123,6 +137,20 @@ export async function GET(
           },
           issues: {
             orderBy: { createdAt: 'desc' },
+            include: {
+              ticket: {
+                select: {
+                  id: true,
+                  ticketNumber: true,
+                  title: true,
+                  status: true,
+                  priority: true,
+                  service: { select: { name: true } },
+                  assignedTo: { select: { name: true } },
+                  createdAt: true,
+                },
+              },
+            },
           },
         },
       });
