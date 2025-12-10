@@ -454,13 +454,29 @@ export default function TechnicianShiftsPage() {
       </Card>
 
       {/* Shift Report Card - Show when user has active working shift */}
-      {hasActiveShift && (
+      {hasActiveShift && todayShift && (
         <ShiftReportCard
           shiftAssignment={todayShift}
           onReportCreated={() => {
             // Optionally refresh data after report is created
           }}
         />
+      )}
+
+      {/* Debug info - remove after testing */}
+      {!hasActiveShift && (
+        <Card className="border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
+          <CardContent className="pt-6">
+            <p className="text-sm text-yellow-700 dark:text-yellow-300">
+              <strong>Info:</strong> Laporan shift akan muncul ketika Anda memiliki shift aktif hari ini.
+              {todayShift ? (
+                <span> Shift Anda saat ini: <strong>{todayShift.shiftType}</strong> (bukan shift kerja aktif)</span>
+              ) : (
+                <span> Anda tidak memiliki shift yang ditugaskan untuk hari ini.</span>
+              )}
+            </p>
+          </CardContent>
+        </Card>
       )}
 
       {/* Upcoming Shifts */}

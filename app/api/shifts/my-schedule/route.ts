@@ -49,15 +49,23 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Get today's date range
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    // Get today's date in local timezone (WITA - UTC+8)
+    // The shift dates are stored as date-only strings (YYYY-MM-DD) in the database
+    // So we need to create date ranges that match the local date, not UTC
+    const now = new Date();
+    // Create today's date string in YYYY-MM-DD format
+    const todayStr = now.toLocaleDateString('en-CA'); // Returns YYYY-MM-DD format
+
+    // Parse today as start of day in UTC (since DB stores dates as UTC midnight)
+    const today = new Date(todayStr + 'T00:00:00.000Z');
+    const tomorrow = new Date(todayStr + 'T00:00:00.000Z');
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
 
     // Get next 7 days for upcoming shifts
-    const nextWeek = new Date(today);
-    nextWeek.setDate(nextWeek.getDate() + 7);
+    const nextWeek = new Date(todayStr + 'T00:00:00.000Z');
+    nextWeek.setUTCDate(nextWeek.getUTCDate() + 7);
+
+    console.log('Shift lookup - Today:', todayStr, 'Range:', today.toISOString(), 'to', tomorrow.toISOString());
 
     // Fetch today's shift using staffProfileId
     const todayShift = await prisma.shiftAssignment.findFirst({

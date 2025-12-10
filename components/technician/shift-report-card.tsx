@@ -229,11 +229,234 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
       const data = await response.json();
 
       if (format === 'xlsx') {
-        // For now, just show the data - could integrate with xlsx library
-        console.log('Export data:', data);
-        toast.success('Data ekspor siap. Fitur unduh sedang dalam pengembangan.');
+        // Dynamic import for xlsx
+        const XLSX = (await import('xlsx')).default;
+        const workbook = XLSX.utils.book_new();
+
+        // Create sheets for each section
+        data.excelData.forEach((section: { title: string; headers?: string[]; rows: string[][] }) => {
+          let sheetData: string[][] = [];
+
+          if (section.headers) {
+            sheetData.push(section.headers);
+          }
+          sheetData = sheetData.concat(section.rows);
+
+          const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
+          XLSX.utils.book_append_sheet(workbook, worksheet, section.title.substring(0, 31));
+        });
+
+        // Generate and download
+        const dateStr = new Date(shiftAssignment.date).toISOString().split('T')[0];
+        XLSX.writeFile(workbook, `Laporan_Shift_${dateStr}.xlsx`);
+        toast.success('File Excel berhasil diunduh');
       } else {
-        toast.success('Ekspor PDF sedang dalam pengembangan.');
+        // Dynamic import for jsPDF
+        const { jsPDF } = await import('jspdf');
+        const doc = new jsPDF();
+
+        const exportData = data.data;
+        let yPos = 20;
+        const lineHeight = 7;
+        const pageHeight = 280;
+        const margin = 20;
+
+        // Helper function to add new page if needed
+        const checkPageBreak = (neededSpace: number) => {
+          if (yPos + neededSpace > pageHeight) {
+            doc.addPage();
+            yPos = 20;
+          }
+        };
+
+        // Title
+        doc.setFontSize(18);
+        doc.setFont('helvetica', 'bold');
+        doc.text('LAPORAN SHIFT', 105, yPos, { align: 'center' });
+        yPos += 10;
+
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Bank SulutGo ServiceDesk', 105, yPos, { align: 'center' });
+        yPos += 15;
+
+        // Shift Information
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Informasi Shift', margin, yPos);
+        yPos += lineHeight;
+
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+
+        const shiftInfo = [
+          ['Tanggal', new Date(exportData.shiftInfo.date).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })],
+          ['Jenis Shift', exportData.shiftInfo.shiftType],
+          ['Teknisi', exportData.shiftInfo.technician],
+          ['Cabang', exportData.shiftInfo.branch],
+          ['Status', exportData.reportInfo.status],
+          ['Waktu Mulai', new Date(exportData.reportInfo.startedAt).toLocaleString('id-ID')],
+          ['Waktu Selesai', exportData.reportInfo.completedAt ? new Date(exportData.reportInfo.completedAt).toLocaleString('id-ID') : '-'],
+        ];
+
+        shiftInfo.forEach(([label, value]) => {
+          doc.setFont('helvetica', 'bold');
+          doc.text(`${label}:`, margin, yPos);
+          doc.setFont('helvetica', 'normal');
+          doc.text(String(value), margin + 40, yPos);
+          yPos += lineHeight;
+        });
+
+        yPos += 5;
+
+        // Server Metrics
+        checkPageBreak(50);
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Metrik Server', margin, yPos);
+        yPos += lineHeight;
+
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+
+        if (exportData.serverMetrics) {
+          const metrics = exportData.serverMetrics;
+          const metricsInfo = [
+            ['CPU Usage', `${metrics.cpu.usagePercent?.toFixed(1) || '-'}%`],
+            ['RAM Usage', `${metrics.ram.usagePercent?.toFixed(1) || '-'}%`],
+            ['Disk Usage', `${metrics.disk.usagePercent?.toFixed(1) || '-'}%`],
+            ['Uptime', metrics.uptime.days ? `${metrics.uptime.days} hari` : '-'],
+          ];
+
+          metricsInfo.forEach(([label, value]) => {
+            doc.setFont('helvetica', 'bold');
+            doc.text(`${label}:`, margin, yPos);
+            doc.setFont('helvetica', 'normal');
+            doc.text(String(value), margin + 40, yPos);
+            yPos += lineHeight;
+          });
+        } else {
+          doc.text('Laporan metrik tidak tersedia', margin, yPos);
+          yPos += lineHeight;
+        }
+
+        yPos += 5;
+
+        // Checklist
+        checkPageBreak(30);
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Daftar Periksa', margin, yPos);
+        yPos += lineHeight;
+
+        doc.setFontSize(10);
+
+        // Group checklist by category
+        const categories: Record<string, typeof exportData.checklist> = {};
+        exportData.checklist.forEach((item: { category: string; title: string; status: string; isRequired: boolean; notes: string | null }) => {
+          if (!categories[item.category]) {
+            categories[item.category] = [];
+          }
+          categories[item.category].push(item);
+        });
+
+        Object.entries(categories).forEach(([category, items]) => {
+          checkPageBreak(20);
+          doc.setFont('helvetica', 'bold');
+          doc.text(category, margin, yPos);
+          yPos += lineHeight;
+
+          doc.setFont('helvetica', 'normal');
+          (items as { title: string; status: string; isRequired: boolean; notes: string | null }[]).forEach((item) => {
+            checkPageBreak(15);
+            const statusIcon = item.status === 'Selesai' ? '[✓]' : item.status === 'Dilewati' ? '[~]' : '[ ]';
+            const required = item.isRequired ? '(Wajib)' : '';
+            doc.text(`  ${statusIcon} ${item.title} ${required}`, margin, yPos);
+            yPos += lineHeight;
+
+            if (item.notes) {
+              doc.setFontSize(8);
+              doc.text(`      Catatan: ${item.notes}`, margin, yPos);
+              doc.setFontSize(10);
+              yPos += lineHeight;
+            }
+          });
+          yPos += 3;
+        });
+
+        // Summary
+        if (exportData.summary.summary || exportData.summary.handoverNotes || exportData.summary.issuesEncountered || exportData.summary.pendingActions) {
+          checkPageBreak(40);
+          yPos += 5;
+          doc.setFontSize(14);
+          doc.setFont('helvetica', 'bold');
+          doc.text('Ringkasan', margin, yPos);
+          yPos += lineHeight;
+
+          doc.setFontSize(10);
+
+          if (exportData.summary.summary) {
+            doc.setFont('helvetica', 'bold');
+            doc.text('Ringkasan:', margin, yPos);
+            yPos += lineHeight;
+            doc.setFont('helvetica', 'normal');
+            const summaryLines = doc.splitTextToSize(exportData.summary.summary, 170);
+            doc.text(summaryLines, margin, yPos);
+            yPos += summaryLines.length * lineHeight + 3;
+          }
+
+          if (exportData.summary.handoverNotes) {
+            checkPageBreak(20);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Catatan Serah Terima:', margin, yPos);
+            yPos += lineHeight;
+            doc.setFont('helvetica', 'normal');
+            const handoverLines = doc.splitTextToSize(exportData.summary.handoverNotes, 170);
+            doc.text(handoverLines, margin, yPos);
+            yPos += handoverLines.length * lineHeight + 3;
+          }
+
+          if (exportData.summary.issuesEncountered) {
+            checkPageBreak(20);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Masalah yang Ditemui:', margin, yPos);
+            yPos += lineHeight;
+            doc.setFont('helvetica', 'normal');
+            const issuesLines = doc.splitTextToSize(exportData.summary.issuesEncountered, 170);
+            doc.text(issuesLines, margin, yPos);
+            yPos += issuesLines.length * lineHeight + 3;
+          }
+
+          if (exportData.summary.pendingActions) {
+            checkPageBreak(20);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Tindakan Tertunda:', margin, yPos);
+            yPos += lineHeight;
+            doc.setFont('helvetica', 'normal');
+            const pendingLines = doc.splitTextToSize(exportData.summary.pendingActions, 170);
+            doc.text(pendingLines, margin, yPos);
+            yPos += pendingLines.length * lineHeight + 3;
+          }
+        }
+
+        // Footer
+        const pageCount = doc.getNumberOfPages();
+        for (let i = 1; i <= pageCount; i++) {
+          doc.setPage(i);
+          doc.setFontSize(8);
+          doc.setFont('helvetica', 'normal');
+          doc.text(
+            `Dicetak: ${new Date().toLocaleString('id-ID')} | Halaman ${i} dari ${pageCount}`,
+            105,
+            290,
+            { align: 'center' }
+          );
+        }
+
+        // Save the PDF
+        const dateStr = new Date(shiftAssignment.date).toISOString().split('T')[0];
+        doc.save(`Laporan_Shift_${dateStr}.pdf`);
+        toast.success('File PDF berhasil diunduh');
       }
     } catch (error) {
       console.error('Error exporting report:', error);
