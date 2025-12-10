@@ -127,6 +127,10 @@ Simpan dengan `Ctrl+X`, lalu `Y`, lalu `Enter`.
 
 ## Langkah 8: Setup Database
 
+Ada dua opsi setup database:
+
+### Opsi A: Database Baru (Fresh Install)
+
 ```bash
 # Generate Prisma client
 npx prisma generate
@@ -135,6 +139,94 @@ npx prisma generate
 npx prisma db push
 
 # Seed data awal
+npx prisma db seed
+```
+
+### Opsi B: Restore dari Database Existing
+
+Jika Anda memiliki backup database dari server lama, ikuti langkah berikut:
+
+#### 1. Transfer file backup ke server baru
+
+```bash
+# Dari server lama, export database:
+pg_dump -h localhost -U postgres -d servicedesk_database -F c -f servicedesk_backup.dump
+
+# Transfer ke server baru menggunakan scp:
+scp servicedesk_backup.dump user@server_baru:/tmp/
+```
+
+#### 2. Restore database
+
+```bash
+# Buat database baru jika belum ada
+sudo -u postgres psql << EOF
+CREATE DATABASE servicedesk_database OWNER postgres;
+EOF
+
+# Restore dari backup (format custom .dump)
+pg_restore -h localhost -U postgres -d servicedesk_database -c /tmp/servicedesk_backup.dump
+
+# ATAU jika backup dalam format SQL (.sql)
+psql -h localhost -U postgres -d servicedesk_database < /tmp/servicedesk_backup.sql
+```
+
+#### 3. Jalankan script migrasi untuk upgrade schema
+
+Script ini akan menambahkan tabel, kolom, dan enum baru yang mungkin belum ada di database lama:
+
+```bash
+# Pindah ke direktori aplikasi
+cd /var/www/servicedesk
+
+# Jalankan script migrasi dengan backup otomatis
+./scripts/migrate-database.sh -d servicedesk_database -u postgres -b
+
+# ATAU jalankan SQL langsung (jika sudah yakin)
+psql -h localhost -U postgres -d servicedesk_database -f scripts/migrate-database.sql
+```
+
+**Opsi script migrasi:**
+
+```bash
+# Lihat bantuan
+./scripts/migrate-database.sh --help
+
+# Dry run (preview tanpa eksekusi)
+./scripts/migrate-database.sh --dry-run
+
+# Tanpa backup (tidak disarankan)
+./scripts/migrate-database.sh --skip-backup
+
+# Custom host dan database
+./scripts/migrate-database.sh -h 192.168.1.100 -p 5432 -d my_database -u my_user
+```
+
+#### 4. Sync Prisma dengan database
+
+```bash
+# Generate Prisma client
+npx prisma generate
+
+# Push schema (untuk field/index yang mungkin terlewat)
+npx prisma db push --accept-data-loss
+
+# Verifikasi dengan Prisma Studio
+npx prisma studio
+```
+
+#### 5. Seed data template baru (opsional)
+
+Jika database lama belum memiliki template untuk fitur baru:
+
+```bash
+# Seed template shift checklist
+npx tsx scripts/seed-shift-checklist-templates.ts
+
+# Seed template backup database
+npx tsx scripts/seed-shift-backup-templates.ts
+
+# Atau jalankan semua seed
 npx prisma db seed
 ```
 
