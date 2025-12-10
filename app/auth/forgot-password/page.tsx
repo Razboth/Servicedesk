@@ -40,10 +40,10 @@ export default function ForgotPasswordPage() {
       if (data.success) {
         setIsSubmitted(true);
       } else {
-        setError('An error occurred. Please try again.');
+        setError('Terjadi kesalahan. Silakan coba lagi.');
       }
     } catch (error) {
-      setError('An error occurred. Please try again.');
+      setError('Terjadi kesalahan. Silakan coba lagi.');
     } finally {
       setIsLoading(false);
     }
@@ -89,12 +89,12 @@ export default function ForgotPasswordPage() {
           <div className="space-y-8">
             <div className="space-y-4">
               <h1 className="text-4xl font-bold leading-tight">
-                Password Recovery
+                Pemulihan
                 <br />
-                <span className="text-primary-foreground/80">Portal</span>
+                <span className="text-primary-foreground/80">Kata Sandi</span>
               </h1>
               <p className="text-lg text-primary-foreground/70 max-w-md">
-                Secure password recovery for Bank SulutGo ServiceDesk accounts.
+                Pemulihan kata sandi yang aman untuk akun Bank SulutGo ServiceDesk.
               </p>
             </div>
 
@@ -105,8 +105,8 @@ export default function ForgotPasswordPage() {
                   <Shield className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="font-medium">Secure Process</p>
-                  <p className="text-sm text-primary-foreground/60">Temporary password sent via email</p>
+                  <p className="font-medium">Proses Aman</p>
+                  <p className="text-sm text-primary-foreground/60">Kata sandi sementara dikirim via email</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -114,8 +114,8 @@ export default function ForgotPasswordPage() {
                   <Lock className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="font-medium">Quick Recovery</p>
-                  <p className="text-sm text-primary-foreground/60">Regain access in minutes</p>
+                  <p className="font-medium">Pemulihan Cepat</p>
+                  <p className="text-sm text-primary-foreground/60">Akses kembali dalam hitungan menit</p>
                 </div>
               </div>
             </div>
@@ -150,10 +150,10 @@ export default function ForgotPasswordPage() {
                   </div>
                 </div>
                 <h2 className="text-2xl font-bold tracking-tight text-foreground">
-                  Check your email
+                  Periksa Email Anda
                 </h2>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  A temporary password has been sent to your email address
+                  Kata sandi sementara telah dikirim ke alamat email Anda
                 </p>
               </div>
 
@@ -163,31 +163,31 @@ export default function ForgotPasswordPage() {
                 <div className="flex items-start gap-3 p-4 rounded-lg bg-muted border border-border">
                   <Info className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-0.5" />
                   <p className="text-sm text-muted-foreground">
-                    If an account with <strong className="text-foreground">{email}</strong> exists, you will receive a temporary password to login.
+                    Jika akun dengan email <strong className="text-foreground">{email}</strong> terdaftar, Anda akan menerima kata sandi sementara untuk login.
                   </p>
                 </div>
 
                 {/* Next Steps */}
                 <div className="p-4 rounded-lg bg-[hsl(var(--info)/0.1)] border border-[hsl(var(--info)/0.2)]">
                   <p className="text-sm font-medium text-[hsl(var(--info))]">
-                    Next steps:
+                    Langkah selanjutnya:
                   </p>
                   <ol className="text-sm text-[hsl(var(--info)/0.8)] mt-2 space-y-1 list-decimal list-inside">
-                    <li>Check your email (including spam folder)</li>
-                    <li>Login using the temporary password</li>
-                    <li>You will be prompted to create a new password</li>
+                    <li>Periksa email Anda (termasuk folder spam)</li>
+                    <li>Login menggunakan kata sandi sementara</li>
+                    <li>Anda akan diminta membuat kata sandi baru</li>
                   </ol>
                 </div>
 
                 {/* Warning */}
                 <div className="p-4 rounded-lg bg-[hsl(var(--warning)/0.1)] border border-[hsl(var(--warning)/0.2)]">
                   <p className="text-sm font-medium text-[hsl(var(--warning))]">
-                    Did not receive email?
+                    Tidak menerima email?
                   </p>
                   <ul className="text-sm text-[hsl(var(--warning)/0.8)] mt-2 space-y-1 list-disc list-inside">
-                    <li>Check your spam or junk folder</li>
-                    <li>Verify the email address is correct</li>
-                    <li>Contact IT Support if issues persist</li>
+                    <li>Periksa folder spam atau junk</li>
+                    <li>Pastikan alamat email benar</li>
+                    <li>Hubungi IT Support jika masalah berlanjut</li>
                   </ul>
                 </div>
 
@@ -196,7 +196,7 @@ export default function ForgotPasswordPage() {
                   <Link href="/auth/signin" className="block">
                     <Button className="w-full h-12 bg-primary text-primary-foreground hover:bg-primary/90 font-medium">
                       <Mail className="mr-2 h-4 w-4" />
-                      Go to Login
+                      Ke Halaman Login
                     </Button>
                   </Link>
 
@@ -208,7 +208,7 @@ export default function ForgotPasswordPage() {
                     variant="outline"
                     className="w-full h-12 border-border text-foreground hover:bg-muted"
                   >
-                    Try a different email
+                    Coba email lain
                   </Button>
                 </div>
               </div>
@@ -220,7 +220,7 @@ export default function ForgotPasswordPage() {
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
                   <span className="bg-background px-3 text-muted-foreground">
-                    Need assistance?
+                    Butuh bantuan?
                   </span>
                 </div>
               </div>
@@ -228,13 +228,13 @@ export default function ForgotPasswordPage() {
               {/* Help Text */}
               <div className="text-center space-y-2">
                 <p className="text-sm text-muted-foreground">
-                  Contact IT Support for account issues
+                  Hubungi IT Support untuk masalah akun
                 </p>
                 <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
                   <span>{getVersionString()}</span>
                   <span>|</span>
                   <Link href="/about" className="hover:text-foreground transition-colors">
-                    About
+                    Tentang
                   </Link>
                 </div>
               </div>
@@ -245,10 +245,10 @@ export default function ForgotPasswordPage() {
               {/* Header */}
               <div className="text-center lg:text-left">
                 <h2 className="text-2xl font-bold tracking-tight text-foreground">
-                  Forgot password?
+                  Lupa Kata Sandi?
                 </h2>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Enter your email and we will send you a temporary password to login
+                  Masukkan email Anda dan kami akan mengirimkan kata sandi sementara untuk login
                 </p>
               </div>
 
@@ -264,7 +264,7 @@ export default function ForgotPasswordPage() {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="email" className="text-foreground font-medium">
-                      Email Address
+                      Alamat Email
                     </Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -277,7 +277,7 @@ export default function ForgotPasswordPage() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         className="pl-10 h-12 bg-background border-input"
-                        placeholder="Enter your email address"
+                        placeholder="Masukkan alamat email Anda"
                         disabled={isLoading}
                       />
                     </div>
@@ -287,7 +287,7 @@ export default function ForgotPasswordPage() {
                   <div className="flex items-start gap-3 p-4 rounded-lg bg-muted border border-border">
                     <Info className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-0.5" />
                     <p className="text-sm text-muted-foreground">
-                      A temporary password will be sent to your registered email. You will be required to change your password after login.
+                      Kata sandi sementara akan dikirim ke email terdaftar. Anda akan diminta untuk mengubah kata sandi setelah login.
                     </p>
                   </div>
                 </div>
@@ -300,12 +300,12 @@ export default function ForgotPasswordPage() {
                   {isLoading ? (
                     <>
                       <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
-                      Sending...
+                      Mengirim...
                     </>
                   ) : (
                     <>
                       <KeyRound className="mr-2 h-4 w-4" />
-                      Send Temporary Password
+                      Kirim Kata Sandi Sementara
                     </>
                   )}
                 </Button>
@@ -317,7 +317,7 @@ export default function ForgotPasswordPage() {
                     className="w-full h-12 border-border text-foreground hover:bg-muted"
                   >
                     <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back to Login
+                    Kembali ke Login
                   </Button>
                 </Link>
               </form>
@@ -329,7 +329,7 @@ export default function ForgotPasswordPage() {
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
                   <span className="bg-background px-3 text-muted-foreground">
-                    Need assistance?
+                    Butuh bantuan?
                   </span>
                 </div>
               </div>
@@ -337,13 +337,13 @@ export default function ForgotPasswordPage() {
               {/* Help Text */}
               <div className="text-center space-y-2">
                 <p className="text-sm text-muted-foreground">
-                  Contact IT Support for account issues
+                  Hubungi IT Support untuk masalah akun
                 </p>
                 <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
                   <span>{getVersionString()}</span>
                   <span>|</span>
                   <Link href="/about" className="hover:text-foreground transition-colors">
-                    About
+                    Tentang
                   </Link>
                 </div>
               </div>
