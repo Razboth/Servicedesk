@@ -256,103 +256,207 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
         const doc = new jsPDF();
 
         const exportData = data.data;
-        let yPos = 20;
-        const lineHeight = 7;
-        const pageHeight = 280;
-        const margin = 20;
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const margin = 15;
+        const contentWidth = pageWidth - margin * 2;
+        let yPos = 15;
+        const lineHeight = 6;
 
-        // Helper function to add new page if needed
+        // Colors
+        const primaryColor: [number, number, number] = [0, 82, 147]; // BSG Blue
+        const secondaryColor: [number, number, number] = [100, 100, 100];
+        const lightGray: [number, number, number] = [245, 245, 245];
+        const borderColor: [number, number, number] = [200, 200, 200];
+
+        // Helper function to add new page with header
+        const addNewPage = () => {
+          doc.addPage();
+          yPos = 15;
+          addHeader();
+        };
+
+        // Helper function to check page break
         const checkPageBreak = (neededSpace: number) => {
-          if (yPos + neededSpace > pageHeight) {
-            doc.addPage();
-            yPos = 20;
+          if (yPos + neededSpace > pageHeight - 25) {
+            addNewPage();
           }
         };
 
-        // Title
-        doc.setFontSize(18);
-        doc.setFont('helvetica', 'bold');
-        doc.text('LAPORAN SHIFT', 105, yPos, { align: 'center' });
-        yPos += 10;
-
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'normal');
-        doc.text('Bank SulutGo ServiceDesk', 105, yPos, { align: 'center' });
-        yPos += 15;
-
-        // Shift Information
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Informasi Shift', margin, yPos);
-        yPos += lineHeight;
-
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-
-        const shiftInfo = [
-          ['Tanggal', new Date(exportData.shiftInfo.date).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })],
-          ['Jenis Shift', exportData.shiftInfo.shiftType],
-          ['Teknisi', exportData.shiftInfo.technician],
-          ['Cabang', exportData.shiftInfo.branch],
-          ['Status', exportData.reportInfo.status],
-          ['Waktu Mulai', new Date(exportData.reportInfo.startedAt).toLocaleString('id-ID')],
-          ['Waktu Selesai', exportData.reportInfo.completedAt ? new Date(exportData.reportInfo.completedAt).toLocaleString('id-ID') : '-'],
-        ];
-
-        shiftInfo.forEach(([label, value]) => {
+        // Helper function to draw section header
+        const drawSectionHeader = (title: string) => {
+          checkPageBreak(15);
+          doc.setFillColor(...primaryColor);
+          doc.rect(margin, yPos, contentWidth, 8, 'F');
+          doc.setTextColor(255, 255, 255);
+          doc.setFontSize(11);
           doc.setFont('helvetica', 'bold');
-          doc.text(`${label}:`, margin, yPos);
+          doc.text(title, margin + 3, yPos + 5.5);
+          doc.setTextColor(0, 0, 0);
+          yPos += 12;
+        };
+
+        // Helper function to draw info row
+        const drawInfoRow = (label: string, value: string, isAlternate: boolean = false) => {
+          if (isAlternate) {
+            doc.setFillColor(...lightGray);
+            doc.rect(margin, yPos - 4, contentWidth, 7, 'F');
+          }
+          doc.setFontSize(9);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(...secondaryColor);
+          doc.text(label, margin + 3, yPos);
           doc.setFont('helvetica', 'normal');
-          doc.text(String(value), margin + 40, yPos);
-          yPos += lineHeight;
-        });
+          doc.setTextColor(0, 0, 0);
+          doc.text(value, margin + 45, yPos);
+          yPos += 7;
+        };
+
+        // Add header with logo
+        const addHeader = async () => {
+          // Header background
+          doc.setFillColor(...primaryColor);
+          doc.rect(0, 0, pageWidth, 35, 'F');
+
+          // Try to add logo
+          try {
+            const logoImg = new Image();
+            logoImg.crossOrigin = 'anonymous';
+            await new Promise<void>((resolve, reject) => {
+              logoImg.onload = () => resolve();
+              logoImg.onerror = () => reject();
+              logoImg.src = '/logo-bsg.png';
+            });
+
+            // Create canvas to get base64
+            const canvas = document.createElement('canvas');
+            canvas.width = logoImg.width;
+            canvas.height = logoImg.height;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(logoImg, 0, 0);
+              const logoBase64 = canvas.toDataURL('image/png');
+              doc.addImage(logoBase64, 'PNG', margin, 5, 25, 25);
+            }
+          } catch {
+            // If logo fails, just add text
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(12);
+            doc.setFont('helvetica', 'bold');
+            doc.text('BSG', margin + 5, 20);
+          }
+
+          // Title text
+          doc.setTextColor(255, 255, 255);
+          doc.setFontSize(18);
+          doc.setFont('helvetica', 'bold');
+          doc.text('LAPORAN STANDBY', pageWidth / 2 + 10, 15, { align: 'center' });
+
+          doc.setFontSize(10);
+          doc.setFont('helvetica', 'normal');
+          doc.text('PT Bank SulutGo - Divisi Teknologi Informasi', pageWidth / 2 + 10, 22, { align: 'center' });
+
+          // Date on header
+          const reportDate = new Date(exportData.shiftInfo.date).toLocaleDateString('id-ID', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          });
+          doc.setFontSize(9);
+          doc.text(reportDate, pageWidth / 2 + 10, 29, { align: 'center' });
+
+          doc.setTextColor(0, 0, 0);
+          yPos = 42;
+        };
+
+        // Add header to first page
+        await addHeader();
+
+        // Shift Information Section
+        drawSectionHeader('INFORMASI SHIFT');
+
+        const shiftTypeLabels: Record<string, string> = {
+          NIGHT_WEEKDAY: 'Malam Weekday (20:00-07:59)',
+          DAY_WEEKEND: 'Siang Weekend (08:00-19:00)',
+          NIGHT_WEEKEND: 'Malam Weekend (20:00-07:59)',
+          STANDBY_ONCALL: 'Standby On-Call',
+          STANDBY_BRANCH: 'Standby Cabang',
+        };
+
+        const statusLabelsMap: Record<string, string> = {
+          DRAFT: 'Draft',
+          IN_PROGRESS: 'Sedang Dikerjakan',
+          COMPLETED: 'Selesai',
+        };
+
+        drawInfoRow('Nama Teknisi', exportData.shiftInfo.technician, true);
+        drawInfoRow('Cabang', exportData.shiftInfo.branch, false);
+        drawInfoRow('Jenis Shift', shiftTypeLabels[exportData.shiftInfo.shiftType] || exportData.shiftInfo.shiftType, true);
+        drawInfoRow('Status Laporan', statusLabelsMap[exportData.reportInfo.status] || exportData.reportInfo.status, false);
+        drawInfoRow('Waktu Mulai', new Date(exportData.reportInfo.startedAt).toLocaleString('id-ID'), true);
+        drawInfoRow('Waktu Selesai', exportData.reportInfo.completedAt ? new Date(exportData.reportInfo.completedAt).toLocaleString('id-ID') : '-', false);
 
         yPos += 5;
 
-        // Server Metrics
-        checkPageBreak(50);
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Metrik Server', margin, yPos);
-        yPos += lineHeight;
-
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
+        // Server Metrics Section
+        drawSectionHeader('KONDISI SERVER');
 
         if (exportData.serverMetrics) {
           const metrics = exportData.serverMetrics;
-          const metricsInfo = [
-            ['CPU Usage', `${metrics.cpu.usagePercent?.toFixed(1) || '-'}%`],
-            ['RAM Usage', `${metrics.ram.usagePercent?.toFixed(1) || '-'}%`],
-            ['Disk Usage', `${metrics.disk.usagePercent?.toFixed(1) || '-'}%`],
-            ['Uptime', metrics.uptime.days ? `${metrics.uptime.days} hari` : '-'],
+
+          // Draw metrics in a grid
+          const metricsData = [
+            { label: 'CPU Usage', value: `${metrics.cpu.usagePercent?.toFixed(1) || '-'}%`, status: (metrics.cpu.usagePercent || 0) > 80 ? 'warning' : 'normal' },
+            { label: 'RAM Usage', value: `${metrics.ram.usagePercent?.toFixed(1) || '-'}%`, status: (metrics.ram.usagePercent || 0) > 80 ? 'warning' : 'normal' },
+            { label: 'Disk Usage', value: `${metrics.disk.usagePercent?.toFixed(1) || '-'}%`, status: (metrics.disk.usagePercent || 0) > 80 ? 'warning' : 'normal' },
+            { label: 'Uptime', value: metrics.uptime.days ? `${metrics.uptime.days} hari` : '-', status: 'normal' },
           ];
 
-          metricsInfo.forEach(([label, value]) => {
-            doc.setFont('helvetica', 'bold');
-            doc.text(`${label}:`, margin, yPos);
+          const boxWidth = (contentWidth - 10) / 4;
+          metricsData.forEach((metric, index) => {
+            const xPos = margin + (index * (boxWidth + 3));
+
+            // Box background
+            doc.setFillColor(...lightGray);
+            doc.roundedRect(xPos, yPos, boxWidth, 20, 2, 2, 'F');
+
+            // Border based on status
+            if (metric.status === 'warning') {
+              doc.setDrawColor(255, 150, 0);
+            } else {
+              doc.setDrawColor(...borderColor);
+            }
+            doc.roundedRect(xPos, yPos, boxWidth, 20, 2, 2, 'S');
+
+            // Label
+            doc.setFontSize(8);
+            doc.setTextColor(...secondaryColor);
             doc.setFont('helvetica', 'normal');
-            doc.text(String(value), margin + 40, yPos);
-            yPos += lineHeight;
+            doc.text(metric.label, xPos + boxWidth / 2, yPos + 6, { align: 'center' });
+
+            // Value
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            doc.setFont('helvetica', 'bold');
+            doc.text(metric.value, xPos + boxWidth / 2, yPos + 15, { align: 'center' });
           });
+
+          yPos += 28;
         } else {
-          doc.text('Laporan metrik tidak tersedia', margin, yPos);
-          yPos += lineHeight;
+          doc.setFillColor(...lightGray);
+          doc.roundedRect(margin, yPos, contentWidth, 15, 2, 2, 'F');
+          doc.setFontSize(10);
+          doc.setTextColor(...secondaryColor);
+          doc.text('Laporan metrik tidak tersedia', pageWidth / 2, yPos + 9, { align: 'center' });
+          yPos += 22;
         }
 
-        yPos += 5;
-
-        // Checklist
-        checkPageBreak(30);
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Daftar Periksa', margin, yPos);
-        yPos += lineHeight;
-
-        doc.setFontSize(10);
+        // Checklist Section
+        drawSectionHeader('DAFTAR PERIKSA');
 
         // Group checklist by category
-        const categories: Record<string, typeof exportData.checklist> = {};
+        const categories: Record<string, { title: string; status: string; isRequired: boolean; notes: string | null }[]> = {};
         exportData.checklist.forEach((item: { category: string; title: string; status: string; isRequired: boolean; notes: string | null }) => {
           if (!categories[item.category]) {
             categories[item.category] = [];
@@ -362,100 +466,142 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
 
         Object.entries(categories).forEach(([category, items]) => {
           checkPageBreak(20);
+
+          // Category header
+          doc.setFillColor(230, 240, 250);
+          doc.rect(margin, yPos - 4, contentWidth, 7, 'F');
+          doc.setFontSize(9);
           doc.setFont('helvetica', 'bold');
-          doc.text(category, margin, yPos);
-          yPos += lineHeight;
+          doc.setTextColor(...primaryColor);
+          doc.text(category, margin + 3, yPos);
+          yPos += 6;
 
+          doc.setTextColor(0, 0, 0);
           doc.setFont('helvetica', 'normal');
-          (items as { title: string; status: string; isRequired: boolean; notes: string | null }[]).forEach((item) => {
-            checkPageBreak(15);
-            const statusIcon = item.status === 'Selesai' ? '[✓]' : item.status === 'Dilewati' ? '[~]' : '[ ]';
-            const required = item.isRequired ? '(Wajib)' : '';
-            doc.text(`  ${statusIcon} ${item.title} ${required}`, margin, yPos);
-            yPos += lineHeight;
 
+          items.forEach((item, index) => {
+            checkPageBreak(12);
+
+            // Alternating row background
+            if (index % 2 === 0) {
+              doc.setFillColor(252, 252, 252);
+              doc.rect(margin, yPos - 3, contentWidth, 6, 'F');
+            }
+
+            // Status checkbox
+            const checkX = margin + 3;
+            doc.setDrawColor(...borderColor);
+            doc.rect(checkX, yPos - 3, 4, 4, 'S');
+
+            if (item.status === 'Selesai') {
+              doc.setFillColor(0, 150, 0);
+              doc.rect(checkX + 0.5, yPos - 2.5, 3, 3, 'F');
+            } else if (item.status === 'Dilewati') {
+              doc.setFillColor(200, 200, 200);
+              doc.rect(checkX + 0.5, yPos - 2.5, 3, 3, 'F');
+            }
+
+            // Item title
+            doc.setFontSize(8);
+            doc.setFont('helvetica', 'normal');
+            doc.text(item.title, margin + 10, yPos);
+
+            // Required badge
+            if (item.isRequired) {
+              doc.setFillColor(220, 53, 69);
+              const badgeX = margin + 10 + doc.getTextWidth(item.title) + 2;
+              doc.roundedRect(badgeX, yPos - 3, 12, 4, 1, 1, 'F');
+              doc.setTextColor(255, 255, 255);
+              doc.setFontSize(6);
+              doc.text('Wajib', badgeX + 6, yPos - 0.5, { align: 'center' });
+              doc.setTextColor(0, 0, 0);
+            }
+
+            // Status text
+            doc.setFontSize(7);
+            doc.setTextColor(...secondaryColor);
+            doc.text(item.status, pageWidth - margin - 3, yPos, { align: 'right' });
+            doc.setTextColor(0, 0, 0);
+
+            yPos += 6;
+
+            // Notes if any
             if (item.notes) {
-              doc.setFontSize(8);
-              doc.text(`      Catatan: ${item.notes}`, margin, yPos);
-              doc.setFontSize(10);
-              yPos += lineHeight;
+              doc.setFillColor(255, 253, 230);
+              doc.rect(margin + 8, yPos - 3, contentWidth - 8, 5, 'F');
+              doc.setFontSize(7);
+              doc.setTextColor(100, 100, 100);
+              doc.text(`Catatan: ${item.notes}`, margin + 10, yPos);
+              doc.setTextColor(0, 0, 0);
+              yPos += 6;
             }
           });
-          yPos += 3;
+
+          yPos += 4;
         });
 
-        // Summary
+        // Summary Section
         if (exportData.summary.summary || exportData.summary.handoverNotes || exportData.summary.issuesEncountered || exportData.summary.pendingActions) {
-          checkPageBreak(40);
-          yPos += 5;
-          doc.setFontSize(14);
-          doc.setFont('helvetica', 'bold');
-          doc.text('Ringkasan', margin, yPos);
-          yPos += lineHeight;
+          yPos += 3;
+          drawSectionHeader('RINGKASAN & CATATAN');
 
-          doc.setFontSize(10);
+          const summaryFields = [
+            { label: 'Ringkasan Aktivitas', value: exportData.summary.summary },
+            { label: 'Catatan Serah Terima', value: exportData.summary.handoverNotes },
+            { label: 'Masalah yang Ditemui', value: exportData.summary.issuesEncountered },
+            { label: 'Tindakan Tertunda', value: exportData.summary.pendingActions },
+          ];
 
-          if (exportData.summary.summary) {
-            doc.setFont('helvetica', 'bold');
-            doc.text('Ringkasan:', margin, yPos);
-            yPos += lineHeight;
-            doc.setFont('helvetica', 'normal');
-            const summaryLines = doc.splitTextToSize(exportData.summary.summary, 170);
-            doc.text(summaryLines, margin, yPos);
-            yPos += summaryLines.length * lineHeight + 3;
-          }
+          summaryFields.forEach((field) => {
+            if (field.value) {
+              checkPageBreak(25);
 
-          if (exportData.summary.handoverNotes) {
-            checkPageBreak(20);
-            doc.setFont('helvetica', 'bold');
-            doc.text('Catatan Serah Terima:', margin, yPos);
-            yPos += lineHeight;
-            doc.setFont('helvetica', 'normal');
-            const handoverLines = doc.splitTextToSize(exportData.summary.handoverNotes, 170);
-            doc.text(handoverLines, margin, yPos);
-            yPos += handoverLines.length * lineHeight + 3;
-          }
+              doc.setFontSize(9);
+              doc.setFont('helvetica', 'bold');
+              doc.setTextColor(...primaryColor);
+              doc.text(field.label + ':', margin + 3, yPos);
+              yPos += 5;
 
-          if (exportData.summary.issuesEncountered) {
-            checkPageBreak(20);
-            doc.setFont('helvetica', 'bold');
-            doc.text('Masalah yang Ditemui:', margin, yPos);
-            yPos += lineHeight;
-            doc.setFont('helvetica', 'normal');
-            const issuesLines = doc.splitTextToSize(exportData.summary.issuesEncountered, 170);
-            doc.text(issuesLines, margin, yPos);
-            yPos += issuesLines.length * lineHeight + 3;
-          }
+              doc.setFont('helvetica', 'normal');
+              doc.setTextColor(0, 0, 0);
+              doc.setFontSize(8);
+              const lines = doc.splitTextToSize(field.value, contentWidth - 6);
 
-          if (exportData.summary.pendingActions) {
-            checkPageBreak(20);
-            doc.setFont('helvetica', 'bold');
-            doc.text('Tindakan Tertunda:', margin, yPos);
-            yPos += lineHeight;
-            doc.setFont('helvetica', 'normal');
-            const pendingLines = doc.splitTextToSize(exportData.summary.pendingActions, 170);
-            doc.text(pendingLines, margin, yPos);
-            yPos += pendingLines.length * lineHeight + 3;
-          }
+              // Background for text
+              doc.setFillColor(...lightGray);
+              doc.roundedRect(margin, yPos - 3, contentWidth, lines.length * 4 + 4, 2, 2, 'F');
+
+              doc.text(lines, margin + 3, yPos);
+              yPos += lines.length * 4 + 8;
+            }
+          });
         }
 
-        // Footer
+        // Footer on all pages
         const pageCount = doc.getNumberOfPages();
         for (let i = 1; i <= pageCount; i++) {
           doc.setPage(i);
-          doc.setFontSize(8);
+
+          // Footer line
+          doc.setDrawColor(...borderColor);
+          doc.line(margin, pageHeight - 15, pageWidth - margin, pageHeight - 15);
+
+          // Footer text
+          doc.setFontSize(7);
           doc.setFont('helvetica', 'normal');
+          doc.setTextColor(...secondaryColor);
+          doc.text('Bank SulutGo ServiceDesk - Laporan Standby', margin, pageHeight - 10);
           doc.text(
             `Dicetak: ${new Date().toLocaleString('id-ID')} | Halaman ${i} dari ${pageCount}`,
-            105,
-            290,
-            { align: 'center' }
+            pageWidth - margin,
+            pageHeight - 10,
+            { align: 'right' }
           );
         }
 
         // Save the PDF
         const dateStr = new Date(shiftAssignment.date).toISOString().split('T')[0];
-        doc.save(`Laporan_Shift_${dateStr}.pdf`);
+        doc.save(`Laporan_Standby_${dateStr}.pdf`);
         toast.success('File PDF berhasil diunduh');
       }
     } catch (error) {
