@@ -284,3 +284,65 @@ export async function PUT(
     );
   }
 }
+
+// DELETE /api/shifts/[assignmentId]/report - Delete shift report
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ assignmentId: string }> }
+) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { assignmentId } = await params;
+
+    // Verify the shift assignment exists
+    const shiftAssignment = await prisma.shiftAssignment.findUnique({
+      where: { id: assignmentId },
+      include: {
+        staffProfile: true,
+        shiftReport: true,
+      },
+    });
+
+    if (!shiftAssignment) {
+      return NextResponse.json(
+        { error: 'Shift assignment not found' },
+        { status: 404 }
+      );
+    }
+
+    // Verify ownership - only owner can delete
+    if (shiftAssignment.staffProfile.userId !== session.user.id) {
+      return NextResponse.json(
+        { error: 'Anda hanya dapat menghapus laporan shift milik Anda sendiri' },
+        { status: 403 }
+      );
+    }
+
+    if (!shiftAssignment.shiftReport) {
+      return NextResponse.json(
+        { error: 'Shift report not found' },
+        { status: 404 }
+      );
+    }
+
+    // Delete the report (cascade will delete checklist items, backup checklist, and issues)
+    await prisma.shiftReport.delete({
+      where: { id: shiftAssignment.shiftReport.id },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: 'Laporan shift berhasil dihapus',
+    });
+  } catch (error) {
+    console.error('Error deleting shift report:', error);
+    return NextResponse.json(
+      { error: 'Internal Server Error' },
+      { status: 500 }
+    );
+  }
+}

@@ -27,6 +27,9 @@ import {
   Database,
   MessageSquare,
   Server,
+  Pencil,
+  Trash2,
+  RotateCcw,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ServerMetricsDisplay } from './server-metrics-display';
@@ -149,6 +152,8 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
     issuesEncountered: '',
     pendingActions: '',
   });
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchReport = useCallback(async () => {
     try {
@@ -726,6 +731,36 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
     }
   };
 
+  const handleDeleteReport = async () => {
+    try {
+      setIsDeleting(true);
+      const response = await fetch(`/api/shifts/${shiftAssignment.id}/report`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Gagal menghapus laporan');
+      }
+
+      toast.success('Laporan shift berhasil dihapus');
+      setShowDeleteDialog(false);
+      setReportData(null);
+      // Trigger a refresh to recreate the report
+      fetchReport();
+    } catch (error: any) {
+      console.error('Error deleting report:', error);
+      toast.error(error.message || 'Gagal menghapus laporan');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleResetReport = async () => {
+    // Reset by deleting and recreating (fetchReport will create a new one)
+    await handleDeleteReport();
+  };
+
   if (isLoading) {
     return (
       <Card>
@@ -919,6 +954,30 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
               <Download className="h-4 w-4 mr-2" />
               Ekspor PDF
             </Button>
+            {!isCompleted && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowDeleteDialog(true)}
+                  disabled={isUpdating || isDeleting}
+                  className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 dark:hover:bg-orange-950"
+                >
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Reset Laporan
+                </Button>
+              </>
+            )}
+            {isCompleted && (
+              <Button
+                variant="outline"
+                onClick={() => setShowDeleteDialog(true)}
+                disabled={isUpdating || isDeleting}
+                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Hapus Laporan
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -1017,6 +1076,58 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
                 <>
                   <CheckCircle2 className="h-4 w-4 mr-2" />
                   Selesaikan Laporan
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete/Reset Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="h-5 w-5" />
+              {isCompleted ? 'Hapus Laporan Shift' : 'Reset Laporan Shift'}
+            </DialogTitle>
+            <DialogDescription>
+              {isCompleted
+                ? 'Apakah Anda yakin ingin menghapus laporan shift ini? Semua data termasuk checklist, backup checklist, dan masalah akan dihapus permanen.'
+                : 'Apakah Anda yakin ingin mereset laporan shift ini? Semua data checklist, backup, dan masalah akan dikembalikan ke kondisi awal.'}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteDialog(false)}
+              disabled={isDeleting}
+            >
+              Batal
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteReport}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  {isCompleted ? 'Menghapus...' : 'Mereset...'}
+                </>
+              ) : (
+                <>
+                  {isCompleted ? (
+                    <>
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Hapus Laporan
+                    </>
+                  ) : (
+                    <>
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Reset Laporan
+                    </>
+                  )}
                 </>
               )}
             </Button>
