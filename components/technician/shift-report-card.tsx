@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
   DialogContent,
@@ -23,10 +24,15 @@ import {
   Loader2,
   AlertTriangle,
   FileSpreadsheet,
+  Database,
+  MessageSquare,
+  Server,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ServerMetricsDisplay } from './server-metrics-display';
 import { ShiftChecklist } from './shift-checklist';
+import { BackupChecklist } from './backup-checklist';
+import { ShiftIssues } from './shift-issues';
 
 interface ShiftAssignment {
   id: string;
@@ -49,6 +55,27 @@ interface ChecklistItem {
   status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'SKIPPED';
   completedAt: string | null;
   notes: string | null;
+}
+
+interface BackupItem {
+  id: string;
+  databaseName: string;
+  description: string | null;
+  isChecked: boolean;
+  checkedAt: string | null;
+  notes: string | null;
+  order: number;
+}
+
+interface ShiftIssue {
+  id: string;
+  title: string;
+  description: string | null;
+  status: 'ONGOING' | 'RESOLVED';
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  resolution: string | null;
+  resolvedAt: string | null;
+  createdAt: string;
 }
 
 interface ServerMetrics {
@@ -80,8 +107,13 @@ interface ReportData {
     handoverNotes: string | null;
     issuesEncountered: string | null;
     pendingActions: string | null;
+    notes: string | null;
   };
   checklistItems: ChecklistItem[];
+  backupChecklist: BackupItem[];
+  issues: ShiftIssue[];
+  ongoingIssues: ShiftIssue[];
+  resolvedIssues: ShiftIssue[];
   serverMetrics: ServerMetrics | null;
   metricsAvailable: boolean;
   metricsStale: boolean;
@@ -91,6 +123,10 @@ interface ReportData {
     pending: number;
     inProgress: number;
     skipped: number;
+  };
+  backupStats: {
+    total: number;
+    checked: number;
   };
 }
 
@@ -105,6 +141,8 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [showCompleteDialog, setShowCompleteDialog] = useState(false);
+  const [notes, setNotes] = useState('');
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [completeFormData, setCompleteFormData] = useState({
     summary: '',
     handoverNotes: '',
@@ -119,6 +157,7 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
       if (!response.ok) throw new Error('Failed to fetch report');
       const data = await response.json();
       setReportData(data.data);
+      setNotes(data.data.report.notes || '');
 
       // Pre-fill complete form with existing data
       if (data.data.report) {
@@ -181,6 +220,172 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
     }
   };
 
+  const handleUpdateBackup = async (
+    items: { id: string; isChecked?: boolean; notes?: string }[]
+  ) => {
+    try {
+      setIsUpdating(true);
+      const response = await fetch(
+        `/api/shifts/${shiftAssignment.id}/report/backup`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items }),
+        }
+      );
+
+      if (!response.ok) throw new Error('Failed to update backup checklist');
+
+      const data = await response.json();
+      setReportData((prev) =>
+        prev
+          ? {
+              ...prev,
+              backupChecklist: data.data.backupChecklist,
+              backupStats: {
+                total: data.data.backupChecklist.length,
+                checked: data.data.backupChecklist.filter((b: BackupItem) => b.isChecked).length,
+              },
+            }
+          : null
+      );
+      toast.success('Backup checklist diperbarui');
+    } catch (error) {
+      console.error('Error updating backup checklist:', error);
+      toast.error('Gagal memperbarui backup checklist');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleCheckAllBackup = async (checkAll: boolean) => {
+    try {
+      setIsUpdating(true);
+      const response = await fetch(
+        `/api/shifts/${shiftAssignment.id}/report/backup`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ checkAll }),
+        }
+      );
+
+      if (!response.ok) throw new Error('Failed to update backup checklist');
+
+      const data = await response.json();
+      setReportData((prev) =>
+        prev
+          ? {
+              ...prev,
+              backupChecklist: data.data.backupChecklist,
+              backupStats: {
+                total: data.data.backupChecklist.length,
+                checked: data.data.backupChecklist.filter((b: BackupItem) => b.isChecked).length,
+              },
+            }
+          : null
+      );
+      toast.success(checkAll ? 'Semua backup ditandai' : 'Semua tanda backup dihapus');
+    } catch (error) {
+      console.error('Error updating backup checklist:', error);
+      toast.error('Gagal memperbarui backup checklist');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleCreateIssue = async (issue: { title: string; description?: string; priority?: string }) => {
+    try {
+      setIsUpdating(true);
+      const response = await fetch(
+        `/api/shifts/${shiftAssignment.id}/report/issues`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(issue),
+        }
+      );
+
+      if (!response.ok) throw new Error('Failed to create issue');
+
+      await fetchReport();
+      toast.success('Masalah berhasil ditambahkan');
+    } catch (error) {
+      console.error('Error creating issue:', error);
+      toast.error('Gagal menambahkan masalah');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleUpdateIssue = async (issue: { id: string; title?: string; description?: string; status?: string; priority?: string; resolution?: string }) => {
+    try {
+      setIsUpdating(true);
+      const response = await fetch(
+        `/api/shifts/${shiftAssignment.id}/report/issues`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(issue),
+        }
+      );
+
+      if (!response.ok) throw new Error('Failed to update issue');
+
+      await fetchReport();
+      toast.success('Masalah berhasil diperbarui');
+    } catch (error) {
+      console.error('Error updating issue:', error);
+      toast.error('Gagal memperbarui masalah');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleDeleteIssue = async (id: string) => {
+    try {
+      setIsUpdating(true);
+      const response = await fetch(
+        `/api/shifts/${shiftAssignment.id}/report/issues?id=${id}`,
+        { method: 'DELETE' }
+      );
+
+      if (!response.ok) throw new Error('Failed to delete issue');
+
+      await fetchReport();
+      toast.success('Masalah berhasil dihapus');
+    } catch (error) {
+      console.error('Error deleting issue:', error);
+      toast.error('Gagal menghapus masalah');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleSaveNotes = async () => {
+    try {
+      setIsUpdating(true);
+      const response = await fetch(
+        `/api/shifts/${shiftAssignment.id}/report`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ notes }),
+        }
+      );
+
+      if (!response.ok) throw new Error('Failed to save notes');
+
+      setIsEditingNotes(false);
+      toast.success('Catatan berhasil disimpan');
+    } catch (error) {
+      console.error('Error saving notes:', error);
+      toast.error('Gagal menyimpan catatan');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const handleCompleteReport = async () => {
     try {
       setIsUpdating(true);
@@ -229,32 +434,25 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
       const data = await response.json();
 
       if (format === 'xlsx') {
-        // Dynamic import for xlsx
         const XLSX = (await import('xlsx')).default;
         const workbook = XLSX.utils.book_new();
 
-        // Create sheets for each section
         data.excelData.forEach((section: { title: string; headers?: string[]; rows: string[][] }) => {
           let sheetData: string[][] = [];
-
           if (section.headers) {
             sheetData.push(section.headers);
           }
           sheetData = sheetData.concat(section.rows);
-
           const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
           XLSX.utils.book_append_sheet(workbook, worksheet, section.title.substring(0, 31));
         });
 
-        // Generate and download
         const dateStr = new Date(shiftAssignment.date).toISOString().split('T')[0];
         XLSX.writeFile(workbook, `Laporan_Shift_${dateStr}.xlsx`);
         toast.success('File Excel berhasil diunduh');
       } else {
-        // Dynamic import for jsPDF
         const { jsPDF } = await import('jspdf');
         const doc = new jsPDF();
-
         const exportData = data.data;
         const pageWidth = doc.internal.pageSize.getWidth();
         const pageHeight = doc.internal.pageSize.getHeight();
@@ -262,7 +460,6 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
         const contentWidth = pageWidth - margin * 2;
         let yPos = 20;
 
-        // Simple color palette
         const colors = {
           black: [0, 0, 0] as [number, number, number],
           darkGray: [51, 51, 51] as [number, number, number],
@@ -271,14 +468,12 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
           lineGray: [200, 200, 200] as [number, number, number],
         };
 
-        // Helper function to draw horizontal line
         const drawLine = (y: number, thickness: number = 0.3) => {
           doc.setDrawColor(...colors.lineGray);
           doc.setLineWidth(thickness);
           doc.line(margin, y, pageWidth - margin, y);
         };
 
-        // Helper function to check page break
         const checkPageBreak = (neededSpace: number) => {
           if (yPos + neededSpace > pageHeight - 25) {
             doc.addPage();
@@ -286,7 +481,6 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
           }
         };
 
-        // Helper function to draw section header
         const drawSectionHeader = (title: string) => {
           checkPageBreak(15);
           doc.setFontSize(11);
@@ -298,68 +492,54 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
           yPos += 8;
         };
 
-        // Add simple header with logo
-        const addHeader = async () => {
-          // Try to add logo
-          try {
-            const logoImg = new Image();
-            logoImg.crossOrigin = 'anonymous';
-            await new Promise<void>((resolve, reject) => {
-              logoImg.onload = () => resolve();
-              logoImg.onerror = () => reject();
-              logoImg.src = '/logo-bsg.png';
-            });
-
-            const canvas = document.createElement('canvas');
-            canvas.width = logoImg.width;
-            canvas.height = logoImg.height;
-            const ctx = canvas.getContext('2d');
-            if (ctx) {
-              ctx.drawImage(logoImg, 0, 0);
-              const logoBase64 = canvas.toDataURL('image/png');
-              doc.addImage(logoBase64, 'PNG', margin, yPos, 20, 20);
-            }
-          } catch {
-            // Logo fallback - simple text
-            doc.setFontSize(12);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(...colors.black);
-            doc.text('BSG', margin + 5, yPos + 12);
+        // Header
+        try {
+          const logoImg = new Image();
+          logoImg.crossOrigin = 'anonymous';
+          await new Promise<void>((resolve, reject) => {
+            logoImg.onload = () => resolve();
+            logoImg.onerror = () => reject();
+            logoImg.src = '/logo-bsg.png';
+          });
+          const canvas = document.createElement('canvas');
+          canvas.width = logoImg.width;
+          canvas.height = logoImg.height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(logoImg, 0, 0);
+            const logoBase64 = canvas.toDataURL('image/png');
+            doc.addImage(logoBase64, 'PNG', margin, yPos, 20, 20);
           }
-
-          // Title
-          doc.setFontSize(16);
+        } catch {
+          doc.setFontSize(12);
           doc.setFont('helvetica', 'bold');
           doc.setTextColor(...colors.black);
-          doc.text('LAPORAN STANDBY', margin + 28, yPos + 8);
+          doc.text('BSG', margin + 5, yPos + 12);
+        }
 
-          // Subtitle
-          doc.setFontSize(9);
-          doc.setFont('helvetica', 'normal');
-          doc.setTextColor(...colors.gray);
-          doc.text('PT Bank SulutGo - Divisi Teknologi Informasi', margin + 28, yPos + 14);
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...colors.black);
+        doc.text('LAPORAN STANDBY', margin + 28, yPos + 8);
 
-          // Date
-          const reportDate = new Date(exportData.shiftInfo.date).toLocaleDateString('id-ID', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-          });
-          doc.setFontSize(9);
-          doc.text(reportDate, margin + 28, yPos + 20);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...colors.gray);
+        doc.text('PT Bank SulutGo - Divisi Teknologi Informasi', margin + 28, yPos + 14);
 
-          yPos += 28;
-          drawLine(yPos, 0.8);
-          yPos += 10;
-        };
+        const reportDate = new Date(exportData.shiftInfo.date).toLocaleDateString('id-ID', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        });
+        doc.text(reportDate, margin + 28, yPos + 20);
+        yPos += 28;
+        drawLine(yPos, 0.8);
+        yPos += 10;
 
-        // Add header to first page
-        await addHeader();
-
-        // Shift Information Section
+        // Shift Info
         drawSectionHeader('INFORMASI SHIFT');
-
         const shiftTypeLabels: Record<string, string> = {
           NIGHT_WEEKDAY: 'Malam Weekday (20:00-07:59)',
           DAY_WEEKEND: 'Siang Weekend (08:00-19:00)',
@@ -367,23 +547,17 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
           STANDBY_ONCALL: 'Standby On-Call',
           STANDBY_BRANCH: 'Standby Cabang',
         };
-
         const statusLabelsMap: Record<string, string> = {
           DRAFT: 'Draft',
           IN_PROGRESS: 'Sedang Dikerjakan',
           COMPLETED: 'Selesai',
         };
-
-        // Info table
         const infoData = [
           ['Nama Teknisi', exportData.shiftInfo.technician],
           ['Cabang', exportData.shiftInfo.branch],
           ['Jenis Shift', shiftTypeLabels[exportData.shiftInfo.shiftType] || exportData.shiftInfo.shiftType],
-          ['Waktu Mulai', new Date(exportData.reportInfo.startedAt).toLocaleString('id-ID')],
-          ['Waktu Selesai', exportData.reportInfo.completedAt ? new Date(exportData.reportInfo.completedAt).toLocaleString('id-ID') : '-'],
           ['Status', statusLabelsMap[exportData.reportInfo.status] || exportData.reportInfo.status],
         ];
-
         infoData.forEach((row) => {
           doc.setFontSize(9);
           doc.setFont('helvetica', 'normal');
@@ -394,40 +568,29 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
           doc.text(row[1], margin + 45, yPos);
           yPos += 6;
         });
-
         yPos += 8;
 
-        // Server Metrics Section
+        // Server Metrics
         drawSectionHeader('KONDISI SERVER');
-
         if (exportData.serverMetrics) {
           const metrics = exportData.serverMetrics;
-
           const metricsData = [
             ['CPU Usage', `${metrics.cpu.usagePercent?.toFixed(1) || '-'}%`],
             ['RAM Usage', `${metrics.ram.usagePercent?.toFixed(1) || '-'}%`],
             ['Disk Usage', `${metrics.disk.usagePercent?.toFixed(1) || '-'}%`],
             ['Uptime', metrics.uptime.days ? `${metrics.uptime.days} hari` : '-'],
           ];
-
-          // Draw metrics in a simple row format
           const colWidth = contentWidth / 4;
           doc.setFontSize(8);
-
           metricsData.forEach((metric, index) => {
             const xPos = margin + (index * colWidth);
-
-            // Label
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(...colors.gray);
             doc.text(metric[0], xPos, yPos);
-
-            // Value
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(...colors.darkGray);
             doc.text(metric[1], xPos, yPos + 5);
           });
-
           yPos += 15;
         } else {
           doc.setFontSize(9);
@@ -436,13 +599,68 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
           doc.text('Metrik server tidak tersedia', margin, yPos);
           yPos += 10;
         }
-
         yPos += 5;
+
+        // Backup Database Section
+        if (exportData.backupChecklist && exportData.backupChecklist.length > 0) {
+          drawSectionHeader('BACKUP DATABASE');
+          exportData.backupChecklist.forEach((item: { databaseName: string; isChecked: boolean }) => {
+            checkPageBreak(8);
+            doc.setFontSize(9);
+            const statusSymbol = item.isChecked ? '[v]' : '[ ]';
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(...colors.darkGray);
+            doc.text(statusSymbol, margin, yPos);
+            doc.text(item.databaseName, margin + 10, yPos);
+            yPos += 5;
+          });
+          yPos += 5;
+        }
+
+        // Issues Section
+        if (exportData.issues && exportData.issues.length > 0) {
+          drawSectionHeader('MASALAH');
+          const ongoing = exportData.issues.filter((i: { status: string }) => i.status === 'ONGOING');
+          const resolved = exportData.issues.filter((i: { status: string }) => i.status === 'RESOLVED');
+
+          if (ongoing.length > 0) {
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(...colors.darkGray);
+            doc.text('Masalah Berjalan:', margin, yPos);
+            yPos += 5;
+            ongoing.forEach((issue: { title: string; priority: string }) => {
+              checkPageBreak(8);
+              doc.setFont('helvetica', 'normal');
+              doc.text(`- ${issue.title} [${issue.priority}]`, margin + 5, yPos);
+              yPos += 5;
+            });
+            yPos += 3;
+          }
+
+          if (resolved.length > 0) {
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(...colors.darkGray);
+            doc.text('Masalah Selesai:', margin, yPos);
+            yPos += 5;
+            resolved.forEach((issue: { title: string; resolution: string | null }) => {
+              checkPageBreak(8);
+              doc.setFont('helvetica', 'normal');
+              doc.text(`- ${issue.title}`, margin + 5, yPos);
+              if (issue.resolution) {
+                yPos += 4;
+                doc.setTextColor(...colors.gray);
+                doc.text(`  Resolusi: ${issue.resolution}`, margin + 5, yPos);
+              }
+              yPos += 5;
+            });
+          }
+          yPos += 5;
+        }
 
         // Checklist Section
         drawSectionHeader('DAFTAR PERIKSA');
-
-        // Group checklist by category
         const categories: Record<string, { title: string; status: string; isRequired: boolean; notes: string | null }[]> = {};
         exportData.checklist.forEach((item: { category: string; title: string; status: string; isRequired: boolean; notes: string | null }) => {
           if (!categories[item.category]) {
@@ -450,124 +668,54 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
           }
           categories[item.category].push(item);
         });
-
         Object.entries(categories).forEach(([category, items]) => {
-          const categoryHeight = items.length * 7 + (items.filter(i => i.notes).length * 6) + 12;
-          checkPageBreak(categoryHeight);
-
-          // Category header
+          checkPageBreak(items.length * 7 + 12);
           doc.setFontSize(10);
           doc.setFont('helvetica', 'bold');
           doc.setTextColor(...colors.darkGray);
           doc.text(category, margin, yPos);
           yPos += 6;
-
           items.forEach((item) => {
             checkPageBreak(14);
-
-            // Status indicator (simple text symbols)
             doc.setFontSize(9);
             let statusSymbol = '[ ]';
-            if (item.status === 'Selesai') {
-              statusSymbol = '[v]';
-            } else if (item.status === 'Dilewati') {
-              statusSymbol = '[-]';
-            }
-
+            if (item.status === 'Selesai') statusSymbol = '[v]';
+            else if (item.status === 'Dilewati') statusSymbol = '[-]';
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(...colors.darkGray);
             doc.text(statusSymbol, margin, yPos);
-
-            // Item title
             let titleText = item.title;
-            if (item.isRequired) {
-              titleText += ' *';
-            }
+            if (item.isRequired) titleText += ' *';
             doc.text(titleText, margin + 10, yPos);
-
-            // Status text on the right
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(...colors.gray);
-            doc.text(item.status, pageWidth - margin, yPos, { align: 'right' });
-
             yPos += 5;
-
-            // Notes
-            if (item.notes) {
-              doc.setFontSize(8);
-              doc.setTextColor(...colors.gray);
-              const notesText = `Catatan: ${item.notes}`;
-              const notesLines = doc.splitTextToSize(notesText, contentWidth - 15);
-              doc.text(notesLines, margin + 10, yPos);
-              yPos += notesLines.length * 4 + 2;
-            }
           });
-
           yPos += 5;
         });
 
-        // Legend for checklist
-        doc.setFontSize(7);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(...colors.lightGray);
-        doc.text('Keterangan: [v] = Selesai, [-] = Dilewati, [ ] = Belum, * = Wajib', margin, yPos);
-        yPos += 10;
-
-        // Summary Section
-        if (exportData.summary.summary || exportData.summary.handoverNotes || exportData.summary.issuesEncountered || exportData.summary.pendingActions) {
-          drawSectionHeader('RINGKASAN & CATATAN');
-
-          const summaryFields = [
-            { label: 'Ringkasan Aktivitas', value: exportData.summary.summary },
-            { label: 'Catatan Serah Terima', value: exportData.summary.handoverNotes },
-            { label: 'Masalah yang Ditemui', value: exportData.summary.issuesEncountered },
-            { label: 'Tindakan Tertunda', value: exportData.summary.pendingActions },
-          ];
-
-          summaryFields.forEach((field) => {
-            if (field.value) {
-              doc.setFontSize(9);
-              const lines = doc.splitTextToSize(field.value, contentWidth - 5);
-              const fieldHeight = lines.length * 4 + 10;
-              checkPageBreak(fieldHeight);
-
-              // Field label
-              doc.setFont('helvetica', 'bold');
-              doc.setTextColor(...colors.darkGray);
-              doc.text(field.label + ':', margin, yPos);
-              yPos += 5;
-
-              // Content text
-              doc.setFont('helvetica', 'normal');
-              doc.setTextColor(...colors.gray);
-              doc.text(lines, margin + 5, yPos);
-              yPos += lines.length * 4 + 6;
-            }
-          });
+        // Notes Section
+        if (exportData.notes) {
+          drawSectionHeader('CATATAN');
+          doc.setFontSize(9);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(...colors.darkGray);
+          const notesLines = doc.splitTextToSize(exportData.notes, contentWidth);
+          doc.text(notesLines, margin, yPos);
+          yPos += notesLines.length * 4 + 5;
         }
 
-        // Simple footer on all pages
+        // Footer
         const pageCount = doc.getNumberOfPages();
         for (let i = 1; i <= pageCount; i++) {
           doc.setPage(i);
-
-          // Footer line
           drawLine(pageHeight - 18, 0.3);
-
-          // Footer content
           doc.setFontSize(7);
           doc.setFont('helvetica', 'normal');
           doc.setTextColor(...colors.lightGray);
           doc.text('Bank SulutGo ServiceDesk - Laporan Standby', margin, pageHeight - 12);
-
-          // Page number
           doc.text(`Halaman ${i} dari ${pageCount}`, pageWidth / 2, pageHeight - 12, { align: 'center' });
-
-          // Timestamp
           doc.text(`Dicetak: ${new Date().toLocaleString('id-ID')}`, pageWidth - margin, pageHeight - 12, { align: 'right' });
         }
 
-        // Save the PDF
         const dateStr = new Date(shiftAssignment.date).toISOString().split('T')[0];
         doc.save(`Laporan_Standby_${dateStr}.pdf`);
         toast.success('File PDF berhasil diunduh');
@@ -599,12 +747,9 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
     );
   }
 
-  const { report, checklistItems, serverMetrics, metricsAvailable, metricsStale, stats } =
-    reportData;
+  const { report, checklistItems, backupChecklist, ongoingIssues, resolvedIssues, serverMetrics, metricsAvailable, metricsStale, stats, backupStats } = reportData;
   const isCompleted = report.status === 'COMPLETED';
-  const progressPercentage = Math.round(
-    ((stats.completed + stats.skipped) / stats.total) * 100
-  );
+  const progressPercentage = Math.round(((stats.completed + stats.skipped) / stats.total) * 100);
   const statusInfo = statusLabels[report.status] || statusLabels.DRAFT;
 
   return (
@@ -619,7 +764,7 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
               <div>
                 <CardTitle className="text-lg">Laporan Shift</CardTitle>
                 <CardDescription>
-                  Daftar periksa dan metrik server untuk shift Anda
+                  Laporan lengkap untuk shift Anda
                 </CardDescription>
               </div>
             </div>
@@ -627,38 +772,125 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Progress Overview */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Progress Checklist</span>
-              <span className="font-medium">
-                {stats.completed + stats.skipped}/{stats.total} item (
-                {progressPercentage}%)
-              </span>
-            </div>
-            <Progress value={progressPercentage} className="h-2" />
-          </div>
+          {/* Tabs for different sections */}
+          <Tabs defaultValue="metrics" className="w-full">
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="metrics" className="text-xs">
+                <Server className="h-3 w-3 mr-1" />
+                Metrik
+              </TabsTrigger>
+              <TabsTrigger value="backup" className="text-xs">
+                <Database className="h-3 w-3 mr-1" />
+                Backup
+              </TabsTrigger>
+              <TabsTrigger value="issues" className="text-xs">
+                <AlertTriangle className="h-3 w-3 mr-1" />
+                Masalah
+              </TabsTrigger>
+              <TabsTrigger value="checklist" className="text-xs">
+                <FileText className="h-3 w-3 mr-1" />
+                Checklist
+              </TabsTrigger>
+              <TabsTrigger value="notes" className="text-xs">
+                <MessageSquare className="h-3 w-3 mr-1" />
+                Catatan
+              </TabsTrigger>
+            </TabsList>
 
-          {/* Server Metrics */}
-          <ServerMetricsDisplay
-            metrics={serverMetrics}
-            available={metricsAvailable}
-            isStale={metricsStale}
-          />
+            {/* Server Metrics Tab */}
+            <TabsContent value="metrics" className="mt-4">
+              <ServerMetricsDisplay
+                metrics={serverMetrics}
+                available={metricsAvailable}
+                isStale={metricsStale}
+              />
+            </TabsContent>
 
-          {/* Checklist */}
-          <div className="space-y-3">
-            <h3 className="font-medium flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              Daftar Periksa
-            </h3>
-            <ShiftChecklist
-              items={checklistItems}
-              onUpdateItems={handleUpdateChecklist}
-              isLoading={isUpdating}
-              readOnly={isCompleted}
-            />
-          </div>
+            {/* Backup Checklist Tab */}
+            <TabsContent value="backup" className="mt-4">
+              <BackupChecklist
+                items={backupChecklist}
+                onUpdateItems={handleUpdateBackup}
+                onCheckAll={handleCheckAllBackup}
+                isLoading={isUpdating}
+                readOnly={isCompleted}
+              />
+              <div className="mt-3 flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Progress Backup</span>
+                <span className="font-medium">
+                  {backupStats.checked}/{backupStats.total} ({Math.round((backupStats.checked / backupStats.total) * 100) || 0}%)
+                </span>
+              </div>
+              <Progress value={(backupStats.checked / backupStats.total) * 100 || 0} className="h-2 mt-2" />
+            </TabsContent>
+
+            {/* Issues Tab */}
+            <TabsContent value="issues" className="mt-4">
+              <ShiftIssues
+                ongoingIssues={ongoingIssues}
+                resolvedIssues={resolvedIssues}
+                onCreateIssue={handleCreateIssue}
+                onUpdateIssue={handleUpdateIssue}
+                onDeleteIssue={handleDeleteIssue}
+                isLoading={isUpdating}
+                readOnly={isCompleted}
+              />
+            </TabsContent>
+
+            {/* Checklist Tab */}
+            <TabsContent value="checklist" className="mt-4 space-y-4">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Progress Checklist</span>
+                <span className="font-medium">
+                  {stats.completed + stats.skipped}/{stats.total} ({progressPercentage}%)
+                </span>
+              </div>
+              <Progress value={progressPercentage} className="h-2" />
+              <ShiftChecklist
+                items={checklistItems}
+                onUpdateItems={handleUpdateChecklist}
+                isLoading={isUpdating}
+                readOnly={isCompleted}
+              />
+            </TabsContent>
+
+            {/* Notes Tab */}
+            <TabsContent value="notes" className="mt-4">
+              <div className="space-y-3">
+                <Label>Catatan Umum</Label>
+                {isEditingNotes || !notes ? (
+                  <div className="space-y-2">
+                    <Textarea
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      placeholder="Tulis catatan untuk shift ini..."
+                      className="min-h-[120px]"
+                      disabled={isCompleted}
+                    />
+                    {!isCompleted && (
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={handleSaveNotes} disabled={isUpdating}>
+                          Simpan
+                        </Button>
+                        {notes && (
+                          <Button size="sm" variant="outline" onClick={() => setIsEditingNotes(false)}>
+                            Batal
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div
+                    className="p-3 bg-muted/50 rounded-lg cursor-pointer hover:bg-muted"
+                    onClick={() => !isCompleted && setIsEditingNotes(true)}
+                  >
+                    <p className="text-sm whitespace-pre-wrap">{notes}</p>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
 
           {/* Actions */}
           <div className="flex flex-wrap gap-2 pt-4 border-t">

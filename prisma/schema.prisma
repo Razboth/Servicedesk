@@ -2811,6 +2811,9 @@ model ShiftReport {
   issuesEncountered     String?             @db.Text
   pendingActions        String?             @db.Text
 
+  // General notes/catatan
+  notes                 String?             @db.Text
+
   // Metadata
   createdAt             DateTime            @default(now())
   updatedAt             DateTime            @updatedAt
@@ -2819,6 +2822,8 @@ model ShiftReport {
   shiftAssignment       ShiftAssignment     @relation(fields: [shiftAssignmentId], references: [id], onDelete: Cascade)
   serverMetrics         ServerMetrics?      @relation(fields: [serverMetricsId], references: [id])
   checklistItems        ShiftChecklistItem[]
+  backupChecklist       ShiftBackupChecklist[]
+  issues                ShiftIssue[]
 
   @@index([shiftAssignmentId])
   @@index([status])
@@ -2869,6 +2874,66 @@ model ShiftChecklistTemplate {
   @@map("shift_checklist_templates")
 }
 
+// Backup database checklist for shift report
+model ShiftBackupChecklist {
+  id                    String                  @id @default(cuid())
+  shiftReportId         String
+  databaseName          String                  // Name of the database
+  description           String?                 // Optional description
+  isChecked             Boolean                 @default(false)
+  checkedAt             DateTime?
+  notes                 String?                 @db.Text
+  order                 Int                     @default(0)
+
+  // Metadata
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+
+  // Relations
+  shiftReport           ShiftReport             @relation(fields: [shiftReportId], references: [id], onDelete: Cascade)
+
+  @@index([shiftReportId])
+  @@map("shift_backup_checklist")
+}
+
+// Backup database templates (master list of databases to check)
+model ShiftBackupTemplate {
+  id                    String                  @id @default(cuid())
+  databaseName          String                  @unique
+  description           String?
+  order                 Int                     @default(0)
+  isActive              Boolean                 @default(true)
+
+  // Metadata
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+
+  @@index([isActive, order])
+  @@map("shift_backup_templates")
+}
+
+// Issues tracking for shift report (masalah selesai & berjalan)
+model ShiftIssue {
+  id                    String                  @id @default(cuid())
+  shiftReportId         String
+  title                 String
+  description           String?                 @db.Text
+  status                ShiftIssueStatus        @default(ONGOING)
+  priority              IssuePriority           @default(MEDIUM)
+  resolvedAt            DateTime?
+  resolution            String?                 @db.Text
+
+  // Metadata
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+
+  // Relations
+  shiftReport           ShiftReport             @relation(fields: [shiftReportId], references: [id], onDelete: Cascade)
+
+  @@index([shiftReportId, status])
+  @@map("shift_issues")
+}
+
 // Enums for shift report system
 enum ShiftReportStatus {
   DRAFT
@@ -2887,4 +2952,16 @@ enum ShiftChecklistStatus {
   IN_PROGRESS
   COMPLETED
   SKIPPED
+}
+
+enum ShiftIssueStatus {
+  ONGOING               // Masalah Berjalan
+  RESOLVED              // Masalah Selesai
+}
+
+enum IssuePriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
 }

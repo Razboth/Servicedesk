@@ -20,7 +20,10 @@ export async function GET(
       where: { id: assignmentId },
       include: {
         staffProfile: {
-          include: { user: true },
+          include: {
+            user: true,
+            branch: true,
+          },
         },
         schedule: true,
         shiftReport: {
@@ -29,6 +32,12 @@ export async function GET(
               orderBy: [{ category: 'asc' }, { order: 'asc' }],
             },
             serverMetrics: true,
+            backupChecklist: {
+              orderBy: { order: 'asc' },
+            },
+            issues: {
+              orderBy: { createdAt: 'desc' },
+            },
           },
         },
       },
@@ -73,7 +82,13 @@ export async function GET(
         orderBy: [{ category: 'asc' }, { order: 'asc' }],
       });
 
-      // Create the report with checklist items
+      // Get backup templates
+      const backupTemplates = await prisma.shiftBackupTemplate.findMany({
+        where: { isActive: true },
+        orderBy: { order: 'asc' },
+      });
+
+      // Create the report with checklist items and backup checklist
       report = await prisma.shiftReport.create({
         data: {
           shiftAssignmentId: assignmentId,
@@ -89,12 +104,26 @@ export async function GET(
               status: 'PENDING',
             })),
           },
+          backupChecklist: {
+            create: backupTemplates.map((template) => ({
+              databaseName: template.databaseName,
+              description: template.description,
+              order: template.order,
+              isChecked: false,
+            })),
+          },
         },
         include: {
           checklistItems: {
             orderBy: [{ category: 'asc' }, { order: 'asc' }],
           },
           serverMetrics: true,
+          backupChecklist: {
+            orderBy: { order: 'asc' },
+          },
+          issues: {
+            orderBy: { createdAt: 'desc' },
+          },
         },
       });
     }
@@ -126,6 +155,16 @@ export async function GET(
       ? new Date().getTime() - new Date(report.serverMetrics.collectedAt).getTime() > 24 * 60 * 60 * 1000
       : false;
 
+    // Calculate backup stats
+    const backupStats = {
+      total: report.backupChecklist?.length || 0,
+      checked: report.backupChecklist?.filter((b) => b.isChecked).length || 0,
+    };
+
+    // Separate issues by status
+    const ongoingIssues = report.issues?.filter((i) => i.status === 'ONGOING') || [];
+    const resolvedIssues = report.issues?.filter((i) => i.status === 'RESOLVED') || [];
+
     return NextResponse.json({
       success: true,
       data: {
@@ -138,8 +177,13 @@ export async function GET(
           handoverNotes: report.handoverNotes,
           issuesEncountered: report.issuesEncountered,
           pendingActions: report.pendingActions,
+          notes: report.notes,
         },
         checklistItems: report.checklistItems,
+        backupChecklist: report.backupChecklist || [],
+        issues: report.issues || [],
+        ongoingIssues,
+        resolvedIssues,
         serverMetrics: report.serverMetrics,
         metricsAvailable,
         metricsStale,
@@ -149,10 +193,12 @@ export async function GET(
           ? 'Data metrik sudah tidak aktual'
           : null,
         stats,
+        backupStats,
         shiftInfo: {
           date: shiftAssignment.date,
           shiftType: shiftAssignment.shiftType,
           technicianName: shiftAssignment.staffProfile.user.name,
+          branchName: shiftAssignment.staffProfile.branch?.name || '-',
         },
       },
     });
@@ -221,6 +267,7 @@ export async function PUT(
         handoverNotes: body.handoverNotes !== undefined ? body.handoverNotes : undefined,
         issuesEncountered: body.issuesEncountered !== undefined ? body.issuesEncountered : undefined,
         pendingActions: body.pendingActions !== undefined ? body.pendingActions : undefined,
+        notes: body.notes !== undefined ? body.notes : undefined,
         status: body.status || undefined,
       },
     });

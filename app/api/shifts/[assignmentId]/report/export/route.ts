@@ -46,6 +46,12 @@ export async function GET(
               orderBy: [{ category: 'asc' }, { order: 'asc' }],
             },
             serverMetrics: true,
+            backupChecklist: {
+              orderBy: { order: 'asc' },
+            },
+            issues: {
+              orderBy: { createdAt: 'desc' },
+            },
           },
         },
       },
@@ -136,6 +142,22 @@ export async function GET(
         issuesEncountered: report.issuesEncountered,
         pendingActions: report.pendingActions,
       },
+      notes: report.notes,
+      backupChecklist: report.backupChecklist?.map((item) => ({
+        databaseName: item.databaseName,
+        description: item.description,
+        isChecked: item.isChecked,
+        checkedAt: item.checkedAt,
+        notes: item.notes,
+      })) || [],
+      issues: report.issues?.map((issue) => ({
+        title: issue.title,
+        description: issue.description,
+        status: issue.status,
+        priority: issue.priority,
+        resolution: issue.resolution,
+        resolvedAt: issue.resolvedAt,
+      })) || [],
       stats: {
         total: report.checklistItems.length,
         completed: report.checklistItems.filter((i) => i.status === 'COMPLETED').length,
