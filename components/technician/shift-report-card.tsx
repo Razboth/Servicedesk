@@ -258,193 +258,48 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
         const exportData = data.data;
         const pageWidth = doc.internal.pageSize.getWidth();
         const pageHeight = doc.internal.pageSize.getHeight();
-        const margin = 16;
+        const margin = 20;
         const contentWidth = pageWidth - margin * 2;
-        let yPos = 15;
+        let yPos = 20;
 
-        // Modern Color Palette
+        // Simple color palette
         const colors = {
-          primary: [15, 76, 129] as [number, number, number],        // Deep blue
-          primaryLight: [59, 130, 186] as [number, number, number],  // Light blue
-          primaryGradient: [25, 95, 155] as [number, number, number], // Gradient step
-          accent: [16, 185, 129] as [number, number, number],        // Emerald green
-          warning: [245, 158, 11] as [number, number, number],       // Amber
-          danger: [239, 68, 68] as [number, number, number],         // Red
-          success: [34, 197, 94] as [number, number, number],        // Green
-          text: [30, 41, 59] as [number, number, number],            // Slate 800
-          textMuted: [100, 116, 139] as [number, number, number],    // Slate 500
-          textLight: [148, 163, 184] as [number, number, number],    // Slate 400
-          background: [248, 250, 252] as [number, number, number],   // Slate 50
-          cardBg: [255, 255, 255] as [number, number, number],       // White
-          border: [226, 232, 240] as [number, number, number],       // Slate 200
-          borderLight: [241, 245, 249] as [number, number, number],  // Slate 100
+          black: [0, 0, 0] as [number, number, number],
+          darkGray: [51, 51, 51] as [number, number, number],
+          gray: [102, 102, 102] as [number, number, number],
+          lightGray: [153, 153, 153] as [number, number, number],
+          lineGray: [200, 200, 200] as [number, number, number],
         };
 
-        // Helper function to draw a subtle shadow effect
-        const drawCardShadow = (x: number, y: number, w: number, h: number, radius: number = 3) => {
-          doc.setFillColor(0, 0, 0);
-          doc.setGState(new doc.GState({ opacity: 0.04 }));
-          doc.roundedRect(x + 1, y + 1, w, h, radius, radius, 'F');
-          doc.setGState(new doc.GState({ opacity: 0.02 }));
-          doc.roundedRect(x + 2, y + 2, w, h, radius, radius, 'F');
-          doc.setGState(new doc.GState({ opacity: 1 }));
-        };
-
-        // Helper function to draw a modern card
-        const drawCard = (x: number, y: number, w: number, h: number, radius: number = 4) => {
-          drawCardShadow(x, y, w, h, radius);
-          doc.setFillColor(...colors.cardBg);
-          doc.roundedRect(x, y, w, h, radius, radius, 'F');
-          doc.setDrawColor(...colors.border);
-          doc.setLineWidth(0.3);
-          doc.roundedRect(x, y, w, h, radius, radius, 'S');
-        };
-
-        // Helper function to draw progress arc
-        const drawProgressArc = (centerX: number, centerY: number, radius: number, percent: number, color: [number, number, number]) => {
-          const startAngle = -90;
-          const endAngle = startAngle + (percent / 100) * 360;
-
-          // Background circle
-          doc.setDrawColor(...colors.borderLight);
-          doc.setLineWidth(2.5);
-          doc.circle(centerX, centerY, radius, 'S');
-
-          // Progress arc (simulated with small segments)
-          doc.setDrawColor(...color);
-          doc.setLineWidth(2.5);
-
-          const segments = Math.floor(percent / 2);
-          for (let i = 0; i < segments; i++) {
-            const angle1 = ((startAngle + (i * 3.6 * 2)) * Math.PI) / 180;
-            const angle2 = ((startAngle + ((i + 1) * 3.6 * 2)) * Math.PI) / 180;
-            const x1 = centerX + Math.cos(angle1) * radius;
-            const y1 = centerY + Math.sin(angle1) * radius;
-            const x2 = centerX + Math.cos(angle2) * radius;
-            const y2 = centerY + Math.sin(angle2) * radius;
-            doc.line(x1, y1, x2, y2);
-          }
-        };
-
-        // Helper function to draw checkmark icon
-        const drawCheckIcon = (x: number, y: number, size: number, filled: boolean = true) => {
-          if (filled) {
-            doc.setFillColor(...colors.success);
-            doc.circle(x + size / 2, y + size / 2, size / 2, 'F');
-            doc.setDrawColor(255, 255, 255);
-            doc.setLineWidth(0.8);
-            // Checkmark
-            doc.line(x + size * 0.25, y + size * 0.5, x + size * 0.45, y + size * 0.7);
-            doc.line(x + size * 0.45, y + size * 0.7, x + size * 0.75, y + size * 0.3);
-          } else {
-            doc.setDrawColor(...colors.border);
-            doc.setLineWidth(0.5);
-            doc.circle(x + size / 2, y + size / 2, size / 2, 'S');
-          }
-        };
-
-        // Helper function to draw skip icon
-        const drawSkipIcon = (x: number, y: number, size: number) => {
-          doc.setFillColor(...colors.textLight);
-          doc.circle(x + size / 2, y + size / 2, size / 2, 'F');
-          doc.setDrawColor(255, 255, 255);
-          doc.setLineWidth(0.8);
-          // Dash
-          doc.line(x + size * 0.3, y + size * 0.5, x + size * 0.7, y + size * 0.5);
-        };
-
-        // Helper function to add new page with consistent styling
-        const addNewPage = () => {
-          doc.addPage();
-          yPos = 20;
-          // Add subtle header bar on subsequent pages
-          doc.setFillColor(...colors.primary);
-          doc.rect(0, 0, pageWidth, 8, 'F');
-          doc.setFillColor(...colors.primaryLight);
-          doc.rect(0, 8, pageWidth, 2, 'F');
+        // Helper function to draw horizontal line
+        const drawLine = (y: number, thickness: number = 0.3) => {
+          doc.setDrawColor(...colors.lineGray);
+          doc.setLineWidth(thickness);
+          doc.line(margin, y, pageWidth - margin, y);
         };
 
         // Helper function to check page break
         const checkPageBreak = (neededSpace: number) => {
-          if (yPos + neededSpace > pageHeight - 30) {
-            addNewPage();
+          if (yPos + neededSpace > pageHeight - 25) {
+            doc.addPage();
+            yPos = 20;
           }
         };
 
-        // Helper function to draw modern section header
-        const drawSectionHeader = (title: string, icon?: string) => {
-          checkPageBreak(20);
-
-          // Left accent bar
-          doc.setFillColor(...colors.primary);
-          doc.roundedRect(margin, yPos, 3, 10, 1, 1, 'F');
-
-          // Section title
-          doc.setFontSize(12);
+        // Helper function to draw section header
+        const drawSectionHeader = (title: string) => {
+          checkPageBreak(15);
+          doc.setFontSize(11);
           doc.setFont('helvetica', 'bold');
-          doc.setTextColor(...colors.text);
-          doc.text(title, margin + 8, yPos + 7);
-
-          // Subtle underline
-          doc.setDrawColor(...colors.border);
-          doc.setLineWidth(0.3);
-          doc.line(margin, yPos + 12, margin + contentWidth, yPos + 12);
-
-          yPos += 18;
+          doc.setTextColor(...colors.black);
+          doc.text(title, margin, yPos);
+          yPos += 2;
+          drawLine(yPos, 0.5);
+          yPos += 8;
         };
 
-        // Helper function to draw info row in card style
-        const drawInfoRowModern = (label: string, value: string, x: number, y: number, width: number) => {
-          doc.setFontSize(8);
-          doc.setFont('helvetica', 'normal');
-          doc.setTextColor(...colors.textMuted);
-          doc.text(label, x, y);
-
-          doc.setFontSize(9);
-          doc.setFont('helvetica', 'bold');
-          doc.setTextColor(...colors.text);
-          doc.text(value, x, y + 5);
-        };
-
-        // Helper function to draw status badge
-        const drawStatusBadge = (text: string, x: number, y: number, status: 'success' | 'warning' | 'info' | 'muted') => {
-          const colorMap = {
-            success: { bg: [220, 252, 231] as [number, number, number], text: [22, 101, 52] as [number, number, number] },
-            warning: { bg: [254, 243, 199] as [number, number, number], text: [146, 64, 14] as [number, number, number] },
-            info: { bg: [219, 234, 254] as [number, number, number], text: [30, 64, 175] as [number, number, number] },
-            muted: { bg: [241, 245, 249] as [number, number, number], text: [71, 85, 105] as [number, number, number] },
-          };
-
-          const color = colorMap[status];
-          doc.setFontSize(7);
-          const textWidth = doc.getTextWidth(text);
-          const padding = 4;
-
-          doc.setFillColor(...color.bg);
-          doc.roundedRect(x, y - 3.5, textWidth + padding * 2, 5, 2, 2, 'F');
-          doc.setTextColor(...color.text);
-          doc.setFont('helvetica', 'bold');
-          doc.text(text, x + padding, y);
-        };
-
-        // Add modern header with gradient effect
+        // Add simple header with logo
         const addHeader = async () => {
-          // Gradient header background (simulated with layers)
-          doc.setFillColor(...colors.primary);
-          doc.rect(0, 0, pageWidth, 42, 'F');
-          doc.setFillColor(...colors.primaryGradient);
-          doc.rect(0, 0, pageWidth, 28, 'F');
-
-          // Decorative accent line
-          doc.setFillColor(...colors.accent);
-          doc.rect(0, 42, pageWidth, 3, 'F');
-
-          // Decorative diagonal element
-          doc.setFillColor(255, 255, 255);
-          doc.setGState(new doc.GState({ opacity: 0.05 }));
-          doc.triangle(pageWidth - 60, 0, pageWidth, 0, pageWidth, 45);
-          doc.setGState(new doc.GState({ opacity: 1 }));
-
           // Try to add logo
           try {
             const logoImg = new Image();
@@ -462,52 +317,41 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
             if (ctx) {
               ctx.drawImage(logoImg, 0, 0);
               const logoBase64 = canvas.toDataURL('image/png');
-
-              // Logo container with white background
-              doc.setFillColor(255, 255, 255);
-              doc.roundedRect(margin, 8, 28, 28, 4, 4, 'F');
-              doc.addImage(logoBase64, 'PNG', margin + 2, 10, 24, 24);
+              doc.addImage(logoBase64, 'PNG', margin, yPos, 20, 20);
             }
           } catch {
-            // Logo fallback - circular badge with text
-            doc.setFillColor(255, 255, 255);
-            doc.roundedRect(margin, 8, 28, 28, 4, 4, 'F');
-            doc.setTextColor(...colors.primary);
-            doc.setFontSize(10);
+            // Logo fallback - simple text
+            doc.setFontSize(12);
             doc.setFont('helvetica', 'bold');
-            doc.text('BSG', margin + 14, 24, { align: 'center' });
+            doc.setTextColor(...colors.black);
+            doc.text('BSG', margin + 5, yPos + 12);
           }
 
-          // Title section
-          doc.setTextColor(255, 255, 255);
-          doc.setFontSize(20);
+          // Title
+          doc.setFontSize(16);
           doc.setFont('helvetica', 'bold');
-          doc.text('LAPORAN STANDBY', margin + 36, 18);
+          doc.setTextColor(...colors.black);
+          doc.text('LAPORAN STANDBY', margin + 28, yPos + 8);
 
-          doc.setFontSize(10);
+          // Subtitle
+          doc.setFontSize(9);
           doc.setFont('helvetica', 'normal');
-          doc.setGState(new doc.GState({ opacity: 0.9 }));
-          doc.text('PT Bank SulutGo - Divisi Teknologi Informasi', margin + 36, 26);
-          doc.setGState(new doc.GState({ opacity: 1 }));
+          doc.setTextColor(...colors.gray);
+          doc.text('PT Bank SulutGo - Divisi Teknologi Informasi', margin + 28, yPos + 14);
 
-          // Date badge
+          // Date
           const reportDate = new Date(exportData.shiftInfo.date).toLocaleDateString('id-ID', {
             weekday: 'long',
             year: 'numeric',
             month: 'long',
             day: 'numeric',
           });
-          doc.setFillColor(255, 255, 255);
-          doc.setGState(new doc.GState({ opacity: 0.2 }));
-          const dateWidth = doc.getTextWidth(reportDate) + 12;
-          doc.roundedRect(margin + 36, 30, dateWidth, 7, 2, 2, 'F');
-          doc.setGState(new doc.GState({ opacity: 1 }));
-          doc.setFontSize(8);
-          doc.setTextColor(255, 255, 255);
-          doc.text(reportDate, margin + 42, 35);
+          doc.setFontSize(9);
+          doc.text(reportDate, margin + 28, yPos + 20);
 
-          doc.setTextColor(0, 0, 0);
-          yPos = 54;
+          yPos += 28;
+          drawLine(yPos, 0.8);
+          yPos += 10;
         };
 
         // Add header to first page
@@ -524,39 +368,34 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
           STANDBY_BRANCH: 'Standby Cabang',
         };
 
-        const statusLabelsMap: Record<string, { label: string; status: 'success' | 'warning' | 'info' | 'muted' }> = {
-          DRAFT: { label: 'Draft', status: 'muted' },
-          IN_PROGRESS: { label: 'Sedang Dikerjakan', status: 'info' },
-          COMPLETED: { label: 'Selesai', status: 'success' },
+        const statusLabelsMap: Record<string, string> = {
+          DRAFT: 'Draft',
+          IN_PROGRESS: 'Sedang Dikerjakan',
+          COMPLETED: 'Selesai',
         };
 
-        // Draw info card
-        const infoCardHeight = 42;
-        drawCard(margin, yPos, contentWidth, infoCardHeight);
-
-        const colWidth = contentWidth / 3;
-        const infoItems = [
-          { label: 'Nama Teknisi', value: exportData.shiftInfo.technician },
-          { label: 'Cabang', value: exportData.shiftInfo.branch },
-          { label: 'Jenis Shift', value: shiftTypeLabels[exportData.shiftInfo.shiftType] || exportData.shiftInfo.shiftType },
-          { label: 'Waktu Mulai', value: new Date(exportData.reportInfo.startedAt).toLocaleString('id-ID') },
-          { label: 'Waktu Selesai', value: exportData.reportInfo.completedAt ? new Date(exportData.reportInfo.completedAt).toLocaleString('id-ID') : '-' },
+        // Info table
+        const infoData = [
+          ['Nama Teknisi', exportData.shiftInfo.technician],
+          ['Cabang', exportData.shiftInfo.branch],
+          ['Jenis Shift', shiftTypeLabels[exportData.shiftInfo.shiftType] || exportData.shiftInfo.shiftType],
+          ['Waktu Mulai', new Date(exportData.reportInfo.startedAt).toLocaleString('id-ID')],
+          ['Waktu Selesai', exportData.reportInfo.completedAt ? new Date(exportData.reportInfo.completedAt).toLocaleString('id-ID') : '-'],
+          ['Status', statusLabelsMap[exportData.reportInfo.status] || exportData.reportInfo.status],
         ];
 
-        // First row
-        drawInfoRowModern(infoItems[0].label, infoItems[0].value, margin + 8, yPos + 8, colWidth - 16);
-        drawInfoRowModern(infoItems[1].label, infoItems[1].value, margin + colWidth + 8, yPos + 8, colWidth - 16);
-        drawInfoRowModern(infoItems[2].label, infoItems[2].value, margin + colWidth * 2 + 8, yPos + 8, colWidth - 16);
+        infoData.forEach((row) => {
+          doc.setFontSize(9);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(...colors.gray);
+          doc.text(row[0] + ':', margin, yPos);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(...colors.darkGray);
+          doc.text(row[1], margin + 45, yPos);
+          yPos += 6;
+        });
 
-        // Second row
-        drawInfoRowModern(infoItems[3].label, infoItems[3].value, margin + 8, yPos + 24, colWidth - 16);
-        drawInfoRowModern(infoItems[4].label, infoItems[4].value, margin + colWidth + 8, yPos + 24, colWidth - 16);
-
-        // Status badge
-        const statusInfo = statusLabelsMap[exportData.reportInfo.status] || statusLabelsMap.DRAFT;
-        drawStatusBadge(statusInfo.label, margin + colWidth * 2 + 8, yPos + 29, statusInfo.status);
-
-        yPos += infoCardHeight + 10;
+        yPos += 8;
 
         // Server Metrics Section
         drawSectionHeader('KONDISI SERVER');
@@ -564,95 +403,41 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
         if (exportData.serverMetrics) {
           const metrics = exportData.serverMetrics;
 
-          // Metrics card
-          const metricsCardHeight = 50;
-          drawCard(margin, yPos, contentWidth, metricsCardHeight);
-
           const metricsData = [
-            {
-              label: 'CPU Usage',
-              value: metrics.cpu.usagePercent?.toFixed(1) || '-',
-              unit: '%',
-              percent: metrics.cpu.usagePercent || 0,
-              status: (metrics.cpu.usagePercent || 0) > 80 ? 'warning' : (metrics.cpu.usagePercent || 0) > 60 ? 'info' : 'success'
-            },
-            {
-              label: 'RAM Usage',
-              value: metrics.ram.usagePercent?.toFixed(1) || '-',
-              unit: '%',
-              percent: metrics.ram.usagePercent || 0,
-              status: (metrics.ram.usagePercent || 0) > 80 ? 'warning' : (metrics.ram.usagePercent || 0) > 60 ? 'info' : 'success'
-            },
-            {
-              label: 'Disk Usage',
-              value: metrics.disk.usagePercent?.toFixed(1) || '-',
-              unit: '%',
-              percent: metrics.disk.usagePercent || 0,
-              status: (metrics.disk.usagePercent || 0) > 80 ? 'warning' : (metrics.disk.usagePercent || 0) > 60 ? 'info' : 'success'
-            },
-            {
-              label: 'Uptime',
-              value: metrics.uptime.days ? `${metrics.uptime.days}` : '-',
-              unit: ' hari',
-              percent: 100,
-              status: 'success'
-            },
+            ['CPU Usage', `${metrics.cpu.usagePercent?.toFixed(1) || '-'}%`],
+            ['RAM Usage', `${metrics.ram.usagePercent?.toFixed(1) || '-'}%`],
+            ['Disk Usage', `${metrics.disk.usagePercent?.toFixed(1) || '-'}%`],
+            ['Uptime', metrics.uptime.days ? `${metrics.uptime.days} hari` : '-'],
           ];
 
-          const metricBoxWidth = (contentWidth - 32) / 4;
+          // Draw metrics in a simple row format
+          const colWidth = contentWidth / 4;
+          doc.setFontSize(8);
+
           metricsData.forEach((metric, index) => {
-            const xPos = margin + 8 + (index * (metricBoxWidth + 8));
-            const centerX = xPos + metricBoxWidth / 2;
+            const xPos = margin + (index * colWidth);
 
-            // Status color mapping
-            const statusColors: Record<string, [number, number, number]> = {
-              success: colors.success,
-              warning: colors.warning,
-              info: colors.primaryLight,
-            };
-            const metricColor = statusColors[metric.status] || colors.success;
-
-            // Draw progress arc for percentage metrics
-            if (metric.unit === '%') {
-              drawProgressArc(centerX, yPos + 18, 10, metric.percent, metricColor);
-
-              // Value in center
-              doc.setFontSize(9);
-              doc.setFont('helvetica', 'bold');
-              doc.setTextColor(...colors.text);
-              doc.text(`${metric.value}`, centerX, yPos + 20, { align: 'center' });
-              doc.setFontSize(6);
-              doc.text('%', centerX + 8, yPos + 20);
-            } else {
-              // For uptime, show simple display
-              doc.setFillColor(...colors.background);
-              doc.roundedRect(xPos + 4, yPos + 8, metricBoxWidth - 8, 20, 3, 3, 'F');
-              doc.setFontSize(14);
-              doc.setFont('helvetica', 'bold');
-              doc.setTextColor(...colors.text);
-              doc.text(`${metric.value}`, centerX, yPos + 20, { align: 'center' });
-              doc.setFontSize(7);
-              doc.setTextColor(...colors.textMuted);
-              doc.text('hari', centerX, yPos + 25, { align: 'center' });
-            }
-
-            // Label below
-            doc.setFontSize(8);
+            // Label
             doc.setFont('helvetica', 'normal');
-            doc.setTextColor(...colors.textMuted);
-            doc.text(metric.label, centerX, yPos + 38, { align: 'center' });
+            doc.setTextColor(...colors.gray);
+            doc.text(metric[0], xPos, yPos);
+
+            // Value
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(...colors.darkGray);
+            doc.text(metric[1], xPos, yPos + 5);
           });
 
-          yPos += metricsCardHeight + 10;
+          yPos += 15;
         } else {
-          // No metrics card
-          const noMetricsHeight = 25;
-          drawCard(margin, yPos, contentWidth, noMetricsHeight);
-          doc.setFontSize(10);
-          doc.setTextColor(...colors.textMuted);
-          doc.text('Metrik server tidak tersedia', pageWidth / 2, yPos + 15, { align: 'center' });
-          yPos += noMetricsHeight + 10;
+          doc.setFontSize(9);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(...colors.gray);
+          doc.text('Metrik server tidak tersedia', margin, yPos);
+          yPos += 10;
         }
+
+        yPos += 5;
 
         // Checklist Section
         drawSectionHeader('DAFTAR PERIKSA');
@@ -667,174 +452,119 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
         });
 
         Object.entries(categories).forEach(([category, items]) => {
-          const categoryHeight = items.length * 10 + (items.filter(i => i.notes).length * 8) + 16;
+          const categoryHeight = items.length * 7 + (items.filter(i => i.notes).length * 6) + 12;
           checkPageBreak(categoryHeight);
 
-          // Category card
-          drawCard(margin, yPos, contentWidth, categoryHeight);
-
-          // Category header with accent
-          doc.setFillColor(...colors.primaryLight);
-          doc.setGState(new doc.GState({ opacity: 0.1 }));
-          doc.roundedRect(margin, yPos, contentWidth, 10, 4, 0, 'F');
-          doc.setGState(new doc.GState({ opacity: 1 }));
-
-          doc.setFontSize(9);
+          // Category header
+          doc.setFontSize(10);
           doc.setFont('helvetica', 'bold');
-          doc.setTextColor(...colors.primary);
-          doc.text(category, margin + 8, yPos + 7);
-
-          // Item count badge
-          const countText = `${items.length} item`;
-          const countWidth = doc.getTextWidth(countText) + 8;
-          doc.setFillColor(...colors.background);
-          doc.roundedRect(pageWidth - margin - countWidth - 8, yPos + 2, countWidth, 6, 2, 2, 'F');
-          doc.setFontSize(7);
-          doc.setTextColor(...colors.textMuted);
-          doc.text(countText, pageWidth - margin - 12, yPos + 6, { align: 'right' });
-
-          let itemY = yPos + 14;
+          doc.setTextColor(...colors.darkGray);
+          doc.text(category, margin, yPos);
+          yPos += 6;
 
           items.forEach((item) => {
-            // Status icon
+            checkPageBreak(14);
+
+            // Status indicator (simple text symbols)
+            doc.setFontSize(9);
+            let statusSymbol = '[ ]';
             if (item.status === 'Selesai') {
-              drawCheckIcon(margin + 8, itemY - 3, 5, true);
+              statusSymbol = '[v]';
             } else if (item.status === 'Dilewati') {
-              drawSkipIcon(margin + 8, itemY - 3, 5);
-            } else {
-              drawCheckIcon(margin + 8, itemY - 3, 5, false);
+              statusSymbol = '[-]';
             }
+
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(...colors.darkGray);
+            doc.text(statusSymbol, margin, yPos);
 
             // Item title
-            doc.setFontSize(8);
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(...colors.text);
-            doc.text(item.title, margin + 16, itemY);
-
-            // Required badge
+            let titleText = item.title;
             if (item.isRequired) {
-              const titleWidth = doc.getTextWidth(item.title);
-              doc.setFillColor(...colors.danger);
-              doc.setGState(new doc.GState({ opacity: 0.1 }));
-              doc.roundedRect(margin + 18 + titleWidth, itemY - 3, 14, 4.5, 1.5, 1.5, 'F');
-              doc.setGState(new doc.GState({ opacity: 1 }));
-              doc.setTextColor(...colors.danger);
-              doc.setFontSize(6);
-              doc.setFont('helvetica', 'bold');
-              doc.text('Wajib', margin + 25 + titleWidth, itemY);
+              titleText += ' *';
             }
+            doc.text(titleText, margin + 10, yPos);
 
-            // Status text with color
-            doc.setFontSize(7);
-            const statusColor = item.status === 'Selesai' ? colors.success :
-                               item.status === 'Dilewati' ? colors.textLight : colors.textMuted;
-            doc.setTextColor(...statusColor);
-            doc.text(item.status, pageWidth - margin - 8, itemY, { align: 'right' });
+            // Status text on the right
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(...colors.gray);
+            doc.text(item.status, pageWidth - margin, yPos, { align: 'right' });
 
-            itemY += 8;
+            yPos += 5;
 
-            // Notes with modern styling
+            // Notes
             if (item.notes) {
-              doc.setFillColor(254, 249, 195); // Yellow-50
-              doc.roundedRect(margin + 14, itemY - 3, contentWidth - 22, 6, 2, 2, 'F');
-              doc.setFontSize(7);
-              doc.setTextColor(161, 98, 7); // Yellow-700
-              doc.text(`Catatan: ${item.notes}`, margin + 17, itemY);
-              itemY += 8;
+              doc.setFontSize(8);
+              doc.setTextColor(...colors.gray);
+              const notesText = `Catatan: ${item.notes}`;
+              const notesLines = doc.splitTextToSize(notesText, contentWidth - 15);
+              doc.text(notesLines, margin + 10, yPos);
+              yPos += notesLines.length * 4 + 2;
             }
           });
 
-          yPos += categoryHeight + 8;
+          yPos += 5;
         });
+
+        // Legend for checklist
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...colors.lightGray);
+        doc.text('Keterangan: [v] = Selesai, [-] = Dilewati, [ ] = Belum, * = Wajib', margin, yPos);
+        yPos += 10;
 
         // Summary Section
         if (exportData.summary.summary || exportData.summary.handoverNotes || exportData.summary.issuesEncountered || exportData.summary.pendingActions) {
-          yPos += 4;
           drawSectionHeader('RINGKASAN & CATATAN');
 
           const summaryFields = [
-            { label: 'Ringkasan Aktivitas', value: exportData.summary.summary, icon: 'clipboard' },
-            { label: 'Catatan Serah Terima', value: exportData.summary.handoverNotes, icon: 'handover' },
-            { label: 'Masalah yang Ditemui', value: exportData.summary.issuesEncountered, icon: 'warning' },
-            { label: 'Tindakan Tertunda', value: exportData.summary.pendingActions, icon: 'pending' },
+            { label: 'Ringkasan Aktivitas', value: exportData.summary.summary },
+            { label: 'Catatan Serah Terima', value: exportData.summary.handoverNotes },
+            { label: 'Masalah yang Ditemui', value: exportData.summary.issuesEncountered },
+            { label: 'Tindakan Tertunda', value: exportData.summary.pendingActions },
           ];
 
           summaryFields.forEach((field) => {
             if (field.value) {
-              doc.setFontSize(8);
-              const lines = doc.splitTextToSize(field.value, contentWidth - 24);
-              const fieldHeight = lines.length * 4 + 18;
+              doc.setFontSize(9);
+              const lines = doc.splitTextToSize(field.value, contentWidth - 5);
+              const fieldHeight = lines.length * 4 + 10;
               checkPageBreak(fieldHeight);
 
-              // Summary field card
-              drawCard(margin, yPos, contentWidth, fieldHeight);
-
-              // Field label with colored indicator
-              const indicatorColors: Record<string, [number, number, number]> = {
-                clipboard: colors.primary,
-                handover: colors.accent,
-                warning: colors.warning,
-                pending: colors.danger,
-              };
-              doc.setFillColor(...(indicatorColors[field.icon] || colors.primary));
-              doc.roundedRect(margin + 6, yPos + 6, 2, 8, 1, 1, 'F');
-
-              doc.setFontSize(9);
+              // Field label
               doc.setFont('helvetica', 'bold');
-              doc.setTextColor(...colors.text);
-              doc.text(field.label, margin + 12, yPos + 11);
+              doc.setTextColor(...colors.darkGray);
+              doc.text(field.label + ':', margin, yPos);
+              yPos += 5;
 
               // Content text
               doc.setFont('helvetica', 'normal');
-              doc.setFontSize(8);
-              doc.setTextColor(...colors.textMuted);
-              doc.text(lines, margin + 12, yPos + 18);
-
-              yPos += fieldHeight + 6;
+              doc.setTextColor(...colors.gray);
+              doc.text(lines, margin + 5, yPos);
+              yPos += lines.length * 4 + 6;
             }
           });
         }
 
-        // Modern Footer on all pages
+        // Simple footer on all pages
         const pageCount = doc.getNumberOfPages();
         for (let i = 1; i <= pageCount; i++) {
           doc.setPage(i);
 
-          // Footer background
-          doc.setFillColor(...colors.background);
-          doc.rect(0, pageHeight - 20, pageWidth, 20, 'F');
-
-          // Footer accent line
-          doc.setDrawColor(...colors.primary);
-          doc.setLineWidth(0.5);
-          doc.line(margin, pageHeight - 20, margin + 30, pageHeight - 20);
-          doc.setDrawColor(...colors.border);
-          doc.setLineWidth(0.3);
-          doc.line(margin + 30, pageHeight - 20, pageWidth - margin, pageHeight - 20);
+          // Footer line
+          drawLine(pageHeight - 18, 0.3);
 
           // Footer content
           doc.setFontSize(7);
           doc.setFont('helvetica', 'normal');
-          doc.setTextColor(...colors.textMuted);
-          doc.text('Bank SulutGo ServiceDesk', margin, pageHeight - 12);
-          doc.setFontSize(6);
-          doc.text('Laporan Standby', margin, pageHeight - 8);
+          doc.setTextColor(...colors.lightGray);
+          doc.text('Bank SulutGo ServiceDesk - Laporan Standby', margin, pageHeight - 12);
 
-          // Page number badge
-          const pageText = `${i} / ${pageCount}`;
-          const pageTextWidth = doc.getTextWidth(pageText) + 8;
-          doc.setFillColor(...colors.primary);
-          doc.roundedRect(pageWidth / 2 - pageTextWidth / 2, pageHeight - 14, pageTextWidth, 6, 2, 2, 'F');
-          doc.setTextColor(255, 255, 255);
-          doc.setFontSize(7);
-          doc.setFont('helvetica', 'bold');
-          doc.text(pageText, pageWidth / 2, pageHeight - 10, { align: 'center' });
+          // Page number
+          doc.text(`Halaman ${i} dari ${pageCount}`, pageWidth / 2, pageHeight - 12, { align: 'center' });
 
           // Timestamp
-          doc.setTextColor(...colors.textLight);
-          doc.setFont('helvetica', 'normal');
-          doc.setFontSize(6);
-          doc.text(`Dicetak: ${new Date().toLocaleString('id-ID')}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
+          doc.text(`Dicetak: ${new Date().toLocaleString('id-ID')}`, pageWidth - margin, pageHeight - 12, { align: 'right' });
         }
 
         // Save the PDF
