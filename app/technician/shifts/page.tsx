@@ -6,13 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   Calendar,
   Clock,
   Moon,
@@ -27,6 +20,7 @@ import {
   List,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { ShiftReportCard } from '@/components/technician/shift-report-card';
 
 interface ShiftAssignment {
   id: string;
@@ -55,20 +49,22 @@ interface MonthlySchedule {
 }
 
 const shiftTypeConfig = {
-  NIGHT_WEEKDAY: { label: 'Night Weekday', icon: Moon, color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300', description: '20:00-07:59 (Weekdays)' },
-  DAY_WEEKEND: { label: 'Day Weekend', icon: Sun, color: 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300', description: '08:00-19:00 (Weekends/Holidays)' },
-  NIGHT_WEEKEND: { label: 'Night Weekend', icon: Moon, color: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300', description: '20:00-07:59 (Weekends/Holidays)' },
-  STANDBY_ONCALL: { label: 'Standby On-Call', icon: AlertTriangle, color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300', description: 'On-Call Standby' },
-  STANDBY_BRANCH: { label: 'Standby Branch', icon: Building, color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300', description: 'Branch Operational Standby' },
-  OFF: { label: 'Off', icon: Coffee, color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300', description: 'Day Off' },
-  LEAVE: { label: 'Leave', icon: Calendar, color: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300', description: 'On Leave' },
-  HOLIDAY: { label: 'Holiday', icon: Calendar, color: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300', description: 'Public Holiday' },
+  NIGHT_WEEKDAY: { label: 'Malam Weekday', icon: Moon, color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300', description: '20:00-07:59 (Hari Kerja)' },
+  DAY_WEEKEND: { label: 'Siang Weekend', icon: Sun, color: 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300', description: '08:00-19:00 (Akhir Pekan/Libur)' },
+  NIGHT_WEEKEND: { label: 'Malam Weekend', icon: Moon, color: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300', description: '20:00-07:59 (Akhir Pekan/Libur)' },
+  STANDBY_ONCALL: { label: 'Standby On-Call', icon: AlertTriangle, color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300', description: 'Siaga On-Call' },
+  STANDBY_BRANCH: { label: 'Standby Cabang', icon: Building, color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300', description: 'Siaga Operasional Cabang' },
+  OFF: { label: 'Libur', icon: Coffee, color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300', description: 'Hari Libur' },
+  LEAVE: { label: 'Cuti', icon: Calendar, color: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300', description: 'Sedang Cuti' },
+  HOLIDAY: { label: 'Libur Nasional', icon: Calendar, color: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300', description: 'Hari Libur Nasional' },
 };
 
 const monthNames = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'
+  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
 ];
+
+const dayNames = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
 
 export default function TechnicianShiftsPage() {
   const { data: session } = useSession();
@@ -109,7 +105,7 @@ export default function TechnicianShiftsPage() {
       }
     } catch (error) {
       console.error('Error fetching schedule:', error);
-      toast.error('Failed to load your shift schedule');
+      toast.error('Gagal memuat jadwal shift Anda');
     } finally {
       setLoading(false);
     }
@@ -169,7 +165,7 @@ export default function TechnicianShiftsPage() {
     // Extract just the date part from ISO string (YYYY-MM-DD)
     const datePart = dateString.split('T')[0];
     const date = new Date(datePart + 'T00:00:00');
-    return date.toLocaleDateString('en-US', {
+    return date.toLocaleDateString('id-ID', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -177,19 +173,10 @@ export default function TechnicianShiftsPage() {
     });
   };
 
-  const formatShortDate = (dateString: string) => {
-    const datePart = dateString.split('T')[0];
-    const date = new Date(datePart + 'T00:00:00');
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-    });
-  };
-
   const getDayOfWeek = (dateString: string) => {
     const datePart = dateString.split('T')[0];
     const date = new Date(datePart + 'T00:00:00');
-    return date.toLocaleDateString('en-US', { weekday: 'short' });
+    return dayNames[date.getDay()];
   };
 
   const renderListView = () => {
@@ -237,11 +224,11 @@ export default function TechnicianShiftsPage() {
                 <div>
                   <h3 className="font-semibold text-lg">
                     {staffData.name}
-                    {isCurrentUser && <span className="ml-2 text-blue-600 dark:text-blue-400">(You)</span>}
+                    {isCurrentUser && <span className="ml-2 text-blue-600 dark:text-blue-400">(Anda)</span>}
                   </h3>
                   <p className="text-sm text-gray-500 dark:text-gray-400">{staffData.email}</p>
                 </div>
-                <Badge variant="outline">{sortedShifts.length} shifts</Badge>
+                <Badge variant="outline">{sortedShifts.length} shift</Badge>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                 {sortedShifts.map(shift => {
@@ -260,7 +247,7 @@ export default function TechnicianShiftsPage() {
                       <div className="flex-1 min-w-0">
                         <div className="text-xs font-semibold truncate">{config?.label || shift.shiftType}</div>
                         <div className="text-xs text-gray-600 dark:text-gray-400">
-                          {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          {date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
                         </div>
                       </div>
                     </div>
@@ -280,7 +267,7 @@ export default function TechnicianShiftsPage() {
         <div className="text-center py-12">
           <Calendar className="w-16 h-16 mx-auto text-gray-400 mb-4" />
           <p className="text-gray-500 dark:text-gray-400">
-            No published schedule for {monthNames[selectedMonth - 1]} {selectedYear}
+            Tidak ada jadwal terpublikasi untuk {monthNames[selectedMonth - 1]} {selectedYear}
           </p>
         </div>
       );
@@ -301,7 +288,7 @@ export default function TechnicianShiftsPage() {
     return (
       <div>
         <div className="grid grid-cols-7 gap-2 mb-2">
-          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+          {dayNames.map(day => (
             <div key={day} className="text-center font-semibold text-sm text-gray-600 dark:text-gray-400 p-2">
               {day}
             </div>
@@ -357,7 +344,7 @@ export default function TechnicianShiftsPage() {
                             <span className="font-semibold">{config?.label || shiftType}</span>
                           </div>
                           <div className="pl-4 space-y-0.5">
-                            {assignments.map((assignment, idx) => {
+                            {assignments.map((assignment) => {
                               const isCurrentUser = assignment.staffProfile.user.id === session?.user?.id;
                               return (
                                 <div
@@ -366,7 +353,7 @@ export default function TechnicianShiftsPage() {
                                   title={assignment.staffProfile.user.email}
                                 >
                                   {assignment.staffProfile.user.name.split(' ')[0]}
-                                  {isCurrentUser && ' (You)'}
+                                  {isCurrentUser && ' (Anda)'}
                                 </div>
                               );
                             })}
@@ -402,6 +389,9 @@ export default function TechnicianShiftsPage() {
     }
   };
 
+  // Check if user has an active working shift (not OFF, LEAVE, or HOLIDAY)
+  const hasActiveShift = todayShift && !['OFF', 'LEAVE', 'HOLIDAY'].includes(todayShift.shiftType);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -414,9 +404,9 @@ export default function TechnicianShiftsPage() {
     <div className="p-6 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">My Shifts</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Shift Saya</h1>
         <p className="text-gray-600 dark:text-gray-400 mt-1">
-          View your shift schedule and upcoming assignments
+          Lihat jadwal shift dan tugas Anda
         </p>
       </div>
 
@@ -425,10 +415,10 @@ export default function TechnicianShiftsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Clock className="w-5 h-5" />
-            Today's Shift
+            Shift Hari Ini
           </CardTitle>
           <CardDescription>
-            {new Date().toLocaleDateString('en-US', {
+            {new Date().toLocaleDateString('id-ID', {
               weekday: 'long',
               year: 'numeric',
               month: 'long',
@@ -450,7 +440,7 @@ export default function TechnicianShiftsPage() {
                     <div>
                       <h3 className="text-lg font-semibold">{config?.description}</h3>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Schedule Status: <Badge className="ml-2">{todayShift.schedule.status}</Badge>
+                        Status Jadwal: <Badge className="ml-2">{todayShift.schedule.status === 'PUBLISHED' ? 'Terpublikasi' : todayShift.schedule.status}</Badge>
                       </p>
                     </div>
                   </>
@@ -458,19 +448,29 @@ export default function TechnicianShiftsPage() {
               })()}
             </div>
           ) : (
-            <p className="text-gray-500 dark:text-gray-400">No shift assigned for today</p>
+            <p className="text-gray-500 dark:text-gray-400">Tidak ada shift yang ditugaskan untuk hari ini</p>
           )}
         </CardContent>
       </Card>
+
+      {/* Shift Report Card - Show when user has active working shift */}
+      {hasActiveShift && (
+        <ShiftReportCard
+          shiftAssignment={todayShift}
+          onReportCreated={() => {
+            // Optionally refresh data after report is created
+          }}
+        />
+      )}
 
       {/* Upcoming Shifts */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calendar className="w-5 h-5" />
-            Upcoming Shifts
+            Shift Mendatang
           </CardTitle>
-          <CardDescription>Next 7 days</CardDescription>
+          <CardDescription>7 hari ke depan</CardDescription>
         </CardHeader>
         <CardContent>
           {upcomingShifts.length > 0 ? (
@@ -502,7 +502,7 @@ export default function TechnicianShiftsPage() {
               })}
             </div>
           ) : (
-            <p className="text-gray-500 dark:text-gray-400">No upcoming shifts in the next 7 days</p>
+            <p className="text-gray-500 dark:text-gray-400">Tidak ada shift dalam 7 hari ke depan</p>
           )}
         </CardContent>
       </Card>
@@ -511,7 +511,7 @@ export default function TechnicianShiftsPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between flex-wrap gap-3">
-            <CardTitle>Monthly Schedule - All Staff</CardTitle>
+            <CardTitle>Jadwal Bulanan - Semua Staff</CardTitle>
             <div className="flex items-center gap-2">
               {/* View Mode Toggle */}
               <div className="flex border rounded-lg overflow-hidden">
@@ -522,7 +522,7 @@ export default function TechnicianShiftsPage() {
                   className="rounded-none"
                 >
                   <LayoutGrid className="w-4 h-4 mr-1" />
-                  Calendar
+                  Kalender
                 </Button>
                 <Button
                   variant={viewMode === 'list' ? 'default' : 'ghost'}
@@ -531,7 +531,7 @@ export default function TechnicianShiftsPage() {
                   className="rounded-none"
                 >
                   <List className="w-4 h-4 mr-1" />
-                  List
+                  Daftar
                 </Button>
               </div>
 
@@ -557,8 +557,8 @@ export default function TechnicianShiftsPage() {
           </div>
           <CardDescription>
             {monthlySchedule
-              ? `${monthlySchedule.status} • Showing all staff assignments`
-              : 'Select a month to view'}
+              ? `${monthlySchedule.status === 'PUBLISHED' ? 'Terpublikasi' : monthlySchedule.status} • Menampilkan semua penugasan staff`
+              : 'Pilih bulan untuk melihat'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -569,10 +569,10 @@ export default function TechnicianShiftsPage() {
       {/* Legend */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Shift Types</CardTitle>
+          <CardTitle className="text-sm">Jenis Shift</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {Object.entries(shiftTypeConfig).map(([key, config]) => {
               const Icon = config.icon;
               return (
