@@ -1,27 +1,22 @@
 'use client';
 
 import { useState } from 'react';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Progress } from '@/components/ui/progress';
 import {
   Monitor,
   Ticket,
   ArrowRightLeft,
   CheckCircle2,
   Circle,
-  Clock,
   SkipForward,
+  ChevronDown,
+  ChevronRight,
   MessageSquare,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface ChecklistItem {
   id: string;
@@ -48,40 +43,20 @@ const categoryConfig = {
   SYSTEM_MONITORING: {
     label: 'Pemantauan Sistem',
     icon: Monitor,
-    color: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
+    color: 'text-blue-600 dark:text-blue-400',
+    bg: 'bg-blue-50 dark:bg-blue-950/30',
   },
   TICKET_MANAGEMENT: {
     label: 'Manajemen Tiket',
     icon: Ticket,
-    color: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300',
+    color: 'text-purple-600 dark:text-purple-400',
+    bg: 'bg-purple-50 dark:bg-purple-950/30',
   },
   HANDOVER_TASKS: {
     label: 'Serah Terima',
     icon: ArrowRightLeft,
-    color: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
-  },
-};
-
-const statusConfig = {
-  PENDING: {
-    label: 'Menunggu',
-    icon: Circle,
-    color: 'text-gray-500',
-  },
-  IN_PROGRESS: {
-    label: 'Sedang Dikerjakan',
-    icon: Clock,
-    color: 'text-blue-500',
-  },
-  COMPLETED: {
-    label: 'Selesai',
-    icon: CheckCircle2,
-    color: 'text-green-500',
-  },
-  SKIPPED: {
-    label: 'Dilewati',
-    icon: SkipForward,
-    color: 'text-yellow-500',
+    color: 'text-green-600 dark:text-green-400',
+    bg: 'bg-green-50 dark:bg-green-950/30',
   },
 };
 
@@ -91,8 +66,13 @@ export function ShiftChecklist({
   isLoading = false,
   readOnly = false,
 }: ShiftChecklistProps) {
-  const [expandedNotes, setExpandedNotes] = useState<Record<string, boolean>>({});
-  const [editingNotes, setEditingNotes] = useState<Record<string, string>>({});
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
+    SYSTEM_MONITORING: true,
+    TICKET_MANAGEMENT: true,
+    HANDOVER_TASKS: true,
+  });
+  const [editingNote, setEditingNote] = useState<string | null>(null);
+  const [noteText, setNoteText] = useState('');
 
   // Group items by category
   const itemsByCategory = items.reduce((acc, item) => {
@@ -104,20 +84,12 @@ export function ShiftChecklist({
   }, {} as Record<string, ChecklistItem[]>);
 
   // Calculate progress per category
-  const categoryProgress = Object.entries(itemsByCategory).reduce(
-    (acc, [category, categoryItems]) => {
-      const completed = categoryItems.filter(
-        (i) => i.status === 'COMPLETED' || i.status === 'SKIPPED'
-      ).length;
-      acc[category] = {
-        total: categoryItems.length,
-        completed,
-        percentage: Math.round((completed / categoryItems.length) * 100),
-      };
-      return acc;
-    },
-    {} as Record<string, { total: number; completed: number; percentage: number }>
-  );
+  const getCategoryProgress = (categoryItems: ChecklistItem[]) => {
+    const completed = categoryItems.filter(
+      (i) => i.status === 'COMPLETED' || i.status === 'SKIPPED'
+    ).length;
+    return { completed, total: categoryItems.length };
+  };
 
   const handleStatusChange = async (itemId: string, checked: boolean) => {
     if (readOnly || isLoading) return;
@@ -131,188 +103,191 @@ export function ShiftChecklist({
     await onUpdateItems([{ id: itemId, status: 'SKIPPED' }]);
   };
 
-  const handleNotesChange = (itemId: string, notes: string) => {
-    setEditingNotes((prev) => ({ ...prev, [itemId]: notes }));
+  const startEditNote = (item: ChecklistItem) => {
+    setEditingNote(item.id);
+    setNoteText(item.notes || '');
   };
 
-  const handleNotesSave = async (itemId: string) => {
+  const saveNote = async (itemId: string) => {
     if (readOnly || isLoading) return;
-    const notes = editingNotes[itemId];
-    if (notes !== undefined) {
-      await onUpdateItems([{ id: itemId, notes }]);
-      setExpandedNotes((prev) => ({ ...prev, [itemId]: false }));
-    }
+    await onUpdateItems([{ id: itemId, notes: noteText }]);
+    setEditingNote(null);
+    setNoteText('');
+  };
+
+  const toggleCategory = (category: string) => {
+    setExpandedCategories((prev) => ({
+      ...prev,
+      [category]: !prev[category],
+    }));
   };
 
   return (
-    <div className="space-y-4">
-      <Accordion type="multiple" defaultValue={Object.keys(itemsByCategory)}>
-        {Object.entries(itemsByCategory).map(([category, categoryItems]) => {
-          const config = categoryConfig[category as keyof typeof categoryConfig];
-          const progress = categoryProgress[category];
-          const Icon = config?.icon || Monitor;
+    <div className="space-y-3">
+      {Object.entries(itemsByCategory).map(([category, categoryItems]) => {
+        const config = categoryConfig[category as keyof typeof categoryConfig];
+        const progress = getCategoryProgress(categoryItems);
+        const Icon = config?.icon || Monitor;
+        const isExpanded = expandedCategories[category];
 
-          return (
-            <AccordionItem key={category} value={category}>
-              <AccordionTrigger className="hover:no-underline">
-                <div className="flex items-center justify-between w-full pr-4">
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded ${config?.color || ''}`}>
-                      <Icon className="h-4 w-4" />
-                    </div>
-                    <span className="font-medium">
-                      {config?.label || category}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-24">
-                      <Progress value={progress.percentage} className="h-2" />
-                    </div>
-                    <Badge variant="outline" className="text-xs">
-                      {progress.completed}/{progress.total}
-                    </Badge>
-                  </div>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent>
-                <div className="space-y-3 pt-2">
-                  {categoryItems.map((item) => {
-                    const statusInfo = statusConfig[item.status];
-                    const StatusIcon = statusInfo.icon;
-                    const isCompleted =
-                      item.status === 'COMPLETED' || item.status === 'SKIPPED';
+        return (
+          <div key={category} className="border rounded-lg overflow-hidden">
+            {/* Category Header */}
+            <button
+              onClick={() => toggleCategory(category)}
+              className={cn(
+                'w-full flex items-center justify-between p-3',
+                config?.bg || 'bg-muted/50'
+              )}
+            >
+              <div className="flex items-center gap-2">
+                {isExpanded ? (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                )}
+                <Icon className={cn('h-4 w-4', config?.color)} />
+                <span className="font-medium text-sm">
+                  {config?.label || category}
+                </span>
+              </div>
+              <Badge variant="secondary" className="text-xs">
+                {progress.completed}/{progress.total}
+              </Badge>
+            </button>
 
-                    return (
-                      <div
-                        key={item.id}
-                        className={`p-3 border rounded-lg transition-colors ${
-                          isCompleted
-                            ? 'bg-muted/50 border-muted'
-                            : 'bg-background border-border hover:border-primary/50'
-                        }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <Checkbox
-                            checked={item.status === 'COMPLETED'}
-                            onCheckedChange={(checked) =>
-                              handleStatusChange(item.id, checked as boolean)
-                            }
-                            disabled={readOnly || isLoading || item.status === 'SKIPPED'}
-                            className="mt-0.5"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-2">
-                                <span
-                                  className={`text-sm font-medium ${
-                                    isCompleted ? 'line-through text-muted-foreground' : ''
-                                  }`}
-                                >
-                                  {item.title}
-                                </span>
-                                {item.isRequired && (
-                                  <Badge variant="destructive" className="text-xs h-5">
-                                    Wajib
-                                  </Badge>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <StatusIcon
-                                  className={`h-4 w-4 ${statusInfo.color}`}
-                                />
-                                {!readOnly && item.status !== 'COMPLETED' && !item.isRequired && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 text-xs"
-                                    onClick={() => handleSkip(item.id)}
-                                    disabled={isLoading || item.status === 'SKIPPED'}
-                                  >
-                                    Lewati
-                                  </Button>
-                                )}
-                              </div>
-                            </div>
-                            {item.description && (
-                              <p className="text-xs text-muted-foreground mt-1">
-                                {item.description}
-                              </p>
+            {/* Category Items */}
+            {isExpanded && (
+              <div className="divide-y">
+                {categoryItems.map((item) => {
+                  const isCompleted = item.status === 'COMPLETED';
+                  const isSkipped = item.status === 'SKIPPED';
+                  const isDone = isCompleted || isSkipped;
+
+                  return (
+                    <div
+                      key={item.id}
+                      className={cn(
+                        'px-3 py-2 transition-colors',
+                        isDone && 'bg-muted/30'
+                      )}
+                    >
+                      {/* Main row */}
+                      <div className="flex items-center gap-3">
+                        <Checkbox
+                          checked={isCompleted}
+                          onCheckedChange={(checked) =>
+                            handleStatusChange(item.id, checked as boolean)
+                          }
+                          disabled={readOnly || isLoading || isSkipped}
+                        />
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={cn(
+                                'text-sm',
+                                isDone && 'line-through text-muted-foreground'
+                              )}
+                            >
+                              {item.title}
+                            </span>
+                            {item.isRequired && (
+                              <Badge variant="destructive" className="text-[10px] h-4 px-1">
+                                Wajib
+                              </Badge>
                             )}
-
-                            {/* Notes section */}
-                            <div className="mt-2">
-                              {item.notes && !expandedNotes[item.id] && (
-                                <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
-                                  <MessageSquare className="h-3 w-3 inline mr-1" />
-                                  {item.notes}
-                                </p>
-                              )}
-                              {!readOnly && (
-                                <div className="mt-2">
-                                  {expandedNotes[item.id] ? (
-                                    <div className="space-y-2">
-                                      <Textarea
-                                        placeholder="Tambah catatan..."
-                                        value={
-                                          editingNotes[item.id] ?? item.notes ?? ''
-                                        }
-                                        onChange={(e) =>
-                                          handleNotesChange(item.id, e.target.value)
-                                        }
-                                        className="text-sm min-h-[60px]"
-                                      />
-                                      <div className="flex gap-2">
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          onClick={() =>
-                                            setExpandedNotes((prev) => ({
-                                              ...prev,
-                                              [item.id]: false,
-                                            }))
-                                          }
-                                        >
-                                          Batal
-                                        </Button>
-                                        <Button
-                                          size="sm"
-                                          onClick={() => handleNotesSave(item.id)}
-                                          disabled={isLoading}
-                                        >
-                                          Simpan
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-6 text-xs text-muted-foreground"
-                                      onClick={() =>
-                                        setExpandedNotes((prev) => ({
-                                          ...prev,
-                                          [item.id]: true,
-                                        }))
-                                      }
-                                    >
-                                      <MessageSquare className="h-3 w-3 mr-1" />
-                                      {item.notes ? 'Edit catatan' : 'Tambah catatan'}
-                                    </Button>
-                                  )}
-                                </div>
-                              )}
-                            </div>
                           </div>
                         </div>
+
+                        {/* Status indicator */}
+                        <div className="flex items-center gap-1">
+                          {isCompleted && (
+                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          )}
+                          {isSkipped && (
+                            <SkipForward className="h-4 w-4 text-yellow-500" />
+                          )}
+                          {!isDone && (
+                            <Circle className="h-4 w-4 text-muted-foreground/50" />
+                          )}
+
+                          {/* Skip button */}
+                          {!readOnly && !isDone && !item.isRequired && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                              onClick={() => handleSkip(item.id)}
+                              disabled={isLoading}
+                            >
+                              Lewati
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                    );
-                  })}
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          );
-        })}
-      </Accordion>
+
+                      {/* Notes section - simplified */}
+                      {(item.notes || editingNote === item.id) && (
+                        <div className="mt-2 ml-7">
+                          {editingNote === item.id ? (
+                            <div className="space-y-2">
+                              <Textarea
+                                value={noteText}
+                                onChange={(e) => setNoteText(e.target.value)}
+                                placeholder="Tambah catatan..."
+                                className="text-sm min-h-[60px]"
+                                autoFocus
+                              />
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-xs"
+                                  onClick={() => setEditingNote(null)}
+                                >
+                                  Batal
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  className="h-7 text-xs"
+                                  onClick={() => saveNote(item.id)}
+                                  disabled={isLoading}
+                                >
+                                  Simpan
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <p
+                              className="text-xs text-muted-foreground bg-muted/50 px-2 py-1.5 rounded cursor-pointer hover:bg-muted"
+                              onClick={() => !readOnly && startEditNote(item)}
+                            >
+                              <MessageSquare className="h-3 w-3 inline mr-1" />
+                              {item.notes}
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Add note button - only show if no notes and not editing */}
+                      {!readOnly && !item.notes && editingNote !== item.id && (
+                        <button
+                          className="mt-1 ml-7 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+                          onClick={() => startEditNote(item)}
+                        >
+                          <MessageSquare className="h-3 w-3" />
+                          Tambah catatan
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
