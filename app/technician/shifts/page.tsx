@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ShiftReportCard } from '@/components/technician/shift-report-card';
+import { TodayReportsList } from '@/components/technician/today-reports-list';
 
 interface ShiftAssignment {
   id: string;
@@ -463,7 +464,12 @@ export default function TechnicianShiftsPage() {
         />
       )}
 
-      {/* Debug info - remove after testing */}
+      {/* Other Technicians' Reports */}
+      {session?.user?.id && (
+        <TodayReportsList currentUserId={session.user.id} />
+      )}
+
+      {/* Info when no active shift */}
       {!hasActiveShift && (
         <Card className="border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
           <CardContent className="pt-6">
