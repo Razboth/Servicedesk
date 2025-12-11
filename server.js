@@ -88,7 +88,17 @@ dotenv.config({ path: envFile });
 var dev = process.env.NODE_ENV !== 'production';
 var hostname = process.env.HOSTNAME || 'localhost';
 var port = parseInt(process.env.PORT || '3000', 10);
-var useHttps = process.env.USE_HTTPS !== 'false'; // Default to HTTPS
+var useHttps = process.env.USE_HTTPS === 'true'; // Explicit true required for HTTPS
+// Debug: Log environment variables
+console.log('🔧 Configuration:');
+console.log("   NODE_ENV: ".concat(process.env.NODE_ENV));
+console.log("   USE_HTTPS: ".concat(process.env.USE_HTTPS));
+console.log("   SSL_CERT_DIR: ".concat(process.env.SSL_CERT_DIR));
+console.log("   SSL_CERT_FILE: ".concat(process.env.SSL_CERT_FILE));
+console.log("   SSL_KEY_FILE: ".concat(process.env.SSL_KEY_FILE));
+console.log("   PORT: ".concat(port));
+console.log("   HOSTNAME: ".concat(hostname));
+console.log("   useHttps resolved: ".concat(useHttps));
 // Configure Next.js
 var app = (0, next_1.default)({ dev: dev, hostname: hostname, port: port });
 var handle = app.getRequestHandler();

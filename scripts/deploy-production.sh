@@ -178,6 +178,12 @@ echo ""
 log_info "Step 6: Membuat konfigurasi PM2..."
 
 cat > ecosystem.production.config.js << 'PMCONFIG'
+const path = require('path');
+const dotenv = require('dotenv');
+
+// Load .env file
+dotenv.config({ path: path.join(__dirname, '.env') });
+
 module.exports = {
   apps: [
     {
@@ -189,6 +195,8 @@ module.exports = {
       watch: false,
       max_memory_restart: '1G',
       env: {
+        // Load from .env file + override with production settings
+        ...process.env,
         NODE_ENV: 'production',
         PORT: 443,
         HOSTNAME: '0.0.0.0',
@@ -196,6 +204,9 @@ module.exports = {
         SSL_CERT_DIR: './certificates',
         SSL_CERT_FILE: 'banksulutgo.crt',
         SSL_KEY_FILE: 'banksulutgo.key',
+        // IMPORTANT: Set NEXTAUTH_URL to your production URL
+        // This must match the URL users access the site from
+        NEXTAUTH_URL: process.env.NEXTAUTH_URL || 'https://hd.bsg.id',
       },
       error_file: './logs/pm2-error.log',
       out_file: './logs/pm2-out.log',
