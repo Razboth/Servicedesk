@@ -16,6 +16,9 @@ import { toast } from 'sonner'
 import { ArrowLeft, Save, Eye, Plus, X, BookOpen, Tag, Calendar, Layers, Upload, FileText, Trash2, History, MessageSquare } from 'lucide-react'
 import Link from 'next/link'
 import { format } from 'date-fns'
+import { VisibilitySettings } from './visibility-settings'
+
+type KnowledgeVisibility = 'EVERYONE' | 'BY_ROLE' | 'BY_BRANCH' | 'PRIVATE';
 
 const updateArticleSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200, 'Title must be less than 200 characters'),
@@ -27,7 +30,10 @@ const updateArticleSchema = z.object({
   tags: z.array(z.string()).default([]),
   status: z.enum(['DRAFT', 'UNDER_REVIEW', 'PUBLISHED', 'ARCHIVED']).default('DRAFT'),
   expiresAt: z.string().optional(),
-  changeNotes: z.string().min(1, 'Please describe what changed in this version')
+  changeNotes: z.string().min(1, 'Please describe what changed in this version'),
+  visibility: z.enum(['EVERYONE', 'BY_ROLE', 'BY_BRANCH', 'PRIVATE']).default('EVERYONE'),
+  visibleToRoles: z.array(z.string()).default([]),
+  visibleToBranches: z.array(z.string()).default([])
 })
 
 type FormData = z.infer<typeof updateArticleSchema>
@@ -59,6 +65,15 @@ interface Version {
   }
 }
 
+interface VisibleBranch {
+  id: string
+  branch: {
+    id: string
+    name: string
+    code: string
+  }
+}
+
 interface KnowledgeEditFormProps {
   articleId: string
   initialData: {
@@ -72,6 +87,9 @@ interface KnowledgeEditFormProps {
     status: 'DRAFT' | 'UNDER_REVIEW' | 'PUBLISHED' | 'ARCHIVED'
     expiresAt?: string
     versions?: Version[]
+    visibility?: KnowledgeVisibility
+    visibleToRoles?: string[]
+    visibleBranches?: VisibleBranch[]
   }
 }
 
@@ -103,12 +121,15 @@ export default function KnowledgeEditForm({ articleId, initialData }: KnowledgeE
       tags: initialData.tags,
       status: initialData.status,
       expiresAt: initialData.expiresAt,
-      changeNotes: ''
+      changeNotes: '',
+      visibility: initialData.visibility || 'EVERYONE',
+      visibleToRoles: initialData.visibleToRoles || [],
+      visibleToBranches: initialData.visibleBranches?.map(vb => vb.branch.id) || []
     }
   })
 
-  const watchedFields = watch(['categoryId', 'subcategoryId', 'tags'])
-  const [categoryId, subcategoryId, tags] = watchedFields
+  const watchedFields = watch(['categoryId', 'subcategoryId', 'tags', 'visibility', 'visibleToRoles', 'visibleToBranches'])
+  const [categoryId, subcategoryId, tags, visibility, visibleToRoles, visibleToBranches] = watchedFields
 
   // Fetch categories for the dropdown
   const fetchCategories = useCallback(async () => {
@@ -139,7 +160,10 @@ export default function KnowledgeEditForm({ articleId, initialData }: KnowledgeE
         body: JSON.stringify({
           ...data,
           tags: tags || [],
-          expiresAt: data.expiresAt ? new Date(data.expiresAt).toISOString() : undefined
+          expiresAt: data.expiresAt ? new Date(data.expiresAt).toISOString() : undefined,
+          visibility: visibility || 'EVERYONE',
+          visibleToRoles: visibleToRoles || [],
+          visibleToBranches: visibleToBranches || []
         })
       })
 
@@ -596,6 +620,19 @@ export default function KnowledgeEditForm({ articleId, initialData }: KnowledgeE
               </p>
             </CardContent>
           </Card>
+
+          {/* Visibility Settings */}
+          <VisibilitySettings
+            visibility={(visibility as KnowledgeVisibility) || 'EVERYONE'}
+            visibleToRoles={visibleToRoles || []}
+            visibleToBranches={visibleToBranches || []}
+            onChange={(settings) => {
+              setValue('visibility', settings.visibility)
+              setValue('visibleToRoles', settings.visibleToRoles)
+              setValue('visibleToBranches', settings.visibleToBranches)
+            }}
+            disabled={isSubmitting || loading}
+          />
         </div>
       </div>
     </form>

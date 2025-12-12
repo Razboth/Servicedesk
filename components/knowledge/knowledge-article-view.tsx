@@ -8,21 +8,25 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
-import { 
-  ArrowLeft, 
-  Edit, 
-  MoreHorizontal, 
-  Eye, 
-  ThumbsUp, 
-  ThumbsDown, 
-  Calendar, 
-  User, 
-  Tag, 
-  MessageSquare, 
+import {
+  ArrowLeft,
+  Edit,
+  MoreHorizontal,
+  Eye,
+  ThumbsUp,
+  ThumbsDown,
+  Calendar,
+  User,
+  Tag,
+  MessageSquare,
   Paperclip,
   Clock,
   AlertTriangle,
-  History
+  History,
+  Globe,
+  Users,
+  Building2,
+  Lock
 } from 'lucide-react'
 import Link from 'next/link'
 import { formatDistanceToNow, format } from 'date-fns'
@@ -33,6 +37,8 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu'
+
+type KnowledgeVisibility = 'EVERYONE' | 'BY_ROLE' | 'BY_BRANCH' | 'PRIVATE';
 
 interface KnowledgeArticle {
   id: string
@@ -51,6 +57,8 @@ interface KnowledgeArticle {
   expiresAt?: string
   isActive: boolean
   authorId: string
+  visibility: KnowledgeVisibility
+  visibleToRoles: string[]
   author: {
     id: string
     name: string
@@ -69,6 +77,14 @@ interface KnowledgeArticle {
     id: string
     name: string
   }
+  visibleBranches?: Array<{
+    id: string
+    branch: {
+      id: string
+      name: string
+      code: string
+    }
+  }>
   versions: Array<{
     id: string
     version: number
@@ -223,15 +239,50 @@ export default function KnowledgeArticleView({ articleId }: Props) {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'PUBLISHED':
-        return <Badge variant="default" className="bg-green-100 text-green-800">Published</Badge>
+        return <Badge variant="default" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">Published</Badge>
       case 'DRAFT':
         return <Badge variant="secondary">Draft</Badge>
       case 'UNDER_REVIEW':
-        return <Badge variant="outline" className="border-yellow-500 text-yellow-700">Under Review</Badge>
+        return <Badge variant="outline" className="border-yellow-500 text-yellow-700 dark:border-yellow-400 dark:text-yellow-400">Under Review</Badge>
       case 'ARCHIVED':
         return <Badge variant="destructive">Archived</Badge>
       default:
         return <Badge variant="secondary">{status}</Badge>
+    }
+  }
+
+  const getVisibilityBadge = (visibility: KnowledgeVisibility) => {
+    switch (visibility) {
+      case 'EVERYONE':
+        return (
+          <Badge variant="outline" className="flex items-center gap-1 bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800">
+            <Globe className="h-3 w-3" />
+            Semua Pengguna
+          </Badge>
+        )
+      case 'BY_ROLE':
+        return (
+          <Badge variant="outline" className="flex items-center gap-1 bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800">
+            <Users className="h-3 w-3" />
+            Berdasarkan Role
+          </Badge>
+        )
+      case 'BY_BRANCH':
+        return (
+          <Badge variant="outline" className="flex items-center gap-1 bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950 dark:text-orange-300 dark:border-orange-800">
+            <Building2 className="h-3 w-3" />
+            Berdasarkan Cabang
+          </Badge>
+        )
+      case 'PRIVATE':
+        return (
+          <Badge variant="outline" className="flex items-center gap-1 bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-900 dark:text-gray-300 dark:border-gray-700">
+            <Lock className="h-3 w-3" />
+            Pribadi
+          </Badge>
+        )
+      default:
+        return null
     }
   }
 
@@ -292,9 +343,10 @@ export default function KnowledgeArticleView({ articleId }: Props) {
         <CardHeader>
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2">
-                <h1 className="text-3xl font-bold text-gray-900">{article.title}</h1>
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{article.title}</h1>
                 {getStatusBadge(article.status)}
+                {getVisibilityBadge(article.visibility)}
                 {isExpired && (
                   <Badge variant="destructive" className="flex items-center gap-1">
                     <Clock className="h-3 w-3" />
@@ -477,30 +529,84 @@ export default function KnowledgeArticleView({ articleId }: Props) {
           {/* Article Information */}
           <Card>
             <CardHeader>
-              <CardTitle>Article Information</CardTitle>
+              <CardTitle>Informasi Artikel</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <div>
-                <span className="font-medium">Author:</span> {article.author.name}
+                <span className="font-medium">Penulis:</span> {article.author.name}
               </div>
               <div>
                 <span className="font-medium">Role:</span> {article.author.role}
               </div>
               <div>
-                <span className="font-medium">Created:</span> {format(new Date(article.createdAt), 'PPP')}
+                <span className="font-medium">Dibuat:</span> {format(new Date(article.createdAt), 'PPP')}
               </div>
               <div>
-                <span className="font-medium">Last Updated:</span> {format(new Date(article.updatedAt), 'PPP')}
+                <span className="font-medium">Terakhir Diperbarui:</span> {format(new Date(article.updatedAt), 'PPP')}
               </div>
               {article.publishedAt && (
                 <div>
-                  <span className="font-medium">Published:</span> {format(new Date(article.publishedAt), 'PPP')}
+                  <span className="font-medium">Dipublikasikan:</span> {format(new Date(article.publishedAt), 'PPP')}
                 </div>
               )}
               {article.expiresAt && (
                 <div>
-                  <span className="font-medium">Expires:</span> {format(new Date(article.expiresAt), 'PPP')}
+                  <span className="font-medium">Kedaluwarsa:</span> {format(new Date(article.expiresAt), 'PPP')}
                 </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Visibility Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Lock className="h-5 w-5" />
+                Visibilitas
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div className="flex items-center gap-2">
+                {getVisibilityBadge(article.visibility)}
+              </div>
+              {article.visibility === 'BY_ROLE' && article.visibleToRoles.length > 0 && (
+                <div>
+                  <span className="font-medium block mb-1">Role yang dapat mengakses:</span>
+                  <div className="flex flex-wrap gap-1">
+                    {article.visibleToRoles.map(role => {
+                      const roleLabels: Record<string, string> = {
+                        'USER': 'Pengguna',
+                        'TECHNICIAN': 'Teknisi',
+                        'MANAGER': 'Manager',
+                        'MANAGER_IT': 'Manager IT',
+                        'ADMIN': 'Admin',
+                        'SECURITY_ANALYST': 'Security Analyst'
+                      };
+                      return (
+                        <Badge key={role} variant="secondary" className="text-xs">
+                          {roleLabels[role] || role}
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              {article.visibility === 'BY_BRANCH' && article.visibleBranches && article.visibleBranches.length > 0 && (
+                <div>
+                  <span className="font-medium block mb-1">Cabang yang dapat mengakses:</span>
+                  <div className="flex flex-wrap gap-1">
+                    {article.visibleBranches.map(vb => (
+                      <Badge key={vb.branch.id} variant="secondary" className="text-xs">
+                        {vb.branch.name}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {article.visibility === 'PRIVATE' && (
+                <p className="text-muted-foreground">
+                  Hanya penulis dan kolaborator yang dapat melihat artikel ini.
+                </p>
               )}
             </CardContent>
           </Card>

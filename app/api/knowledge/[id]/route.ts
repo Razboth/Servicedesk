@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { KnowledgeVisibility } from '@prisma/client';
 
 // Schema for updating knowledge articles
 const updateArticleSchema = z.object({
@@ -14,7 +15,11 @@ const updateArticleSchema = z.object({
   tags: z.array(z.string()).optional(),
   status: z.enum(['DRAFT', 'UNDER_REVIEW', 'PUBLISHED', 'ARCHIVED']).optional(),
   expiresAt: z.string().optional().transform((str) => str ? new Date(str) : null),
-  changeNotes: z.string().optional()
+  changeNotes: z.string().optional(),
+  // Visibility settings
+  visibility: z.enum(['EVERYONE', 'BY_ROLE', 'BY_BRANCH', 'PRIVATE']).optional(),
+  visibleToRoles: z.array(z.string()).optional(),
+  visibleToBranches: z.array(z.string()).optional()
 });
 
 // GET: Get single knowledge article
@@ -90,6 +95,20 @@ export async function GET(
           },
           orderBy: { createdAt: 'desc' }
         },
+        visibleBranches: {
+          include: {
+            branch: {
+              select: { id: true, name: true, code: true }
+            }
+          }
+        },
+        collaborators: {
+          include: {
+            user: {
+              select: { id: true, name: true, email: true }
+            }
+          }
+        },
         _count: {
           select: {
             feedback: true
@@ -106,13 +125,43 @@ export async function GET(
     }
 
     // Check permissions
-    if (article.status !== 'PUBLISHED' && 
+    if (article.status !== 'PUBLISHED' &&
         session.user.role === 'USER' &&
         article.authorId !== session.user.id) {
       return NextResponse.json(
         { error: 'Article not accessible' },
         { status: 403 }
       );
+    }
+
+    // Check visibility permissions for non-admin users
+    if (!['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
+      let hasAccess = false;
+
+      switch (article.visibility) {
+        case 'EVERYONE':
+          hasAccess = true;
+          break;
+        case 'BY_ROLE':
+          hasAccess = article.visibleToRoles.includes(session.user.role);
+          break;
+        case 'BY_BRANCH':
+          hasAccess = session.user.branchId
+            ? article.visibleBranches.some(vb => vb.branchId === session.user.branchId)
+            : false;
+          break;
+        case 'PRIVATE':
+          hasAccess = article.authorId === session.user.id ||
+                      article.collaborators.some(c => c.userId === session.user.id);
+          break;
+      }
+
+      if (!hasAccess) {
+        return NextResponse.json(
+          { error: 'Anda tidak memiliki akses ke artikel ini' },
+          { status: 403 }
+        );
+      }
     }
 
     // Increment view count (but not for the author)
@@ -164,7 +213,8 @@ export async function PUT(
         versions: {
           orderBy: { version: 'desc' },
           take: 1
-        }
+        },
+        visibleBranches: true
       }
     });
 
@@ -192,12 +242,24 @@ export async function PUT(
                           data.content && data.content !== currentArticle.content ||
                           data.summary !== currentArticle.summary;
 
-    const updateData: any = { ...data };
-    
+    // Extract visibility-related fields
+    const { visibleToBranches, ...updateFields } = data;
+    const updateData: any = { ...updateFields };
+
     // Set publishedAt when status changes to PUBLISHED
     if (data.status === 'PUBLISHED' && currentArticle.status !== 'PUBLISHED') {
       updateData.publishedAt = new Date();
     }
+
+    // Check if visibility changed
+    const visibilityChanged = data.visibility && data.visibility !== currentArticle.visibility;
+    const rolesChanged = data.visibleToRoles &&
+      JSON.stringify(data.visibleToRoles.sort()) !== JSON.stringify(currentArticle.visibleToRoles.sort());
+
+    // Check if branches changed
+    const currentBranchIds = currentArticle.visibleBranches.map(vb => vb.branchId).sort();
+    const newBranchIds = visibleToBranches ? [...visibleToBranches].sort() : currentBranchIds;
+    const branchesChanged = JSON.stringify(currentBranchIds) !== JSON.stringify(newBranchIds);
 
     // Update the article
     const updatedArticle = await prisma.knowledgeArticle.update({
@@ -220,9 +282,111 @@ export async function PUT(
         },
         item: {
           select: { id: true, name: true }
+        },
+        visibleBranches: {
+          include: {
+            branch: {
+              select: { id: true, name: true, code: true }
+            }
+          }
         }
       }
     });
+
+    // Handle visible branches update if visibility is BY_BRANCH and branches were provided
+    if (visibleToBranches !== undefined && branchesChanged) {
+      // Delete old visible branches
+      await prisma.knowledgeVisibleBranch.deleteMany({
+        where: { articleId: id }
+      });
+
+      // Create new visible branches
+      if (visibleToBranches.length > 0) {
+        await prisma.knowledgeVisibleBranch.createMany({
+          data: visibleToBranches.map(branchId => ({
+            articleId: id,
+            branchId
+          }))
+        });
+      }
+
+      // Log branch access changes
+      const addedBranches = visibleToBranches.filter(b => !currentBranchIds.includes(b));
+      const removedBranches = currentBranchIds.filter(b => !visibleToBranches.includes(b));
+
+      if (addedBranches.length > 0) {
+        await prisma.knowledgeActivity.create({
+          data: {
+            articleId: id,
+            userId: session.user.id,
+            action: 'BRANCH_ACCESS_ADDED',
+            details: {
+              branchIds: addedBranches
+            }
+          }
+        });
+      }
+
+      if (removedBranches.length > 0) {
+        await prisma.knowledgeActivity.create({
+          data: {
+            articleId: id,
+            userId: session.user.id,
+            action: 'BRANCH_ACCESS_REMOVED',
+            details: {
+              branchIds: removedBranches
+            }
+          }
+        });
+      }
+    }
+
+    // Log visibility changes
+    if (visibilityChanged) {
+      await prisma.knowledgeActivity.create({
+        data: {
+          articleId: id,
+          userId: session.user.id,
+          action: 'VISIBILITY_CHANGED',
+          details: {
+            oldVisibility: currentArticle.visibility,
+            newVisibility: data.visibility
+          }
+        }
+      });
+    }
+
+    // Log role access changes
+    if (rolesChanged && data.visibleToRoles) {
+      const addedRoles = data.visibleToRoles.filter(r => !currentArticle.visibleToRoles.includes(r));
+      const removedRoles = currentArticle.visibleToRoles.filter(r => !data.visibleToRoles!.includes(r));
+
+      if (addedRoles.length > 0) {
+        await prisma.knowledgeActivity.create({
+          data: {
+            articleId: id,
+            userId: session.user.id,
+            action: 'ROLE_ACCESS_ADDED',
+            details: {
+              roles: addedRoles
+            }
+          }
+        });
+      }
+
+      if (removedRoles.length > 0) {
+        await prisma.knowledgeActivity.create({
+          data: {
+            articleId: id,
+            userId: session.user.id,
+            action: 'ROLE_ACCESS_REMOVED',
+            details: {
+              roles: removedRoles
+            }
+          }
+        });
+      }
+    }
 
     // Create new version if content changed
     if (contentChanged) {
@@ -242,7 +406,38 @@ export async function PUT(
       });
     }
 
-    return NextResponse.json(updatedArticle);
+    // Fetch updated article with branches
+    const finalArticle = await prisma.knowledgeArticle.findUnique({
+      where: { id },
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true
+          }
+        },
+        category: {
+          select: { id: true, name: true }
+        },
+        subcategory: {
+          select: { id: true, name: true }
+        },
+        item: {
+          select: { id: true, name: true }
+        },
+        visibleBranches: {
+          include: {
+            branch: {
+              select: { id: true, name: true, code: true }
+            }
+          }
+        }
+      }
+    });
+
+    return NextResponse.json(finalArticle);
 
   } catch (error) {
     if (error instanceof z.ZodError) {

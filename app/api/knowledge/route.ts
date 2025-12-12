@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
-import { KnowledgeStatus } from '@prisma/client';
+import { KnowledgeStatus, KnowledgeVisibility } from '@prisma/client';
 
 // Schema for creating knowledge articles
 const createArticleSchema = z.object({
@@ -14,7 +14,11 @@ const createArticleSchema = z.object({
   itemId: z.string().optional(),
   tags: z.array(z.string()).default([]),
   status: z.enum(['DRAFT', 'UNDER_REVIEW', 'PUBLISHED']).default('DRAFT'),
-  expiresAt: z.string().optional().transform((str) => str ? new Date(str) : undefined)
+  expiresAt: z.string().optional().transform((str) => str ? new Date(str) : undefined),
+  // Visibility settings
+  visibility: z.enum(['EVERYONE', 'BY_ROLE', 'BY_BRANCH', 'PRIVATE']).default('EVERYONE'),
+  visibleToRoles: z.array(z.string()).default([]),
+  visibleToBranches: z.array(z.string()).default([])
 });
 
 // GET: List knowledge articles with search and filters
@@ -62,12 +66,56 @@ export async function GET(request: NextRequest) {
     }
     // Admins and managers can see all articles
 
+    // Visibility filtering for non-admin users
+    if (!['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
+      const visibilityConditions: any[] = [
+        { visibility: 'EVERYONE' as KnowledgeVisibility },
+        { visibility: 'BY_ROLE' as KnowledgeVisibility, visibleToRoles: { has: session.user.role } },
+        { visibility: 'PRIVATE' as KnowledgeVisibility, authorId: session.user.id },
+        { visibility: 'PRIVATE' as KnowledgeVisibility, collaborators: { some: { userId: session.user.id } } }
+      ];
+
+      // Add branch-based visibility if user has a branch
+      if (session.user.branchId) {
+        visibilityConditions.push({
+          visibility: 'BY_BRANCH' as KnowledgeVisibility,
+          visibleBranches: { some: { branchId: session.user.branchId } }
+        });
+      }
+
+      // Merge with existing OR conditions
+      if (where.OR) {
+        // If there are existing OR conditions (from role-based filtering), combine them
+        const existingOr = where.OR;
+        where.AND = [
+          { OR: existingOr },
+          { OR: visibilityConditions }
+        ];
+        delete where.OR;
+      } else {
+        where.OR = visibilityConditions;
+      }
+    }
+
     if (search) {
-      where.OR = [
+      const searchConditions = [
         { title: { contains: search, mode: 'insensitive' } },
         { content: { contains: search, mode: 'insensitive' } },
         { summary: { contains: search, mode: 'insensitive' } }
       ];
+
+      // Properly merge search conditions with existing conditions
+      if (where.AND) {
+        where.AND.push({ OR: searchConditions });
+      } else if (where.OR) {
+        where.AND = [
+          { OR: where.OR },
+          { OR: searchConditions }
+        ];
+        delete where.OR;
+      } else {
+        where.OR = searchConditions;
+      }
     }
 
     if (categoryId) where.categoryId = categoryId;
@@ -100,6 +148,13 @@ export async function GET(request: NextRequest) {
           },
           item: {
             select: { id: true, name: true }
+          },
+          visibleBranches: {
+            include: {
+              branch: {
+                select: { id: true, name: true, code: true }
+              }
+            }
           },
           _count: {
             select: {
@@ -164,8 +219,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const data = createArticleSchema.parse(body);
 
+    // Extract visibility-related fields
+    const { visibleToBranches, ...articleData } = data;
+
     // Generate unique slug from title
-    const baseSlug = data.title
+    const baseSlug = articleData.title
       .toLowerCase()
       .replace(/[^a-z0-9\s-]/g, '')
       .replace(/\s+/g, '-')
@@ -173,20 +231,38 @@ export async function POST(request: NextRequest) {
 
     let slug = baseSlug;
     let counter = 1;
-    
+
     // Ensure slug is unique
     while (await prisma.knowledgeArticle.findUnique({ where: { slug } })) {
       slug = `${baseSlug}-${counter}`;
       counter++;
     }
 
-    // Create the article
+    // Create the article with visibility settings
     const article = await prisma.knowledgeArticle.create({
       data: {
-        ...data,
+        title: articleData.title,
+        content: articleData.content,
+        summary: articleData.summary,
+        categoryId: articleData.categoryId,
+        subcategoryId: articleData.subcategoryId,
+        itemId: articleData.itemId,
+        tags: articleData.tags,
+        status: articleData.status as KnowledgeStatus,
+        expiresAt: articleData.expiresAt,
+        visibility: articleData.visibility as KnowledgeVisibility,
+        visibleToRoles: articleData.visibleToRoles,
         slug,
         authorId: session.user.id,
-        publishedAt: data.status === 'PUBLISHED' ? new Date() : undefined
+        publishedAt: articleData.status === 'PUBLISHED' ? new Date() : undefined,
+        // Create visible branches if visibility is BY_BRANCH
+        ...(articleData.visibility === 'BY_BRANCH' && visibleToBranches.length > 0 ? {
+          visibleBranches: {
+            create: visibleToBranches.map(branchId => ({
+              branchId
+            }))
+          }
+        } : {})
       },
       include: {
         author: {
@@ -205,6 +281,13 @@ export async function POST(request: NextRequest) {
         },
         item: {
           select: { id: true, name: true }
+        },
+        visibleBranches: {
+          include: {
+            branch: {
+              select: { id: true, name: true, code: true }
+            }
+          }
         }
       }
     });
@@ -221,6 +304,22 @@ export async function POST(request: NextRequest) {
         authorId: session.user.id
       }
     });
+
+    // Log activity for visibility settings if not default
+    if (articleData.visibility !== 'EVERYONE') {
+      await prisma.knowledgeActivity.create({
+        data: {
+          articleId: article.id,
+          userId: session.user.id,
+          action: 'VISIBILITY_SET',
+          details: {
+            visibility: articleData.visibility,
+            visibleToRoles: articleData.visibleToRoles,
+            visibleToBranches: visibleToBranches
+          }
+        }
+      });
+    }
 
     return NextResponse.json(article, { status: 201 });
 

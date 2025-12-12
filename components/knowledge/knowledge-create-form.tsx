@@ -15,6 +15,9 @@ import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { ArrowLeft, Save, Eye, Plus, X, BookOpen, Tag, Calendar, Layers, Upload, FileText, Trash2 } from 'lucide-react'
 import Link from 'next/link'
+import { VisibilitySettings } from './visibility-settings'
+
+type KnowledgeVisibility = 'EVERYONE' | 'BY_ROLE' | 'BY_BRANCH' | 'PRIVATE';
 
 const createArticleSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200, 'Title must be less than 200 characters'),
@@ -25,7 +28,10 @@ const createArticleSchema = z.object({
   itemId: z.string().optional(),
   tags: z.array(z.string()).default([]),
   status: z.enum(['DRAFT', 'UNDER_REVIEW', 'PUBLISHED']).default('DRAFT'),
-  expiresAt: z.string().optional()
+  expiresAt: z.string().optional(),
+  visibility: z.enum(['EVERYONE', 'BY_ROLE', 'BY_BRANCH', 'PRIVATE']).default('EVERYONE'),
+  visibleToRoles: z.array(z.string()).default([]),
+  visibleToBranches: z.array(z.string()).default([])
 })
 
 type FormData = z.infer<typeof createArticleSchema>
@@ -66,12 +72,15 @@ export default function KnowledgeCreateForm() {
     resolver: zodResolver(createArticleSchema),
     defaultValues: {
       tags: [],
-      status: 'DRAFT'
+      status: 'DRAFT',
+      visibility: 'EVERYONE',
+      visibleToRoles: [],
+      visibleToBranches: []
     }
   })
 
-  const watchedFields = watch(['categoryId', 'subcategoryId', 'tags'])
-  const [categoryId, subcategoryId, tags] = watchedFields
+  const watchedFields = watch(['categoryId', 'subcategoryId', 'tags', 'visibility', 'visibleToRoles', 'visibleToBranches'])
+  const [categoryId, subcategoryId, tags, visibility, visibleToRoles, visibleToBranches] = watchedFields
 
   // Fetch categories for the dropdown
   const fetchCategories = useCallback(async () => {
@@ -102,7 +111,10 @@ export default function KnowledgeCreateForm() {
         body: JSON.stringify({
           ...data,
           tags: tags || [],
-          expiresAt: data.expiresAt ? new Date(data.expiresAt).toISOString() : undefined
+          expiresAt: data.expiresAt ? new Date(data.expiresAt).toISOString() : undefined,
+          visibility: visibility || 'EVERYONE',
+          visibleToRoles: visibleToRoles || [],
+          visibleToBranches: visibleToBranches || []
         })
       })
 
@@ -513,6 +525,19 @@ export default function KnowledgeCreateForm() {
               </p>
             </CardContent>
           </Card>
+
+          {/* Visibility Settings */}
+          <VisibilitySettings
+            visibility={(visibility as KnowledgeVisibility) || 'EVERYONE'}
+            visibleToRoles={visibleToRoles || []}
+            visibleToBranches={visibleToBranches || []}
+            onChange={(settings) => {
+              setValue('visibility', settings.visibility)
+              setValue('visibleToRoles', settings.visibleToRoles)
+              setValue('visibleToBranches', settings.visibleToBranches)
+            }}
+            disabled={isSubmitting || loading}
+          />
         </div>
       </div>
     </form>
