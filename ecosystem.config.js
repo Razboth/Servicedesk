@@ -26,10 +26,10 @@ module.exports = {
       USE_HTTPS: 'true',
       // SSL Certificate configuration for Bank SulutGo
       SSL_CERT_DIR: './certificates',
-      SSL_CERT_FILE: 'banksulutgo.pem',       // Certificate file
-      SSL_KEY_FILE: 'banksulutgo-key.pem',    // Private key file
-      NEXTAUTH_URL: 'https://hd.bsg.id',
-      NEXT_PUBLIC_APP_URL: 'https://hd.bsg.id',
+      SSL_CERT_FILE: 'star_banksulutgo_co_id.crt',       // Certificate file
+      SSL_KEY_FILE: 'star_banksulutgo_co_id.key',    // Private key file
+      NEXTAUTH_URL: 'https://hddev.bsg.id',
+      NEXT_PUBLIC_APP_URL: 'https://hddev.bsg.id',
       DATABASE_URL: 'postgresql://postgres:admin@localhost:5432/servicedesk_database?schema=public'
     },
     
