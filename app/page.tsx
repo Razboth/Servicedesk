@@ -377,8 +377,8 @@ export default function Dashboard() {
         {/* Shift Schedule Notification - Only for Technicians and IT Managers */}
         {(isTechnician || isManagerIT) && <ShiftScheduleNotification />}
 
-        {/* Priority Alert Banner - For Admin, Manager, and Technician */}
-        {(isAdmin || isManager || isManagerIT || isTechnician) && (stats.priority.urgent > 0 || stats.priority.high > 0) && (
+        {/* Priority Alert Banner - For Admin, Manager IT, and Technician (not for Manager) */}
+        {(isAdmin || isManagerIT || isTechnician) && (stats.priority.urgent > 0 || stats.priority.high > 0) && (
           <Card className="border-destructive/50 bg-destructive/5">
             <CardContent className="py-3">
               <div className="flex items-center justify-between">

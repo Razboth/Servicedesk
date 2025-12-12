@@ -22,19 +22,44 @@ export function getDashboardPrisma(): unknown {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const storage = g as any;
 
+  console.log('[getDashboardPrisma] Called, existing:', typeof storage[PRISMA_KEY]);
+
   if (!storage[PRISMA_KEY]) {
+    console.log('[getDashboardPrisma] Creating new PrismaClient');
+    console.log('[getDashboardPrisma] typeof require:', typeof require);
+    console.log('[getDashboardPrisma] typeof __non_webpack_require__:', typeof __non_webpack_require__);
+
     // Use __non_webpack_require__ to bypass webpack's module system entirely
     // This ensures we get the real Node.js require that webpack doesn't touch
-    const prismaModule = typeof __non_webpack_require__ !== 'undefined'
-      ? __non_webpack_require__('@prisma/client')
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      : require('@prisma/client');
+    let prismaModule;
+    try {
+      prismaModule = typeof __non_webpack_require__ !== 'undefined'
+        ? __non_webpack_require__('@prisma/client')
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        : require('@prisma/client');
+
+      console.log('[getDashboardPrisma] prismaModule:', typeof prismaModule, Object.keys(prismaModule || {}).slice(0, 5));
+    } catch (err) {
+      console.error('[getDashboardPrisma] Error loading @prisma/client:', err);
+      throw err;
+    }
 
     const PrismaClient = prismaModule.PrismaClient;
+    console.log('[getDashboardPrisma] PrismaClient:', typeof PrismaClient);
+
+    if (!PrismaClient) {
+      console.error('[getDashboardPrisma] PrismaClient is undefined!');
+      throw new Error('PrismaClient is undefined');
+    }
+
     storage[PRISMA_KEY] = new PrismaClient({
       log: ['error'],
     });
+    console.log('[getDashboardPrisma] Created instance:', typeof storage[PRISMA_KEY]);
   }
 
-  return storage[PRISMA_KEY];
+  const result = storage[PRISMA_KEY];
+  console.log('[getDashboardPrisma] Returning:', typeof result, result ? 'has ticket:' + (typeof result.ticket) : 'null');
+
+  return result;
 }

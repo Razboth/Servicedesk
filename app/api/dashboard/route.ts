@@ -1,18 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import { getDashboardPrisma } from '@/lib/dashboard-db';
+
+// Dynamic imports to avoid webpack minification collisions
+// The collision happens when 'auth' and 'prisma' are in the same chunk
+async function getAuth() {
+  const mod = await import('@/lib/auth');
+  return mod.auth;
+}
+
+async function getDb() {
+  const mod = await import('@prisma/client');
+  const globalKey = Symbol.for('servicedesk.dashboard.prisma');
+  const g = globalThis as unknown as { [key: symbol]: InstanceType<typeof mod.PrismaClient> };
+  if (!g[globalKey]) {
+    g[globalKey] = new mod.PrismaClient({ log: ['error'] });
+  }
+  return g[globalKey];
+}
 
 // GET /api/dashboard - Get comprehensive dashboard statistics
 export async function GET(request: NextRequest) {
   try {
+    const auth = await getAuth();
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get database connection from isolated module
+    // Get database connection from dynamic import
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const db = getDashboardPrisma() as any;
+    const db = await getDb() as any;
 
     // Get user's branch information
     const user = await db.user.findUnique({
@@ -131,7 +147,7 @@ export async function GET(request: NextRequest) {
     let atmAlerts = 0;
 
     if (isManager) {
-      pendingApprovals = await db.approval.count({
+      pendingApprovals = await db.ticketApproval.count({
         where: {
           approverId: userId,
           status: 'PENDING'
@@ -147,7 +163,7 @@ export async function GET(request: NextRequest) {
           where: { branchId: branchId }
         });
 
-        atmAlerts = await db.aTMAlert.count({
+        atmAlerts = await db.aTMIncident.count({
           where: {
             atm: { branchId: branchId },
             resolvedAt: null
@@ -175,11 +191,15 @@ export async function GET(request: NextRequest) {
         where: { resolvedAt: null }
       });
 
-      atmDowntime = await db.aTM.count({
-        where: { status: { in: ['DOWN', 'CRITICAL'] } }
+      // Count ATM incidents that indicate downtime (unresolved incidents with severity HIGH or CRITICAL)
+      atmDowntime = await db.aTMIncident.count({
+        where: {
+          resolvedAt: null,
+          severity: { in: ['HIGH', 'CRITICAL'] }
+        }
       });
 
-      infrastructureAlerts = await db.aTMAlert.count({
+      infrastructureAlerts = await db.aTMIncident.count({
         where: { resolvedAt: null }
       });
     }
