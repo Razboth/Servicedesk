@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { PrismaClient } from '@prisma/client';
+
+// Create a single PrismaClient instance outside the handler to avoid
+// webpack minification variable collision issues
+const prisma = new PrismaClient();
 
 // GET /api/dashboard - Get comprehensive dashboard statistics
 export async function GET(request: NextRequest) {
-  // Use require() to prevent webpack from hoisting and minifying the variable
-  // This avoids variable collision where webpack uses the same minified name
-  // for both the PrismaClient and Promise.all destructured results
-  const { PrismaClient } = require('@prisma/client');
-  const prismaDb = new PrismaClient();
-
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -16,7 +15,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user's branch information
-    const user = await prismaDb.user.findUnique({
+    const user = await prisma.user.findUnique({
       where: { id: session.user.id },
       include: { branch: true, supportGroup: true }
     });
@@ -92,30 +91,30 @@ export async function GET(request: NextRequest) {
       recentTickets
     ] = await Promise.all([
       // Total tickets count
-      prismaDb.ticket.count({ where: ticketBaseFilter.OR ? ticketBaseFilter : ticketBaseFilter }),
+      prisma.ticket.count({ where: ticketBaseFilter.OR ? ticketBaseFilter : ticketBaseFilter }),
 
       // Open tickets count
-      prismaDb.ticket.count({
+      prisma.ticket.count({
         where: combineFilters({ status: 'OPEN' })
       }),
 
       // In Progress tickets count
-      prismaDb.ticket.count({
+      prisma.ticket.count({
         where: combineFilters({ status: 'IN_PROGRESS' })
       }),
 
       // Resolved tickets count
-      prismaDb.ticket.count({
+      prisma.ticket.count({
         where: combineFilters({ status: 'RESOLVED' })
       }),
 
       // Closed tickets count
-      prismaDb.ticket.count({
+      prisma.ticket.count({
         where: combineFilters({ status: 'CLOSED' })
       }),
 
       // Critical/Emergency tickets (open only)
-      prismaDb.ticket.count({
+      prisma.ticket.count({
         where: combineFilters({
           priority: { in: ['CRITICAL', 'EMERGENCY'] },
           status: { in: ['OPEN', 'IN_PROGRESS'] }
@@ -123,7 +122,7 @@ export async function GET(request: NextRequest) {
       }),
 
       // High priority tickets (open only)
-      prismaDb.ticket.count({
+      prisma.ticket.count({
         where: combineFilters({
           priority: 'HIGH',
           status: { in: ['OPEN', 'IN_PROGRESS'] }
@@ -131,35 +130,35 @@ export async function GET(request: NextRequest) {
       }),
 
       // This month's tickets
-      prismaDb.ticket.count({
+      prisma.ticket.count({
         where: combineFilters({
           createdAt: { gte: thisMonthStart }
         })
       }),
 
       // Last month's tickets
-      prismaDb.ticket.count({
+      prisma.ticket.count({
         where: combineFilters({
           createdAt: { gte: lastMonthStart, lte: lastMonthEnd }
         })
       }),
 
       // This week's tickets
-      prismaDb.ticket.count({
+      prisma.ticket.count({
         where: combineFilters({
           createdAt: { gte: thisWeekStart }
         })
       }),
 
       // Last week's tickets
-      prismaDb.ticket.count({
+      prisma.ticket.count({
         where: combineFilters({
           createdAt: { gte: lastWeekStart, lt: thisWeekStart }
         })
       }),
 
       // Resolved this month
-      prismaDb.ticket.count({
+      prisma.ticket.count({
         where: combineFilters({
           status: { in: ['RESOLVED', 'CLOSED'] },
           resolvedAt: { gte: thisMonthStart }
@@ -167,7 +166,7 @@ export async function GET(request: NextRequest) {
       }),
 
       // My open tickets (for technicians)
-      isTechnician ? prismaDb.ticket.count({
+      isTechnician ? prisma.ticket.count({
         where: {
           assignedToId: userId,
           status: { in: ['OPEN', 'IN_PROGRESS'] }
@@ -175,12 +174,12 @@ export async function GET(request: NextRequest) {
       }) : Promise.resolve(0),
 
       // My assigned tickets (for technicians)
-      isTechnician ? prismaDb.ticket.count({
+      isTechnician ? prisma.ticket.count({
         where: { assignedToId: userId }
       }) : Promise.resolve(0),
 
       // Pending approvals (for managers)
-      isManager ? prismaDb.approval.count({
+      isManager ? prisma.approval.count({
         where: {
           approverId: userId,
           status: 'PENDING'
@@ -188,7 +187,7 @@ export async function GET(request: NextRequest) {
       }) : Promise.resolve(0),
 
       // Recent tickets (last 10)
-      prismaDb.ticket.findMany({
+      prisma.ticket.findMany({
         where: Object.keys(ticketBaseFilter).length > 0 ? ticketBaseFilter : undefined,
         take: 10,
         orderBy: { createdAt: 'desc' },
@@ -202,7 +201,7 @@ export async function GET(request: NextRequest) {
     ]);
 
     // Calculate average resolution time
-    const resolvedTicketsWithTime = await prismaDb.ticket.findMany({
+    const resolvedTicketsWithTime = await prisma.ticket.findMany({
       where: combineFilters({
         status: { in: ['RESOLVED', 'CLOSED'] },
         resolvedAt: { not: null }
@@ -243,7 +242,7 @@ export async function GET(request: NextRequest) {
 
     if (totalResolved > 0) {
       // Count tickets with breached SLA (either response or resolution breached)
-      const breachedTickets = await prismaDb.ticket.count({
+      const breachedTickets = await prisma.ticket.count({
         where: combineFilters({
           status: { in: ['RESOLVED', 'CLOSED'] },
           slaTracking: {
@@ -274,7 +273,7 @@ export async function GET(request: NextRequest) {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const activeUsers = await prismaDb.user.count({
+    const activeUsers = await prisma.user.count({
       where: {
         createdTickets: {
           some: { createdAt: { gte: thirtyDaysAgo } }
@@ -364,8 +363,5 @@ export async function GET(request: NextRequest) {
       { error: 'Internal server error' },
       { status: 500 }
     );
-  } finally {
-    // Disconnect to avoid connection pool exhaustion
-    await prismaDb.$disconnect();
   }
 }
