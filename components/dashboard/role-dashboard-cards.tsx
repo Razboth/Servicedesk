@@ -1083,7 +1083,7 @@ export function UserDashboardCards({ stats, branchName }: UserDashboardCardsProp
             title="Buat Tiket Baru"
             description="Laporkan masalah atau permintaan"
             icon={Plus}
-            href="/tickets/simple/create"
+            href="/tickets"
             variant="primary"
           />
           <QuickActionCard

@@ -444,7 +444,7 @@ export default function Dashboard() {
                     variant="outline"
                     size="sm"
                     className="mt-4"
-                    onClick={() => router.push('/tickets/simple/create')}
+                    onClick={() => router.push('/tickets')}
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Buat tiket pertama
