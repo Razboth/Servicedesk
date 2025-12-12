@@ -34,6 +34,9 @@ function TicketsPageContent() {
     // The data table will auto-refresh
   }
 
+  // MANAGER role cannot create tickets - they can only approve them
+  const canCreateTicket = session?.user?.role !== 'MANAGER'
+
   return (
     <div className="w-full px-responsive py-6 space-y-6">
       <PageHeader
@@ -41,15 +44,17 @@ function TicketsPageContent() {
         description="Manage and track support tickets across all branches"
         icon={<TicketIcon className="h-6 w-6" />}
         action={
-          <Button
-            onClick={handleCreateTicket}
-            variant="default"
-            size="default"
-            className="shadow-lg hover:shadow-xl transition-all"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Create Ticket
-          </Button>
+          canCreateTicket ? (
+            <Button
+              onClick={handleCreateTicket}
+              variant="default"
+              size="default"
+              className="shadow-lg hover:shadow-xl transition-all"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Create Ticket
+            </Button>
+          ) : null
         }
       />
 

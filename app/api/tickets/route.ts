@@ -953,6 +953,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // MANAGER role cannot create tickets - they can only approve them
+    if (session.user.role === 'MANAGER') {
+      return NextResponse.json(
+        { error: 'Managers are not allowed to create tickets. Managers can only approve tickets.' },
+        { status: 403 }
+      );
+    }
+
     // Debug logging for session
     console.log('Session user ID:', session.user.id);
     console.log('Session user:', JSON.stringify(session.user, null, 2));
