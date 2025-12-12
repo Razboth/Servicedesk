@@ -8,12 +8,16 @@
 /**
  * Get the cookie name for NextAuth session tokens
  * Must match configuration in auth.ts and middleware.ts
+ * Uses USE_HTTPS env var (not NODE_ENV) to match auth.ts cookie settings
  */
 export function getAuthCookieName(): string {
   const port = process.env.PORT || '3000';
   const instanceId = process.env.INSTANCE_ID || port;
 
-  if (process.env.NODE_ENV === 'production') {
+  // Must match the logic in auth.ts - uses USE_HTTPS, not NODE_ENV
+  const useSecureCookies = process.env.USE_HTTPS === 'true';
+
+  if (useSecureCookies) {
     return `__Secure-bsg-auth.session-token-${instanceId}`;
   }
 
