@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
       // Technicians see tickets assigned to them or their support group
       const supportGroupId = user?.supportGroupId;
       ticketBaseFilter = supportGroupId
-        ? { OR: [{ assignedToId: userId }, { supportGroupId }] }
+        ? { OR: [{ assignedToId: userId }, { supportGroupId: supportGroupId }] }
         : { assignedToId: userId };
       myTicketsWhere = { assignedToId: userId };
     }
