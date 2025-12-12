@@ -175,6 +175,7 @@ model Branch {
   announcements          AnnouncementBranch[]
   staffShiftProfiles     StaffShiftProfile[]
   shiftSchedules         ShiftSchedule[]
+  visibleKnowledge       KnowledgeVisibleBranch[]
 
   @@map("branches")
 }
@@ -733,6 +734,11 @@ model KnowledgeArticle {
   subcategoryId  String?
   summary        String?
   views          Int                   @default(0)
+
+  // Visibility settings
+  visibility        KnowledgeVisibility   @default(EVERYONE)
+  visibleToRoles    String[]              // Array of UserRole values (USER, TECHNICIAN, MANAGER, etc.)
+
   author         User                  @relation(fields: [authorId], references: [id])
   category       Category?             @relation(fields: [categoryId], references: [id])
   item           Item?                 @relation(fields: [itemId], references: [id])
@@ -743,16 +749,32 @@ model KnowledgeArticle {
   versions       KnowledgeVersion[]
   relatedTickets TicketKnowledge[]
 
-  // New relations
-  collaborators  KnowledgeCollaborator[]
-  serviceLinks   KnowledgeServiceLink[]
-  activities     KnowledgeActivity[]
+  // Relations
+  collaborators    KnowledgeCollaborator[]
+  serviceLinks     KnowledgeServiceLink[]
+  activities       KnowledgeActivity[]
+  visibleBranches  KnowledgeVisibleBranch[]
 
   @@index([status, isActive])
   @@index([categoryId, subcategoryId, itemId])
   @@index([publishedAt])
   @@index([views])
+  @@index([visibility])
   @@map("knowledge_articles")
+}
+
+model KnowledgeVisibleBranch {
+  id        String           @id @default(cuid())
+  articleId String
+  branchId  String
+  createdAt DateTime         @default(now())
+
+  article   KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  branch    Branch           @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@unique([articleId, branchId])
+  @@index([branchId])
+  @@map("knowledge_visible_branches")
 }
 
 model TaskTemplate {
@@ -1517,6 +1539,13 @@ enum KnowledgeStatus {
   PUBLISHED
   ARCHIVED
   EXPIRED
+}
+
+enum KnowledgeVisibility {
+  EVERYONE    // Semua pengguna dapat melihat
+  BY_ROLE     // Hanya role tertentu
+  BY_BRANCH   // Hanya cabang tertentu
+  PRIVATE     // Hanya author dan collaborators
 }
 
 enum ReportType {

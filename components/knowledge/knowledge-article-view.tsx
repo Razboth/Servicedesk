@@ -30,13 +30,14 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { formatDistanceToNow, format } from 'date-fns'
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuSeparator, 
-  DropdownMenuTrigger 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
+import { AttachmentList } from '@/components/knowledge/attachment-list'
 
 type KnowledgeVisibility = 'EVERYONE' | 'BY_ROLE' | 'BY_BRANCH' | 'PRIVATE';
 
@@ -641,31 +642,15 @@ export default function KnowledgeArticleView({ articleId }: Props) {
 
           {/* Attachments */}
           {article.attachments.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Paperclip className="h-5 w-5" />
-                  Attachments
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {article.attachments.map((attachment) => (
-                  <div key={attachment.id} className="flex items-center justify-between p-2 border rounded">
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm truncate">{attachment.originalName}</div>
-                      <div className="text-xs text-gray-500">
-                        {(attachment.size / 1024).toFixed(1)} KB • {attachment.uploader.name}
-                      </div>
-                    </div>
-                    <Button size="sm" variant="outline" asChild>
-                      <a href={`/api/knowledge/${articleId}/attachments/${attachment.id}/download`} download>
-                        Download
-                      </a>
-                    </Button>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
+            <AttachmentList
+              attachments={article.attachments}
+              articleId={articleId}
+              canManage={canEdit}
+              onAttachmentDeleted={(attachmentId) => {
+                // Refresh article data after attachment is deleted
+                fetchArticle()
+              }}
+            />
           )}
         </div>
       </div>
