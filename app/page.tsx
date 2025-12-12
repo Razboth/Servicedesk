@@ -11,60 +11,23 @@ import { PageHeader } from '@/components/ui/page-header'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AnnouncementCarousel } from '@/components/announcements/announcement-carousel'
 import { ShiftScheduleNotification } from '@/components/dashboard/shift-schedule-notification'
+import { RoleDashboardCards, type DashboardStats, type UserRole } from '@/components/dashboard/role-dashboard-cards'
 import {
   LayoutDashboard,
   Ticket,
   Clock,
   AlertTriangle,
-  TrendingUp,
-  TrendingDown,
   CheckCircle2,
   AlertCircle,
-  Users,
-  Target,
   ArrowRight,
   RefreshCw,
   Plus,
-  ClipboardCheck,
   Activity,
-  Loader2,
-  ChevronRight
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getTicketUrlId } from '@/lib/utils/ticket-utils'
 
 // Types
-interface DashboardStats {
-  totalTickets: number
-  openTickets: number
-  inProgressTickets: number
-  resolvedTickets: number
-  resolvedThisMonth: number
-  avgResolutionTime: string
-  slaCompliance: number
-  activeUsers: number
-  trends: {
-    ticketTrend: number
-    weeklyTrend: number
-    thisMonthTickets: number
-    lastMonthTickets: number
-  }
-  priority: {
-    urgent: number
-    high: number
-  }
-  roleSpecific: {
-    myOpenTickets?: number
-    myAssignedTickets?: number
-    myWorkload?: number
-    pendingApprovals?: number
-    branchTickets?: number
-    teamPerformance?: number
-    systemWideTickets?: number
-    allBranches?: boolean
-  }
-}
-
 interface RecentTicket {
   id: string
   ticketNumber: string
@@ -126,11 +89,11 @@ const getRelativeTime = (dateString: string) => {
   const now = new Date()
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
 
-  if (diffInSeconds < 60) return 'Just now'
-  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`
-  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`
-  if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`
-  return date.toLocaleDateString()
+  if (diffInSeconds < 60) return 'Baru saja'
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} menit lalu`
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} jam lalu`
+  if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} hari lalu`
+  return date.toLocaleDateString('id-ID')
 }
 
 // Loading skeleton component
@@ -201,93 +164,31 @@ function DashboardSkeleton() {
   )
 }
 
-// Stats Card Component
-interface StatCardProps {
-  title: string
-  value: string | number
-  description: string
-  trend?: number
-  icon: React.ElementType
-  variant: 'primary' | 'success' | 'warning' | 'destructive' | 'info' | 'default'
-  href?: string
-}
-
-function StatCard({ title, value, description, trend, icon: Icon, variant, href }: StatCardProps) {
-  const variantStyles = {
-    primary: 'from-primary/10 to-primary/5 border-primary/20 dark:from-primary/20 dark:to-primary/10',
-    success: 'from-[hsl(var(--success)/0.1)] to-[hsl(var(--success)/0.05)] border-[hsl(var(--success)/0.2)]',
-    warning: 'from-[hsl(var(--warning)/0.1)] to-[hsl(var(--warning)/0.05)] border-[hsl(var(--warning)/0.2)]',
-    destructive: 'from-destructive/10 to-destructive/5 border-destructive/20',
-    info: 'from-[hsl(var(--info)/0.1)] to-[hsl(var(--info)/0.05)] border-[hsl(var(--info)/0.2)]',
-    default: 'from-muted/50 to-muted/25 border-border'
-  }
-
-  const iconStyles = {
-    primary: 'bg-primary/10 text-primary',
-    success: 'bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))]',
-    warning: 'bg-[hsl(var(--warning)/0.1)] text-[hsl(var(--warning))]',
-    destructive: 'bg-destructive/10 text-destructive',
-    info: 'bg-[hsl(var(--info)/0.1)] text-[hsl(var(--info))]',
-    default: 'bg-muted text-muted-foreground'
-  }
-
-  const content = (
-    <Card
-      className={cn(
-        'relative overflow-hidden bg-gradient-to-br transition-all duration-300',
-        variantStyles[variant],
-        href && 'hover:shadow-md hover:scale-[1.02] cursor-pointer'
-      )}
-    >
-      <div className="absolute right-0 top-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-background/5" />
-      <div className="absolute right-0 top-0 -mt-12 -mr-12 h-32 w-32 rounded-full bg-background/3" />
-
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-foreground">{title}</CardTitle>
-        <div className={cn('rounded-lg p-2', iconStyles[variant])}>
-          <Icon className="h-4 w-4" />
-        </div>
-      </CardHeader>
-
-      <CardContent>
-        <div className="flex items-baseline justify-between">
-          <div>
-            <div className="text-2xl font-bold text-foreground">{value}</div>
-            <p className="text-xs text-muted-foreground mt-1">{description}</p>
-          </div>
-
-          {trend !== undefined && (
-            <div
-              className={cn(
-                'flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium',
-                trend >= 0
-                  ? 'bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))]'
-                  : 'bg-destructive/10 text-destructive'
-              )}
-            >
-              {trend >= 0 ? (
-                <TrendingUp className="h-3 w-3" />
-              ) : (
-                <TrendingDown className="h-3 w-3" />
-              )}
-              <span>{Math.abs(trend)}%</span>
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  )
-
-  if (href) {
-    return <Link href={href}>{content}</Link>
-  }
-
-  return content
-}
-
 // Recent Ticket Item Component
 function RecentTicketItem({ ticket, onClick }: { ticket: RecentTicket; onClick: () => void }) {
   const StatusIcon = getStatusIcon(ticket.status)
+
+  const getStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      OPEN: 'Terbuka',
+      IN_PROGRESS: 'Diproses',
+      RESOLVED: 'Selesai',
+      CLOSED: 'Ditutup',
+      ON_HOLD: 'Ditunda'
+    }
+    return labels[status] || status
+  }
+
+  const getPriorityLabel = (priority: string) => {
+    const labels: Record<string, string> = {
+      LOW: 'Rendah',
+      MEDIUM: 'Sedang',
+      HIGH: 'Tinggi',
+      CRITICAL: 'Kritis',
+      EMERGENCY: 'Darurat'
+    }
+    return labels[priority] || priority
+  }
 
   return (
     <div
@@ -310,10 +211,10 @@ function RecentTicketItem({ ticket, onClick }: { ticket: RecentTicket; onClick: 
           <span>{getRelativeTime(ticket.createdAt)}</span>
           <span className="text-muted-foreground/50">|</span>
           <Badge variant="outline" className={cn('text-xs px-1.5 py-0', getPriorityColor(ticket.priority))}>
-            {ticket.priority}
+            {getPriorityLabel(ticket.priority)}
           </Badge>
           <Badge variant="outline" className={cn('text-xs px-1.5 py-0', getStatusColor(ticket.status))}>
-            {ticket.status.replace('_', ' ')}
+            {getStatusLabel(ticket.status)}
           </Badge>
         </div>
       </div>
@@ -345,11 +246,11 @@ export default function Dashboard() {
         setDashboardUser(data.user)
         setError(null)
       } else {
-        setError('Failed to fetch dashboard data')
+        setError('Gagal memuat data dashboard')
       }
     } catch (err) {
       console.error('Error fetching dashboard data:', err)
-      setError('Error loading dashboard')
+      setError('Terjadi kesalahan saat memuat dashboard')
     } finally {
       setIsLoading(false)
       setIsRefreshing(false)
@@ -387,13 +288,13 @@ export default function Dashboard() {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Card className="max-w-md">
           <CardHeader>
-            <CardTitle className="text-destructive">Error Loading Dashboard</CardTitle>
+            <CardTitle className="text-destructive">Gagal Memuat Dashboard</CardTitle>
             <CardDescription>{error}</CardDescription>
           </CardHeader>
           <CardContent>
             <Button onClick={() => fetchDashboardData()}>
               <RefreshCw className="h-4 w-4 mr-2" />
-              Retry
+              Coba Lagi
             </Button>
           </CardContent>
         </Card>
@@ -405,17 +306,33 @@ export default function Dashboard() {
     return null
   }
 
-  const userRole = session.user?.role || 'USER'
+  const userRole = (session.user?.role || 'USER') as UserRole
   const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(userRole)
   const isManager = userRole === 'MANAGER'
+  const isManagerIT = userRole === 'MANAGER_IT'
   const isTechnician = userRole === 'TECHNICIAN'
 
-  // Get role-specific greeting
+  // Get role-specific greeting in Indonesian
   const getRoleGreeting = () => {
-    if (isAdmin) return 'System Overview'
-    if (isManager) return 'Branch Operations'
-    if (isTechnician) return 'Your Workload'
-    return 'Service Portal'
+    if (isAdmin) return 'Overview Sistem'
+    if (isManager) return 'Operasional Cabang'
+    if (isManagerIT) return 'Infrastruktur IT'
+    if (isTechnician) return 'Beban Kerja Anda'
+    return 'Portal Layanan'
+  }
+
+  // Get role label in Indonesian
+  const getRoleLabel = () => {
+    const roleLabels: Record<string, string> = {
+      SUPER_ADMIN: 'Super Admin',
+      ADMIN: 'Administrator',
+      MANAGER: 'Manager Cabang',
+      MANAGER_IT: 'Manager IT',
+      TECHNICIAN: 'Teknisi',
+      USER: 'Pengguna',
+      SECURITY_ANALYST: 'Security Analyst'
+    }
+    return roleLabels[userRole] || 'Pengguna'
   }
 
   return (
@@ -429,14 +346,17 @@ export default function Dashboard() {
       <main className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         {/* Header Section */}
         <PageHeader
-          title={`Welcome back, ${dashboardUser?.name || session.user?.name || 'User'}`}
-          description={`${getRoleGreeting()} - ${dashboardUser?.branch || 'All Branches'}`}
+          title={`Selamat datang, ${dashboardUser?.name || session.user?.name || 'Pengguna'}`}
+          description={`${getRoleGreeting()} - ${dashboardUser?.branch || 'Semua Cabang'}`}
           icon={<LayoutDashboard className="h-6 w-6" />}
           action={
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="px-3 py-1.5 text-xs font-medium">
+                {getRoleLabel()}
+              </Badge>
+              <Badge variant="outline" className="px-3 py-1.5 text-xs font-medium">
                 <Activity className="w-3 h-3 mr-1.5 animate-pulse text-success" />
-                Live Data
+                Data Langsung
               </Badge>
               <Button
                 variant="ghost"
@@ -454,11 +374,11 @@ export default function Dashboard() {
         {/* Announcement Carousel */}
         <AnnouncementCarousel />
 
-        {/* Shift Schedule Notification */}
-        <ShiftScheduleNotification />
+        {/* Shift Schedule Notification - Only for Technicians and IT Managers */}
+        {(isTechnician || isManagerIT) && <ShiftScheduleNotification />}
 
-        {/* Priority Alert Banner */}
-        {(stats.priority.urgent > 0 || stats.priority.high > 0) && (
+        {/* Priority Alert Banner - For Admin, Manager, and Technician */}
+        {(isAdmin || isManager || isManagerIT || isTechnician) && (stats.priority.urgent > 0 || stats.priority.high > 0) && (
           <Card className="border-destructive/50 bg-destructive/5">
             <CardContent className="py-3">
               <div className="flex items-center justify-between">
@@ -466,17 +386,17 @@ export default function Dashboard() {
                   <AlertTriangle className="h-5 w-5 text-destructive" />
                   <div>
                     <p className="text-sm font-medium text-foreground">
-                      Attention Required
+                      Perhatian Diperlukan
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {stats.priority.urgent > 0 && (
-                        <span className="text-destructive font-medium">{stats.priority.urgent} urgent</span>
+                        <span className="text-destructive font-medium">{stats.priority.urgent} darurat</span>
                       )}
-                      {stats.priority.urgent > 0 && stats.priority.high > 0 && ' and '}
+                      {stats.priority.urgent > 0 && stats.priority.high > 0 && ' dan '}
                       {stats.priority.high > 0 && (
-                        <span className="text-[hsl(var(--warning))] font-medium">{stats.priority.high} high priority</span>
+                        <span className="text-[hsl(var(--warning))] font-medium">{stats.priority.high} prioritas tinggi</span>
                       )}
-                      {' '}ticket{(stats.priority.urgent + stats.priority.high) > 1 ? 's' : ''} need attention
+                      {' '}tiket memerlukan perhatian
                     </p>
                   </div>
                 </div>
@@ -485,118 +405,20 @@ export default function Dashboard() {
                   size="sm"
                   onClick={() => router.push('/tickets?priority=CRITICAL,EMERGENCY,HIGH&status=OPEN,IN_PROGRESS')}
                 >
-                  View Now
+                  Lihat Sekarang
                 </Button>
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Stats Section */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground">Overview</h2>
-            <Link href="/reports" className="text-sm text-primary hover:underline flex items-center gap-1">
-              View all reports <ArrowRight className="h-3 w-3" />
-            </Link>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard
-              title="Total Tickets"
-              value={stats.totalTickets.toLocaleString()}
-              description="All time"
-              trend={stats.trends.ticketTrend}
-              icon={Ticket}
-              variant="primary"
-              href="/tickets"
-            />
-            <StatCard
-              title="Open Tickets"
-              value={stats.openTickets}
-              description="Awaiting action"
-              icon={AlertCircle}
-              variant="warning"
-              href="/tickets?status=OPEN"
-            />
-            <StatCard
-              title="In Progress"
-              value={stats.inProgressTickets}
-              description="Being worked on"
-              icon={Clock}
-              variant="info"
-              href="/tickets?status=IN_PROGRESS"
-            />
-            <StatCard
-              title="Resolved This Month"
-              value={stats.resolvedThisMonth}
-              description={`${stats.avgResolutionTime} avg resolution`}
-              icon={CheckCircle2}
-              variant="success"
-              href="/tickets?status=RESOLVED,CLOSED"
-            />
-          </div>
-
-          {/* Secondary Stats Row */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard
-              title="SLA Compliance"
-              value={`${stats.slaCompliance}%`}
-              description="Meeting targets"
-              icon={Target}
-              variant={stats.slaCompliance >= 90 ? 'success' : stats.slaCompliance >= 70 ? 'warning' : 'destructive'}
-            />
-            <StatCard
-              title="Active Users"
-              value={stats.activeUsers}
-              description="Last 30 days"
-              icon={Users}
-              variant="default"
-            />
-
-            {/* Role-specific stats */}
-            {isTechnician && stats.roleSpecific.myOpenTickets !== undefined && (
-              <StatCard
-                title="My Open Tickets"
-                value={stats.roleSpecific.myOpenTickets}
-                description="Assigned to you"
-                icon={ClipboardCheck}
-                variant="info"
-                href="/tickets?assignedToMe=true&status=OPEN,IN_PROGRESS"
-              />
-            )}
-
-            {isManager && stats.roleSpecific.pendingApprovals !== undefined && (
-              <StatCard
-                title="Pending Approvals"
-                value={stats.roleSpecific.pendingApprovals}
-                description="Awaiting your review"
-                icon={ClipboardCheck}
-                variant={stats.roleSpecific.pendingApprovals > 0 ? 'warning' : 'success'}
-                href="/manager/approvals"
-              />
-            )}
-
-            {(isAdmin || !isTechnician && !isManager) && (
-              <StatCard
-                title="This Week"
-                value={stats.trends.thisMonthTickets}
-                description="New tickets"
-                trend={stats.trends.weeklyTrend}
-                icon={Activity}
-                variant="default"
-              />
-            )}
-
-            <StatCard
-              title="Avg Resolution"
-              value={stats.avgResolutionTime}
-              description="Response time"
-              icon={Clock}
-              variant="default"
-            />
-          </div>
-        </div>
+        {/* Role-Based Dashboard Cards */}
+        <RoleDashboardCards
+          stats={stats}
+          userRole={userRole}
+          branchName={dashboardUser?.branch}
+          supportGroupName={dashboardUser?.supportGroup}
+        />
 
         {/* Recent Tickets Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -604,10 +426,10 @@ export default function Dashboard() {
           <Card className="lg:col-span-2 bg-card/50 backdrop-blur-sm">
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-base font-medium text-foreground">Recent Tickets</CardTitle>
+                <CardTitle className="text-base font-medium text-foreground">Tiket Terbaru</CardTitle>
                 <Link href="/tickets">
                   <Button variant="ghost" size="sm" className="text-xs">
-                    View All
+                    Lihat Semua
                     <ArrowRight className="h-3 w-3 ml-1" />
                   </Button>
                 </Link>
@@ -617,7 +439,7 @@ export default function Dashboard() {
               {recentTickets.length === 0 ? (
                 <div className="text-center py-8">
                   <Ticket className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
-                  <p className="text-sm text-muted-foreground">No recent tickets</p>
+                  <p className="text-sm text-muted-foreground">Belum ada tiket</p>
                   <Button
                     variant="outline"
                     size="sm"
@@ -625,7 +447,7 @@ export default function Dashboard() {
                     onClick={() => router.push('/tickets/simple/create')}
                   >
                     <Plus className="h-4 w-4 mr-2" />
-                    Create your first ticket
+                    Buat tiket pertama
                   </Button>
                 </div>
               ) : (
@@ -645,7 +467,7 @@ export default function Dashboard() {
               <CardFooter className="pt-0">
                 <Link href="/tickets" className="w-full">
                   <Button variant="outline" className="w-full">
-                    View all {recentTickets.length} tickets
+                    Lihat semua {recentTickets.length} tiket
                     <ArrowRight className="h-4 w-4 ml-2" />
                   </Button>
                 </Link>
@@ -656,7 +478,7 @@ export default function Dashboard() {
           {/* Status Summary */}
           <Card className="bg-card/50 backdrop-blur-sm">
             <CardHeader className="pb-4">
-              <CardTitle className="text-base font-medium text-foreground">Status Summary</CardTitle>
+              <CardTitle className="text-base font-medium text-foreground">Ringkasan Status</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Status breakdown */}
@@ -664,21 +486,21 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-info" />
-                    <span className="text-sm text-foreground">Open</span>
+                    <span className="text-sm text-foreground">Terbuka</span>
                   </div>
                   <span className="text-sm font-medium text-foreground">{stats.openTickets}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-warning" />
-                    <span className="text-sm text-foreground">In Progress</span>
+                    <span className="text-sm text-foreground">Diproses</span>
                   </div>
                   <span className="text-sm font-medium text-foreground">{stats.inProgressTickets}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-success" />
-                    <span className="text-sm text-foreground">Resolved</span>
+                    <span className="text-sm text-foreground">Selesai</span>
                   </div>
                   <span className="text-sm font-medium text-foreground">{stats.resolvedTickets}</span>
                 </div>
@@ -689,11 +511,11 @@ export default function Dashboard() {
 
               {/* Priority breakdown */}
               <div className="space-y-3">
-                <h4 className="text-sm font-medium text-muted-foreground">Priority Distribution</h4>
+                <h4 className="text-sm font-medium text-muted-foreground">Distribusi Prioritas</h4>
                 {stats.priority.urgent > 0 && (
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Badge variant="destructive" className="text-xs">Urgent</Badge>
+                      <Badge variant="destructive" className="text-xs">Darurat</Badge>
                     </div>
                     <span className="text-sm font-medium text-destructive">{stats.priority.urgent}</span>
                   </div>
@@ -701,13 +523,13 @@ export default function Dashboard() {
                 {stats.priority.high > 0 && (
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Badge variant="warning-soft" className="text-xs">High</Badge>
+                      <Badge variant="warning-soft" className="text-xs">Tinggi</Badge>
                     </div>
                     <span className="text-sm font-medium text-[hsl(var(--warning))]">{stats.priority.high}</span>
                   </div>
                 )}
                 {stats.priority.urgent === 0 && stats.priority.high === 0 && (
-                  <p className="text-sm text-muted-foreground">No urgent or high priority tickets</p>
+                  <p className="text-sm text-muted-foreground">Tidak ada tiket darurat atau prioritas tinggi</p>
                 )}
               </div>
 
@@ -715,14 +537,14 @@ export default function Dashboard() {
               <div className="border-t border-border pt-4 space-y-2">
                 <Link href="/tickets?status=OPEN">
                   <Button variant="ghost" size="sm" className="w-full justify-between">
-                    <span>View open tickets</span>
-                    <ChevronRight className="h-4 w-4" />
+                    <span>Lihat tiket terbuka</span>
+                    <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>
                 <Link href="/reports/monthly">
                   <Button variant="ghost" size="sm" className="w-full justify-between">
-                    <span>Monthly summary</span>
-                    <ChevronRight className="h-4 w-4" />
+                    <span>Ringkasan bulanan</span>
+                    <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>
               </div>

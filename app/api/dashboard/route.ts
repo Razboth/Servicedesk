@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { PrismaClient } from '@prisma/client';
-
-// Create a single PrismaClient instance outside the handler to avoid
-// webpack minification variable collision issues
-const prisma = new PrismaClient();
+import prisma from '@/lib/prisma';
 
 // GET /api/dashboard - Get comprehensive dashboard statistics
 export async function GET(request: NextRequest) {
@@ -27,6 +23,7 @@ export async function GET(request: NextRequest) {
     // Determine filtering based on user role
     const isGlobalRole = ['ADMIN', 'SUPER_ADMIN'].includes(userRole);
     const isManager = userRole === 'MANAGER';
+    const isManagerIT = userRole === 'MANAGER_IT';
     const isTechnician = userRole === 'TECHNICIAN';
     const isUser = userRole === 'USER';
 
@@ -51,7 +48,7 @@ export async function GET(request: NextRequest) {
         : { assignedToId: userId };
       myTicketsWhere = { assignedToId: userId };
     }
-    // Admins see all tickets (no additional filtering)
+    // Admins and IT Managers see all tickets (no additional filtering)
 
     // Helper function to combine base filter with additional conditions
     const combineFilters = (additionalFilters: any) => {
@@ -200,6 +197,98 @@ export async function GET(request: NextRequest) {
       })
     ]);
 
+    // Get additional role-specific data
+    let branchUsers = 0;
+    let branchATMs = 0;
+    let atmAlerts = 0;
+    let totalUsers = 0;
+    let totalBranches = 0;
+    let networkIncidents = 0;
+    let atmDowntime = 0;
+    let infrastructureAlerts = 0;
+    let mySubmittedTickets = 0;
+    let myPendingTickets = 0;
+    let myResolvedTickets = 0;
+
+    // Manager-specific data
+    if (isManager && branchId) {
+      const [branchUserCount, branchATMCount, atmAlertCount] = await Promise.all([
+        // Count users in the branch
+        prisma.user.count({
+          where: { branchId: branchId, isActive: true }
+        }),
+        // Count ATMs in the branch
+        prisma.aTM.count({
+          where: { branchId: branchId }
+        }),
+        // Count active ATM alerts
+        prisma.aTMAlert.count({
+          where: {
+            atm: { branchId: branchId },
+            resolvedAt: null
+          }
+        })
+      ]);
+      branchUsers = branchUserCount;
+      branchATMs = branchATMCount;
+      atmAlerts = atmAlertCount;
+    }
+
+    // Admin/Super Admin specific data
+    if (isGlobalRole) {
+      const [userCount, branchCount] = await Promise.all([
+        prisma.user.count({ where: { isActive: true } }),
+        prisma.branch.count({ where: { isActive: true } })
+      ]);
+      totalUsers = userCount;
+      totalBranches = branchCount;
+    }
+
+    // IT Manager specific data
+    if (isManagerIT || isGlobalRole) {
+      const [networkIncidentCount, atmDowntimeCount, infraAlertCount] = await Promise.all([
+        // Count active network incidents
+        prisma.networkIncident.count({
+          where: { resolvedAt: null }
+        }),
+        // Count ATMs currently down
+        prisma.aTM.count({
+          where: { status: { in: ['DOWN', 'CRITICAL'] } }
+        }),
+        // Count unresolved ATM alerts
+        prisma.aTMAlert.count({
+          where: { resolvedAt: null }
+        })
+      ]);
+      networkIncidents = networkIncidentCount;
+      atmDowntime = atmDowntimeCount;
+      infrastructureAlerts = infraAlertCount;
+    }
+
+    // User-specific data
+    if (isUser) {
+      const [submitted, pending, resolved] = await Promise.all([
+        prisma.ticket.count({
+          where: { createdById: userId }
+        }),
+        prisma.ticket.count({
+          where: {
+            createdById: userId,
+            status: { in: ['OPEN', 'IN_PROGRESS'] }
+          }
+        }),
+        prisma.ticket.count({
+          where: {
+            createdById: userId,
+            status: { in: ['RESOLVED', 'CLOSED'] }
+          }
+        })
+      ]);
+      mySubmittedTickets = submitted;
+      myPendingTickets = pending;
+      myResolvedTickets = resolved;
+    }
+
     // Calculate average resolution time
     const resolvedTicketsWithTime = await prisma.ticket.findMany({
       where: combineFilters({
@@ -336,13 +425,36 @@ export async function GET(request: NextRequest) {
         ...(isManager && {
           pendingApprovals,
           branchTickets: totalTickets,
-          teamPerformance: slaCompliance
+          teamPerformance: slaCompliance,
+          branchUsers,
+          branchATMs,
+          atmAlerts
+        }),
+
+        // For IT managers
+        ...(isManagerIT && {
+          networkIncidents,
+          atmDowntime,
+          infrastructureAlerts
         }),
 
         // For admins
         ...(isGlobalRole && {
           systemWideTickets: totalTickets,
-          allBranches: true
+          allBranches: true,
+          totalUsers,
+          totalBranches,
+          systemHealth: 98, // Placeholder for actual system health calculation
+          networkIncidents,
+          atmDowntime,
+          infrastructureAlerts
+        }),
+
+        // For regular users
+        ...(isUser && {
+          mySubmittedTickets,
+          myPendingTickets,
+          myResolvedTickets
         })
       }
     };
