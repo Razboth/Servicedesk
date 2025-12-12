@@ -271,21 +271,21 @@
     }
   }
 
-  /* Enhanced new ticket animations with brown theme */
+  /* Enhanced new ticket animations with theme colors */
   @keyframes newTicketHighlight {
     0% {
       background: linear-gradient(90deg,
-        rgba(146, 64, 14, 0.15) 0%,
-        rgba(217, 119, 6, 0.1) 50%,
-        rgba(146, 64, 14, 0.15) 100%);
+        hsl(var(--primary) / 0.15) 0%,
+        hsl(var(--primary) / 0.1) 50%,
+        hsl(var(--primary) / 0.15) 100%);
       transform: translateY(-5px) scale(1.01);
-      box-shadow: 0 4px 20px rgba(146, 64, 14, 0.2);
+      box-shadow: 0 4px 20px hsl(var(--primary) / 0.2);
     }
     20% {
       background: linear-gradient(90deg,
-        rgba(217, 119, 6, 0.12) 0%,
-        rgba(254, 243, 199, 0.15) 50%,
-        rgba(217, 119, 6, 0.12) 100%);
+        hsl(var(--primary) / 0.12) 0%,
+        hsl(var(--accent) / 0.15) 50%,
+        hsl(var(--primary) / 0.12) 100%);
       transform: translateY(0) scale(1);
     }
     100% {
@@ -322,8 +322,8 @@
 
   .new-ticket-badge {
     animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-    background: linear-gradient(135deg, #d97706 0%, #92400e 100%);
-    box-shadow: 0 2px 8px rgba(217, 119, 6, 0.4);
+    background: linear-gradient(135deg, hsl(var(--chart-2)) 0%, hsl(var(--chart-3)) 100%);
+    box-shadow: 0 2px 8px hsl(var(--chart-2) / 0.4);
   }
 
   @keyframes pulse {
@@ -350,7 +350,7 @@
     background: linear-gradient(
       90deg,
       transparent 0%,
-      rgba(254, 243, 199, 0.3) 50%,
+      hsl(var(--accent) / 0.3) 50%,
       transparent 100%
     );
     background-size: 200% 100%;
@@ -438,15 +438,23 @@
     /* Radius */
     --radius: 0.25rem;
 
-    /* Shadows */
-    --shadow-2xs: 2px 3px 0px 0px hsl(28 13% 20% / 0.00);
-    --shadow-xs: 2px 3px 0px 0px hsl(28 13% 20% / 0.00);
-    --shadow-sm: 2px 3px 0px 0px hsl(28 13% 20% / 0.00), 2px 1px 2px -1px hsl(28 13% 20% / 0.00);
-    --shadow: 2px 3px 0px 0px hsl(28 13% 20% / 0.00), 2px 1px 2px -1px hsl(28 13% 20% / 0.00);
-    --shadow-md: 2px 3px 0px 0px hsl(28 13% 20% / 0.00), 2px 2px 4px -1px hsl(28 13% 20% / 0.00);
-    --shadow-lg: 2px 3px 0px 0px hsl(28 13% 20% / 0.00), 2px 4px 6px -1px hsl(28 13% 20% / 0.00);
-    --shadow-xl: 2px 3px 0px 0px hsl(28 13% 20% / 0.00), 2px 8px 10px -1px hsl(28 13% 20% / 0.00);
-    --shadow-2xl: 2px 3px 0px 0px hsl(28 13% 20% / 0.00);
+    /* Shadows - Subtle warm shadows */
+    --shadow-2xs: 0 1px 2px 0 hsl(var(--foreground) / 0.03);
+    --shadow-xs: 0 1px 3px 0 hsl(var(--foreground) / 0.04);
+    --shadow-sm: 0 1px 2px 0 hsl(var(--foreground) / 0.05), 0 1px 3px 0 hsl(var(--foreground) / 0.03);
+    --shadow: 0 2px 4px 0 hsl(var(--foreground) / 0.06), 0 1px 2px 0 hsl(var(--foreground) / 0.04);
+    --shadow-md: 0 4px 8px -2px hsl(var(--foreground) / 0.08), 0 2px 4px -1px hsl(var(--foreground) / 0.05);
+    --shadow-lg: 0 8px 16px -4px hsl(var(--foreground) / 0.1), 0 4px 8px -2px hsl(var(--foreground) / 0.06);
+    --shadow-xl: 0 16px 32px -8px hsl(var(--foreground) / 0.12), 0 8px 16px -4px hsl(var(--foreground) / 0.08);
+    --shadow-2xl: 0 24px 48px -12px hsl(var(--foreground) / 0.15);
+
+    /* Success, Warning, Info colors for semantic states */
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
 
     /* Spacing and tracking */
     --tracking-normal: 0em;
@@ -469,7 +477,7 @@
     --muted-foreground: 38.4000 17.7305% 72.3529%;
     --accent: 24.4444 17.8808% 29.6078%;
     --accent-foreground: 39 34.4828% 88.6275%;
-    --destructive: 9.8438 54.7009% 45.8824%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
     --border: 24.7059 12.9771% 25.6863%;
     --input: 24.7059 12.9771% 25.6863%;
@@ -500,15 +508,23 @@
     /* Radius */
     --radius: 0.25rem;
 
-    /* Shadows */
-    --shadow-2xs: 2px 3px 0px 0px hsl(28 13% 20% / 0.00);
-    --shadow-xs: 2px 3px 0px 0px hsl(28 13% 20% / 0.00);
-    --shadow-sm: 2px 3px 0px 0px hsl(28 13% 20% / 0.00), 2px 1px 2px -1px hsl(28 13% 20% / 0.00);
-    --shadow: 2px 3px 0px 0px hsl(28 13% 20% / 0.00), 2px 1px 2px -1px hsl(28 13% 20% / 0.00);
-    --shadow-md: 2px 3px 0px 0px hsl(28 13% 20% / 0.00), 2px 2px 4px -1px hsl(28 13% 20% / 0.00);
-    --shadow-lg: 2px 3px 0px 0px hsl(28 13% 20% / 0.00), 2px 4px 6px -1px hsl(28 13% 20% / 0.00);
-    --shadow-xl: 2px 3px 0px 0px hsl(28 13% 20% / 0.00), 2px 8px 10px -1px hsl(28 13% 20% / 0.00);
-    --shadow-2xl: 2px 3px 0px 0px hsl(28 13% 20% / 0.00);
+    /* Shadows - Deeper shadows for dark mode */
+    --shadow-2xs: 0 1px 2px 0 hsl(0 0% 0% / 0.15);
+    --shadow-xs: 0 1px 3px 0 hsl(0 0% 0% / 0.2);
+    --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.25), 0 1px 3px 0 hsl(0 0% 0% / 0.15);
+    --shadow: 0 2px 4px 0 hsl(0 0% 0% / 0.3), 0 1px 2px 0 hsl(0 0% 0% / 0.2);
+    --shadow-md: 0 4px 8px -2px hsl(0 0% 0% / 0.35), 0 2px 4px -1px hsl(0 0% 0% / 0.25);
+    --shadow-lg: 0 8px 16px -4px hsl(0 0% 0% / 0.4), 0 4px 8px -2px hsl(0 0% 0% / 0.3);
+    --shadow-xl: 0 16px 32px -8px hsl(0 0% 0% / 0.45), 0 8px 16px -4px hsl(0 0% 0% / 0.35);
+    --shadow-2xl: 0 24px 48px -12px hsl(0 0% 0% / 0.5);
+
+    /* Success, Warning, Info colors for semantic states */
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
 
     /* Spacing and tracking */
     --tracking-normal: 0em;
@@ -633,27 +649,152 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: hsl(var(--muted));
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+  background: hsl(var(--muted-foreground) / 0.3);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+  background: hsl(var(--muted-foreground) / 0.5);
 }
 
-/* Print styles */
+/* Print styles for reports */
 @media print {
-  .no-print {
+  /* Hide non-essential elements */
+  .no-print,
+  nav,
+  aside,
+  header,
+  footer,
+  button,
+  .sidebar,
+  [role="navigation"] {
     display: none !important;
   }
 
+  /* Page setup */
+  @page {
+    margin: 1.5cm;
+    size: A4;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 11pt;
+    line-height: 1.5;
+  }
+
+  /* Reset colors for print */
+  * {
+    background: transparent !important;
+    color: black !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  /* Tables for reports */
+  table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+    page-break-inside: auto;
+  }
+
+  thead {
+    display: table-header-group;
+    background: #f5f5f5 !important;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+
+  th, td {
+    border: 1px solid #ddd !important;
+    padding: 8px !important;
+    text-align: left;
+  }
+
+  th {
+    background: #f5f5f5 !important;
+    font-weight: bold !important;
+  }
+
+  /* Cards and containers */
+  .card, [data-card] {
+    border: 1px solid #ddd !important;
+    margin-bottom: 1rem !important;
+    page-break-inside: avoid;
+  }
+
+  /* Charts - show as is */
+  svg {
+    max-width: 100% !important;
+  }
+
+  /* Links */
+  a {
+    text-decoration: underline !important;
+  }
+
+  a[href]:after {
+    content: " (" attr(href) ")";
+    font-size: 0.8em;
+    font-style: italic;
+  }
+
+  /* Page breaks */
   .print-break {
     page-break-before: always;
+  }
+
+  .print-avoid-break {
+    page-break-inside: avoid;
+  }
+
+  /* Headers for reports */
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+    font-weight: bold !important;
+  }
+
+  h1 {
+    font-size: 20pt !important;
+    margin-bottom: 0.5rem !important;
+  }
+
+  h2 {
+    font-size: 16pt !important;
+    margin-top: 1rem !important;
+    margin-bottom: 0.5rem !important;
+  }
+
+  h3 {
+    font-size: 14pt !important;
+  }
+
+  /* Ensure visibility of important data */
+  .print-show {
+    display: block !important;
+  }
+
+  /* Report metadata */
+  .report-header {
+    border-bottom: 2px solid #000 !important;
+    padding-bottom: 1rem !important;
+    margin-bottom: 1.5rem !important;
+  }
+
+  /* Stats cards in print */
+  .stats-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
+    gap: 1rem !important;
   }
 }
 

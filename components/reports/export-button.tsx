@@ -79,7 +79,7 @@ export function ExportButton({
         <Button
           variant="outline"
           disabled={disabled || isExporting !== null}
-          className={`flex items-center space-x-2 ${className}`}
+          className={`flex items-center gap-2 shadow-sm hover:shadow-md transition-all ${className}`}
         >
           {isExporting ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -90,26 +90,26 @@ export function ExportButton({
         </Button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-64">
-        <DropdownMenuLabel>Export {reportName}</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        
+      <DropdownMenuContent align="end" className="w-64 shadow-lg border-border bg-card">
+        <DropdownMenuLabel className="text-foreground">Export {reportName}</DropdownMenuLabel>
+        <DropdownMenuSeparator className="bg-border" />
+
         {exportOptions.map((option) => (
           <DropdownMenuItem
             key={option.value}
             onClick={() => handleExport(option.value)}
             disabled={isExporting === option.value}
-            className="flex items-center space-x-3 cursor-pointer"
+            className="flex items-center gap-3 cursor-pointer hover:bg-accent focus:bg-accent transition-colors"
           >
             <div className="flex-shrink-0 text-muted-foreground">
               {isExporting === option.value ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
               ) : (
                 option.icon
               )}
             </div>
             <div className="flex-1">
-              <div className="text-sm font-medium">
+              <div className="text-sm font-medium text-foreground">
                 {option.label}
               </div>
               <div className="text-xs text-muted-foreground">

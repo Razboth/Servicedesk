@@ -317,42 +317,42 @@ export default function MonthlyReport() {
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <Card className="border-l-4 border-l-blue-500">
+          <Card className="border-l-4 border-l-info shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-3xl font-bold">{data.summary.totalTickets}</p>
+                  <p className="text-3xl font-bold text-foreground">{data.summary.totalTickets}</p>
                   <p className="text-sm text-muted-foreground">Total Tickets</p>
                 </div>
-                <Ticket className="h-10 w-10 text-blue-500/20" />
+                <Ticket className="h-10 w-10 text-info/20" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-l-4 border-l-green-500">
+          <Card className="border-l-4 border-l-success shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-3xl font-bold">{data.summary.claimedTickets}</p>
+                  <p className="text-3xl font-bold text-foreground">{data.summary.claimedTickets}</p>
                   <p className="text-sm text-muted-foreground">
                     Claimed ({data.summary.claimedPercentage}%)
                   </p>
                 </div>
-                <UserCheck className="h-10 w-10 text-green-500/20" />
+                <UserCheck className="h-10 w-10 text-success/20" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-l-4 border-l-orange-500">
+          <Card className="border-l-4 border-l-warning shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-3xl font-bold">{data.summary.unclaimedTickets}</p>
+                  <p className="text-3xl font-bold text-foreground">{data.summary.unclaimedTickets}</p>
                   <p className="text-sm text-muted-foreground">
                     Unclaimed ({data.summary.unclaimedPercentage}%)
                   </p>
                 </div>
-                <UserX className="h-10 w-10 text-orange-500/20" />
+                <UserX className="h-10 w-10 text-warning/20" />
               </div>
             </CardContent>
           </Card>
@@ -361,10 +361,10 @@ export default function MonthlyReport() {
         {/* Category Breakdown */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           {/* Pie Chart */}
-          <Card>
+          <Card className="shadow-sm border-border">
             <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <BarChart3 className="h-4 w-4" />
+              <CardTitle className="text-base flex items-center gap-2 text-foreground">
+                <BarChart3 className="h-4 w-4 text-primary" />
                 Category Distribution
               </CardTitle>
               <CardDescription>Tickets by tier-1 category</CardDescription>
@@ -406,9 +406,9 @@ export default function MonthlyReport() {
           </Card>
 
           {/* Category Table */}
-          <Card>
+          <Card className="shadow-sm border-border">
             <CardHeader>
-              <CardTitle className="text-base">Category Breakdown</CardTitle>
+              <CardTitle className="text-base text-foreground">Category Breakdown</CardTitle>
               <CardDescription>Detailed ticket counts by category</CardDescription>
             </CardHeader>
             <CardContent>
@@ -451,10 +451,10 @@ export default function MonthlyReport() {
         </div>
 
         {/* Most Common Services by Category */}
-        <Card className="mb-6">
+        <Card className="mb-6 shadow-sm border-border">
           <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Layers className="h-4 w-4" />
+            <CardTitle className="text-base flex items-center gap-2 text-foreground">
+              <Layers className="h-4 w-4 text-primary" />
               Most Common Services by Category
             </CardTitle>
             <CardDescription>
@@ -500,10 +500,10 @@ export default function MonthlyReport() {
         </Card>
 
         {/* Most Common Issues */}
-        <Card className="mb-6">
+        <Card className="mb-6 shadow-sm border-border">
           <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <AlertCircle className="h-4 w-4" />
+            <CardTitle className="text-base flex items-center gap-2 text-foreground">
+              <AlertCircle className="h-4 w-4 text-warning" />
               Most Common Issues by Category
             </CardTitle>
             <CardDescription>
@@ -565,10 +565,10 @@ export default function MonthlyReport() {
         {/* Duration Metrics */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Duration Summary */}
-          <Card>
+          <Card className="shadow-sm border-border">
             <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Clock className="h-4 w-4" />
+              <CardTitle className="text-base flex items-center gap-2 text-foreground">
+                <Clock className="h-4 w-4 text-info" />
                 Duration Analysis
               </CardTitle>
               <CardDescription>Average time from approval to closure</CardDescription>
@@ -604,10 +604,10 @@ export default function MonthlyReport() {
           </Card>
 
           {/* Status Distribution */}
-          <Card>
+          <Card className="shadow-sm border-border">
             <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
+              <CardTitle className="text-base flex items-center gap-2 text-foreground">
+                <Calendar className="h-4 w-4 text-primary" />
                 Status Distribution
               </CardTitle>
               <CardDescription>All tickets by current status</CardDescription>

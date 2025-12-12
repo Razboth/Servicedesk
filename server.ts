@@ -18,28 +18,41 @@ dotenv.config({ path: envFile });
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = process.env.HOSTNAME || 'localhost';
 const port = parseInt(process.env.PORT || '3000', 10);
-const useHttps = process.env.USE_HTTPS !== 'false'; // Default to HTTPS
+const useHttps = process.env.USE_HTTPS === 'true'; // Explicit true required for HTTPS
+
+// Debug: Log environment variables
+console.log('🔧 Configuration:');
+console.log(`   NODE_ENV: ${process.env.NODE_ENV}`);
+console.log(`   USE_HTTPS: ${process.env.USE_HTTPS}`);
+console.log(`   SSL_CERT_DIR: ${process.env.SSL_CERT_DIR}`);
+console.log(`   SSL_CERT_FILE: ${process.env.SSL_CERT_FILE}`);
+console.log(`   SSL_KEY_FILE: ${process.env.SSL_KEY_FILE}`);
+console.log(`   PORT: ${port}`);
+console.log(`   HOSTNAME: ${hostname}`);
+console.log(`   useHttps resolved: ${useHttps}`);
 
 // Configure Next.js
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
-// Certificate paths
-const certsDir = path.join(process.cwd(), 'certificates');
+// Certificate paths - configurable via environment variables
+const certsDir = process.env.SSL_CERT_DIR || path.join(process.cwd(), 'certificates');
+const sslCertFile = process.env.SSL_CERT_FILE || 'localhost.pem';
+const sslKeyFile = process.env.SSL_KEY_FILE || 'localhost-key.pem';
 
-// Function to check if Bank SulutGo production certificates exist
-const prodCertificatesExist = (): boolean => {
-  const certPath = path.join(certsDir, 'star_banksulutgo_co_id.crt');
-  const keyPath = path.join(certsDir, 'star_banksulutgo_co_id.key');
-  const caPath = path.join(certsDir, 'DigiCertCA.crt');
-  return fs.existsSync(certPath) && fs.existsSync(keyPath) && fs.existsSync(caPath);
+// Function to check if certificates exist
+const certificatesExist = (): boolean => {
+  const certPath = path.join(certsDir, sslCertFile);
+  const keyPath = path.join(certsDir, sslKeyFile);
+  return fs.existsSync(certPath) && fs.existsSync(keyPath);
 };
 
-// Function to check if localhost development certificates exist
-const devCertificatesExist = (): boolean => {
-  const certPath = path.join(certsDir, 'localhost.pem');
-  const keyPath = path.join(certsDir, 'localhost-key.pem');
-  return fs.existsSync(certPath) && fs.existsSync(keyPath);
+// Function to get certificate paths
+const getCertificatePaths = () => {
+  return {
+    cert: path.join(certsDir, sslCertFile),
+    key: path.join(certsDir, sslKeyFile),
+  };
 };
 
 // Function to start the server
@@ -48,32 +61,19 @@ const startServer = async () => {
     await app.prepare();
     
     let server: any;
+    
+    if (useHttps && certificatesExist()) {
+      // HTTPS Server
+      const certPaths = getCertificatePaths();
+      const httpsOptions = {
+        key: fs.readFileSync(certPaths.key),
+        cert: fs.readFileSync(certPaths.cert),
+      };
 
-    // Determine which certificates to use based on environment
-    const useProductionCerts = !dev && prodCertificatesExist();
-    const useDevelopmentCerts = dev && devCertificatesExist();
-
-    if (useHttps && (useProductionCerts || useDevelopmentCerts)) {
-      // HTTPS Server with appropriate certificate
-      let httpsOptions: any;
-
-      if (useProductionCerts) {
-        // Production: Use Bank SulutGo wildcard certificate
-        httpsOptions = {
-          key: fs.readFileSync(path.join(certsDir, 'star_banksulutgo_co_id.key')),
-          cert: fs.readFileSync(path.join(certsDir, 'star_banksulutgo_co_id.crt')),
-          ca: fs.readFileSync(path.join(certsDir, 'DigiCertCA.crt')),
-        };
-        console.log('🔒 Using Bank SulutGo wildcard certificate');
-      } else {
-        // Development: Use localhost self-signed certificate
-        httpsOptions = {
-          key: fs.readFileSync(path.join(certsDir, 'localhost-key.pem')),
-          cert: fs.readFileSync(path.join(certsDir, 'localhost.pem')),
-        };
-        console.log('🔒 Using localhost self-signed certificate');
-      }
-
+      console.log(`📜 Loading SSL certificates from:`);
+      console.log(`   Certificate: ${certPaths.cert}`);
+      console.log(`   Key: ${certPaths.key}`);
+      
       server = createHttpsServer(httpsOptions, async (req, res) => {
         try {
           const parsedUrl = parse(req.url!, true);
@@ -116,12 +116,8 @@ const startServer = async () => {
             const httpPort = 80;
             createHttpServer((req, res) => {
               const host = req.headers.host?.replace(/:\d+$/, '');
-              // Omit port 443 from URL (default HTTPS port)
-              const redirectUrl = port === 443
-                ? `https://${host}${req.url}`
-                : `https://${host}:${port}${req.url}`;
               res.writeHead(301, {
-                Location: redirectUrl
+                Location: `https://${host}:${port}${req.url}`
               });
               res.end();
             }).listen(httpPort, () => {
@@ -131,14 +127,9 @@ const startServer = async () => {
         });
     } else {
       // Fallback to HTTP if certificates don't exist or HTTPS is disabled
-      if (useHttps && !useProductionCerts && !useDevelopmentCerts) {
+      if (useHttps && !certificatesExist()) {
         console.warn('⚠️  HTTPS certificates not found!');
-        if (!dev) {
-          console.log('   Production certificates (star_banksulutgo_co_id.*) not found in certificates folder');
-        } else {
-          console.log('   Development certificates (localhost.*) not found');
-          console.log('   Run "npm run cert:generate" to create certificates');
-        }
+        console.log('   Run "npm run cert:generate" to create certificates');
         console.log('   Falling back to HTTP...\n');
       }
       

@@ -205,63 +205,63 @@ export default function OperationalExtensionReportPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <Card>
+        <Card className="shadow-sm border-border">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-bold">{stats.total}</p>
+                <p className="text-2xl font-bold text-foreground">{stats.total}</p>
                 <p className="text-xs text-muted-foreground">Total Permintaan</p>
               </div>
               <FileText className="h-8 w-8 text-primary/20" />
             </div>
           </CardContent>
         </Card>
-        <Card className="border-yellow-500/20 bg-yellow-500/5">
+        <Card className="border-warning/20 bg-gradient-to-br from-warning/5 to-transparent dark:from-warning/10 dark:to-transparent shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-bold">{stats.open}</p>
+                <p className="text-2xl font-bold text-foreground">{stats.open}</p>
                 <p className="text-xs text-muted-foreground">Open</p>
               </div>
-              <Clock className="h-8 w-8 text-yellow-500/30" />
+              <Clock className="h-8 w-8 text-warning/30" />
             </div>
           </CardContent>
         </Card>
-        <Card className="border-blue-500/20 bg-blue-500/5">
+        <Card className="border-info/20 bg-gradient-to-br from-info/5 to-transparent dark:from-info/10 dark:to-transparent shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-bold">{stats.inProgress}</p>
+                <p className="text-2xl font-bold text-foreground">{stats.inProgress}</p>
                 <p className="text-xs text-muted-foreground">In Progress</p>
               </div>
-              <RefreshCw className="h-8 w-8 text-blue-500/30" />
+              <RefreshCw className="h-8 w-8 text-info/30" />
             </div>
           </CardContent>
         </Card>
-        <Card className="border-green-500/20 bg-green-500/5">
+        <Card className="border-success/20 bg-gradient-to-br from-success/5 to-transparent dark:from-success/10 dark:to-transparent shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-bold">{stats.resolved}</p>
+                <p className="text-2xl font-bold text-foreground">{stats.resolved}</p>
                 <p className="text-xs text-muted-foreground">Selesai</p>
               </div>
-              <Building className="h-8 w-8 text-green-500/30" />
+              <Building className="h-8 w-8 text-success/30" />
             </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Filters */}
-      <Card className="mb-6">
+      <Card className="mb-6 shadow-sm border-border">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Filter className="h-4 w-4" />
+          <CardTitle className="text-base flex items-center gap-2 text-foreground">
+            <Filter className="h-4 w-4 text-primary" />
             Filter
           </CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div className="md:col-span-2 relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Cari no. tiket, pemohon, cabang..."
               value={search}
@@ -299,9 +299,9 @@ export default function OperationalExtensionReportPage() {
       </Card>
 
       {/* Data Table */}
-      <Card>
+      <Card className="shadow-sm border-border">
         <CardContent className="p-0">
-          <Table>
+          <Table className="border-separate border-spacing-0">
             <TableHeader>
               <TableRow>
                 <TableHead>No. Tiket</TableHead>

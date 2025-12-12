@@ -53,29 +53,29 @@ interface TimelineChartProps {
 }
 
 // Metric Card Component
-export function MetricCard({ 
-  title, 
-  value, 
-  subtitle, 
-  trend, 
-  icon, 
+export function MetricCard({
+  title,
+  value,
+  subtitle,
+  trend,
+  icon,
   badge,
-  ...props 
+  ...props
 }: MetricCardProps & React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <Card {...props}>
+    <Card {...props} className="shadow-sm border-border bg-card">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-sm font-medium text-gray-600">
+        <CardTitle className="text-sm font-medium text-muted-foreground">
           {title}
         </CardTitle>
-        {icon && <div className="text-gray-400">{icon}</div>}
+        {icon && <div className="text-muted-foreground/50">{icon}</div>}
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-2xl font-bold text-gray-900">{value}</div>
+            <div className="text-2xl font-bold text-foreground">{value}</div>
             {subtitle && (
-              <p className="text-xs text-gray-500 mt-1">{subtitle}</p>
+              <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
             )}
           </div>
           <div className="flex flex-col items-end space-y-1">
@@ -86,7 +86,7 @@ export function MetricCard({
             )}
             {trend && (
               <div className={`flex items-center text-xs ${
-                trend.isPositive ? 'text-green-600' : 'text-red-600'
+                trend.isPositive ? 'text-success' : 'text-destructive'
               }`}>
                 <span className="mr-1">
                   {trend.isPositive ? '↗' : '↘'}
@@ -102,50 +102,50 @@ export function MetricCard({
 }
 
 // Bar Chart Component
-export function BarChart({ 
-  title, 
-  data, 
-  height = 300, 
-  showValues = true, 
-  className = '' 
+export function BarChart({
+  title,
+  data,
+  height = 300,
+  showValues = true,
+  className = ''
 }: BarChartProps) {
   const maxValue = Math.max(...data.map(d => d.value));
-  
+
   return (
-    <Card className={className}>
+    <Card className={`${className} shadow-sm border-border bg-card`}>
       <CardHeader>
-        <CardTitle className="text-lg font-semibold">{title}</CardTitle>
+        <CardTitle className="text-lg font-semibold text-foreground">{title}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-3" style={{ height }}>
           {data.map((item, index) => {
             const percentage = maxValue > 0 ? (item.value / maxValue) * 100 : 0;
-            const color = item.color || `hsl(${(index * 137.5) % 360}, 70%, 50%)`;
-            
+            const color = item.color || `hsl(var(--chart-${(index % 5) + 1}))`;
+
             return (
               <div key={item.label} className="flex items-center space-x-3">
-                <div className="w-24 text-sm text-gray-600 truncate" title={item.label}>
+                <div className="w-24 text-sm text-muted-foreground truncate" title={item.label}>
                   {item.label}
                 </div>
                 <div className="flex-1 relative">
-                  <div className="w-full bg-gray-200 rounded-full h-6">
+                  <div className="w-full bg-muted rounded-full h-6">
                     <div
-                      className="h-6 rounded-full flex items-center justify-end pr-2"
-                      style={{ 
-                        width: `${percentage}%`, 
+                      className="h-6 rounded-full flex items-center justify-end pr-2 transition-all duration-300"
+                      style={{
+                        width: `${percentage}%`,
                         backgroundColor: color,
                         minWidth: showValues && item.value > 0 ? '40px' : '0'
                       }}
                     >
                       {showValues && item.value > 0 && (
-                        <span className="text-xs text-white font-medium">
+                        <span className="text-xs font-medium" style={{ color: 'white' }}>
                           {item.value}
                         </span>
                       )}
                     </div>
                   </div>
                 </div>
-                <div className="w-12 text-sm text-gray-900 text-right">
+                <div className="w-12 text-sm text-foreground text-right font-medium">
                   {item.percentage ? `${item.percentage}%` : item.value}
                 </div>
               </div>
@@ -153,7 +153,7 @@ export function BarChart({
           })}
         </div>
         {data.length === 0 && (
-          <div className="flex items-center justify-center h-40 text-gray-500">
+          <div className="flex items-center justify-center h-40 text-muted-foreground">
             <div className="text-center">
               <div className="text-sm">No data available</div>
             </div>
@@ -165,23 +165,23 @@ export function BarChart({
 }
 
 // Simple Pie Chart Component
-export function PieChart({ 
-  title, 
-  data, 
-  showLegend = true, 
-  className = '' 
+export function PieChart({
+  title,
+  data,
+  showLegend = true,
+  className = ''
 }: PieChartProps) {
   const total = data.reduce((sum, item) => sum + item.value, 0);
   let cumulativePercentage = 0;
-  
+
   const segments = data.map((item, index) => {
     const percentage = total > 0 ? (item.value / total) * 100 : 0;
     const startAngle = (cumulativePercentage / 100) * 360;
     const endAngle = ((cumulativePercentage + percentage) / 100) * 360;
     cumulativePercentage += percentage;
-    
-    const color = item.color || `hsl(${(index * 137.5) % 360}, 70%, 50%)`;
-    
+
+    const color = item.color || `hsl(var(--chart-${(index % 5) + 1}))`;
+
     return {
       ...item,
       percentage: Math.round(percentage * 10) / 10,
@@ -213,9 +213,9 @@ export function PieChart({
   };
 
   return (
-    <Card className={className}>
+    <Card className={`${className} shadow-sm border-border bg-card`}>
       <CardHeader>
-        <CardTitle className="text-lg font-semibold">{title}</CardTitle>
+        <CardTitle className="text-lg font-semibold text-foreground">{title}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="flex items-center space-x-6">
@@ -227,7 +227,7 @@ export function PieChart({
                   key={index}
                   d={createArcPath(100, 100, 80, segment.startAngle, segment.endAngle)}
                   fill={segment.color}
-                  stroke="white"
+                  stroke="hsl(var(--background))"
                   strokeWidth="2"
                 />
               ))}
@@ -236,8 +236,8 @@ export function PieChart({
                   cx="100"
                   cy="100"
                   r="80"
-                  fill="#f3f4f6"
-                  stroke="#e5e7eb"
+                  fill="hsl(var(--muted))"
+                  stroke="hsl(var(--border))"
                   strokeWidth="2"
                 />
               )}
@@ -254,15 +254,15 @@ export function PieChart({
                       className="w-3 h-3 rounded-full"
                       style={{ backgroundColor: segment.color }}
                     />
-                    <span className="text-sm text-gray-700">{segment.label}</span>
+                    <span className="text-sm text-muted-foreground">{segment.label}</span>
                   </div>
-                  <div className="text-sm text-gray-900">
+                  <div className="text-sm text-foreground font-medium">
                     {segment.value} ({segment.percentage}%)
                   </div>
                 </div>
               ))}
               {data.length === 0 && (
-                <div className="text-center text-gray-500 py-8">
+                <div className="text-center text-muted-foreground py-8">
                   <div className="text-sm">No data available</div>
                 </div>
               )}
@@ -275,20 +275,20 @@ export function PieChart({
 }
 
 // Simple Timeline Chart Component
-export function TimelineChart({ 
-  title, 
-  data, 
-  height = 200, 
-  className = '' 
-}: TimelineChartProps) {  
+export function TimelineChart({
+  title,
+  data,
+  height = 200,
+  className = ''
+}: TimelineChartProps) {
   const maxValue = Math.max(...data.map(d => d.value), 1);
   const minValue = Math.min(...data.map(d => d.value), 0);
   const valueRange = maxValue - minValue || 1;
 
   return (
-    <Card className={className}>
+    <Card className={`${className} shadow-sm border-border bg-card`}>
       <CardHeader>
-        <CardTitle className="text-lg font-semibold">{title}</CardTitle>
+        <CardTitle className="text-lg font-semibold text-foreground">{title}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="relative" style={{ height }}>
@@ -304,24 +304,25 @@ export function TimelineChart({
                     y1={y}
                     x2="100%"
                     y2={y}
-                    stroke="#f3f4f6"
+                    stroke="hsl(var(--border))"
                     strokeWidth="1"
+                    opacity="0.5"
                   />
                 );
               })}
-              
+
               {/* Data line */}
               <polyline
                 fill="none"
-                stroke="#3b82f6"
-                strokeWidth="2"
+                stroke="hsl(var(--primary))"
+                strokeWidth="2.5"
                 points={data.map((point, index) => {
                   const x = (index / (data.length - 1)) * 100;
                   const y = height * (1 - (point.value - minValue) / valueRange);
                   return `${x}%,${y}`;
                 }).join(' ')}
               />
-              
+
               {/* Data points */}
               {data.map((point, index) => {
                 const x = (index / (data.length - 1)) * 100;
@@ -331,9 +332,9 @@ export function TimelineChart({
                     key={index}
                     cx={`${x}%`}
                     cy={y}
-                    r="3"
-                    fill="#3b82f6"
-                    stroke="white"
+                    r="4"
+                    fill="hsl(var(--primary))"
+                    stroke="hsl(var(--background))"
                     strokeWidth="2"
                   >
                     <title>{point.label || point.date}: {point.value}</title>
@@ -342,17 +343,17 @@ export function TimelineChart({
               })}
             </svg>
           ) : (
-            <div className="flex items-center justify-center h-full text-gray-500">
+            <div className="flex items-center justify-center h-full text-muted-foreground">
               <div className="text-center">
                 <div className="text-sm">No data available</div>
               </div>
             </div>
           )}
         </div>
-        
+
         {/* X-axis labels */}
         {data.length > 0 && (
-          <div className="flex justify-between mt-2 text-xs text-gray-500">
+          <div className="flex justify-between mt-2 text-xs text-muted-foreground">
             <span>{new Date(data[0].date).toLocaleDateString()}</span>
             <span>{new Date(data[data.length - 1].date).toLocaleDateString()}</span>
           </div>

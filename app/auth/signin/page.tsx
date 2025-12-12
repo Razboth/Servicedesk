@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { getVersionString, APP_VERSION } from '@/lib/version';
-import { LogIn, Mail, Lock, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { LogIn, User, Lock, AlertCircle, CheckCircle2, Shield, Sparkles } from 'lucide-react';
 
 function SignInForm() {
   const [username, setUsername] = useState('');
@@ -39,11 +39,9 @@ function SignInForm() {
       });
 
       if (result?.error) {
-        // Check for specific error messages
         if (result.error.includes('locked') || result.error.includes('administrator')) {
-          setError('Your account has been locked due to too many failed login attempts. Please contact your administrator to unlock your account.');
+          setError('Akun Anda telah dikunci karena terlalu banyak percobaan login gagal. Silakan hubungi administrator untuk membuka kunci akun Anda.');
         } else {
-          // Always check remaining attempts first for any authentication error
           try {
             const response = await fetch('/api/auth/login-attempts', {
               method: 'POST',
@@ -52,23 +50,20 @@ function SignInForm() {
             });
             const data = await response.json();
 
-            // Check if the account is actually locked
             if (data.isLocked) {
-              setError('Your account has been locked due to too many failed login attempts. Please contact your administrator to unlock your account.');
+              setError('Akun Anda telah dikunci karena terlalu banyak percobaan login gagal. Silakan hubungi administrator untuk membuka kunci akun Anda.');
             } else if (data.remainingAttempts !== undefined && data.remainingAttempts > 0) {
-              setError(`Invalid credentials. ${data.remainingAttempts} attempts remaining before account lockout.`);
+              setError(`Kredensial tidak valid. ${data.remainingAttempts} percobaan tersisa sebelum akun dikunci.`);
             } else {
-              setError('Invalid credentials');
+              setError('Kredensial tidak valid');
             }
           } catch {
-            setError('Invalid credentials');
+            setError('Kredensial tidak valid');
           }
         }
       } else {
-        // Check session and redirect
         const session = await getSession();
         if (session) {
-          // Check if user needs to change password
           if (session.user?.mustChangePassword) {
             router.push('/auth/change-password');
           } else {
@@ -77,182 +72,220 @@ function SignInForm() {
         }
       }
     } catch (error) {
-      setError('An error occurred during login');
+      setError('Terjadi kesalahan saat login');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-cream-100 via-cream-50 to-brown-50 dark:from-brown-950 dark:via-warm-dark-300 dark:to-brown-900">
-      {/* Background pattern */}
-      <div className="absolute inset-0 -z-10 overflow-hidden">
-        <div className="absolute left-[max(50%,25rem)] top-0 h-[64rem] w-[128rem] -translate-x-1/2 stroke-brown-200 dark:stroke-brown-800 [mask-image:radial-gradient(64rem_64rem_at_top,white,transparent)]">
-          <svg
-            className="absolute inset-0 h-full w-full"
-            aria-hidden="true"
-          >
-            <defs>
-              <pattern
-                id="e813992c-7d03-4cc4-a2bd-151760b470a0"
-                width={200}
-                height={200}
-                x="50%"
-                y={-1}
-                patternUnits="userSpaceOnUse"
-              >
-                <path d="M100 200V.5M.5 .5H200" fill="none" />
-              </pattern>
-            </defs>
-            <svg x="50%" y={-1} className="overflow-visible fill-brown-100/20 dark:fill-brown-900/20">
-              <path
-                d="M-100.5 0h201v201h-201Z M699.5 0h201v201h-201Z M499.5 400h201v201h-201Z M-300.5 600h201v201h-201Z"
-                strokeWidth={0}
-              />
+    <div className="min-h-screen flex bg-background">
+      {/* Left Panel - Branding & Decorative */}
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-primary/90 via-primary to-primary/80">
+        {/* Decorative Elements */}
+        <div className="absolute inset-0">
+          <div className="absolute top-0 left-0 w-full h-full">
+            <svg className="absolute top-0 right-0 w-[600px] h-[600px] text-primary-foreground/5" viewBox="0 0 200 200">
+              <circle cx="100" cy="100" r="80" fill="currentColor" />
             </svg>
-            <rect width="100%" height="100%" strokeWidth={0} fill="url(#e813992c-7d03-4cc4-a2bd-151760b470a0)" />
-          </svg>
+            <svg className="absolute bottom-0 left-0 w-[400px] h-[400px] text-primary-foreground/5" viewBox="0 0 200 200">
+              <circle cx="100" cy="100" r="80" fill="currentColor" />
+            </svg>
+          </div>
+          {/* Grid Pattern */}
+          <div className="absolute inset-0 opacity-10">
+            <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                  <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" strokeWidth="1" className="text-primary-foreground" />
+                </pattern>
+              </defs>
+              <rect width="100%" height="100%" fill="url(#grid)" />
+            </svg>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="relative z-10 flex flex-col justify-between p-12 text-primary-foreground">
+          <div>
+            <img
+              src="/logo-bsg.png"
+              alt="Bank SulutGo"
+              className="h-16 w-auto brightness-0 invert"
+            />
+          </div>
+
+          <div className="space-y-8">
+            <div className="space-y-4">
+              <h1 className="text-4xl font-bold leading-tight">
+                Portal Layanan
+                <br />
+                <span className="text-primary-foreground/80">TI Bank SulutGo</span>
+              </h1>
+              <p className="text-lg text-primary-foreground/70 max-w-md">
+                Dukungan TI dan layanan yang efisien untuk Bank SulutGo di 250+ cabang.
+              </p>
+            </div>
+
+            {/* Features */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary-foreground/10">
+                  <Shield className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="font-medium">Sesuai ITIL v4</p>
+                  <p className="text-sm text-primary-foreground/60">Manajemen layanan kelas enterprise</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary-foreground/10">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="font-medium">Monitoring Real-time</p>
+                  <p className="text-sm text-primary-foreground/60">Pemantauan status ATM & jaringan</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <p className="text-sm text-primary-foreground/50">
+            {APP_VERSION.copyright}
+          </p>
         </div>
       </div>
 
-      <div className="relative w-full max-w-md px-6">
-        <div className="mx-auto w-full">
-          {/* Logo and Title */}
-          <div className="text-center mb-8">
-            <div className="mx-auto flex justify-center mb-6">
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-brown-400 to-brown-600 dark:from-brown-200 dark:to-brown-300 blur-2xl opacity-20 rounded-full"></div>
-                <img
-                  src="/logo-bsg.png"
-                  alt="Bank SulutGo"
-                  className="relative h-20 w-auto"
-                />
-              </div>
-            </div>
-            <h2 className="text-3xl font-bold tracking-tight text-brown-900 dark:text-cream-200">
-              Welcome back
+      {/* Right Panel - Login Form */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12">
+        <div className="w-full max-w-md space-y-8">
+          {/* Mobile Logo */}
+          <div className="lg:hidden text-center">
+            <img
+              src="/logo-bsg.png"
+              alt="Bank SulutGo"
+              className="h-16 w-auto mx-auto"
+            />
+          </div>
+
+          {/* Header */}
+          <div className="text-center lg:text-left">
+            <h2 className="text-2xl font-bold tracking-tight text-foreground">
+              Selamat Datang
             </h2>
-            <p className="mt-2 text-sm text-brown-600 dark:text-cream-400">
-              Sign in to ServiceDesk Portal
+            <p className="mt-2 text-sm text-muted-foreground">
+              Masuk ke akun ServiceDesk Anda
             </p>
           </div>
 
-          {/* Sign In Form */}
-          <div className="bg-card/80 dark:bg-warm-dark-300/80 backdrop-blur-xl rounded-2xl shadow-xl ring-1 ring-brown-200/50 dark:ring-warm-dark-200/50 p-8">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {successMessage && (
-                <div className="flex items-start gap-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 px-4 py-3 rounded-lg text-sm">
-                  <CheckCircle2 className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                  <span>{successMessage}</span>
-                </div>
-              )}
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {successMessage && (
+              <div className="flex items-start gap-3 p-4 rounded-lg bg-[hsl(var(--success)/0.1)] border border-[hsl(var(--success)/0.2)]">
+                <CheckCircle2 className="h-5 w-5 text-[hsl(var(--success))] flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-[hsl(var(--success))]">{successMessage}</p>
+              </div>
+            )}
 
-              {error && (
-                <div className="flex items-start gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg text-sm">
-                  <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                  <span>{error}</span>
-                </div>
-              )}
+            {error && (
+              <div className="flex items-start gap-3 p-4 rounded-lg bg-destructive/10 border border-destructive/20">
+                <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-destructive">{error}</p>
+              </div>
+            )}
 
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="username" className="text-brown-900 dark:text-cream-200">
-                    Username
-                  </Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-brown-400 dark:text-cream-500" />
-                    <Input
-                      id="username"
-                      name="username"
-                      type="text"
-                      autoComplete="username"
-                      required
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      className="pl-10 bg-cream-50 dark:bg-warm-dark-200 border-brown-300 dark:border-warm-dark-100 focus:border-brown-500 dark:focus:border-brown-300 focus:ring-brown-500 dark:focus:ring-brown-300"
-                      placeholder="Enter your username"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="password" className="text-brown-900 dark:text-cream-200">
-                    Password
-                  </Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-brown-400 dark:text-cream-500" />
-                    <Input
-                      id="password"
-                      name="password"
-                      type="password"
-                      autoComplete="current-password"
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="pl-10 bg-cream-50 dark:bg-warm-dark-200 border-brown-300 dark:border-warm-dark-100 focus:border-brown-500 dark:focus:border-brown-300 focus:ring-brown-500 dark:focus:ring-brown-300"
-                      placeholder="Enter your password"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-end">
-                  <Link
-                    href="/auth/forgot-password"
-                    className="text-sm font-medium text-brown-600 hover:text-brown-500 dark:text-brown-300 dark:hover:text-brown-200 transition-colors"
-                  >
-                    Forgot password?
-                  </Link>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="username" className="text-foreground font-medium">
+                  Nama Pengguna
+                </Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="username"
+                    name="username"
+                    type="text"
+                    autoComplete="username"
+                    required
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="pl-10 h-12 bg-background border-input"
+                    placeholder="Masukkan nama pengguna"
+                  />
                 </div>
               </div>
 
-              <Button
-                type="submit"
-                disabled={isLoading}
-                className="w-full bg-gradient-to-r from-brown-500 to-brown-600 dark:from-brown-300 dark:to-brown-400 text-white dark:text-brown-950 hover:from-brown-600 hover:to-brown-700 dark:hover:from-brown-400 dark:hover:to-brown-500 shadow-lg"
-              >
-                {isLoading ? (
-                  <>
-                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white dark:border-brown-950 border-t-transparent dark:border-t-transparent" />
-                    Signing in...
-                  </>
-                ) : (
-                  <>
-                    <LogIn className="mr-2 h-4 w-4" />
-                    Sign in
-                  </>
-                )}
-              </Button>
-            </form>
-
-            <div className="mt-6">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-brown-200 dark:border-warm-dark-200"></div>
-                </div>
-                <div className="relative flex justify-center text-xs">
-                  <span className="bg-card dark:bg-warm-dark-300 px-2 text-brown-500 dark:text-cream-400">
-                    Need assistance?
-                  </span>
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-foreground font-medium">
+                  Kata Sandi
+                </Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="password"
+                    name="password"
+                    type="password"
+                    autoComplete="current-password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pl-10 h-12 bg-background border-input"
+                    placeholder="Masukkan kata sandi"
+                  />
                 </div>
               </div>
 
-              <div className="mt-6 text-center">
-                <p className="text-sm text-brown-600 dark:text-cream-400">
-                  Contact IT Support for account issues
-                </p>
+              <div className="flex items-center justify-end">
+                <Link
+                  href="/auth/forgot-password"
+                  className="text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+                >
+                  Lupa kata sandi?
+                </Link>
               </div>
             </div>
 
-            {/* Version Information */}
-            <div className="mt-6 pt-6 border-t border-brown-200 dark:border-warm-dark-200 text-center">
-              <p className="text-xs text-brown-500 dark:text-cream-500 font-medium">
-                {getVersionString()}
-              </p>
-              <Link
-                href="/about"
-                className="text-xs text-brown-500 dark:text-cream-500 mt-1 hover:text-brown-700 dark:hover:text-cream-300 transition-colors inline-block"
-              >
-                {APP_VERSION.copyright}
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="w-full h-12 bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
+            >
+              {isLoading ? (
+                <>
+                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
+                  Sedang masuk...
+                </>
+              ) : (
+                <>
+                  <LogIn className="mr-2 h-4 w-4" />
+                  Masuk
+                </>
+              )}
+            </Button>
+          </form>
+
+          {/* Divider */}
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-border"></div>
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-3 text-muted-foreground">
+                Butuh bantuan?
+              </span>
+            </div>
+          </div>
+
+          {/* Help Text */}
+          <div className="text-center space-y-2">
+            <p className="text-sm text-muted-foreground">
+              Hubungi IT Support untuk masalah akun
+            </p>
+            <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
+              <span>{getVersionString()}</span>
+              <span>|</span>
+              <Link href="/about" className="hover:text-foreground transition-colors">
+                Tentang
               </Link>
             </div>
           </div>
@@ -264,7 +297,14 @@ function SignInForm() {
 
 export default function SignInPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex items-center gap-3">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <span className="text-foreground">Memuat...</span>
+        </div>
+      </div>
+    }>
       <SignInForm />
     </Suspense>
   );

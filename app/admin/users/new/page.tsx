@@ -184,21 +184,21 @@ export default function CreateUserPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <p className="text-sm text-green-800 mb-4">
+            <div className="bg-success/10 border border-success/30 rounded-lg p-4 dark:bg-success/5 dark:border-success/20">
+              <p className="text-sm text-success-foreground mb-4 dark:text-success">
                 User account has been created. Please share these credentials securely with the user.
               </p>
-              
+
               <div className="space-y-3">
                 <div>
-                  <Label className="text-green-800">Email</Label>
-                  <p className="font-mono bg-white px-3 py-2 rounded border">{formData.email}</p>
+                  <Label className="text-success-foreground dark:text-success">Email</Label>
+                  <p className="font-mono bg-card px-3 py-2 rounded-lg border border-border">{formData.email}</p>
                 </div>
-                
+
                 <div>
-                  <Label className="text-green-800">Temporary Password</Label>
+                  <Label className="text-success-foreground dark:text-success">Temporary Password</Label>
                   <div className="flex gap-2">
-                    <div className="flex-1 font-mono bg-white px-3 py-2 rounded border flex items-center justify-between">
+                    <div className="flex-1 font-mono bg-card px-3 py-2 rounded-lg border border-border flex items-center justify-between">
                       <span>{showPassword ? generatedPassword : '••••••••••••'}</span>
                       <Button
                         type="button"
@@ -292,36 +292,34 @@ export default function CreateUserPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email Address *</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                    <Input
-                      id="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="pl-10"
-                      required
-                    />
-                  </div>
+                  <Label htmlFor="email" required>Email Address</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    icon={<Mail className="h-4 w-4" />}
+                    iconPosition="left"
+                    required
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="phone">Phone Number</Label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                    <Input
-                      id="phone"
-                      type="tel"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className="pl-10"
-                    />
-                  </div>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    icon={<Phone className="h-4 w-4" />}
+                    iconPosition="left"
+                  />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="role">Role *</Label>
+                  <Label htmlFor="role" required description={getRoleDescription(formData.role)}>
+                    Role
+                  </Label>
                   <Select
                     value={formData.role}
                     onValueChange={(value) => setFormData({ ...formData, role: value })}
@@ -339,9 +337,6 @@ export default function CreateUserPage() {
                       <SelectItem value="ADMIN">Admin</SelectItem>
                     </SelectContent>
                   </Select>
-                  <p className="text-sm text-gray-500">
-                    {getRoleDescription(formData.role)}
-                  </p>
                 </div>
               </div>
             </div>
@@ -353,7 +348,7 @@ export default function CreateUserPage() {
               <div className="grid gap-4 md:grid-cols-2">
                 {['USER', 'AGENT', 'MANAGER'].includes(formData.role) && (
                   <div className="space-y-2">
-                    <Label htmlFor="branch">Branch *</Label>
+                    <Label htmlFor="branch" required>Branch</Label>
                     <Select
                       value={formData.branchId}
                       onValueChange={(value) => setFormData({ ...formData, branchId: value })}
@@ -374,7 +369,7 @@ export default function CreateUserPage() {
 
                 {formData.role === 'TECHNICIAN' && (
                   <div className="space-y-2">
-                    <Label htmlFor="supportGroup">Support Group *</Label>
+                    <Label htmlFor="supportGroup" required>Support Group</Label>
                     <Select
                       value={formData.supportGroupId}
                       onValueChange={(value) => setFormData({ ...formData, supportGroupId: value })}
@@ -415,22 +410,23 @@ export default function CreateUserPage() {
 
                 {!formData.generatePassword && (
                   <div className="space-y-2">
-                    <Label htmlFor="password">Password *</Label>
+                    <Label htmlFor="password" required>Password</Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                       <Input
                         id="password"
                         type={showPassword ? 'text' : 'password'}
                         value={formData.password}
                         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                        className="pl-10 pr-10"
+                        icon={<Lock className="h-4 w-4" />}
+                        iconPosition="left"
+                        className="pr-10"
                         required={!formData.generatePassword}
                       />
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="absolute right-2 top-2"
+                        className="absolute right-2 top-1/2 -translate-y-1/2"
                         onClick={() => setShowPassword(!showPassword)}
                       >
                         {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}

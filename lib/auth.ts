@@ -137,27 +137,31 @@ async function recordLoginAttempt(username: string, success: boolean, ipAddress?
   })
 }
 
+// Determine if secure cookies should be used (based on HTTPS, not just production)
+const useSecureCookies = process.env.USE_HTTPS === 'true'
+
 // Generate unique cookie name based on port or instance
 const getCookieName = () => {
   const port = process.env.PORT || '3000'
   const instanceId = process.env.INSTANCE_ID || port
-  const baseToken = process.env.NODE_ENV === 'production'
+  // Only use __Secure- prefix when actually using HTTPS
+  const baseToken = useSecureCookies
     ? '__Secure-bsg-auth.session-token'
     : 'bsg-auth.session-token'
   return `${baseToken}-${instanceId}`
 }
 
 const authOptions = {
-  // Use secure cookies in production with unique names per instance
+  // Use secure cookies only when HTTPS is enabled
   cookies: {
     sessionToken: {
       name: getCookieName(),
       options: {
         httpOnly: true,
-        sameSite: 'lax' as const, // Changed from 'strict' to allow cross-origin navigation
+        sameSite: 'lax' as const,
         path: '/',
-        secure: process.env.NODE_ENV === 'production',
-        domain: undefined // Let browser handle domain to prevent cross-domain sharing
+        secure: useSecureCookies,
+        domain: undefined
       }
     },
     callbackUrl: {
@@ -166,16 +170,16 @@ const authOptions = {
         httpOnly: true,
         sameSite: 'lax' as const,
         path: '/',
-        secure: process.env.NODE_ENV === 'production'
+        secure: useSecureCookies
       }
     },
     csrfToken: {
       name: `bsg-auth.csrf-token-${process.env.PORT || '3000'}`,
       options: {
-        httpOnly: false, // Changed to false to allow JavaScript access for CSRF token
+        httpOnly: false,
         sameSite: 'lax' as const,
         path: '/',
-        secure: process.env.NODE_ENV === 'production'
+        secure: useSecureCookies
       }
     }
   },

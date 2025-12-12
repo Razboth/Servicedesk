@@ -3,26 +3,37 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold transition-all duration-200",
+  "inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-all duration-200",
   {
     variants: {
       variant: {
         default:
-          "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2)] hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3),0_2px_4px_0_rgba(0,0,0,0.1)]",
+          "bg-primary text-primary-foreground",
         secondary:
-          "bg-gradient-to-r from-neutral-200 to-neutral-300 dark:from-neutral-700 dark:to-neutral-800 text-neutral-900 dark:text-neutral-100 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2)]",
+          "bg-secondary text-secondary-foreground",
         destructive:
-          "bg-gradient-to-r from-red-500 to-red-600 text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2)] hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3),0_2px_4px_0_rgba(0,0,0,0.1)]",
+          "bg-destructive text-destructive-foreground",
         warning:
-          "bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-950 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3)] hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.4),0_2px_4px_0_rgba(0,0,0,0.1)]",
+          "bg-[hsl(var(--warning))] text-[hsl(var(--warning-foreground))]",
         success:
-          "bg-gradient-to-r from-green-500 to-green-600 text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2)] hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3),0_2px_4px_0_rgba(0,0,0,0.1)]",
+          "bg-[hsl(var(--success))] text-[hsl(var(--success-foreground))]",
+        info:
+          "bg-[hsl(var(--info))] text-[hsl(var(--info-foreground))]",
         outline:
-          "border-2 border-neutral-200 dark:border-neutral-700 bg-transparent text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-900/50",
+          "border border-border bg-transparent text-foreground",
         ghost:
-          "bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700",
-        purple:
-          "bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2)] hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.3),0_2px_4px_0_rgba(0,0,0,0.1)]",
+          "bg-muted text-muted-foreground",
+        // Soft variants for subtle emphasis
+        "default-soft":
+          "bg-primary/10 text-primary border border-primary/20",
+        "destructive-soft":
+          "bg-destructive/10 text-destructive border border-destructive/20",
+        "warning-soft":
+          "bg-[hsl(var(--warning)/0.1)] text-[hsl(var(--warning))] border border-[hsl(var(--warning)/0.2)]",
+        "success-soft":
+          "bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))] border border-[hsl(var(--success)/0.2)]",
+        "info-soft":
+          "bg-[hsl(var(--info)/0.1)] text-[hsl(var(--info))] border border-[hsl(var(--info)/0.2)]",
       },
       size: {
         default: "text-xs px-3 py-1",

@@ -382,6 +382,7 @@ model Ticket {
   service                Service               @relation(fields: [serviceId], references: [id])
   supportGroup           SupportGroup?         @relation(fields: [supportGroupId], references: [id])
   vendorTickets          VendorTicket[]
+  shiftIssues            ShiftIssue[]
 
   @@index([serviceId])
   @@index([status])
@@ -2489,6 +2490,7 @@ model ShiftAssignment {
   schedule              ShiftSchedule     @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
   staffProfile          StaffShiftProfile @relation(fields: [staffProfileId], references: [id])
   swapRequests          ShiftSwapRequest[]
+  shiftReport           ShiftReport?
 
   @@unique([scheduleId, staffProfileId, date])
   @@index([scheduleId, date])
@@ -2743,4 +2745,230 @@ enum SwapRequestStatus {
   APPROVED            // Approved and completed
   REJECTED            // Rejected by recipient or manager
   CANCELLED           // Cancelled by initiator
+}
+
+// ============================================
+// Shift Report & Server Metrics System
+// ============================================
+
+// Server metrics received from external server (daily at 6 AM)
+model ServerMetrics {
+  id                    String          @id @default(cuid())
+  serverId              String?
+  serverName            String?
+
+  // CPU metrics
+  cpuUsagePercent       Float?
+  cpuCores              Int?
+  cpuLoadAvg1m          Float?
+  cpuLoadAvg5m          Float?
+  cpuLoadAvg15m         Float?
+
+  // RAM metrics
+  ramTotalGB            Float?
+  ramUsedGB             Float?
+  ramUsagePercent       Float?
+
+  // Disk metrics
+  diskTotalGB           Float?
+  diskUsedGB            Float?
+  diskUsagePercent      Float?
+
+  // Network metrics
+  networkInBytesPerSec  Float?
+  networkOutBytesPerSec Float?
+
+  // Uptime metrics
+  uptimeSeconds         Int?
+  lastBootTime          DateTime?
+
+  // Additional flexible metrics
+  additionalMetrics     Json?
+
+  // Metadata
+  collectedAt           DateTime        @default(now())
+  sourceIp              String?
+
+  // Relations
+  shiftReports          ShiftReport[]
+
+  @@index([collectedAt])
+  @@index([serverId, collectedAt])
+  @@map("server_metrics")
+}
+
+// Shift report container (one per shift assignment)
+model ShiftReport {
+  id                    String              @id @default(cuid())
+  shiftAssignmentId     String              @unique
+  status                ShiftReportStatus   @default(DRAFT)
+  startedAt             DateTime            @default(now())
+  completedAt           DateTime?
+  serverMetricsId       String?
+
+  // Summary fields (filled when completing)
+  summary               String?             @db.Text
+  handoverNotes         String?             @db.Text
+  issuesEncountered     String?             @db.Text
+  pendingActions        String?             @db.Text
+
+  // General notes/catatan
+  notes                 String?             @db.Text
+
+  // Metadata
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  // Relations
+  shiftAssignment       ShiftAssignment     @relation(fields: [shiftAssignmentId], references: [id], onDelete: Cascade)
+  serverMetrics         ServerMetrics?      @relation(fields: [serverMetricsId], references: [id])
+  checklistItems        ShiftChecklistItem[]
+  backupChecklist       ShiftBackupChecklist[]
+  issues                ShiftIssue[]
+
+  @@index([shiftAssignmentId])
+  @@index([status])
+  @@map("shift_reports")
+}
+
+// Individual checklist items within a shift report
+model ShiftChecklistItem {
+  id                    String                  @id @default(cuid())
+  shiftReportId         String
+  category              ShiftChecklistCategory
+  title                 String
+  description           String?
+  order                 Int                     @default(0)
+  isRequired            Boolean                 @default(true)
+  status                ShiftChecklistStatus    @default(PENDING)
+  completedAt           DateTime?
+  notes                 String?                 @db.Text
+
+  // Metadata
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+
+  // Relations
+  shiftReport           ShiftReport             @relation(fields: [shiftReportId], references: [id], onDelete: Cascade)
+
+  @@index([shiftReportId, category])
+  @@index([shiftReportId, order])
+  @@map("shift_checklist_items")
+}
+
+// Templates for checklist items (per shift type)
+model ShiftChecklistTemplate {
+  id                    String                  @id @default(cuid())
+  shiftType             ShiftType?              // Null = applies to all shift types
+  category              ShiftChecklistCategory
+  title                 String
+  description           String?
+  order                 Int                     @default(0)
+  isRequired            Boolean                 @default(true)
+  isActive              Boolean                 @default(true)
+
+  // Metadata
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+
+  @@index([shiftType, category, isActive])
+  @@map("shift_checklist_templates")
+}
+
+// Backup database checklist for shift report
+model ShiftBackupChecklist {
+  id                    String                  @id @default(cuid())
+  shiftReportId         String
+  databaseName          String                  // Name of the database
+  description           String?                 // Optional description
+  isChecked             Boolean                 @default(false)
+  checkedAt             DateTime?
+  notes                 String?                 @db.Text
+  order                 Int                     @default(0)
+
+  // Metadata
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+
+  // Relations
+  shiftReport           ShiftReport             @relation(fields: [shiftReportId], references: [id], onDelete: Cascade)
+
+  @@index([shiftReportId])
+  @@map("shift_backup_checklist")
+}
+
+// Backup database templates (master list of databases to check)
+model ShiftBackupTemplate {
+  id                    String                  @id @default(cuid())
+  databaseName          String                  @unique
+  description           String?
+  order                 Int                     @default(0)
+  isActive              Boolean                 @default(true)
+
+  // Metadata
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+
+  @@index([isActive, order])
+  @@map("shift_backup_templates")
+}
+
+// Issues tracking for shift report (masalah selesai & berjalan)
+model ShiftIssue {
+  id                    String                  @id @default(cuid())
+  shiftReportId         String
+  title                 String
+  description           String?                 @db.Text
+  status                ShiftIssueStatus        @default(ONGOING)
+  priority              IssuePriority           @default(MEDIUM)
+  resolvedAt            DateTime?
+  resolution            String?                 @db.Text
+
+  // Optional linked ticket
+  ticketId              String?
+  ticketNumber          String?
+
+  // Metadata
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+
+  // Relations
+  shiftReport           ShiftReport             @relation(fields: [shiftReportId], references: [id], onDelete: Cascade)
+  ticket                Ticket?                 @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+
+  @@index([shiftReportId, status])
+  @@index([ticketId])
+  @@map("shift_issues")
+}
+
+// Enums for shift report system
+enum ShiftReportStatus {
+  DRAFT
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum ShiftChecklistCategory {
+  SYSTEM_MONITORING     // Pemantauan Sistem
+  TICKET_MANAGEMENT     // Manajemen Tiket
+  HANDOVER_TASKS        // Serah Terima
+}
+
+enum ShiftChecklistStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  SKIPPED
+}
+
+enum ShiftIssueStatus {
+  ONGOING               // Masalah Berjalan
+  RESOLVED              // Masalah Selesai
+}
+
+enum IssuePriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
 }

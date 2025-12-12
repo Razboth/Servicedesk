@@ -35,7 +35,7 @@ function TicketsPageContent() {
   }
 
   return (
-    <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
+    <div className="w-full px-responsive py-6 space-y-6">
       <PageHeader
         title="Support Tickets"
         description="Manage and track support tickets across all branches"
@@ -43,7 +43,9 @@ function TicketsPageContent() {
         action={
           <Button
             onClick={handleCreateTicket}
-            className="bg-gradient-to-r from-brown-400 to-brown-500 dark:from-brown-200 dark:to-brown-300 text-white dark:text-brown-950 hover:from-brown-500 hover:to-brown-600 dark:hover:from-brown-300 dark:hover:to-brown-400"
+            variant="default"
+            size="default"
+            className="shadow-lg hover:shadow-xl transition-all"
           >
             <Plus className="h-4 w-4 mr-2" />
             Create Ticket
@@ -69,13 +71,20 @@ function TicketsPageContent() {
 
 export default function TicketsPage() {
   return (
-    <Suspense 
+    <Suspense
       fallback={
-        <div className="container mx-auto py-6">
-          <Card>
+        <div className="w-full px-responsive py-6">
+          <Card className="border-border/50">
             <CardContent className="p-12">
-              <div className="flex items-center justify-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brown-400 dark:border-brown-200"></div>
+              <div className="flex flex-col items-center justify-center gap-4">
+                <div className="relative">
+                  <div className="animate-spin rounded-full h-12 w-12 border-4 border-muted"></div>
+                  <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent absolute top-0 left-0"></div>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-medium text-muted-foreground">Loading tickets...</p>
+                  <p className="text-xs text-muted-foreground/70 mt-1">Please wait</p>
+                </div>
               </div>
             </CardContent>
           </Card>
