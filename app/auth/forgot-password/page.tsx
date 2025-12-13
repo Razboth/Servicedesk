@@ -242,6 +242,15 @@ export default function ForgotPasswordPage() {
           ) : (
             // Form State
             <>
+              {/* Logo above form */}
+              <div className="hidden lg:block">
+                <img
+                  src="/logo-bsg.png"
+                  alt="Bank SulutGo"
+                  className="h-14 w-auto"
+                />
+              </div>
+
               {/* Header */}
               <div className="text-center lg:text-left">
                 <h2 className="text-2xl font-bold tracking-tight text-foreground">
