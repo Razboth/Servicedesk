@@ -795,185 +795,52 @@ interface TechnicianDashboardCardsProps {
 
 export function TechnicianDashboardCards({ stats, supportGroupName }: TechnicianDashboardCardsProps) {
   const myOpenTickets = stats.roleSpecific.myOpenTickets || 0;
-  const myAssignedTickets = stats.roleSpecific.myAssignedTickets || 0;
 
   return (
     <div className="space-y-6">
-      {/* Workload Overview */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-            <Briefcase className="h-5 w-5" />
-            Beban Kerja Saya
-            {supportGroupName && (
-              <Badge variant="outline" className="ml-2">{supportGroupName}</Badge>
-            )}
-          </h2>
-          <Link href="/tickets?assignedToMe=true" className="text-sm text-primary hover:underline flex items-center gap-1">
-            Lihat Semua Tiket <ArrowRight className="h-3 w-3" />
-          </Link>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            title="Tiket Saya Terbuka"
-            value={myOpenTickets}
-            description="Perlu ditangani"
-            icon={AlertCircle}
-            variant={myOpenTickets > 5 ? 'warning' : myOpenTickets > 0 ? 'info' : 'success'}
-            href="/tickets?assignedToMe=true&status=OPEN,IN_PROGRESS"
-          />
-          <StatCard
-            title="Total Ditugaskan"
-            value={myAssignedTickets}
-            description="Semua tiket saya"
-            icon={Ticket}
-            variant="primary"
-            href="/tickets?assignedToMe=true"
-          />
-          <StatCard
-            title="Diselesaikan Bulan Ini"
-            value={stats.resolvedThisMonth}
-            description="Tiket selesai"
-            icon={CheckCircle2}
-            variant="success"
-          />
-          <StatCard
-            title="Rata-rata Resolusi"
-            value={stats.avgResolutionTime}
-            description="Waktu saya"
-            icon={Timer}
-            variant="default"
-          />
-        </div>
-
-        {/* Support Group Stats */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            title="Tiket Grup Support"
-            value={stats.totalTickets}
-            description="Total grup"
-            icon={Users}
-            variant="default"
-          />
-          <StatCard
-            title="Tiket Terbuka Grup"
-            value={stats.openTickets}
-            description="Menunggu penanganan"
-            icon={AlertCircle}
-            variant="warning"
-            href="/tickets?status=OPEN"
-          />
-          <StatCard
-            title="SLA Grup"
-            value={`${stats.slaCompliance}%`}
-            description="Kepatuhan"
-            icon={Target}
-            variant={stats.slaCompliance >= 90 ? 'success' : stats.slaCompliance >= 70 ? 'warning' : 'destructive'}
-          />
-          <StatCard
-            title="In Progress"
-            value={stats.inProgressTickets}
-            description="Sedang dikerjakan"
-            icon={Clock}
-            variant="info"
-            href="/tickets?status=IN_PROGRESS"
-          />
-        </div>
-      </div>
-
-      {/* My Open Tickets Alert */}
-      {myOpenTickets > 0 && (
-        <Card className="border-info/50 bg-info/5">
-          <CardContent className="py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Wrench className="h-5 w-5 text-info" />
-                <div>
-                  <p className="text-sm font-medium text-foreground">
-                    Tiket Aktif Anda
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {myOpenTickets} tiket memerlukan penanganan
-                  </p>
-                </div>
-              </div>
-              <Link href="/tickets?assignedToMe=true&status=OPEN,IN_PROGRESS">
-                <Button variant="info" size="sm">
-                  Kerjakan Sekarang
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Quick Actions */}
-      <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
           <Wrench className="h-5 w-5" />
           Aksi Cepat Teknisi
+          {supportGroupName && (
+            <Badge variant="outline" className="ml-2">{supportGroupName}</Badge>
+          )}
         </h2>
+      </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <QuickActionCard
-            title="Tiket Saya"
-            description="Lihat tiket yang ditugaskan"
-            icon={Ticket}
-            href="/tickets?assignedToMe=true"
-            variant="primary"
-            badge={myOpenTickets > 0 ? `${myOpenTickets} aktif` : undefined}
-            badgeVariant="warning"
-          />
-          <QuickActionCard
-            title="Tugas Harian"
-            description="Checklist tugas hari ini"
-            icon={ListTodo}
-            href="/technician/daily-tasks"
-            variant="info"
-          />
-          <QuickActionCard
-            title="Jadwal Shift"
-            description="Lihat jadwal shift saya"
-            icon={CalendarClock}
-            href="/shifts/my-schedule"
-            variant="warning"
-          />
-          <QuickActionCard
-            title="Laporan Shift"
-            description="Buat laporan shift"
-            icon={FileText}
-            href="/shifts/report"
-            variant="success"
-          />
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <QuickActionCard
-            title="Tiket Grup"
-            description="Tiket support group"
-            icon={Users}
-            href="/tickets"
-          />
-          <QuickActionCard
-            title="Basis Pengetahuan"
-            description="Cari solusi"
-            icon={BookOpen}
-            href="/knowledge"
-          />
-          <QuickActionCard
-            title="Pengajuan Cuti"
-            description="Ajukan cuti/izin"
-            icon={CalendarClock}
-            href="/technician/leaves"
-          />
-          <QuickActionCard
-            title="Performa Saya"
-            description="Statistik kerja"
-            icon={BarChart3}
-            href="/reports/my-performance"
-          />
-        </div>
+      {/* Quick Actions - Only 4 main actions */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <QuickActionCard
+          title="Workbench"
+          description="Kelola tiket yang ditugaskan"
+          icon={Briefcase}
+          href="/tickets?assignedToMe=true"
+          variant="primary"
+          badge={myOpenTickets > 0 ? `${myOpenTickets} aktif` : undefined}
+          badgeVariant="warning"
+        />
+        <QuickActionCard
+          title="Semua Tiket"
+          description="Lihat semua tiket"
+          icon={Ticket}
+          href="/tickets"
+          variant="info"
+        />
+        <QuickActionCard
+          title="Tugas Harian"
+          description="Checklist tugas hari ini"
+          icon={ListTodo}
+          href="/technician/daily-tasks"
+          variant="warning"
+        />
+        <QuickActionCard
+          title="Shift"
+          description="Jadwal dan laporan shift"
+          icon={CalendarClock}
+          href="/technician/shift"
+          variant="success"
+        />
       </div>
     </div>
   );
@@ -1135,7 +1002,7 @@ export function UserDashboardCards({ stats, branchName }: UserDashboardCardsProp
                   Basis Pengetahuan
                 </Button>
               </Link>
-              <Link href="/tickets/simple/create">
+              <Link href="/tickets">
                 <Button size="sm">
                   <Plus className="h-4 w-4 mr-2" />
                   Buat Tiket
