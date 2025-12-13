@@ -118,35 +118,13 @@ function SignInForm() {
           <div className="space-y-8">
             <div className="space-y-4">
               <h1 className="text-4xl font-bold leading-tight">
-                Portal Layanan
+                Portal Layanan | Helpdesk
                 <br />
                 <span className="text-primary-foreground/80">TI Bank SulutGo</span>
               </h1>
               <p className="text-lg text-primary-foreground/70 max-w-md">
-                Dukungan TI dan layanan yang efisien untuk Bank SulutGo di 250+ cabang.
+                Dukungan dan layanan TI Bank Sulutgo.
               </p>
-            </div>
-
-            {/* Features */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary-foreground/10">
-                  <Shield className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="font-medium">Sesuai ITIL v4</p>
-                  <p className="text-sm text-primary-foreground/60">Manajemen layanan kelas enterprise</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary-foreground/10">
-                  <Sparkles className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="font-medium">Monitoring Real-time</p>
-                  <p className="text-sm text-primary-foreground/60">Pemantauan status ATM & jaringan</p>
-                </div>
-              </div>
             </div>
           </div>
 
@@ -279,14 +257,10 @@ function SignInForm() {
           {/* Help Text */}
           <div className="text-center space-y-2">
             <p className="text-sm text-muted-foreground">
-              Hubungi IT Support untuk masalah akun
+              Hubungi IT Support 0811-4370-3144 untuk masalah akun
             </p>
             <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
               <span>{getVersionString()}</span>
-              <span>|</span>
-              <Link href="/about" className="hover:text-foreground transition-colors">
-                Tentang
-              </Link>
             </div>
           </div>
         </div>
