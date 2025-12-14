@@ -9,6 +9,9 @@ import {
   Ticket,
   ArrowRight,
   Plus,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
   // Admin/System icons
   Users,
   Settings,
@@ -99,6 +102,62 @@ interface RoleDashboardProps {
 // Helper Components
 // ============================================================================
 
+interface StatCardProps {
+  title: string;
+  value: string | number;
+  description: string;
+  icon: React.ElementType;
+  variant: 'primary' | 'success' | 'warning' | 'destructive' | 'info' | 'default';
+  href?: string;
+}
+
+function StatCard({ title, value, description, icon: Icon, variant, href }: StatCardProps) {
+  const variantStyles = {
+    primary: 'from-primary/10 to-primary/5 border-primary/20 dark:from-primary/20 dark:to-primary/10',
+    success: 'from-[hsl(var(--success)/0.1)] to-[hsl(var(--success)/0.05)] border-[hsl(var(--success)/0.2)]',
+    warning: 'from-[hsl(var(--warning)/0.1)] to-[hsl(var(--warning)/0.05)] border-[hsl(var(--warning)/0.2)]',
+    destructive: 'from-destructive/10 to-destructive/5 border-destructive/20',
+    info: 'from-[hsl(var(--info)/0.1)] to-[hsl(var(--info)/0.05)] border-[hsl(var(--info)/0.2)]',
+    default: 'from-muted/50 to-muted/25 border-border'
+  };
+
+  const iconStyles = {
+    primary: 'bg-primary/10 text-primary',
+    success: 'bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))]',
+    warning: 'bg-[hsl(var(--warning)/0.1)] text-[hsl(var(--warning))]',
+    destructive: 'bg-destructive/10 text-destructive',
+    info: 'bg-[hsl(var(--info)/0.1)] text-[hsl(var(--info))]',
+    default: 'bg-muted text-muted-foreground'
+  };
+
+  const content = (
+    <Card
+      className={cn(
+        'relative overflow-hidden bg-gradient-to-br transition-all duration-300',
+        variantStyles[variant],
+        href && 'hover:shadow-md hover:scale-[1.02] cursor-pointer'
+      )}
+    >
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium text-foreground">{title}</CardTitle>
+        <div className={cn('rounded-lg p-2', iconStyles[variant])}>
+          <Icon className="h-4 w-4" />
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold text-foreground">{value}</div>
+        <p className="text-xs text-muted-foreground mt-1">{description}</p>
+      </CardContent>
+    </Card>
+  );
+
+  if (href) {
+    return <Link href={href}>{content}</Link>;
+  }
+
+  return content;
+}
+
 interface QuickActionCardProps {
   title: string;
   description: string;
@@ -165,44 +224,91 @@ interface AdminDashboardCardsProps {
 export function AdminDashboardCards({ stats }: AdminDashboardCardsProps) {
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      {/* Ticket Statistics - All System Tickets */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+            <BarChart3 className="h-5 w-5" />
+            Statistik Tiket Sistem
+          </h2>
+          <Link href="/tickets" className="text-sm text-primary hover:underline flex items-center gap-1">
+            Lihat Semua <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            title="Total Tiket"
+            value={stats.totalTickets.toLocaleString()}
+            description="Seluruh sistem"
+            icon={Ticket}
+            variant="primary"
+            href="/tickets"
+          />
+          <StatCard
+            title="Tiket Terbuka"
+            value={stats.openTickets}
+            description="Menunggu penanganan"
+            icon={AlertCircle}
+            variant="warning"
+            href="/tickets?status=OPEN"
+          />
+          <StatCard
+            title="Sedang Dikerjakan"
+            value={stats.inProgressTickets}
+            description="Dalam proses"
+            icon={Clock}
+            variant="info"
+            href="/tickets?status=IN_PROGRESS"
+          />
+          <StatCard
+            title="Selesai Bulan Ini"
+            value={stats.resolvedThisMonth}
+            description="Tiket terselesaikan"
+            icon={CheckCircle2}
+            variant="success"
+            href="/tickets?status=RESOLVED"
+          />
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="space-y-4">
         <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
           <Cog className="h-5 w-5" />
           Aksi Cepat Admin
         </h2>
-      </div>
 
-      {/* Quick Actions - Only 4 main actions */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <QuickActionCard
-          title="Kelola Pengguna"
-          description="Tambah, edit, atau nonaktifkan pengguna"
-          icon={Users}
-          href="/admin/users"
-          variant="primary"
-        />
-        <QuickActionCard
-          title="Kelola Cabang"
-          description="Pengaturan cabang dan wilayah"
-          icon={Building2}
-          href="/admin/branches"
-          variant="info"
-        />
-        <QuickActionCard
-          title="Layanan & Kategori"
-          description="Kelola katalog layanan"
-          icon={Settings}
-          href="/admin/services"
-          variant="success"
-        />
-        <QuickActionCard
-          title="Keamanan Sistem"
-          description="Log aktivitas dan audit"
-          icon={Shield}
-          href="/admin/security"
-          variant="warning"
-        />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <QuickActionCard
+            title="Kelola Pengguna"
+            description="Tambah, edit, atau nonaktifkan pengguna"
+            icon={Users}
+            href="/admin/users"
+            variant="primary"
+          />
+          <QuickActionCard
+            title="Kelola Cabang"
+            description="Pengaturan cabang dan wilayah"
+            icon={Building2}
+            href="/admin/branches"
+            variant="info"
+          />
+          <QuickActionCard
+            title="Layanan & Kategori"
+            description="Kelola katalog layanan"
+            icon={Settings}
+            href="/admin/services"
+            variant="success"
+          />
+          <QuickActionCard
+            title="Keamanan Sistem"
+            description="Log aktivitas dan audit"
+            icon={Shield}
+            href="/admin/security"
+            variant="warning"
+          />
+        </div>
       </div>
     </div>
   );
@@ -339,52 +445,100 @@ interface TechnicianDashboardCardsProps {
 
 export function TechnicianDashboardCards({ stats, supportGroupName }: TechnicianDashboardCardsProps) {
   const myOpenTickets = stats.roleSpecific.myOpenTickets || 0;
+  const myAssignedTickets = stats.roleSpecific.myAssignedTickets || 0;
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      {/* Ticket Statistics - Support Group Tickets */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+            <BarChart3 className="h-5 w-5" />
+            Statistik Tiket
+            {supportGroupName && (
+              <Badge variant="outline" className="ml-2">{supportGroupName}</Badge>
+            )}
+          </h2>
+          <Link href="/tickets" className="text-sm text-primary hover:underline flex items-center gap-1">
+            Lihat Semua <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            title="Tiket Grup"
+            value={stats.totalTickets}
+            description="Total tiket support group"
+            icon={Ticket}
+            variant="primary"
+            href="/tickets"
+          />
+          <StatCard
+            title="Tiket Terbuka"
+            value={stats.openTickets}
+            description="Menunggu penanganan"
+            icon={AlertCircle}
+            variant="warning"
+            href="/tickets?status=OPEN"
+          />
+          <StatCard
+            title="Sedang Dikerjakan"
+            value={stats.inProgressTickets}
+            description="Dalam proses"
+            icon={Clock}
+            variant="info"
+            href="/tickets?status=IN_PROGRESS"
+          />
+          <StatCard
+            title="Selesai Bulan Ini"
+            value={stats.resolvedThisMonth}
+            description="Tiket terselesaikan"
+            icon={CheckCircle2}
+            variant="success"
+            href="/tickets?status=RESOLVED"
+          />
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="space-y-4">
         <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
           <Wrench className="h-5 w-5" />
           Aksi Cepat Teknisi
-          {supportGroupName && (
-            <Badge variant="outline" className="ml-2">{supportGroupName}</Badge>
-          )}
         </h2>
-      </div>
 
-      {/* Quick Actions - Only 4 main actions */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <QuickActionCard
-          title="Workbench"
-          description="Kelola tiket yang ditugaskan"
-          icon={Briefcase}
-          href="/technician/workbench"
-          variant="primary"
-          badge={myOpenTickets > 0 ? `${myOpenTickets} aktif` : undefined}
-          badgeVariant="warning"
-        />
-        <QuickActionCard
-          title="Semua Tiket"
-          description="Lihat semua tiket"
-          icon={Ticket}
-          href="/tickets"
-          variant="info"
-        />
-        <QuickActionCard
-          title="Tugas Harian"
-          description="Checklist tugas hari ini"
-          icon={ListTodo}
-          href="/technician/daily-tasks"
-          variant="warning"
-        />
-        <QuickActionCard
-          title="Shift"
-          description="Jadwal dan laporan shift"
-          icon={CalendarClock}
-          href="/technician/shifts"
-          variant="success"
-        />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <QuickActionCard
+            title="Workbench"
+            description="Kelola tiket yang ditugaskan"
+            icon={Briefcase}
+            href="/technician/workbench"
+            variant="primary"
+            badge={myOpenTickets > 0 ? `${myOpenTickets} aktif` : undefined}
+            badgeVariant="warning"
+          />
+          <QuickActionCard
+            title="Semua Tiket"
+            description="Lihat semua tiket"
+            icon={Ticket}
+            href="/tickets"
+            variant="info"
+          />
+          <QuickActionCard
+            title="Tugas Harian"
+            description="Checklist tugas hari ini"
+            icon={ListTodo}
+            href="/technician/daily-tasks"
+            variant="warning"
+          />
+          <QuickActionCard
+            title="Shift"
+            description="Jadwal dan laporan shift"
+            icon={CalendarClock}
+            href="/technician/shifts"
+            variant="success"
+          />
+        </div>
       </div>
     </div>
   );
