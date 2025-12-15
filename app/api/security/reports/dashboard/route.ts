@@ -109,32 +109,25 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // Get tickets by day for trend chart
-    const ticketsByDay = await prisma.$queryRaw<Array<{ date: Date; count: bigint }>>`
-      SELECT DATE_TRUNC('day', "createdAt") as date, COUNT(*) as count
-      FROM "tickets"
-      WHERE "createdAt" >= ${startDate}
-      ${userWithGroup?.supportGroupId ? prisma.$queryRaw`
-        AND (
-          "createdById" = ${session.user.id}
-          OR "assignedToId" = ${session.user.id}
-          OR "supportGroupId" = ${userWithGroup.supportGroupId}
-          OR EXISTS (
-            SELECT 1 FROM "services" s
-            WHERE s.id = "tickets"."serviceId"
-            AND s."supportGroupId" = ${userWithGroup.supportGroupId}
-          )
-        )
-      ` : prisma.$queryRaw``}
-      GROUP BY DATE_TRUNC('day', "createdAt")
-      ORDER BY date ASC
-    `;
+    // Get tickets by day for trend chart - use Prisma groupBy instead of raw SQL
+    const ticketsByDayRaw = await prisma.ticket.groupBy({
+      by: ['createdAt'],
+      where: whereClause,
+      _count: { id: true }
+    });
 
-    // Format trend data
-    const trendData = ticketsByDay.map(row => ({
-      date: new Date(row.date).toISOString().split('T')[0],
-      count: Number(row.count)
-    }));
+    // Aggregate by date
+    const dateCountMap = new Map<string, number>();
+    ticketsByDayRaw.forEach(row => {
+      const dateStr = new Date(row.createdAt).toISOString().split('T')[0];
+      const current = dateCountMap.get(dateStr) || 0;
+      dateCountMap.set(dateStr, current + row._count.id);
+    });
+
+    // Convert to sorted array
+    const trendData = Array.from(dateCountMap.entries())
+      .map(([date, count]) => ({ date, count }))
+      .sort((a, b) => a.date.localeCompare(b.date));
 
     // Get tickets by service for pie chart
     const ticketsByService = await prisma.ticket.groupBy({
