@@ -27,31 +27,28 @@ export async function GET(request: NextRequest) {
       include: { supportGroup: true }
     });
 
-    // Build where clause for Security Analyst's support group
-    const baseWhere: any = {};
-    if (session.user.role === 'SECURITY_ANALYST' && userWithGroup?.supportGroupId) {
-      baseWhere.OR = [
-        { createdById: session.user.id },
-        { assignedToId: session.user.id },
-        { service: { supportGroupId: userWithGroup.supportGroupId } },
-        { supportGroupId: userWithGroup.supportGroupId }
-      ];
-    }
-
     // Date range
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - periodDays);
     startDate.setHours(0, 0, 0, 0);
 
-    const dateFilter = {
+    // Build where clause for Security Analyst's support group
+    const whereClause: any = {
       createdAt: { gte: startDate }
     };
 
-    // Combine filters
-    const whereClause = {
-      ...baseWhere,
-      ...dateFilter
-    };
+    if (session.user.role === 'SECURITY_ANALYST' && userWithGroup?.supportGroupId) {
+      whereClause.AND = [
+        {
+          OR: [
+            { createdById: session.user.id },
+            { assignedToId: session.user.id },
+            { service: { supportGroupId: userWithGroup.supportGroupId } },
+            { supportGroupId: userWithGroup.supportGroupId }
+          ]
+        }
+      ];
+    }
 
     // Get total ticket counts by status
     const [
@@ -84,30 +81,38 @@ export async function GET(request: NextRequest) {
     ]);
 
     // Get SOC tickets (tickets with SOC-related services or created by SOC parser)
-    const socTickets = await prisma.ticket.count({
-      where: {
-        ...whereClause,
-        OR: [
-          { service: { name: { contains: 'SOC', mode: 'insensitive' } } },
-          { service: { name: { contains: 'Security Incident', mode: 'insensitive' } } },
-          { title: { contains: 'SOC', mode: 'insensitive' } },
-          { isConfidential: true }
-        ]
-      }
-    });
+    const socWhereClause = {
+      ...whereClause,
+      AND: [
+        ...(whereClause.AND || []),
+        {
+          OR: [
+            { service: { name: { contains: 'SOC', mode: 'insensitive' } } },
+            { service: { name: { contains: 'Security Incident', mode: 'insensitive' } } },
+            { title: { contains: 'SOC', mode: 'insensitive' } },
+            { isConfidential: true }
+          ]
+        }
+      ]
+    };
+    const socTickets = await prisma.ticket.count({ where: socWhereClause });
 
     // Get Antivirus tickets
-    const antivirusTickets = await prisma.ticket.count({
-      where: {
-        ...whereClause,
-        OR: [
-          { service: { name: { contains: 'Antivirus', mode: 'insensitive' } } },
-          { title: { contains: 'Antivirus', mode: 'insensitive' } },
-          { title: { contains: 'Virus', mode: 'insensitive' } },
-          { title: { contains: 'Malware', mode: 'insensitive' } }
-        ]
-      }
-    });
+    const antivirusWhereClause = {
+      ...whereClause,
+      AND: [
+        ...(whereClause.AND || []),
+        {
+          OR: [
+            { service: { name: { contains: 'Antivirus', mode: 'insensitive' } } },
+            { title: { contains: 'Antivirus', mode: 'insensitive' } },
+            { title: { contains: 'Virus', mode: 'insensitive' } },
+            { title: { contains: 'Malware', mode: 'insensitive' } }
+          ]
+        }
+      ]
+    };
+    const antivirusTickets = await prisma.ticket.count({ where: antivirusWhereClause });
 
     // Get tickets by day for trend chart - use Prisma groupBy instead of raw SQL
     const ticketsByDayRaw = await prisma.ticket.groupBy({
@@ -154,26 +159,13 @@ export async function GET(request: NextRequest) {
     // Get severity distribution for SOC tickets
     const socSeverityData = await prisma.ticket.groupBy({
       by: ['priority'],
-      where: {
-        ...whereClause,
-        OR: [
-          { service: { name: { contains: 'SOC', mode: 'insensitive' } } },
-          { service: { name: { contains: 'Security Incident', mode: 'insensitive' } } },
-          { isConfidential: true }
-        ]
-      },
+      where: socWhereClause,
       _count: { id: true }
     });
 
     // Get antivirus action distribution
     const antivirusTicketsWithDetails = await prisma.ticket.findMany({
-      where: {
-        ...whereClause,
-        OR: [
-          { service: { name: { contains: 'Antivirus', mode: 'insensitive' } } },
-          { title: { contains: 'Antivirus', mode: 'insensitive' } }
-        ]
-      },
+      where: antivirusWhereClause,
       select: {
         id: true,
         title: true,
