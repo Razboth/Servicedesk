@@ -154,42 +154,31 @@ export async function GET(request: NextRequest) {
 
     // Apply role-based filtering (Security Analyst filtering already applied above)
     if (session.user.role === 'SECURITY_ANALYST') {
-      // Security Analysts function like technicians but with additional security access
-      // They can see tickets from their support group like technicians do
-      const baseConditions: any[] = [
-        { createdById: session.user.id }, // Their own tickets
-        { assignedToId: session.user.id }  // Tickets assigned to them
-      ];
-      
-      // Add support group filtering like technicians
+      // Security Analysts can ONLY see tickets from their support group
+      // They cannot see tickets from other support groups
       if (userWithDetails?.supportGroupId) {
-        baseConditions.push({
-          AND: [
-            { assignedToId: null }, // Unassigned tickets
-            { 
-              service: {
-                supportGroupId: userWithDetails.supportGroupId
-              }
-            },
-            {
-              createdBy: {
-                role: { not: 'SECURITY_ANALYST' }
-              }
+        // Security Analyst can only see tickets in their support group
+        where.OR = [
+          // Tickets assigned to them directly
+          { assignedToId: session.user.id },
+          // Tickets they created
+          { createdById: session.user.id },
+          // Tickets in their support group (via service)
+          {
+            service: {
+              supportGroupId: userWithDetails.supportGroupId
             }
-          ]
-        });
+          },
+          // Tickets directly assigned to their support group
+          { supportGroupId: userWithDetails.supportGroupId }
+        ];
+      } else {
+        // If no support group, only see their own tickets
+        where.OR = [
+          { createdById: session.user.id },
+          { assignedToId: session.user.id }
+        ];
       }
-      
-      // Combine with existing security analyst ticket access
-      where.OR = [
-        ...baseConditions,
-        // All tickets created by other Security Analysts
-        { 
-          createdBy: {
-            role: 'SECURITY_ANALYST'
-          }
-        }
-      ]
     } else if (session.user.role === 'TECHNICIAN') {
       // Check if this is a Call Center technician
       const isCallCenterTech = userWithDetails?.supportGroup?.code === 'CALL_CENTER';

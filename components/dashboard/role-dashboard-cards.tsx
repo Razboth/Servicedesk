@@ -583,7 +583,7 @@ export function SecurityAnalystDashboardCards({ stats }: SecurityAnalystDashboar
           title="Security Reports"
           description="View security analytics"
           icon={FileText}
-          href="/reports/security-analyst"
+          href="/security/reports"
           variant="success"
         />
         <QuickActionCard
