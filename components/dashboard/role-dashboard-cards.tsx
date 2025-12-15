@@ -545,6 +545,60 @@ export function TechnicianDashboardCards({ stats, supportGroupName }: Technician
 }
 
 // ============================================================================
+// SECURITY_ANALYST Dashboard Cards
+// ============================================================================
+
+interface SecurityAnalystDashboardCardsProps {
+  stats: DashboardStats;
+}
+
+export function SecurityAnalystDashboardCards({ stats }: SecurityAnalystDashboardCardsProps) {
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+          <Shield className="h-5 w-5" />
+          Security Operations Center
+        </h2>
+      </div>
+
+      {/* Quick Actions - Only 4 main actions */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <QuickActionCard
+          title="SOC Parser"
+          description="Parse and analyze security logs"
+          icon={Shield}
+          href="/security/soc-parser"
+          variant="primary"
+        />
+        <QuickActionCard
+          title="Antivirus Alerts"
+          description="Monitor antivirus detections"
+          icon={AlertCircle}
+          href="/security/antivirus-alert"
+          variant="warning"
+        />
+        <QuickActionCard
+          title="Security Reports"
+          description="View security analytics"
+          icon={FileText}
+          href="/reports/security-analyst"
+          variant="success"
+        />
+        <QuickActionCard
+          title="All Tickets"
+          description="View all security tickets"
+          icon={Ticket}
+          href="/tickets"
+          variant="info"
+        />
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
 // USER Dashboard Cards - Simplified
 // ============================================================================
 
@@ -624,6 +678,9 @@ export function RoleDashboardCards({ stats, userRole, branchName, supportGroupNa
 
     case 'TECHNICIAN':
       return <TechnicianDashboardCards stats={stats} supportGroupName={supportGroupName} />;
+
+    case 'SECURITY_ANALYST':
+      return <SecurityAnalystDashboardCards stats={stats} />;
 
     case 'USER':
     default:
