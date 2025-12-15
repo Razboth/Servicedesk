@@ -69,7 +69,7 @@ interface DashboardData {
     avgResolutionHours: number;
   };
   priorityDistribution: {
-    urgent: number;
+    critical: number;
     high: number;
     medium: number;
     low: number;
@@ -216,12 +216,12 @@ export default function SecurityReportsPage() {
   };
 
   const priorityChartData = {
-    labels: ['Urgent', 'High', 'Medium', 'Low'],
+    labels: ['Critical', 'High', 'Medium', 'Low'],
     datasets: [
       {
         label: 'Tickets by Priority',
         data: [
-          data?.priorityDistribution.urgent || 0,
+          data?.priorityDistribution.critical || 0,
           data?.priorityDistribution.high || 0,
           data?.priorityDistribution.medium || 0,
           data?.priorityDistribution.low || 0

@@ -72,9 +72,9 @@ export async function GET(request: NextRequest) {
       })
     ]);
 
-    // Get ticket counts by priority
-    const [urgentTickets, highTickets, mediumTickets, lowTickets] = await Promise.all([
-      prisma.ticket.count({ where: { ...whereClause, priority: 'URGENT' } }),
+    // Get ticket counts by priority (using valid TicketPriority enum values)
+    const [criticalTickets, highTickets, mediumTickets, lowTickets] = await Promise.all([
+      prisma.ticket.count({ where: { ...whereClause, priority: 'CRITICAL' } }),
       prisma.ticket.count({ where: { ...whereClause, priority: 'HIGH' } }),
       prisma.ticket.count({ where: { ...whereClause, priority: 'MEDIUM' } }),
       prisma.ticket.count({ where: { ...whereClause, priority: 'LOW' } })
@@ -230,7 +230,7 @@ export async function GET(request: NextRequest) {
         avgResolutionHours
       },
       priorityDistribution: {
-        urgent: urgentTickets,
+        critical: criticalTickets,
         high: highTickets,
         medium: mediumTickets,
         low: lowTickets
