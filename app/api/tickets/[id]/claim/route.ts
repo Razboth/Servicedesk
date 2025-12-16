@@ -192,14 +192,14 @@ export async function POST(
       }
     });
 
-    // Send email notifications
+    // Send email notifications (fire-and-forget for better performance)
     // 1. Send assignment notification to all parties
-    await sendTicketNotification(ticketId, 'ticket_assigned').catch(err =>
+    sendTicketNotification(ticketId, 'ticket_assigned').catch(err =>
       console.error('Failed to send assignment email:', err)
     );
 
     // 2. Send technician action notification specifically for the technician
-    await sendTicketNotification(ticketId, 'technician_action', {
+    sendTicketNotification(ticketId, 'technician_action', {
       technician: {
         id: session.user.id,
         name: session.user.name,
