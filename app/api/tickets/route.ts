@@ -1323,52 +1323,15 @@ export async function POST(request: NextRequest) {
 
     // Create ticket with processed field values and attachments within a transaction
     const ticket = await prisma.$transaction(async (tx) => {
-      // Generate ticket number - get max ticket number and increment (with collision handling)
-      const currentYear = new Date().getFullYear();
-      const yearStart = new Date(currentYear, 0, 1); // January 1st of current year
-      const yearEnd = new Date(currentYear + 1, 0, 1); // January 1st of next year
+      // Generate ticket number - get max ticket number and increment
+      // Use raw query to get the maximum numeric ticket number
+      const maxResult = await tx.$queryRaw<[{ maxNum: bigint | null }]>`
+        SELECT MAX(CAST(NULLIF(REGEXP_REPLACE("ticketNumber", '[^0-9]', '', 'g'), '') AS BIGINT)) as "maxNum"
+        FROM "Ticket"
+      `;
 
-      // Get the highest ticket number for the current year
-      const latestTicket = await tx.ticket.findFirst({
-        where: {
-          createdAt: {
-            gte: yearStart,
-            lt: yearEnd
-          }
-        },
-        orderBy: {
-          createdAt: 'desc'
-        },
-        select: {
-          ticketNumber: true
-        }
-      });
-
-      // Parse the latest ticket number and increment
-      let nextNumber = 1;
-      if (latestTicket?.ticketNumber) {
-        const parsed = parseInt(latestTicket.ticketNumber, 10);
-        if (!isNaN(parsed)) {
-          nextNumber = parsed + 1;
-        }
-      }
-
-      // Also count total to ensure we don't go backwards
-      const yearTicketCount = await tx.ticket.count({
-        where: {
-          createdAt: {
-            gte: yearStart,
-            lt: yearEnd
-          }
-        }
-      });
-
-      // Use the higher of the two to prevent any gaps or collisions
-      nextNumber = Math.max(nextNumber, yearTicketCount + 1);
-
-      // Add timestamp suffix for uniqueness in high-concurrency scenarios
-      const timestamp = Date.now().toString().slice(-4);
-      const ticketNumber = `${nextNumber}-${timestamp}`;
+      const maxTicketNumber = maxResult[0]?.maxNum ? Number(maxResult[0].maxNum) : 0;
+      const ticketNumber = String(maxTicketNumber + 1);
 
       const createdTicket = await tx.ticket.create({
       data: {
