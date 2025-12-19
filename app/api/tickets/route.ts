@@ -1327,7 +1327,7 @@ export async function POST(request: NextRequest) {
       // Use raw query to get the maximum numeric ticket number
       const maxResult = await tx.$queryRaw<[{ maxNum: bigint | null }]>`
         SELECT MAX(CAST(NULLIF(REGEXP_REPLACE("ticketNumber", '[^0-9]', '', 'g'), '') AS BIGINT)) as "maxNum"
-        FROM "Ticket"
+        FROM "tickets"
       `;
 
       const maxTicketNumber = maxResult[0]?.maxNum ? Number(maxResult[0].maxNum) : 0;
