@@ -210,7 +210,8 @@ export default function SLAPerformancePage() {
 
   const getPriorityBadgeVariant = (priority: string) => {
     switch (priority) {
-      case 'URGENT': return 'destructive';
+      case 'EMERGENCY': return 'destructive';
+      case 'CRITICAL': return 'destructive';
       case 'HIGH': return 'destructive';
       case 'MEDIUM': return 'secondary';
       case 'LOW': return 'outline';

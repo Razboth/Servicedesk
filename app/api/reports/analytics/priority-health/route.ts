@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
       };
 
       // Add priority counts
-      ['LOW', 'MEDIUM', 'HIGH', 'URGENT', 'CRITICAL'].forEach(priority => {
+      ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL', 'EMERGENCY'].forEach(priority => {
         const priorityData = weekTickets.find(t => t.priority === priority);
         weekData[priority.toLowerCase()] = priorityData?._count || 0;
         weekData[`${priority.toLowerCase()}Percent`] = weekTotal > 0 

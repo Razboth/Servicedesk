@@ -70,7 +70,9 @@ export default function OpenOnHoldTicketsReport() {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'URGENT':
+      case 'EMERGENCY':
+        return 'bg-purple-100 text-purple-800'
+      case 'CRITICAL':
         return 'bg-red-100 text-red-800'
       case 'HIGH':
         return 'bg-orange-100 text-orange-800'

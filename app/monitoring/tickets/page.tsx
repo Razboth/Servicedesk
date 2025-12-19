@@ -247,7 +247,8 @@ export default function AutoTicketsPage() {
       header: 'Priority',
       cell: ({ row }: any) => {
         const priority = row.original.priority;
-        const color = priority === 'URGENT' ? 'red' :
+        const color = priority === 'EMERGENCY' ? 'purple' :
+                      priority === 'CRITICAL' ? 'red' :
                       priority === 'HIGH' ? 'orange' :
                       priority === 'MEDIUM' ? 'yellow' : 'gray';
         return (
@@ -447,8 +448,8 @@ export default function AutoTicketsPage() {
                 <SelectItem value="LOW">Low</SelectItem>
                 <SelectItem value="MEDIUM">Medium</SelectItem>
                 <SelectItem value="HIGH">High</SelectItem>
-                <SelectItem value="URGENT">Urgent</SelectItem>
                 <SelectItem value="CRITICAL">Critical</SelectItem>
+                <SelectItem value="EMERGENCY">Emergency</SelectItem>
               </SelectContent>
             </Select>
 

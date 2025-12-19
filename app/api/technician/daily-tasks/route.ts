@@ -10,7 +10,7 @@ const dailyTaskSchema = z.object({
   description: z.string().optional().nullable(),
   category: z.enum(['TICKET', 'MAINTENANCE', 'MEETING', 'TRAINING', 'DOCUMENTATION', 'SUPPORT', 'OTHER']),
   status: z.enum(['PENDING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'DEFERRED']).default('PENDING'),
-  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional().nullable(),
+  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).optional().nullable(),
   startTime: z.string().datetime().optional().nullable(),
   endTime: z.string().datetime().optional().nullable(),
   actualMinutes: z.number().optional().nullable(),

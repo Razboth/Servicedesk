@@ -21,7 +21,7 @@ export type CompactTicket = {
   ticketNumber: string
   title: string
   status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED' | 'ON_HOLD'
-  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | 'EMERGENCY'
   branch: {
     code: string
     name: string

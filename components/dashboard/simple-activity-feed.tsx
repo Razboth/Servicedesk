@@ -26,7 +26,7 @@ interface ActivityItem {
   user: string;
   time: string;
   status?: string;
-  priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT' | 'CRITICAL';
+  priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | 'EMERGENCY';
 }
 
 const getActivityIcon = (status: string) => {

@@ -124,7 +124,9 @@ export function DailyTaskList({
   const getPriorityIcon = (priority: string | undefined) => {
     if (!priority) return null;
     switch (priority) {
-      case 'URGENT':
+      case 'EMERGENCY':
+        return <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />;
+      case 'CRITICAL':
         return <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />;
       case 'HIGH':
         return <div className="w-2 h-2 rounded-full bg-orange-500" />;
@@ -354,10 +356,10 @@ export function DailyTaskList({
                             High
                           </div>
                         </SelectItem>
-                        <SelectItem value="URGENT">
+                        <SelectItem value="CRITICAL">
                           <div className="flex items-center gap-1.5">
                             <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                            Urgent
+                            Critical
                           </div>
                         </SelectItem>
                       </SelectContent>

@@ -157,7 +157,7 @@ export default function SecurityReportsPage() {
 
   const getPriorityBadgeVariant = (priority: string) => {
     switch (priority) {
-      case 'URGENT':
+      case 'EMERGENCY':
       case 'CRITICAL': return 'destructive';
       case 'HIGH': return 'warning';
       case 'MEDIUM': return 'default';

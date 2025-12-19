@@ -189,7 +189,7 @@ const getPriorityBadgeVariant = (priority: string): "default" | "secondary" | "d
       return 'info-soft';
     case 'HIGH':
       return 'warning-soft';
-    case 'URGENT':
+    case 'EMERGENCY':
     case 'CRITICAL':
       return 'destructive-soft';
     default:

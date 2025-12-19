@@ -120,8 +120,8 @@ export async function GET(request: NextRequest) {
         low: tickets.filter(t => t.priority === 'LOW').length,
         medium: tickets.filter(t => t.priority === 'MEDIUM').length,
         high: tickets.filter(t => t.priority === 'HIGH').length,
-        urgent: tickets.filter(t => t.priority === 'URGENT').length,
-        critical: tickets.filter(t => t.priority === 'CRITICAL').length
+        critical: tickets.filter(t => t.priority === 'CRITICAL').length,
+        emergency: tickets.filter(t => t.priority === 'EMERGENCY').length
       };
 
       // Calculate resolution metrics

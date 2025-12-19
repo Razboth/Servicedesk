@@ -100,7 +100,7 @@ export function DailyTaskForm({ task, onSubmit, onClose }: DailyTaskFormProps) {
                   <SelectItem value="LOW">Low</SelectItem>
                   <SelectItem value="MEDIUM">Medium</SelectItem>
                   <SelectItem value="HIGH">High</SelectItem>
-                  <SelectItem value="URGENT">Urgent</SelectItem>
+                  <SelectItem value="CRITICAL">Critical</SelectItem>
                 </SelectContent>
               </Select>
             </div>

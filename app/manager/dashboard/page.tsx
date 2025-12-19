@@ -230,7 +230,7 @@ export default function ManagerDashboard() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge variant={
-                        ticket.priority === 'URGENT' ? 'destructive' :
+                        ticket.priority === 'EMERGENCY' || ticket.priority === 'CRITICAL' ? 'destructive' :
                         ticket.priority === 'HIGH' ? 'warning' :
                         'secondary'
                       }>

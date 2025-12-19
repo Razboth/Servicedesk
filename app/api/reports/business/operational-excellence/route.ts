@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
     const slaCompliant = resolvedTickets.filter(t => {
       if (!t.resolvedAt) return false;
       const hours = (new Date(t.resolvedAt).getTime() - new Date(t.createdAt).getTime()) / (1000 * 60 * 60);
-      const slaTarget = ['HIGH', 'URGENT'].includes(t.priority) ? 4 : 24;
+      const slaTarget = ['HIGH', 'CRITICAL', 'EMERGENCY'].includes(t.priority) ? 4 : 24;
       return hours <= slaTarget;
     }).length;
     
@@ -189,7 +189,7 @@ export async function GET(request: NextRequest) {
           acc[branchName].resolutionTimes.push(resTime);
         }
       }
-      if (['HIGH', 'URGENT'].includes(ticket.priority)) {
+      if (['HIGH', 'CRITICAL', 'EMERGENCY'].includes(ticket.priority)) {
         acc[branchName].critical++;
       }
       
@@ -225,7 +225,7 @@ export async function GET(request: NextRequest) {
         }
         acc[resolvedDate].resolved++;
       }
-      if (['HIGH', 'URGENT'].includes(ticket.priority)) {
+      if (['HIGH', 'CRITICAL', 'EMERGENCY'].includes(ticket.priority)) {
         acc[date].critical++;
       }
       

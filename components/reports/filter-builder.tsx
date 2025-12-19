@@ -612,7 +612,7 @@ function getEnumValues(column: string): string[] {
     case 'status':
       return ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED', 'CANCELLED']
     case 'priority':
-      return ['LOW', 'MEDIUM', 'HIGH', 'URGENT']
+      return ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL', 'EMERGENCY']
     case 'category':
       return ['INCIDENT', 'REQUEST', 'PROBLEM', 'CHANGE']
     default:

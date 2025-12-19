@@ -137,7 +137,8 @@ export default function RequestsByPriorityReport() {
 
   const getPriorityBadgeClass = (priority: string) => {
     switch (priority) {
-      case 'URGENT': return 'bg-red-100 text-red-800'
+      case 'EMERGENCY': return 'bg-purple-100 text-purple-800'
+      case 'CRITICAL': return 'bg-red-100 text-red-800'
       case 'HIGH': return 'bg-orange-100 text-orange-800'
       case 'MEDIUM': return 'bg-yellow-100 text-yellow-800'
       case 'LOW': return 'bg-green-100 text-green-800'
@@ -213,15 +214,15 @@ export default function RequestsByPriorityReport() {
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-red-600" />
-              Urgent Priority
+              Critical Priority
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
-              {priorityData.find(p => p.priority === 'URGENT')?.total || 0}
+              {priorityData.find(p => p.priority === 'CRITICAL')?.total || 0}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Avg resolution: {priorityData.find(p => p.priority === 'URGENT')?.avgResolutionHours || 0} hrs
+              Avg resolution: {priorityData.find(p => p.priority === 'CRITICAL')?.avgResolutionHours || 0} hrs
             </p>
           </CardContent>
         </Card>
@@ -254,10 +255,10 @@ export default function RequestsByPriorityReport() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">
-              {priorityData.filter(p => p.priority === 'URGENT' || p.priority === 'HIGH')
+              {priorityData.filter(p => p.priority === 'CRITICAL' || p.priority === 'HIGH')
                 .reduce((sum, p) => sum + p.open, 0)}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Urgent + High open tickets</p>
+            <p className="text-xs text-muted-foreground mt-1">Critical + High open tickets</p>
           </CardContent>
         </Card>
       </div>
@@ -377,7 +378,7 @@ export default function RequestsByPriorityReport() {
               <YAxis />
               <Tooltip />
               <Legend />
-              <Bar dataKey="URGENT" fill="#dc2626" />
+              <Bar dataKey="CRITICAL" fill="#dc2626" />
               <Bar dataKey="HIGH" fill="#ea580c" />
               <Bar dataKey="MEDIUM" fill="#f59e0b" />
               <Bar dataKey="LOW" fill="#84cc16" />

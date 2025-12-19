@@ -440,7 +440,7 @@ export default function RequestsByTechnicianReport() {
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Bar dataKey="URGENT" stackId="a" fill="#dc2626" />
+                <Bar dataKey="CRITICAL" stackId="a" fill="#dc2626" />
                 <Bar dataKey="HIGH" stackId="a" fill="#ea580c" />
                 <Bar dataKey="MEDIUM" stackId="a" fill="#f59e0b" />
                 <Bar dataKey="LOW" stackId="a" fill="#84cc16" />

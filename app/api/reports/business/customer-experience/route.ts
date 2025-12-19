@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
       quickResolutions: tickets.filter(t => {
         if (!t.resolvedAt) return false;
         const resolutionTime = (new Date(t.resolvedAt).getTime() - new Date(t.createdAt).getTime()) / (1000 * 60 * 60);
-        const target = ['HIGH', 'URGENT'].includes(t.priority) ? 4 : 24;
+        const target = ['HIGH', 'CRITICAL', 'EMERGENCY'].includes(t.priority) ? 4 : 24;
         return resolutionTime <= target;
       }).length,
       

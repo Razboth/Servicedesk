@@ -408,8 +408,8 @@ export default function ATMIntelligenceReport() {
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Badge 
-                    variant={incident.priority === 'HIGH' || incident.priority === 'URGENT' ? 'destructive' : 'secondary'}
+                  <Badge
+                    variant={incident.priority === 'HIGH' || incident.priority === 'CRITICAL' || incident.priority === 'EMERGENCY' ? 'destructive' : 'secondary'}
                   >
                     {incident.priority}
                   </Badge>

@@ -32,7 +32,7 @@ interface TicketCardProps {
     title: string;
     description?: string;
     status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED' | 'ON_HOLD';
-    priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+    priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | 'EMERGENCY';
     createdAt: string;
     updatedAt: string;
     dueDate?: string;
@@ -87,7 +87,9 @@ const getStatusColor = (status: string) => {
 
 const getPriorityColor = (priority: string) => {
   switch (priority) {
-    case 'URGENT':
+    case 'EMERGENCY':
+      return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 border-purple-200';
+    case 'CRITICAL':
       return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border-red-200';
     case 'HIGH':
       return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border-orange-200';
@@ -271,10 +273,13 @@ export function ModernTicketCard({ ticket, index = 0, viewMode = 'grid' }: Ticke
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 transition-opacity duration-300 hover:opacity-100 pointer-events-none" />
 
         {/* Priority indicator */}
-        {ticket.priority === 'URGENT' && (
+        {(ticket.priority === 'CRITICAL' || ticket.priority === 'EMERGENCY') && (
           <div className="absolute top-0 right-0 w-24 h-24">
-            <div className="absolute transform rotate-45 bg-red-500 text-white text-xs font-bold py-1 right-[-35px] top-[20px] w-[120px] text-center">
-              URGENT
+            <div className={cn(
+              "absolute transform rotate-45 text-white text-xs font-bold py-1 right-[-35px] top-[20px] w-[120px] text-center",
+              ticket.priority === 'EMERGENCY' ? 'bg-purple-500' : 'bg-red-500'
+            )}>
+              {ticket.priority}
             </div>
           </div>
         )}
@@ -287,7 +292,7 @@ export function ModernTicketCard({ ticket, index = 0, viewMode = 'grid' }: Ticke
                   {getStatusIcon(ticket.status)}
                   <span className="ml-1">{ticket.status.replace('_', ' ')}</span>
                 </Badge>
-                {ticket.priority !== 'URGENT' && (
+                {ticket.priority !== 'CRITICAL' && ticket.priority !== 'EMERGENCY' && (
                   <Badge variant="outline" className={cn("text-xs", getPriorityColor(ticket.priority))}>
                     {ticket.priority}
                   </Badge>

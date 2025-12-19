@@ -46,12 +46,12 @@ const PRIORITY_RULES: Record<TicketPriority, PriorityValidationRule> = {
     autoDowngrade: true,
     restrictedRoles: ['ADMIN', 'MANAGER', 'TECHNICIAN'] // Regular users can't set HIGH
   },
-  URGENT: {
-    priority: 'URGENT',
-    maxPercentage: 4, // Maximum 4% urgent
+  EMERGENCY: {
+    priority: 'EMERGENCY',
+    maxPercentage: 2, // Maximum 2% emergency
     requiresJustification: true,
     autoDowngrade: true,
-    restrictedRoles: ['ADMIN', 'MANAGER'] // Only admin/managers can set URGENT
+    restrictedRoles: ['ADMIN'] // Only admins can set EMERGENCY
   },
   CRITICAL: {
     priority: 'CRITICAL',
@@ -63,7 +63,7 @@ const PRIORITY_RULES: Record<TicketPriority, PriorityValidationRule> = {
 };
 
 // Priority hierarchy for auto-downgrading
-const PRIORITY_HIERARCHY: TicketPriority[] = ['CRITICAL', 'URGENT', 'HIGH', 'MEDIUM', 'LOW'];
+const PRIORITY_HIERARCHY: TicketPriority[] = ['EMERGENCY', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
 
 // Keywords that might indicate high priority legitimately
 const HIGH_PRIORITY_KEYWORDS = [
@@ -126,7 +126,7 @@ class PriorityValidator {
     }
 
     // Check current distribution and limits (only for HIGH and above)
-    if (['HIGH', 'URGENT', 'CRITICAL'].includes(requestedPriority)) {
+    if (['HIGH', 'CRITICAL', 'EMERGENCY'].includes(requestedPriority)) {
       const distributionCheck = await this.checkCurrentDistribution(
         requestedPriority,
         context.branchId

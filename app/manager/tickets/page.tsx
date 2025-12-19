@@ -163,7 +163,8 @@ export default function ManagerTicketsPage() {
 
   const getPriorityBadgeVariant = (priority: string) => {
     switch (priority) {
-      case 'URGENT': return 'destructive';
+      case 'EMERGENCY': return 'destructive';
+      case 'CRITICAL': return 'destructive';
       case 'HIGH': return 'warning';
       case 'MEDIUM': return 'default';
       case 'LOW': return 'secondary';
@@ -271,7 +272,8 @@ export default function ManagerTicketsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Semua Prioritas</SelectItem>
-                <SelectItem value="URGENT">Mendesak</SelectItem>
+                <SelectItem value="EMERGENCY">Darurat</SelectItem>
+                <SelectItem value="CRITICAL">Kritis</SelectItem>
                 <SelectItem value="HIGH">Tinggi</SelectItem>
                 <SelectItem value="MEDIUM">Sedang</SelectItem>
                 <SelectItem value="LOW">Rendah</SelectItem>

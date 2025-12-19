@@ -595,7 +595,8 @@ export default function SecurityAnalystReport() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ALL">All Priorities</SelectItem>
-                    <SelectItem value="URGENT">Urgent</SelectItem>
+                    <SelectItem value="EMERGENCY">Emergency</SelectItem>
+                    <SelectItem value="CRITICAL">Critical</SelectItem>
                     <SelectItem value="HIGH">High</SelectItem>
                     <SelectItem value="MEDIUM">Medium</SelectItem>
                     <SelectItem value="LOW">Low</SelectItem>
