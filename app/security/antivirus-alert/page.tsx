@@ -181,7 +181,7 @@ export default function AntivirusAlertPage() {
         title: `Antivirus Alert - ${formData.threatType}`,
         description: `Detection Date: ${formData.detectionDate}\nEndpoint: ${formData.endpoint}\nUsername: ${formData.username}\nIP Address: ${formData.ipAddress}\nThreat Type: ${formData.threatType}\nSeverity: ${formData.severity}\nAction Taken: ${formData.actionTaken}${formData.actionTaken === 'Other' ? ` (${formData.actionOther})` : ''}\n\nPreliminary Analysis:\n${formData.preliminaryAnalysis}\n\nRequired Follow-up Actions:\n${formData.followupActions}`,
         serviceId: antivirusService.id,
-        priority: formData.severity === 'Critical' ? 'URGENT' : formData.severity === 'High' ? 'HIGH' : formData.severity === 'Medium' ? 'MEDIUM' : 'LOW',
+        priority: formData.severity === 'Critical' ? 'CRITICAL' : formData.severity === 'High' ? 'HIGH' : formData.severity === 'Medium' ? 'MEDIUM' : 'LOW',
         fieldValues: fieldValues
       }
 

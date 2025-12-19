@@ -11,7 +11,7 @@ import { PriorityValidator, type PriorityValidationContext } from '@/lib/priorit
 const updateTicketSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   description: z.string().min(1).optional(),
-  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT', 'CRITICAL']).optional(),
+  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL', 'EMERGENCY']).optional(),
   justification: z.string().optional(),
   status: z.enum(['OPEN', 'PENDING', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'IN_PROGRESS', 'PENDING_VENDOR', 'RESOLVED', 'CLOSED', 'CANCELLED']).optional(),
   assignedToId: z.string().nullable().optional(),

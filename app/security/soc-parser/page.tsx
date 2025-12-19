@@ -212,8 +212,8 @@ ${antivirusData.preliminaryAnalysis}
 
 Required Follow-up Actions:
 ${antivirusData.followupActions}`,
-        priority: antivirusData.severity === 'Critical' ? 'URGENT' : 
-                  antivirusData.severity === 'High' ? 'HIGH' : 
+        priority: antivirusData.severity === 'Critical' ? 'CRITICAL' :
+                  antivirusData.severity === 'High' ? 'HIGH' :
                   antivirusData.severity === 'Medium' ? 'MEDIUM' : 'LOW',
         customFields: {
           'Computer Name': antivirusData.endpoint,
