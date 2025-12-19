@@ -1323,11 +1323,37 @@ export async function POST(request: NextRequest) {
 
     // Create ticket with processed field values and attachments within a transaction
     const ticket = await prisma.$transaction(async (tx) => {
-      // Generate ticket number - count tickets for current year only (within transaction)
+      // Generate ticket number - get max ticket number and increment (with collision handling)
       const currentYear = new Date().getFullYear();
       const yearStart = new Date(currentYear, 0, 1); // January 1st of current year
       const yearEnd = new Date(currentYear + 1, 0, 1); // January 1st of next year
-      
+
+      // Get the highest ticket number for the current year
+      const latestTicket = await tx.ticket.findFirst({
+        where: {
+          createdAt: {
+            gte: yearStart,
+            lt: yearEnd
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        },
+        select: {
+          ticketNumber: true
+        }
+      });
+
+      // Parse the latest ticket number and increment
+      let nextNumber = 1;
+      if (latestTicket?.ticketNumber) {
+        const parsed = parseInt(latestTicket.ticketNumber, 10);
+        if (!isNaN(parsed)) {
+          nextNumber = parsed + 1;
+        }
+      }
+
+      // Also count total to ensure we don't go backwards
       const yearTicketCount = await tx.ticket.count({
         where: {
           createdAt: {
@@ -1336,9 +1362,13 @@ export async function POST(request: NextRequest) {
           }
         }
       });
-      
-      // New simplified ticket numbering - just sequential numbers
-      const ticketNumber = String(yearTicketCount + 1);
+
+      // Use the higher of the two to prevent any gaps or collisions
+      nextNumber = Math.max(nextNumber, yearTicketCount + 1);
+
+      // Add timestamp suffix for uniqueness in high-concurrency scenarios
+      const timestamp = Date.now().toString().slice(-4);
+      const ticketNumber = `${nextNumber}-${timestamp}`;
 
       const createdTicket = await tx.ticket.create({
       data: {
