@@ -358,6 +358,11 @@ model Ticket {
   customerPhone          String?
   customerIdentifier     String?               // CIF, Account number, etc.
   metadata               Json?                 // Additional omnichannel data
+
+  // Sociomile/Omni integration fields
+  sociomileTicketId      String?               // Sociomile ticket ID from Omni API
+  sociomileTicketNumber  Int?                  // Sociomile ticket number from Omni API
+
   atmClaimVerification   ATMClaimVerification?
   ATMIncident            ATMIncident[]
   auditLogs              AuditLog[]

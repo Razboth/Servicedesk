@@ -11,6 +11,12 @@ import { getClientIp } from '@/lib/utils/ip-utils';
 import { getDeviceInfo, formatDeviceInfo } from '@/lib/utils/device-utils';
 import { PriorityValidator, type PriorityValidationContext } from '@/lib/priority-validation';
 import { createAuditLog } from '@/lib/audit-logger';
+import {
+  isOmniEnabled,
+  isTransactionClaimService,
+  sendToOmniIfTransactionClaim,
+  OmniTicketData
+} from '@/lib/services/omni.service';
 
 // Helper function to determine sort order
 function getSortOrder(sortBy: string, sortOrder: string) {
@@ -1574,6 +1580,109 @@ export async function POST(request: NextRequest) {
           ticketTitle: ticket.title
         }
       }).catch(err => console.error('Failed to create notification:', err));
+    }
+
+    // Send to Omni/Sociomile if this is a Transaction Claims ticket
+    if (isOmniEnabled()) {
+      try {
+        // Get service with tier1CategoryId for checking if it's a Transaction Claims ticket
+        const serviceWithCategory = await prisma.service.findUnique({
+          where: { id: validatedData.serviceId },
+          select: {
+            name: true,
+            tier1CategoryId: true,
+            categoryId: true
+          }
+        });
+
+        // Check if it's a Transaction Claims ticket
+        if (isTransactionClaimService(
+          serviceWithCategory?.categoryId || validatedData.categoryId,
+          serviceWithCategory?.tier1CategoryId
+        )) {
+          // Get field values for the ticket
+          const ticketWithFields = await prisma.ticket.findUnique({
+            where: { id: ticket.id },
+            include: {
+              fieldValues: {
+                include: {
+                  field: { select: { name: true } }
+                }
+              },
+              branch: { select: { code: true, name: true } },
+              createdBy: { select: { name: true, email: true } }
+            }
+          });
+
+          if (ticketWithFields) {
+            // Extract customer info from field values
+            const getFieldValue = (fieldName: string) => {
+              const field = ticketWithFields.fieldValues?.find(
+                fv => fv.field.name.toLowerCase() === fieldName.toLowerCase() ||
+                      fv.field.name.toLowerCase().replace(/_/g, '') === fieldName.toLowerCase().replace(/_/g, '')
+              );
+              return field?.value || '';
+            };
+
+            const omniTicketData: OmniTicketData = {
+              ticketNumber: ticketWithFields.ticketNumber,
+              title: ticketWithFields.title,
+              description: ticketWithFields.description,
+              createdAt: ticketWithFields.createdAt,
+              customerName: getFieldValue('customer_name') || ticketWithFields.createdBy?.name,
+              customerEmail: getFieldValue('customer_email') || ticketWithFields.createdBy?.email,
+              customerPhone: getFieldValue('customer_phone'),
+              customerAccount: getFieldValue('customer_account'),
+              cardLast4: getFieldValue('card_last_4'),
+              transactionAmount: parseFloat(getFieldValue('transaction_amount') || getFieldValue('nominal') || '0'),
+              transactionRef: getFieldValue('transaction_ref'),
+              claimType: getFieldValue('claim_type'),
+              claimDescription: getFieldValue('claim_description'),
+              atmCode: getFieldValue('atm_code'),
+              atmLocation: getFieldValue('atm_location'),
+              serviceName: serviceWithCategory?.name,
+              branch: ticketWithFields.branch ? {
+                code: ticketWithFields.branch.code,
+                name: ticketWithFields.branch.name
+              } : undefined,
+              createdBy: ticketWithFields.createdBy ? {
+                name: ticketWithFields.createdBy.name || 'Unknown',
+                email: ticketWithFields.createdBy.email
+              } : undefined,
+              fieldValues: ticketWithFields.fieldValues?.map(fv => ({
+                field: { name: fv.field.name },
+                value: fv.value
+              }))
+            };
+
+            const omniResponse = await sendToOmniIfTransactionClaim(
+              omniTicketData,
+              serviceWithCategory?.categoryId || validatedData.categoryId,
+              serviceWithCategory?.tier1CategoryId
+            );
+
+            if (omniResponse?.success && omniResponse.data) {
+              // Update ticket with Sociomile IDs
+              await prisma.ticket.update({
+                where: { id: ticket.id },
+                data: {
+                  sociomileTicketId: omniResponse.data.ticketId,
+                  sociomileTicketNumber: omniResponse.data.ticket_number
+                }
+              });
+
+              console.log('[Tickets] Omni ticket created:', {
+                bsgTicket: ticket.ticketNumber,
+                omniTicketId: omniResponse.data.ticketId,
+                omniTicketNumber: omniResponse.data.ticket_number
+              });
+            }
+          }
+        }
+      } catch (omniError) {
+        // Log error but don't fail ticket creation
+        console.error('[Tickets] Omni integration error:', omniError);
+      }
     }
 
     return NextResponse.json(ticket, { status: 201 });

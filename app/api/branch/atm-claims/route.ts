@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import {
+  isOmniEnabled,
+  createOmniTicket,
+  mapTicketToOmniPayload,
+  OmniTicketData
+} from '@/lib/services/omni.service';
 
 // GET /api/branch/atm-claims - List ATM claims for branch
 export async function GET(request: NextRequest) {
@@ -658,6 +664,69 @@ ${claimDescription}
       });
     }
 
+    // Send to Omni/Sociomile if enabled (Transaction Claims integration)
+    let omniTicketId: string | undefined;
+    let omniTicketNumber: number | undefined;
+
+    if (isOmniEnabled()) {
+      try {
+        const omniTicketData: OmniTicketData = {
+          ticketNumber: ticket.ticketNumber,
+          title: ticket.title,
+          description: ticket.description,
+          createdAt: ticket.createdAt,
+          customerName: customerName,
+          customerEmail: customerEmail,
+          customerPhone: customerPhone,
+          customerAccount: customerAccount,
+          cardLast4: cardLast4,
+          transactionAmount: Number(transactionAmount),
+          transactionRef: transactionRef,
+          claimType: claimType,
+          claimDescription: claimDescription,
+          atmCode: atmCode,
+          atmLocation: atm.location,
+          serviceName: service.name,
+          branch: {
+            code: atm.branch.code,
+            name: atm.branch.name
+          },
+          fieldValues: ticket.fieldValues?.map(fv => ({
+            field: { name: fv.field.name },
+            value: fv.value
+          }))
+        };
+
+        const omniPayload = mapTicketToOmniPayload(omniTicketData);
+        const omniResponse = await createOmniTicket(omniPayload);
+
+        if (omniResponse.success && omniResponse.data) {
+          omniTicketId = omniResponse.data.ticketId;
+          omniTicketNumber = omniResponse.data.ticket_number;
+
+          // Update ticket with Sociomile IDs
+          await prisma.ticket.update({
+            where: { id: ticket.id },
+            data: {
+              sociomileTicketId: omniTicketId,
+              sociomileTicketNumber: omniTicketNumber
+            }
+          });
+
+          console.log('[ATM Claims] Omni ticket created:', {
+            bsgTicket: ticket.ticketNumber,
+            omniTicketId,
+            omniTicketNumber
+          });
+        } else {
+          console.error('[ATM Claims] Failed to create Omni ticket:', omniResponse.message);
+        }
+      } catch (omniError) {
+        // Log error but don't fail ticket creation
+        console.error('[ATM Claims] Omni integration error:', omniError);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       ticket,
@@ -665,7 +734,11 @@ ${claimDescription}
         isInterBranch: userBranch?.branch?.id !== atm.branchId,
         fromBranch: userBranch?.branch?.name,
         toBranch: atm.branch.name
-      }
+      },
+      omni: omniTicketId ? {
+        ticketId: omniTicketId,
+        ticketNumber: omniTicketNumber
+      } : undefined
     }, { status: 201 });
 
   } catch (error) {
