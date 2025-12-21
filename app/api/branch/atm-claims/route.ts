@@ -552,27 +552,10 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Generate ticket number - use new simplified sequential format
-    const currentYear = new Date().getFullYear();
-    const yearStart = new Date(currentYear, 0, 1);
-    const yearEnd = new Date(currentYear + 1, 0, 1);
-
-    const yearTicketCount = await prisma.ticket.count({
-      where: {
-        createdAt: {
-          gte: yearStart,
-          lt: yearEnd
-        }
-      }
-    });
-
-    // New simplified ticket numbering - just sequential numbers
-    const ticketNumber = String(yearTicketCount + 1);
-
     // Get user's branch for reporting branch field
     const userBranch = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { branch: { select: { name: true, code: true } } }
+      select: { branch: { select: { id: true, name: true, code: true } } }
     });
 
     // Map form data to service field values
@@ -601,12 +584,22 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create ticket with field values
-    const ticket = await prisma.ticket.create({
-      data: {
-        ticketNumber,
-        title: `ATM INTERNAL CLAIM - ${atmCode}`,
-        description: `
+    // Create ticket with field values inside a transaction to prevent race conditions
+    const ticket = await prisma.$transaction(async (tx) => {
+      // Generate ticket number - get max ticket number and increment
+      const maxResult = await tx.$queryRaw<[{ maxNum: bigint | null }]>`
+        SELECT MAX(CAST(NULLIF(REGEXP_REPLACE("ticketNumber", '[^0-9]', '', 'g'), '') AS BIGINT)) as "maxNum"
+        FROM "tickets"
+      `;
+
+      const maxTicketNumber = maxResult[0]?.maxNum ? Number(maxResult[0].maxNum) : 0;
+      const ticketNumber = String(maxTicketNumber + 1);
+
+      return tx.ticket.create({
+        data: {
+          ticketNumber,
+          title: `ATM INTERNAL CLAIM - ${atmCode}`,
+          description: `
 **Customer Information:**
 - Name: ${customerName}
 - Account: ${customerAccount}
@@ -622,27 +615,28 @@ ${transactionRef ? `- Reference: ${transactionRef}` : ''}
 
 **Claim Details:**
 ${claimDescription}
-        `,
-        serviceId: service.id,
-        categoryId: service.categoryId!,
-        priority: transactionAmount > 1000000 ? 'HIGH' : 'MEDIUM',
-        status: service.requiresApproval ? 'PENDING_APPROVAL' : 'OPEN',
-        createdById: session.user.id,
-        branchId: atm.branchId, // Route to ATM owner branch
-        category: 'SERVICE_REQUEST',
-        fieldValues: fieldValues.length > 0 ? {
-          create: fieldValues
-        } : undefined
-      },
-      include: {
-        service: true,
-        branch: true,
-        fieldValues: {
-          include: {
-            field: true
+          `,
+          serviceId: service.id,
+          categoryId: service.categoryId!,
+          priority: transactionAmount > 1000000 ? 'HIGH' : 'MEDIUM',
+          status: service.requiresApproval ? 'PENDING_APPROVAL' : 'OPEN',
+          createdById: session.user.id,
+          branchId: atm.branchId, // Route to ATM owner branch
+          category: 'SERVICE_REQUEST',
+          fieldValues: fieldValues.length > 0 ? {
+            create: fieldValues
+          } : undefined
+        },
+        include: {
+          service: true,
+          branch: true,
+          fieldValues: {
+            include: {
+              field: true
+            }
           }
         }
-      }
+      });
     });
 
     // Create initial verification record
