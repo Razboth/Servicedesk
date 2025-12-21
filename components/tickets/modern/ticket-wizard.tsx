@@ -2252,34 +2252,6 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                                   )}
                                 </div>
                               )}
-                              {template.fieldTemplate.type === 'DATE' && (
-                                <Input
-                                  type="date"
-                                  value={formData.fieldValues[template.fieldTemplate.name] || ''}
-                                  onChange={(e) => setFormData({
-                                    ...formData,
-                                    fieldValues: {
-                                      ...formData.fieldValues,
-                                      [template.fieldTemplate.name]: e.target.value
-                                    }
-                                  })}
-                                  className="mt-2"
-                                />
-                              )}
-                              {template.fieldTemplate.type === 'DATETIME' && (
-                                <Input
-                                  type="datetime-local"
-                                  value={formData.fieldValues[template.fieldTemplate.name] || ''}
-                                  onChange={(e) => setFormData({
-                                    ...formData,
-                                    fieldValues: {
-                                      ...formData.fieldValues,
-                                      [template.fieldTemplate.name]: e.target.value
-                                    }
-                                  })}
-                                  className="mt-2"
-                                />
-                              )}
                               {template.fieldTemplate.type === 'CHECKBOX' && (
                                 <div className="flex items-center space-x-2 mt-2">
                                   <Checkbox
