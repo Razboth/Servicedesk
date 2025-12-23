@@ -1,4 +1,5 @@
 // Security utilities for input sanitization and validation
+import { randomBytes } from 'crypto';
 
 /**
  * Sanitize search input to prevent injection attacks
@@ -177,14 +178,7 @@ export function escapeHtml(unsafe: string): string {
  * @returns Secure random token
  */
 export function generateSecureToken(length: number = 32): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
-  
-  for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  
-  return result;
+  return randomBytes(Math.ceil(length * 0.75)).toString('base64url').slice(0, length);
 }
 
 /**

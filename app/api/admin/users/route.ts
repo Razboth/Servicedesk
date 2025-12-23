@@ -1,19 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
+import { randomBytes } from 'crypto';
 import { sanitizeSearchInput, isValidEmail, sanitizePhoneNumber, validatePasswordStrength } from '@/lib/security';
-
-const prisma = new PrismaClient();
 
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
-    
-    if (!session || session.user.role !== 'ADMIN') {
+
+    if (!session || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
       return NextResponse.json(
         { error: 'Unauthorized' },
-        { status: 401 }
+        { status: 403 }
       );
     }
 
@@ -177,11 +176,11 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
-    
-    if (!session || session.user.role !== 'ADMIN') {
+
+    if (!session || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
       return NextResponse.json(
         { error: 'Unauthorized' },
-        { status: 401 }
+        { status: 403 }
       );
     }
 
@@ -325,11 +324,10 @@ export async function POST(request: NextRequest) {
 }
 
 // Helper function to generate secure password
-function generatePassword(length = 12) {
+function generatePassword(length = 12): string {
   const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
-  let password = '';
-  for (let i = 0; i < length; i++) {
-    password += charset.charAt(Math.floor(Math.random() * charset.length));
-  }
-  return password;
+  const randomValues = randomBytes(length);
+  return Array.from(randomValues)
+    .map(byte => charset[byte % charset.length])
+    .join('');
 }

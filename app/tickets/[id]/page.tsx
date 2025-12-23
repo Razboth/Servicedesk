@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/modern-dialog';
 import { ProgressTracker } from '@/components/ui/progress-tracker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Clock, User, MessageSquare, AlertCircle, CheckCircle, CheckCheck, Plus, X, Paperclip, Download, FileText, Eye, Edit, Sparkles, Shield, UserCheck, UserX, Timer, Trash2, Image as ImageIcon, File, MoreVertical, Building2, Briefcase, UserCircle, Calendar, Hash, MapPin, PlayCircle, XCircle, Printer } from 'lucide-react';
+import { ArrowLeft, Clock, User, MessageSquare, AlertCircle, CheckCircle, CheckCheck, Plus, X, Paperclip, Download, FileText, Eye, Edit, Sparkles, Shield, UserCheck, UserX, Timer, Trash2, Image as ImageIcon, File, MoreVertical, Building2, Briefcase, UserCircle, Calendar, Hash, MapPin, PlayCircle, XCircle, Printer, Send, RefreshCw } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { RelatedArticles } from '@/components/knowledge/related-articles';
 import { AttachmentPreview } from '@/components/ui/attachment-preview';
@@ -120,11 +120,14 @@ interface Ticket {
   resolvedAt?: string;
   closedAt?: string;
   assignedToId?: string;
+  sociomileTicketId?: string | null;
+  sociomileTicketNumber?: number | null;
   service: {
     name: string;
     requiresApproval?: boolean;
     supportGroupId?: string;
     tier1Category?: {
+      id?: string;
       name: string;
     };
     tier2Subcategory?: {
@@ -231,6 +234,18 @@ export default function TicketDetailPage() {
   const [shouldRedirect, setShouldRedirect] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
 
+  // Omni/Sociomile integration states
+  const [isSendingToOmni, setIsSendingToOmni] = useState(false);
+  const [omniStatus, setOmniStatus] = useState<{
+    isSentToOmni: boolean;
+    sociomileTicketId?: string | null;
+    sociomileTicketNumber?: number | null;
+  }>({
+    isSentToOmni: false,
+    sociomileTicketId: null,
+    sociomileTicketNumber: null
+  });
+
   // Helper function to check if file is previewable
   const isPreviewable = (mimeType: string) => {
     const previewableMimeTypes = [
@@ -298,6 +313,82 @@ export default function TicketDetailPage() {
     }
   };
 
+  // Helper function to check if ticket is a Transaction Claims ticket
+  const isTransactionClaimTicket = (ticket: Ticket | null): boolean => {
+    if (!ticket) return false;
+    const categoryId = ticket.service?.tier1Category?.id;
+    const categoryName = ticket.service?.tier1Category?.name;
+
+    // Check by category ID or name
+    const transactionClaimCategoryIds = [
+      'cmekrqi45001qhluspcsta20x', // Transaction Claims
+      'cmekrqi3t001ghlusklheksqz'  // ATM Services
+    ];
+
+    return transactionClaimCategoryIds.includes(categoryId || '') ||
+           categoryName === 'Klaim Transaksi' ||
+           categoryName === 'ATM Services';
+  };
+
+  // Handle sending ticket to Omni/Sociomile
+  const handleSendToOmni = async (resend: boolean = false) => {
+    if (!ticket) return;
+
+    // Confirm resend action
+    if (resend) {
+      const confirmed = confirm(
+        'Ticket ini sudah pernah dikirim ke Omni. Apakah Anda yakin ingin mengirim ulang?'
+      );
+      if (!confirmed) return;
+    }
+
+    setIsSendingToOmni(true);
+    try {
+      const response = await fetch(`/api/tickets/${ticket.id}/omni`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ resend }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || data.message || 'Failed to send ticket to Omni');
+      }
+
+      // Update local state with Omni info
+      setOmniStatus({
+        isSentToOmni: true,
+        sociomileTicketId: data.omni?.ticketId,
+        sociomileTicketNumber: data.omni?.ticketNumber
+      });
+
+      // Update ticket in state
+      if (ticket) {
+        setTicket({
+          ...ticket,
+          sociomileTicketId: data.omni?.ticketId,
+          sociomileTicketNumber: data.omni?.ticketNumber
+        });
+      }
+
+      // Refresh ticket to get the comment that was added
+      await fetchTicket();
+
+      alert(resend
+        ? 'Ticket berhasil dikirim ulang ke Omni/Sociomile!'
+        : 'Ticket berhasil dikirim ke Omni/Sociomile!'
+      );
+    } catch (error) {
+      console.error('Error sending to Omni:', error);
+      alert(error instanceof Error ? error.message : 'Gagal mengirim ticket ke Omni');
+    } finally {
+      setIsSendingToOmni(false);
+    }
+  };
+
   // Poll for approval status changes every 10 seconds if ticket is pending approval
   useEffect(() => {
     if (!ticket) return;
@@ -352,6 +443,15 @@ export default function TicketDetailPage() {
 
       const data = await response.json();
       setTicket(data);
+
+      // Update Omni status from ticket data
+      if (data.sociomileTicketId || data.sociomileTicketNumber) {
+        setOmniStatus({
+          isSentToOmni: !!data.sociomileTicketId,
+          sociomileTicketId: data.sociomileTicketId,
+          sociomileTicketNumber: data.sociomileTicketNumber
+        });
+      }
 
       // Check if we accessed via CUID and should redirect to ticket number
       // CUIDs typically start with 'c' and are 25 characters long
@@ -1484,6 +1584,113 @@ export default function TicketDetailPage() {
                           </div>
                         </div>
                       ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Omni/Sociomile Integration Card */}
+              {isTransactionClaimTicket(ticket) && (
+                <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/20">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-amber-900 dark:text-amber-100">
+                      <Send className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                      Integrasi Omni/Sociomile
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {/* Omni Status Display */}
+                      {omniStatus.isSentToOmni && omniStatus.sociomileTicketId ? (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 p-3 bg-green-100 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                            <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-green-900 dark:text-green-100">
+                                Ticket sudah dikirim ke Omni/Sociomile
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="p-3 bg-white dark:bg-gray-800 border border-border rounded-lg">
+                              <Label className="text-xs text-muted-foreground mb-1 block">
+                                Sociomile Ticket ID
+                              </Label>
+                              <p className="font-mono text-sm font-medium text-foreground break-all">
+                                {omniStatus.sociomileTicketId}
+                              </p>
+                            </div>
+
+                            {omniStatus.sociomileTicketNumber && (
+                              <div className="p-3 bg-white dark:bg-gray-800 border border-border rounded-lg">
+                                <Label className="text-xs text-muted-foreground mb-1 block">
+                                  Nomor Ticket Sociomile
+                                </Label>
+                                <p className="font-mono text-sm font-medium text-foreground">
+                                  #{omniStatus.sociomileTicketNumber}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex items-center justify-between gap-2 pt-2">
+                            <Badge variant="success" className="flex items-center gap-1">
+                              <CheckCheck className="h-3 w-3" />
+                              Tersinkronisasi
+                            </Badge>
+
+                            <Button
+                              onClick={() => handleSendToOmni(true)}
+                              disabled={isSendingToOmni}
+                              variant="outline"
+                              size="sm"
+                              className="border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300 dark:hover:bg-amber-950"
+                            >
+                              {isSendingToOmni ? (
+                                <>
+                                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                                  Mengirim Ulang...
+                                </>
+                              ) : (
+                                <>
+                                  <RefreshCw className="h-4 w-4 mr-2" />
+                                  Kirim Ulang
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 p-3 bg-amber-100 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                            <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                                Ticket ini adalah Klaim Transaksi dan dapat dikirim ke Omni/Sociomile
+                              </p>
+                            </div>
+                          </div>
+
+                          <Button
+                            onClick={handleSendToOmni}
+                            disabled={isSendingToOmni}
+                            className="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white"
+                          >
+                            {isSendingToOmni ? (
+                              <>
+                                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                                Mengirim ke Omni...
+                              </>
+                            ) : (
+                              <>
+                                <Send className="h-4 w-4 mr-2" />
+                                Kirim ke Omni
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
