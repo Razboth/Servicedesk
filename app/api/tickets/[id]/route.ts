@@ -6,6 +6,7 @@ import { sendTicketNotification } from '@/lib/services/email.service';
 import { emitTicketUpdated, emitTicketAssigned } from '@/lib/services/socket.service';
 import { createTicketNotifications, createNotification } from '@/lib/notifications';
 import { PriorityValidator, type PriorityValidationContext } from '@/lib/priority-validation';
+import { syncStatusToOmniIfApplicable } from '@/lib/services/omni.service';
 
 // Validation schema for updating tickets
 const updateTicketSchema = z.object({
@@ -311,6 +312,7 @@ export async function PATCH(
         createdById: true,
         assignedToId: true,
         status: true,
+        sociomileTicketId: true,
         service: {
           select: {
             name: true
@@ -548,6 +550,25 @@ export async function PATCH(
       // Create in-app notifications
       await createTicketNotifications(id, emailType, session.user.id)
         .catch(err => console.error('Failed to create status change notifications:', err));
+
+      // Sync status to Omni if ticket was sent to Omni (non-blocking)
+      if (existingTicket.sociomileTicketId) {
+        syncStatusToOmniIfApplicable(
+          existingTicket.id,
+          existingTicket.sociomileTicketId,
+          validatedData.status
+        ).then(result => {
+          if (result) {
+            console.log('[Omni] PATCH status sync result:', {
+              ticketId: existingTicket.id,
+              success: result.success,
+              message: result.message
+            });
+          }
+        }).catch(err => {
+          console.error('[Omni] Failed to sync status (PATCH):', err);
+        });
+      }
     }
 
     // Emit socket events for real-time updates
@@ -634,6 +655,7 @@ export async function PUT(
         createdById: true,
         assignedToId: true,
         status: true,
+        sociomileTicketId: true,
         service: {
           select: {
             name: true
@@ -816,8 +838,27 @@ export async function PUT(
         validatedData.status,
         session.user.id
       );
+
+      // Sync status to Omni if ticket was sent to Omni (non-blocking)
+      if (existingTicket.sociomileTicketId) {
+        syncStatusToOmniIfApplicable(
+          existingTicket.id,
+          existingTicket.sociomileTicketId,
+          validatedData.status
+        ).then(result => {
+          if (result) {
+            console.log('[Omni] PUT status sync result:', {
+              ticketId: existingTicket.id,
+              success: result.success,
+              message: result.message
+            });
+          }
+        }).catch(err => {
+          console.error('[Omni] Failed to sync status (PUT):', err);
+        });
+      }
     }
-    
+
     if (validatedData.assignedToId && validatedData.assignedToId !== existingTicket.assignedToId) {
       emitTicketAssigned(
         id,
@@ -825,7 +866,7 @@ export async function PUT(
         session.user.id
       );
     }
-    
+
     // Create audit log for update with priority validation info
     if (Object.keys(updateData).length > 0) {
       await prisma.auditLog.create({

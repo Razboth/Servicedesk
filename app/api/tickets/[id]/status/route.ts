@@ -6,6 +6,7 @@ import { emitTicketStatusChanged } from '@/lib/socket-manager';
 import { createTicketNotifications, createNotification } from '@/lib/notifications';
 import { authenticateApiKey, checkApiPermission, createApiErrorResponse, createApiSuccessResponse } from '@/lib/auth-api';
 import { sendTicketNotification } from '@/lib/services/email.service';
+import { syncStatusToOmniIfApplicable } from '@/lib/services/omni.service';
 
 // Validation schema for status updates
 const statusUpdateSchema = z.object({
@@ -46,6 +47,7 @@ export async function PUT(
         branchId: true,
         resolvedAt: true,
         closedAt: true,
+        sociomileTicketId: true,
         service: {
           select: {
             name: true,
@@ -253,6 +255,25 @@ export async function PUT(
       resolutionNotes: validatedData.resolutionNotes
     }).catch(err => console.error('Failed to send email notification:', err));
 
+    // Sync status to Omni if ticket was sent to Omni (non-blocking)
+    if (existingTicket.sociomileTicketId) {
+      syncStatusToOmniIfApplicable(
+        id,
+        existingTicket.sociomileTicketId,
+        validatedData.status
+      ).then(result => {
+        if (result) {
+          console.log('[Omni] Status sync result:', {
+            ticketId: id,
+            success: result.success,
+            message: result.message
+          });
+        }
+      }).catch(err => {
+        console.error('[Omni] Failed to sync status:', err);
+      });
+    }
+
     return NextResponse.json({
       success: true,
       ticket: updatedTicket,
@@ -304,7 +325,8 @@ export async function PATCH(
         title: true,
         status: true,
         resolvedAt: true,
-        closedAt: true
+        closedAt: true,
+        sociomileTicketId: true
       }
     });
 
@@ -378,6 +400,25 @@ export async function PATCH(
           content: `[API Update] Status changed from ${existingTicket.status} to ${validatedData.status}: ${validatedData.reason}`,
           isInternal: true
         }
+      });
+    }
+
+    // Sync status to Omni if ticket was sent to Omni (non-blocking)
+    if (existingTicket.sociomileTicketId) {
+      syncStatusToOmniIfApplicable(
+        id,
+        existingTicket.sociomileTicketId,
+        validatedData.status
+      ).then(result => {
+        if (result) {
+          console.log('[Omni] API status sync result:', {
+            ticketId: id,
+            success: result.success,
+            message: result.message
+          });
+        }
+      }).catch(err => {
+        console.error('[Omni] Failed to sync status via API:', err);
       });
     }
 

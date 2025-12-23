@@ -25,8 +25,8 @@ export interface OmniHelpdeskPayload {
   mediaTransaksi: string;        // ATM ID or 'BRANCH_PORTAL' (Required)
   jenisTransaksi?: string;       // Transaction type: PEMBELIAN, PEMBAYARAN, etc. (Optional)
   nominal: number;               // Transaction amount (Required)
-  nomorRekening?: string;        // Account number (Optional)
-  nomorKartu?: string;           // Card number (Optional)
+  nomorRekening?: number;        // Account number (Optional) - API expects Number
+  nomorKartu?: number;           // Card number (Optional) - API expects Number
   transactionId?: string;        // Transaction reference (Optional)
   claimReason?: string;          // Claim type/reason (Optional)
   claimDate?: string;            // Claim date: YYYY-MM-DD HH:mm:ss (Optional)
@@ -35,8 +35,8 @@ export interface OmniHelpdeskPayload {
   atmName: string;               // ATM name or 'N/A' (Required)
   atmId: string;                 // ATM ID or 'N/A' (Required)
   description?: string;          // Additional description (Optional)
-  nomorTicketHelpdesk: string;   // Our ticket number (Required)
-  noRegPengaduanCabang: string;  // Branch complaint number (Required)
+  nomorTicketHelpdesk: number;   // Our ticket number (Required) - API expects Number
+  noRegPengaduanCabang: number;  // Branch complaint number (Required) - API expects Number
 }
 
 /**
@@ -202,6 +202,15 @@ export function mapTicketToOmniPayload(ticketData: OmniTicketData): OmniHelpdesk
   // Build content from description
   const content = ticketData.description || ticketData.title || 'Transaction Claim';
 
+  // Parse ticket number to integer (remove non-numeric characters)
+  const ticketNumberInt = parseInt(ticketData.ticketNumber.replace(/\D/g, ''), 10) || 0;
+
+  // Parse account number to number if available
+  const accountNumber = customerAccount ? parseInt(customerAccount.replace(/\D/g, ''), 10) || undefined : undefined;
+
+  // Parse card number to number if available (use full card number, not masked)
+  const cardNumber = cardLast4 ? parseInt(cardLast4.replace(/\D/g, ''), 10) || undefined : undefined;
+
   return {
     namaNasabah: customerName,
     ticketType: 'helpdesk',
@@ -211,8 +220,8 @@ export function mapTicketToOmniPayload(ticketData: OmniTicketData): OmniHelpdesk
     mediaTransaksi: mediaTransaksi,
     jenisTransaksi: determineTransactionType(ticketData.serviceName, claimType),
     nominal: nominal,
-    nomorRekening: customerAccount || undefined,
-    nomorKartu: cardLast4 ? `****${cardLast4}` : undefined,
+    nomorRekening: accountNumber,
+    nomorKartu: cardNumber,
     transactionId: transactionRef || undefined,
     claimReason: claimType || ticketData.serviceName || undefined,
     claimDate: formatOmniDate(ticketData.createdAt),
@@ -221,8 +230,8 @@ export function mapTicketToOmniPayload(ticketData: OmniTicketData): OmniHelpdesk
     atmName: atmName,
     atmId: atmId,
     description: ticketData.claimDescription || ticketData.description || undefined,
-    nomorTicketHelpdesk: ticketData.ticketNumber,
-    noRegPengaduanCabang: ticketData.ticketNumber,
+    nomorTicketHelpdesk: ticketNumberInt,
+    noRegPengaduanCabang: ticketNumberInt,
   };
 }
 
@@ -251,6 +260,50 @@ export async function createOmniTicket(payload: OmniHelpdeskPayload): Promise<Om
     atmId: payload.atmId
   });
 
+  // Debug: Log the full payload (development only)
+  if (process.env.NODE_ENV === 'development' || process.env.OMNI_DEBUG === 'true') {
+    console.log('[Omni] Full payload:', JSON.stringify(payload, null, 2));
+  }
+
+  // Validate required fields before sending
+  const requiredFields: (keyof OmniHelpdeskPayload)[] = [
+    'namaNasabah', 'ticketType', 'content', 'connectID',
+    'mediaTransaksi', 'branchCode', 'branchName', 'atmName', 'atmId'
+  ];
+
+  for (const field of requiredFields) {
+    if (!payload[field]) {
+      console.error(`[Omni] Missing required field: ${field}`);
+      return {
+        success: false,
+        message: `Missing required field: ${field}`,
+        code: 400
+      };
+    }
+  }
+
+  if (typeof payload.nominal !== 'number' || payload.nominal < 0) {
+    console.error('[Omni] Invalid nominal value:', payload.nominal);
+    return {
+      success: false,
+      message: 'Invalid nominal value - must be a non-negative number',
+      code: 400
+    };
+  }
+
+  if (typeof payload.nomorTicketHelpdesk !== 'number' || payload.nomorTicketHelpdesk <= 0) {
+    console.error('[Omni] Invalid ticket number:', payload.nomorTicketHelpdesk);
+    return {
+      success: false,
+      message: 'Invalid ticket number',
+      code: 400
+    };
+  }
+
+  // Add timeout for API request
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
   try {
     const response = await fetch(url, {
       method: 'POST',
@@ -258,11 +311,22 @@ export async function createOmniTicket(payload: OmniHelpdeskPayload): Promise<Om
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     const data = await response.json();
 
-    if (response.ok && data.success) {
+    // Debug: Log full response (development only)
+    if (process.env.NODE_ENV === 'development' || process.env.OMNI_DEBUG === 'true') {
+      console.log('[Omni] API response:', JSON.stringify(data, null, 2));
+    }
+
+    // Handle both 'success' and 'status' response formats
+    const isSuccess = data.success === true || data.status === true;
+
+    if (response.ok && isSuccess) {
       console.log('[Omni] Ticket created successfully:', {
         ticketId: data.data?.ticketId,
         ticketNumber: data.data?.ticket_number
@@ -274,14 +338,31 @@ export async function createOmniTicket(payload: OmniHelpdeskPayload): Promise<Om
         code: data.code || 200
       };
     } else {
-      console.error('[Omni] Failed to create ticket:', data);
+      // Log detailed error info
+      console.error('[Omni] Failed to create ticket:', {
+        status: response.status,
+        responseData: data,
+        errors: data.errors,
+        message: data.message
+      });
       return {
         success: false,
-        message: data.message || 'Failed to create Omni ticket',
+        message: data.message || data.errors?.message || 'Failed to create Omni ticket',
         code: data.code || response.status
       };
     }
   } catch (error) {
+    clearTimeout(timeoutId);
+
+    if (error instanceof Error && error.name === 'AbortError') {
+      console.error('[Omni] Request timeout after 30 seconds');
+      return {
+        success: false,
+        message: 'Request timeout - Omni API did not respond within 30 seconds',
+        code: 504
+      };
+    }
+
     console.error('[Omni] API request failed:', error);
     return {
       success: false,
@@ -320,4 +401,201 @@ export async function sendToOmniIfTransactionClaim(
   // Map and send to Omni
   const payload = mapTicketToOmniPayload(ticketData);
   return await createOmniTicket(payload);
+}
+
+/**
+ * Status mapping from BSG ServiceDesk to Omni/Sociomile
+ */
+const BSG_TO_OMNI_STATUS_MAP: Record<string, string> = {
+  'OPEN': 'Open',
+  'IN_PROGRESS': 'InProgress',
+  'PENDING': 'Pending',
+  'PENDING_APPROVAL': 'Pending Approval',
+  'PENDING_VENDOR': 'On Hold',
+  'ON_HOLD': 'On Hold',
+  'RESOLVED': 'Close',
+  'CLOSED': 'Close',
+  'REJECTED': 'Close',
+  'CANCELLED': 'Close',
+  'APPROVED': 'InProgress'
+};
+
+/**
+ * Payload structure for Omni status update
+ */
+export interface OmniStatusUpdatePayload {
+  sociomile_ticket_id: string;
+  bsg_ticket_id: string;
+  status: string;
+}
+
+/**
+ * Response from Omni status update API
+ */
+export interface OmniStatusUpdateResponse {
+  success: boolean;
+  message?: string;
+  code: number;
+}
+
+/**
+ * Map BSG status to Omni status
+ * @param bsgStatus - The BSG ServiceDesk status
+ * @returns The corresponding Omni status or null if no mapping exists
+ */
+export function mapBsgStatusToOmni(bsgStatus: string): string | null {
+  return BSG_TO_OMNI_STATUS_MAP[bsgStatus] || null;
+}
+
+/**
+ * Update ticket status in Omni/Sociomile platform
+ *
+ * @param sociomileTicketId - The Sociomile ticket ID
+ * @param bsgTicketId - The BSG ServiceDesk ticket ID
+ * @param bsgStatus - The new BSG status
+ * @returns Promise with Omni API response
+ */
+export async function updateOmniTicketStatus(
+  sociomileTicketId: string,
+  bsgTicketId: string,
+  bsgStatus: string
+): Promise<OmniStatusUpdateResponse> {
+  if (!OMNI_API_TOKEN) {
+    console.error('[Omni] API token not configured');
+    return {
+      success: false,
+      message: 'Omni API token not configured',
+      code: 500
+    };
+  }
+
+  // Map BSG status to Omni status
+  const omniStatus = mapBsgStatusToOmni(bsgStatus);
+  if (!omniStatus) {
+    console.warn(`[Omni] No status mapping found for BSG status: ${bsgStatus}`);
+    return {
+      success: false,
+      message: `No status mapping found for: ${bsgStatus}`,
+      code: 400
+    };
+  }
+
+  // Build the update status URL
+  const OMNI_UPDATE_STATUS_URL = process.env.OMNI_UPDATE_STATUS_URL || 'https://api-sm.s45.in/bank-sulut/updatestatus';
+  const url = `${OMNI_UPDATE_STATUS_URL}?client_secret_key=${OMNI_API_TOKEN}`;
+
+  const payload: OmniStatusUpdatePayload = {
+    sociomile_ticket_id: sociomileTicketId,
+    bsg_ticket_id: bsgTicketId,
+    status: omniStatus
+  };
+
+  console.log('[Omni] Updating ticket status:', {
+    sociomileTicketId,
+    bsgTicketId,
+    bsgStatus,
+    omniStatus
+  });
+
+  // Debug: Log the full payload (development only)
+  if (process.env.NODE_ENV === 'development' || process.env.OMNI_DEBUG === 'true') {
+    console.log('[Omni] Status update payload:', JSON.stringify(payload, null, 2));
+  }
+
+  // Add timeout for API request
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    const data = await response.json();
+
+    // Debug: Log full response (development only)
+    if (process.env.NODE_ENV === 'development' || process.env.OMNI_DEBUG === 'true') {
+      console.log('[Omni] Status update response:', JSON.stringify(data, null, 2));
+    }
+
+    // Handle both 'success' and 'status' response formats
+    const isSuccess = data.success === true || data.status === true;
+
+    if (response.ok && isSuccess) {
+      console.log('[Omni] Ticket status updated successfully:', {
+        sociomileTicketId,
+        newStatus: omniStatus
+      });
+      return {
+        success: true,
+        message: data.message || 'Status updated successfully',
+        code: data.code || 200
+      };
+    } else {
+      console.error('[Omni] Failed to update ticket status:', {
+        status: response.status,
+        responseData: data
+      });
+      return {
+        success: false,
+        message: data.message || 'Failed to update Omni ticket status',
+        code: data.code || response.status
+      };
+    }
+  } catch (error) {
+    clearTimeout(timeoutId);
+
+    if (error instanceof Error && error.name === 'AbortError') {
+      console.error('[Omni] Status update request timeout after 30 seconds');
+      return {
+        success: false,
+        message: 'Request timeout - Omni API did not respond within 30 seconds',
+        code: 504
+      };
+    }
+
+    console.error('[Omni] Status update API request failed:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Unknown error',
+      code: 500
+    };
+  }
+}
+
+/**
+ * Sync ticket status to Omni if the ticket was previously sent to Omni
+ * This is a convenience function that checks if the ticket has a Sociomile ID and syncs status
+ *
+ * @param ticketId - The BSG ticket ID
+ * @param sociomileTicketId - The Sociomile ticket ID (if exists)
+ * @param newStatus - The new BSG status
+ * @returns Promise with Omni response or null if not applicable
+ */
+export async function syncStatusToOmniIfApplicable(
+  ticketId: string,
+  sociomileTicketId: string | null | undefined,
+  newStatus: string
+): Promise<OmniStatusUpdateResponse | null> {
+  // Check if Omni is enabled
+  if (!isOmniEnabled()) {
+    console.log('[Omni] Integration disabled, skipping status sync');
+    return null;
+  }
+
+  // Check if ticket was sent to Omni
+  if (!sociomileTicketId) {
+    console.log('[Omni] Ticket not linked to Omni, skipping status sync');
+    return null;
+  }
+
+  // Sync the status
+  return await updateOmniTicketStatus(sociomileTicketId, ticketId, newStatus);
 }
