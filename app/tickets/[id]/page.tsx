@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/modern-dialog';
 import { ProgressTracker } from '@/components/ui/progress-tracker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Clock, User, MessageSquare, AlertCircle, CheckCircle, CheckCheck, Plus, X, Paperclip, Download, FileText, Eye, Edit, Sparkles, Shield, UserCheck, UserX, Timer, Trash2, Image as ImageIcon, File, MoreVertical, Building2, Briefcase, UserCircle, Calendar, Hash, MapPin, PlayCircle, XCircle, Printer, Send, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Clock, User, MessageSquare, AlertCircle, CheckCircle, CheckCheck, Plus, X, Paperclip, Download, FileText, Eye, Edit, Sparkles, Shield, UserCheck, UserX, Timer, Trash2, Image as ImageIcon, File, MoreVertical, Building2, Briefcase, UserCircle, Calendar, Hash, MapPin, PlayCircle, XCircle, Printer, Send, RefreshCw, ChevronDown } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { RelatedArticles } from '@/components/knowledge/related-articles';
 import { AttachmentPreview } from '@/components/ui/attachment-preview';
@@ -236,6 +236,13 @@ export default function TicketDetailPage() {
 
   // Omni/Sociomile integration states
   const [isSendingToOmni, setIsSendingToOmni] = useState(false);
+  const [isSyncingOmniStatus, setIsSyncingOmniStatus] = useState(false);
+  const [isOmniExpanded, setIsOmniExpanded] = useState(false);
+  const [omniSyncResult, setOmniSyncResult] = useState<{
+    success?: boolean;
+    message?: string;
+    lastSynced?: Date;
+  } | null>(null);
   const [omniStatus, setOmniStatus] = useState<{
     isSentToOmni: boolean;
     sociomileTicketId?: string | null;
@@ -386,6 +393,51 @@ export default function TicketDetailPage() {
       alert(error instanceof Error ? error.message : 'Gagal mengirim ticket ke Omni');
     } finally {
       setIsSendingToOmni(false);
+    }
+  };
+
+  // Handle syncing ticket status to Omni/Sociomile
+  const handleSyncOmniStatus = async () => {
+    if (!ticket || !omniStatus.sociomileTicketId) return;
+
+    setIsSyncingOmniStatus(true);
+    setOmniSyncResult(null);
+
+    try {
+      const response = await fetch(`/api/tickets/${ticket.id}/omni/sync-status`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          status: ticket.status
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setOmniSyncResult({
+          success: false,
+          message: data.error || data.message || 'Gagal sinkronisasi status'
+        });
+        return;
+      }
+
+      setOmniSyncResult({
+        success: true,
+        message: `Status "${ticket.status}" berhasil disinkronkan ke Omni`,
+        lastSynced: new Date()
+      });
+
+    } catch (error) {
+      console.error('Error syncing Omni status:', error);
+      setOmniSyncResult({
+        success: false,
+        message: error instanceof Error ? error.message : 'Gagal sinkronisasi status'
+      });
+    } finally {
+      setIsSyncingOmniStatus(false);
     }
   };
 
@@ -1232,6 +1284,18 @@ export default function TicketDetailPage() {
                 <h1 className="text-responsive-2xl font-bold text-foreground leading-tight">
                   {ticket.title}
                 </h1>
+                {/* Branch Information */}
+                {ticket.createdBy?.branch && (
+                  <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
+                    <Building2 className="h-4 w-4" />
+                    <span className="font-medium">{ticket.createdBy.branch.name}</span>
+                    {ticket.createdBy.branch.code && (
+                      <Badge variant="outline" className="text-xs">
+                        {ticket.createdBy.branch.code}
+                      </Badge>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1589,16 +1653,33 @@ export default function TicketDetailPage() {
                 </Card>
               )}
 
-              {/* Omni/Sociomile Integration Card */}
-              {isTransactionClaimTicket(ticket) && (
-                <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/20">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-amber-900 dark:text-amber-100">
-                      <Send className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                      Integrasi Omni/Sociomile
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
+              {/* Omni/Sociomile Integration Card - Collapsible, default hidden */}
+              {isTransactionClaimTicket(ticket) && ticket?.assignedTo?.email === session?.user?.email && (
+                <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/20 overflow-hidden">
+                  <button
+                    onClick={() => setIsOmniExpanded(!isOmniExpanded)}
+                    className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-amber-100/50 dark:hover:bg-amber-900/30 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Send className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                      <span className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                        Integrasi Omni/Sociomile
+                      </span>
+                      {omniStatus.isSentToOmni && (
+                        <Badge variant="success" className="text-xs py-0 px-1.5">
+                          <CheckCheck className="h-3 w-3 mr-0.5" />
+                          Terhubung
+                        </Badge>
+                      )}
+                    </div>
+                    <ChevronDown
+                      className={`h-4 w-4 text-amber-600 dark:text-amber-400 transition-transform duration-200 ${
+                        isOmniExpanded ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+                  {isOmniExpanded && (
+                  <CardContent className="pt-0 pb-4">
                     <div className="space-y-4">
                       {/* Omni Status Display */}
                       {omniStatus.isSentToOmni && omniStatus.sociomileTicketId ? (
@@ -1634,31 +1715,84 @@ export default function TicketDetailPage() {
                             )}
                           </div>
 
+                          {/* Sync Result Notification */}
+                          {omniSyncResult && (
+                            <div className={`flex items-center gap-2 p-3 rounded-lg ${
+                              omniSyncResult.success
+                                ? 'bg-green-100 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
+                                : 'bg-red-100 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
+                            }`}>
+                              {omniSyncResult.success ? (
+                                <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+                              ) : (
+                                <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 flex-shrink-0" />
+                              )}
+                              <div className="flex-1">
+                                <p className={`text-sm ${
+                                  omniSyncResult.success
+                                    ? 'text-green-900 dark:text-green-100'
+                                    : 'text-red-900 dark:text-red-100'
+                                }`}>
+                                  {omniSyncResult.message}
+                                </p>
+                                {omniSyncResult.lastSynced && (
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {omniSyncResult.lastSynced.toLocaleTimeString('id-ID')}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
                           <div className="flex items-center justify-between gap-2 pt-2">
                             <Badge variant="success" className="flex items-center gap-1">
                               <CheckCheck className="h-3 w-3" />
-                              Tersinkronisasi
+                              Terhubung ke Omni
                             </Badge>
 
-                            <Button
-                              onClick={() => handleSendToOmni(true)}
-                              disabled={isSendingToOmni}
-                              variant="outline"
-                              size="sm"
-                              className="border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300 dark:hover:bg-amber-950"
-                            >
-                              {isSendingToOmni ? (
-                                <>
-                                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                                  Mengirim Ulang...
-                                </>
-                              ) : (
-                                <>
-                                  <RefreshCw className="h-4 w-4 mr-2" />
-                                  Kirim Ulang
-                                </>
-                              )}
-                            </Button>
+                            <div className="flex items-center gap-2">
+                              {/* Sync Status Button */}
+                              <Button
+                                onClick={handleSyncOmniStatus}
+                                disabled={isSyncingOmniStatus || isSendingToOmni}
+                                variant="outline"
+                                size="sm"
+                                className="border-blue-300 text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-950"
+                              >
+                                {isSyncingOmniStatus ? (
+                                  <>
+                                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                                    Sinkronisasi...
+                                  </>
+                                ) : (
+                                  <>
+                                    <RefreshCw className="h-4 w-4 mr-2" />
+                                    Sync Status
+                                  </>
+                                )}
+                              </Button>
+
+                              {/* Resend Button */}
+                              <Button
+                                onClick={() => handleSendToOmni(true)}
+                                disabled={isSendingToOmni || isSyncingOmniStatus}
+                                variant="outline"
+                                size="sm"
+                                className="border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300 dark:hover:bg-amber-950"
+                              >
+                                {isSendingToOmni ? (
+                                  <>
+                                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                                    Mengirim Ulang...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Send className="h-4 w-4 mr-2" />
+                                    Kirim Ulang
+                                  </>
+                                )}
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       ) : (
@@ -1673,7 +1807,7 @@ export default function TicketDetailPage() {
                           </div>
 
                           <Button
-                            onClick={handleSendToOmni}
+                            onClick={() => handleSendToOmni(false)}
                             disabled={isSendingToOmni}
                             className="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white"
                           >
@@ -1693,6 +1827,7 @@ export default function TicketDetailPage() {
                       )}
                     </div>
                   </CardContent>
+                  )}
                 </Card>
               )}
 
