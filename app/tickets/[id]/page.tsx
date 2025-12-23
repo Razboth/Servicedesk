@@ -1653,184 +1653,6 @@ export default function TicketDetailPage() {
                 </Card>
               )}
 
-              {/* Omni/Sociomile Integration Card - Collapsible, default hidden */}
-              {isTransactionClaimTicket(ticket) && ticket?.assignedTo?.email === session?.user?.email && (
-                <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/20 overflow-hidden">
-                  <button
-                    onClick={() => setIsOmniExpanded(!isOmniExpanded)}
-                    className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-amber-100/50 dark:hover:bg-amber-900/30 transition-colors"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Send className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                      <span className="text-sm font-medium text-amber-900 dark:text-amber-100">
-                        Integrasi Omni/Sociomile
-                      </span>
-                      {omniStatus.isSentToOmni && (
-                        <Badge variant="success" className="text-xs py-0 px-1.5">
-                          <CheckCheck className="h-3 w-3 mr-0.5" />
-                          Terhubung
-                        </Badge>
-                      )}
-                    </div>
-                    <ChevronDown
-                      className={`h-4 w-4 text-amber-600 dark:text-amber-400 transition-transform duration-200 ${
-                        isOmniExpanded ? 'rotate-180' : ''
-                      }`}
-                    />
-                  </button>
-                  {isOmniExpanded && (
-                  <CardContent className="pt-0 pb-4">
-                    <div className="space-y-4">
-                      {/* Omni Status Display */}
-                      {omniStatus.isSentToOmni && omniStatus.sociomileTicketId ? (
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-2 p-3 bg-green-100 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-                            <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0" />
-                            <div className="flex-1">
-                              <p className="text-sm font-medium text-green-900 dark:text-green-100">
-                                Ticket sudah dikirim ke Omni/Sociomile
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div className="p-3 bg-white dark:bg-gray-800 border border-border rounded-lg">
-                              <Label className="text-xs text-muted-foreground mb-1 block">
-                                Sociomile Ticket ID
-                              </Label>
-                              <p className="font-mono text-sm font-medium text-foreground break-all">
-                                {omniStatus.sociomileTicketId}
-                              </p>
-                            </div>
-
-                            {omniStatus.sociomileTicketNumber && (
-                              <div className="p-3 bg-white dark:bg-gray-800 border border-border rounded-lg">
-                                <Label className="text-xs text-muted-foreground mb-1 block">
-                                  Nomor Ticket Sociomile
-                                </Label>
-                                <p className="font-mono text-sm font-medium text-foreground">
-                                  #{omniStatus.sociomileTicketNumber}
-                                </p>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Sync Result Notification */}
-                          {omniSyncResult && (
-                            <div className={`flex items-center gap-2 p-3 rounded-lg ${
-                              omniSyncResult.success
-                                ? 'bg-green-100 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
-                                : 'bg-red-100 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
-                            }`}>
-                              {omniSyncResult.success ? (
-                                <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0" />
-                              ) : (
-                                <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 flex-shrink-0" />
-                              )}
-                              <div className="flex-1">
-                                <p className={`text-sm ${
-                                  omniSyncResult.success
-                                    ? 'text-green-900 dark:text-green-100'
-                                    : 'text-red-900 dark:text-red-100'
-                                }`}>
-                                  {omniSyncResult.message}
-                                </p>
-                                {omniSyncResult.lastSynced && (
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    {omniSyncResult.lastSynced.toLocaleTimeString('id-ID')}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          )}
-
-                          <div className="flex items-center justify-between gap-2 pt-2">
-                            <Badge variant="success" className="flex items-center gap-1">
-                              <CheckCheck className="h-3 w-3" />
-                              Terhubung ke Omni
-                            </Badge>
-
-                            <div className="flex items-center gap-2">
-                              {/* Sync Status Button */}
-                              <Button
-                                onClick={handleSyncOmniStatus}
-                                disabled={isSyncingOmniStatus || isSendingToOmni}
-                                variant="outline"
-                                size="sm"
-                                className="border-blue-300 text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-950"
-                              >
-                                {isSyncingOmniStatus ? (
-                                  <>
-                                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                                    Sinkronisasi...
-                                  </>
-                                ) : (
-                                  <>
-                                    <RefreshCw className="h-4 w-4 mr-2" />
-                                    Sync Status
-                                  </>
-                                )}
-                              </Button>
-
-                              {/* Resend Button */}
-                              <Button
-                                onClick={() => handleSendToOmni(true)}
-                                disabled={isSendingToOmni || isSyncingOmniStatus}
-                                variant="outline"
-                                size="sm"
-                                className="border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300 dark:hover:bg-amber-950"
-                              >
-                                {isSendingToOmni ? (
-                                  <>
-                                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                                    Mengirim Ulang...
-                                  </>
-                                ) : (
-                                  <>
-                                    <Send className="h-4 w-4 mr-2" />
-                                    Kirim Ulang
-                                  </>
-                                )}
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-2 p-3 bg-amber-100 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-                            <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
-                            <div className="flex-1">
-                              <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
-                                Ticket ini adalah Klaim Transaksi dan dapat dikirim ke Omni/Sociomile
-                              </p>
-                            </div>
-                          </div>
-
-                          <Button
-                            onClick={() => handleSendToOmni(false)}
-                            disabled={isSendingToOmni}
-                            className="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white"
-                          >
-                            {isSendingToOmni ? (
-                              <>
-                                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                                Mengirim ke Omni...
-                              </>
-                            ) : (
-                              <>
-                                <Send className="h-4 w-4 mr-2" />
-                                Kirim ke Omni
-                              </>
-                            )}
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                  )}
-                </Card>
-              )}
-
               {/* Tasks Card */}
               {tasks.length > 0 && (
                 <Card>
@@ -2345,6 +2167,111 @@ export default function TicketDetailPage() {
                       )}
                     </div>
                   </CardContent>
+                </Card>
+              )}
+
+              {/* Omni/Sociomile Integration Card - Sidebar, Collapsible */}
+              {isTransactionClaimTicket(ticket) && ticket?.assignedTo?.email === session?.user?.email && (
+                <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/20 overflow-hidden">
+                  <button
+                    onClick={() => setIsOmniExpanded(!isOmniExpanded)}
+                    className="w-full px-3 py-2 flex items-center justify-between text-left hover:bg-amber-100/50 dark:hover:bg-amber-900/30 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Send className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                      <span className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                        Omni
+                      </span>
+                      {omniStatus.isSentToOmni && (
+                        <Badge variant="success" className="text-xs py-0 px-1.5">
+                          <CheckCheck className="h-3 w-3" />
+                        </Badge>
+                      )}
+                    </div>
+                    <ChevronDown
+                      className={`h-4 w-4 text-amber-600 dark:text-amber-400 transition-transform duration-200 ${
+                        isOmniExpanded ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+                  {isOmniExpanded && (
+                    <CardContent className="pt-0 pb-3 px-3">
+                      <div className="space-y-2">
+                        {omniStatus.isSentToOmni && omniStatus.sociomileTicketId ? (
+                          <>
+                            <div className="p-2 bg-white dark:bg-gray-800 border border-border rounded text-xs">
+                              <span className="text-muted-foreground">ID: </span>
+                              <span className="font-mono break-all">{omniStatus.sociomileTicketId}</span>
+                            </div>
+                            {omniStatus.sociomileTicketNumber && (
+                              <div className="p-2 bg-white dark:bg-gray-800 border border-border rounded text-xs">
+                                <span className="text-muted-foreground">No: </span>
+                                <span className="font-mono">#{omniStatus.sociomileTicketNumber}</span>
+                              </div>
+                            )}
+                            {omniSyncResult && (
+                              <div className={`p-2 rounded text-xs ${
+                                omniSyncResult.success
+                                  ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200'
+                                  : 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200'
+                              }`}>
+                                {omniSyncResult.message}
+                              </div>
+                            )}
+                            <div className="flex flex-col gap-1.5">
+                              <Button
+                                onClick={handleSyncOmniStatus}
+                                disabled={isSyncingOmniStatus || isSendingToOmni}
+                                variant="outline"
+                                size="sm"
+                                className="w-full text-xs h-7"
+                              >
+                                {isSyncingOmniStatus ? (
+                                  <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                                ) : (
+                                  <RefreshCw className="h-3 w-3 mr-1" />
+                                )}
+                                Sync Status
+                              </Button>
+                              <Button
+                                onClick={() => handleSendToOmni(true)}
+                                disabled={isSendingToOmni || isSyncingOmniStatus}
+                                variant="outline"
+                                size="sm"
+                                className="w-full text-xs h-7 border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300"
+                              >
+                                {isSendingToOmni ? (
+                                  <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                                ) : (
+                                  <Send className="h-3 w-3 mr-1" />
+                                )}
+                                Kirim Ulang
+                              </Button>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-xs text-amber-800 dark:text-amber-200">
+                              Klaim Transaksi - belum dikirim ke Omni
+                            </p>
+                            <Button
+                              onClick={() => handleSendToOmni(false)}
+                              disabled={isSendingToOmni}
+                              size="sm"
+                              className="w-full text-xs h-7 bg-amber-600 hover:bg-amber-700 text-white"
+                            >
+                              {isSendingToOmni ? (
+                                <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                              ) : (
+                                <Send className="h-3 w-3 mr-1" />
+                              )}
+                              Kirim ke Omni
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </CardContent>
+                  )}
                 </Card>
               )}
 
