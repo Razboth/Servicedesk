@@ -17,6 +17,8 @@ import {
   sendToOmniIfTransactionClaim,
   OmniTicketData
 } from '@/lib/services/omni.service';
+import { logger } from '@/lib/services/logging.service';
+import { metrics } from '@/lib/services/metrics.service';
 
 // Helper function to determine sort order
 function getSortOrder(sortBy: string, sortOrder: string) {
@@ -1684,6 +1686,21 @@ export async function POST(request: NextRequest) {
         console.error('[Tickets] Omni integration error:', omniError);
       }
     }
+
+    // Log ticket creation for Grafana/Loki
+    logger.ticketCreated(ticket.id, ticket.ticketNumber, session.user.id, {
+      priority: ticket.priority,
+      serviceId: validatedData.serviceId,
+      serviceName: fullTicket?.service?.name,
+      branchCode: fullTicket?.branch?.code,
+      status: ticket.status,
+      isConfidential: isConfidential,
+      hasAttachments: attachmentData.length > 0,
+      fieldValuesCount: processedFieldValues.length
+    });
+
+    // Track metrics for Prometheus
+    metrics.ticketCreated(ticket.priority, fullTicket?.service?.name);
 
     return NextResponse.json(ticket, { status: 201 });
   } catch (error) {

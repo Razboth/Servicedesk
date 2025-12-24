@@ -258,13 +258,13 @@ export async function PUT(
     // Sync status to Omni if ticket was sent to Omni (non-blocking)
     if (existingTicket.sociomileTicketId) {
       syncStatusToOmniIfApplicable(
-        id,
+        updatedTicket.ticketNumber,
         existingTicket.sociomileTicketId,
         validatedData.status
       ).then(result => {
         if (result) {
           console.log('[Omni] Status sync result:', {
-            ticketId: id,
+            ticketNumber: updatedTicket.ticketNumber,
             success: result.success,
             message: result.message
           });
@@ -406,13 +406,13 @@ export async function PATCH(
     // Sync status to Omni if ticket was sent to Omni (non-blocking)
     if (existingTicket.sociomileTicketId) {
       syncStatusToOmniIfApplicable(
-        id,
+        updatedTicket.ticketNumber,
         existingTicket.sociomileTicketId,
         validatedData.status
       ).then(result => {
         if (result) {
           console.log('[Omni] API status sync result:', {
-            ticketId: id,
+            ticketNumber: updatedTicket.ticketNumber,
             success: result.success,
             message: result.message
           });

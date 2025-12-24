@@ -7,6 +7,8 @@ import { emitTicketUpdated, emitTicketAssigned } from '@/lib/services/socket.ser
 import { createTicketNotifications, createNotification } from '@/lib/notifications';
 import { PriorityValidator, type PriorityValidationContext } from '@/lib/priority-validation';
 import { syncStatusToOmniIfApplicable } from '@/lib/services/omni.service';
+import { logger } from '@/lib/services/logging.service';
+import { metrics } from '@/lib/services/metrics.service';
 
 // Validation schema for updating tickets
 const updateTicketSchema = z.object({
@@ -461,6 +463,28 @@ export async function PATCH(
           newValues: changes.status ? { status: changes.status.new, updatedBy: session.user.name || session.user.email } : {}
         },
       });
+
+      // Log status change for Grafana/Loki
+      if (changes.status) {
+        logger.ticketStatusChanged(
+          id,
+          updatedTicket.ticketNumber,
+          session.user.id,
+          changes.status.old,
+          changes.status.new
+        );
+
+        // Track resolution metrics
+        if (changes.status.new === 'RESOLVED') {
+          const createdAt = new Date(updatedTicket.createdAt);
+          const resolutionTimeHours = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60);
+          metrics.ticketResolved(updatedTicket.priority, resolutionTimeHours);
+          logger.ticketResolved(id, updatedTicket.ticketNumber, session.user.id, resolutionTimeHours);
+        } else if (changes.status.new === 'CLOSED') {
+          metrics.ticketClosed(updatedTicket.priority);
+          logger.ticketClosed(id, updatedTicket.ticketNumber, session.user.id);
+        }
+      }
     }
 
     // Update vendor ticket status based on main ticket status changes
@@ -554,13 +578,13 @@ export async function PATCH(
       // Sync status to Omni if ticket was sent to Omni (non-blocking)
       if (existingTicket.sociomileTicketId) {
         syncStatusToOmniIfApplicable(
-          existingTicket.id,
+          updatedTicket.ticketNumber,
           existingTicket.sociomileTicketId,
           validatedData.status
         ).then(result => {
           if (result) {
             console.log('[Omni] PATCH status sync result:', {
-              ticketId: existingTicket.id,
+              ticketNumber: updatedTicket.ticketNumber,
               success: result.success,
               message: result.message
             });
@@ -607,6 +631,14 @@ export async function PATCH(
             ticketTitle: updatedTicket.title
           }
         }).catch(err => console.error('Failed to create assignment notification:', err));
+
+        // Log assignment for Grafana/Loki
+        logger.ticketAssigned(
+          id,
+          updatedTicket.ticketNumber,
+          session.user.id,
+          validatedData.assignedToId
+        );
       }
     }
     
@@ -842,13 +874,13 @@ export async function PUT(
       // Sync status to Omni if ticket was sent to Omni (non-blocking)
       if (existingTicket.sociomileTicketId) {
         syncStatusToOmniIfApplicable(
-          existingTicket.id,
+          updatedTicket.ticketNumber,
           existingTicket.sociomileTicketId,
           validatedData.status
         ).then(result => {
           if (result) {
             console.log('[Omni] PUT status sync result:', {
-              ticketId: existingTicket.id,
+              ticketNumber: updatedTicket.ticketNumber,
               success: result.success,
               message: result.message
             });

@@ -5,6 +5,9 @@
  * Sends ticket data to Omni API whenever a Transaction Claims ticket is created.
  */
 
+import { logger } from '@/lib/services/logging.service';
+import { metrics } from '@/lib/services/metrics.service';
+
 // Transaction Claims Category IDs
 const TRANSACTION_CLAIMS_CATEGORY_ID = 'cmekrqi45001qhluspcsta20x';
 const ATM_SERVICES_CATEGORY_ID = 'cmekrqi3t001ghlusklheksqz';
@@ -331,6 +334,16 @@ export async function createOmniTicket(payload: OmniHelpdeskPayload): Promise<Om
         ticketId: data.data?.ticketId,
         ticketNumber: data.data?.ticket_number
       });
+
+      // Log for Grafana/Loki and track metrics
+      logger.omniTicketCreated(
+        String(payload.nomorTicketHelpdesk),
+        String(payload.nomorTicketHelpdesk),
+        data.data?.ticketId || '',
+        String(data.data?.ticket_number || '')
+      );
+      metrics.omniTicketSent(true);
+
       return {
         success: true,
         message: data.message || 'success',
@@ -345,6 +358,16 @@ export async function createOmniTicket(payload: OmniHelpdeskPayload): Promise<Om
         errors: data.errors,
         message: data.message
       });
+
+      // Log failure for Grafana/Loki and track metrics
+      logger.omniTicketFailed(
+        String(payload.nomorTicketHelpdesk),
+        String(payload.nomorTicketHelpdesk),
+        data.message || 'Unknown error',
+        data.code || response.status
+      );
+      metrics.omniTicketSent(false);
+
       return {
         success: false,
         message: data.message || data.errors?.message || 'Failed to create Omni ticket',
@@ -427,6 +450,7 @@ export interface OmniStatusUpdatePayload {
   sociomile_ticket_id: string;
   bsg_ticket_id: string;
   status: string;
+  agent: string;  // Required: Agent name performing the update
 }
 
 /**
@@ -451,13 +475,13 @@ export function mapBsgStatusToOmni(bsgStatus: string): string | null {
  * Update ticket status in Omni/Sociomile platform
  *
  * @param sociomileTicketId - The Sociomile ticket ID
- * @param bsgTicketId - The BSG ServiceDesk ticket ID
+ * @param bsgTicketNumber - The BSG ServiceDesk ticket number (e.g., "16023")
  * @param bsgStatus - The new BSG status
  * @returns Promise with Omni API response
  */
 export async function updateOmniTicketStatus(
   sociomileTicketId: string,
-  bsgTicketId: string,
+  bsgTicketNumber: string,
   bsgStatus: string
 ): Promise<OmniStatusUpdateResponse> {
   if (!OMNI_API_TOKEN) {
@@ -480,19 +504,23 @@ export async function updateOmniTicketStatus(
     };
   }
 
-  // Build the update status URL
-  const OMNI_UPDATE_STATUS_URL = process.env.OMNI_UPDATE_STATUS_URL || 'https://api-sm.s45.in/bank-sulut/updatestatus';
+  // Extract numeric ticket number (e.g., "TKT-2025-16023" -> "16023")
+  const numericTicketNumber = bsgTicketNumber.replace(/\D/g, '').slice(-5) || bsgTicketNumber;
+
+  // Build the update status URL (note: hyphenated 'update-status')
+  const OMNI_UPDATE_STATUS_URL = process.env.OMNI_UPDATE_STATUS_URL || 'https://api-sm.s45.in/bank-sulut/update-status';
   const url = `${OMNI_UPDATE_STATUS_URL}?client_secret_key=${OMNI_API_TOKEN}`;
 
   const payload: OmniStatusUpdatePayload = {
     sociomile_ticket_id: sociomileTicketId,
-    bsg_ticket_id: bsgTicketId,
-    status: omniStatus
+    bsg_ticket_id: numericTicketNumber,
+    status: omniStatus,
+    agent: 'BSG-Helpdesk Automated'  // Required agent identifier
   };
 
   console.log('[Omni] Updating ticket status:', {
     sociomileTicketId,
-    bsgTicketId,
+    bsgTicketNumber: numericTicketNumber,
     bsgStatus,
     omniStatus
   });
@@ -533,6 +561,11 @@ export async function updateOmniTicketStatus(
         sociomileTicketId,
         newStatus: omniStatus
       });
+
+      // Log for Grafana/Loki and track metrics
+      logger.omniStatusUpdated(numericTicketNumber, numericTicketNumber, omniStatus);
+      metrics.omniStatusUpdate(true);
+
       return {
         success: true,
         message: data.message || 'Status updated successfully',
@@ -543,6 +576,11 @@ export async function updateOmniTicketStatus(
         status: response.status,
         responseData: data
       });
+
+      // Log failure for Grafana/Loki and track metrics
+      logger.omniStatusUpdateFailed(numericTicketNumber, numericTicketNumber, data.message || 'Unknown error');
+      metrics.omniStatusUpdate(false);
+
       return {
         success: false,
         message: data.message || 'Failed to update Omni ticket status',
@@ -574,13 +612,13 @@ export async function updateOmniTicketStatus(
  * Sync ticket status to Omni if the ticket was previously sent to Omni
  * This is a convenience function that checks if the ticket has a Sociomile ID and syncs status
  *
- * @param ticketId - The BSG ticket ID
+ * @param ticketNumber - The BSG ticket number (e.g., "16023" or "TKT-2025-16023")
  * @param sociomileTicketId - The Sociomile ticket ID (if exists)
  * @param newStatus - The new BSG status
  * @returns Promise with Omni response or null if not applicable
  */
 export async function syncStatusToOmniIfApplicable(
-  ticketId: string,
+  ticketNumber: string,
   sociomileTicketId: string | null | undefined,
   newStatus: string
 ): Promise<OmniStatusUpdateResponse | null> {
@@ -596,6 +634,6 @@ export async function syncStatusToOmniIfApplicable(
     return null;
   }
 
-  // Sync the status
-  return await updateOmniTicketStatus(sociomileTicketId, ticketId, newStatus);
+  // Sync the status using ticket number
+  return await updateOmniTicketStatus(sociomileTicketId, ticketNumber, newStatus);
 }

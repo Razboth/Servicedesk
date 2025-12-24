@@ -134,6 +134,12 @@ export async function POST(
             email: true
           }
         },
+        assignedTo: {
+          select: {
+            id: true,
+            email: true
+          }
+        },
         fieldValues: {
           include: {
             field: {
@@ -148,6 +154,14 @@ export async function POST(
 
     if (!ticket) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
+    }
+
+    // Only the assigned technician can send to Omni
+    if (session.user.role === 'TECHNICIAN' && ticket.assignedTo?.email !== session.user.email) {
+      return NextResponse.json(
+        { error: 'Hanya teknisi yang ditugaskan yang dapat mengirim tiket ke Omni' },
+        { status: 403 }
+      );
     }
 
     // Check if this is a Transaction Claims ticket

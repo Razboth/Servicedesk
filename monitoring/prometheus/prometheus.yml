@@ -1,0 +1,19 @@
+# Prometheus configuration for BSG ServiceDesk monitoring
+# Add this configuration to your Prometheus server
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # BSG ServiceDesk metrics
+  - job_name: 'servicedesk'
+    static_configs:
+      - targets: ['servicedesk-host:3000']  # Replace with your ServiceDesk host
+    metrics_path: '/api/metrics'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+# Alerting rules (optional)
+# rule_files:
+#   - 'servicedesk_alerts.yml'

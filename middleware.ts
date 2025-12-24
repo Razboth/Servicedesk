@@ -44,6 +44,11 @@ export async function middleware(request: NextRequest) {
       return NextResponse.next();
     }
 
+    // Allow metrics endpoint for Prometheus scraping (public for monitoring)
+    if (pathname === '/api/metrics') {
+      return NextResponse.next();
+    }
+
     // Allow monitoring API endpoints with API key authentication
     // These endpoints have their own API key authentication
     const monitoringApiRoutes = [

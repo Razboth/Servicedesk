@@ -4,6 +4,8 @@ import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import { headers } from 'next/headers'
 import { getConfig } from '@/lib/env-config'
+import { logger } from '@/lib/services/logging.service'
+import { metrics } from '@/lib/services/metrics.service'
 
 const prisma = new PrismaClient()
 
@@ -135,6 +137,19 @@ async function recordLoginAttempt(username: string, success: boolean, ipAddress?
       lockTriggered: shouldLock
     }
   })
+
+  // Log for Grafana/Loki and track metrics
+  if (success) {
+    logger.loginSuccess(user.id, user.email, ipAddress, userAgent)
+    metrics.loginAttempt(true)
+  } else {
+    logger.loginFailed(user.email, 'invalid_credentials', ipAddress, userAgent)
+    metrics.loginAttempt(false, 'invalid_credentials')
+
+    if (shouldLock) {
+      logger.accountLocked(user.email, `${MAX_LOGIN_ATTEMPTS} failed attempts`, ipAddress)
+    }
+  }
 }
 
 // Determine if secure cookies should be used (based on HTTPS, not just production)
