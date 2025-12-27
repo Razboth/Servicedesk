@@ -22,11 +22,11 @@ export default async function CreateKnowledgeArticlePage() {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-4xl">
+    <div className="container mx-auto p-6 max-w-4xl overflow-x-hidden">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Create Knowledge Article</h1>
-        <p className="text-gray-600 mt-1">
+        <h1 className="text-3xl font-bold text-gray-900 break-words">Create Knowledge Article</h1>
+        <p className="text-gray-600 mt-1 break-words">
           Share your knowledge and help others solve similar issues
         </p>
       </div>

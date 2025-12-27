@@ -183,43 +183,44 @@ export default function KnowledgeCreateForm() {
   const selectedSubcategory = selectedCategory?.subcategories?.find(sub => sub.id === subcategoryId)
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 overflow-x-hidden">
       {/* Header Actions */}
-      <div className="flex items-center justify-between">
-        <Link href="/knowledge">
-          <Button variant="outline" className="flex items-center gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            Back to Knowledge Base
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <Link href="/knowledge" className="w-full sm:w-auto">
+          <Button variant="outline" className="flex items-center gap-2 w-full sm:w-auto">
+            <ArrowLeft className="h-4 w-4 flex-shrink-0" />
+            <span className="truncate">Back to Knowledge Base</span>
           </Button>
         </Link>
-        
-        <div className="flex gap-2">
+
+        <div className="flex gap-2 w-full sm:w-auto">
           <Button
             type="button"
             variant="outline"
             onClick={() => reset()}
             disabled={isSubmitting || loading}
+            className="flex-1 sm:flex-initial"
           >
             Reset
           </Button>
           <Button
             type="submit"
             disabled={isSubmitting || loading}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 flex-1 sm:flex-initial"
           >
             {isSubmitting || loading ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white flex-shrink-0"></div>
             ) : (
-              <Save className="h-4 w-4" />
+              <Save className="h-4 w-4 flex-shrink-0" />
             )}
-            {isSubmitting || loading ? 'Creating...' : 'Create Article'}
+            <span className="truncate">{isSubmitting || loading ? 'Creating...' : 'Create Article'}</span>
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 min-w-0">
         {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-6 min-w-0">
           {/* Basic Information */}
           <Card>
             <CardHeader>
@@ -316,11 +317,11 @@ export default function KnowledgeCreateForm() {
                   <Label>Selected Files ({attachments.length})</Label>
                   <div className="space-y-2">
                     {attachments.map((file, index) => (
-                      <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-gray-500" />
-                          <span className="text-sm text-gray-700">{file.name}</span>
-                          <span className="text-xs text-gray-500">
+                      <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded gap-2 min-w-0">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <FileText className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                          <span className="text-sm text-gray-700 truncate">{file.name}</span>
+                          <span className="text-xs text-gray-500 whitespace-nowrap flex-shrink-0">
                             ({(file.size / 1024 / 1024).toFixed(2)} MB)
                           </span>
                         </div>
@@ -331,6 +332,7 @@ export default function KnowledgeCreateForm() {
                           onClick={() => {
                             setAttachments(prev => prev.filter((_, i) => i !== index))
                           }}
+                          className="flex-shrink-0"
                         >
                           <Trash2 className="h-4 w-4 text-red-500" />
                         </Button>
@@ -344,7 +346,7 @@ export default function KnowledgeCreateForm() {
         </div>
 
         {/* Sidebar */}
-        <div className="space-y-6">
+        <div className="space-y-6 min-w-0">
           {/* Article Settings */}
           <Card>
             <CardHeader>
@@ -500,18 +502,18 @@ export default function KnowledgeCreateForm() {
               </div>
 
               {tags && tags.length > 0 && (
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 max-w-full">
                   {tags.map((tag, index) => (
                     <Badge
                       key={index}
                       variant="secondary"
-                      className="flex items-center gap-1"
+                      className="flex items-center gap-1 max-w-full"
                     >
-                      {tag}
+                      <span className="truncate max-w-[150px]">{tag}</span>
                       <button
                         type="button"
                         onClick={() => removeTag(tag)}
-                        className="ml-1 hover:text-red-500"
+                        className="ml-1 hover:text-red-500 flex-shrink-0"
                       >
                         <X className="h-3 w-3" />
                       </button>

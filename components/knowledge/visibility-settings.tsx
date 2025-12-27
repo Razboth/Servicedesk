@@ -292,24 +292,25 @@ export function VisibilitySettings({
                   </Button>
                 </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3">
                 {ROLES.map((role) => (
                   <div
                     key={role.value}
-                    className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                    className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors min-w-0"
                   >
                     <Checkbox
                       id={`role-${role.value}`}
                       checked={visibleToRoles.includes(role.value)}
                       onCheckedChange={() => handleRoleToggle(role.value)}
                       disabled={disabled}
+                      className="flex-shrink-0"
                     />
                     <Label
                       htmlFor={`role-${role.value}`}
-                      className="flex-1 cursor-pointer"
+                      className="flex-1 cursor-pointer min-w-0"
                     >
-                      <span className="font-medium">{role.label}</span>
-                      <p className="text-xs text-muted-foreground">
+                      <span className="font-medium truncate block">{role.label}</span>
+                      <p className="text-xs text-muted-foreground break-words">
                         {role.description}
                       </p>
                     </Label>
@@ -371,20 +372,20 @@ export function VisibilitySettings({
 
               {/* Selected Branches Preview */}
               {visibleToBranches.length > 0 && (
-                <div className="flex flex-wrap gap-1">
+                <div className="flex flex-wrap gap-1 max-w-full">
                   {visibleToBranches.map((branchId) => {
                     const branch = branches.find(b => b.id === branchId);
                     return (
                       <Badge
                         key={branchId}
                         variant="secondary"
-                        className="flex items-center gap-1"
+                        className="flex items-center gap-1 max-w-full"
                       >
-                        {branch?.name || branchId}
+                        <span className="truncate max-w-[200px]">{branch?.name || branchId}</span>
                         <button
                           type="button"
                           onClick={() => handleBranchToggle(branchId)}
-                          className="ml-1 hover:text-destructive"
+                          className="ml-1 hover:text-destructive flex-shrink-0"
                           disabled={disabled}
                         >
                           <X className="h-3 w-3" />
@@ -411,7 +412,7 @@ export function VisibilitySettings({
                       filteredBranches.map((branch) => (
                         <div
                           key={branch.id}
-                          className={`flex items-center space-x-3 p-2 rounded hover:bg-muted/50 transition-colors cursor-pointer ${
+                          className={`flex items-center space-x-3 p-2 rounded hover:bg-muted/50 transition-colors cursor-pointer min-w-0 ${
                             visibleToBranches.includes(branch.id) ? 'bg-muted' : ''
                           }`}
                           onClick={() => !disabled && handleBranchToggle(branch.id)}
@@ -420,10 +421,11 @@ export function VisibilitySettings({
                             checked={visibleToBranches.includes(branch.id)}
                             onCheckedChange={() => handleBranchToggle(branch.id)}
                             disabled={disabled}
+                            className="flex-shrink-0"
                           />
-                          <div className="flex-1">
-                            <span className="text-sm font-medium">{branch.name}</span>
-                            <span className="text-xs text-muted-foreground ml-2">
+                          <div className="flex-1 min-w-0">
+                            <span className="text-sm font-medium truncate block">{branch.name}</span>
+                            <span className="text-xs text-muted-foreground">
                               ({branch.code})
                             </span>
                           </div>
