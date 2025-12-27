@@ -16,6 +16,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Search, ChevronRight, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { showApiErrorToast, showSimpleErrorToast } from '@/components/ui/error-toast';
+import { FormErrorSummary } from '@/components/ui/form-error-summary';
 
 interface Service {
   id: string;
@@ -462,13 +464,12 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
         console.log('Loaded categories:', data);
         setCategories(data);
       } else {
-        const error = await response.json();
-        console.error('Failed to load categories:', response.status, error);
-        toast.error(error.error || 'Failed to load categories');
+        console.error('Failed to load categories:', response.status);
+        await showApiErrorToast(response, 'Gagal memuat kategori');
       }
     } catch (error) {
       console.error('Error loading categories:', error);
-      toast.error('Failed to load service categories');
+      showSimpleErrorToast('Gagal memuat kategori layanan', 'Silakan coba lagi');
     } finally {
       setIsLoading(false);
     }
@@ -550,13 +551,12 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
         console.log('Loaded services:', data);
         setServices(data);
       } else {
-        const error = await response.json();
-        console.error('Failed to load services:', response.status, error);
-        toast.error(error.error || 'Failed to load services');
+        console.error('Failed to load services:', response.status);
+        await showApiErrorToast(response, 'Gagal memuat layanan');
       }
     } catch (error) {
       console.error('Error loading services:', error);
-      toast.error('Failed to load services');
+      showSimpleErrorToast('Gagal memuat layanan', 'Silakan coba lagi');
     } finally {
       setIsLoading(false);
     }
@@ -569,7 +569,10 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
     
     for (const file of files) {
       if (file.size > maxSize) {
-        toast.error(`File ${file.name} is too large. Maximum size is 10MB.`);
+        showSimpleErrorToast(
+          `File ${file.name} terlalu besar`,
+          'Ukuran maksimal adalah 10MB'
+        );
         continue;
       }
       validFiles.push(file);
@@ -739,7 +742,7 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
           });
         } catch (error) {
           console.error('Error processing file:', file.name, error);
-          toast.error(`Failed to process file: ${file.name}`);
+          showSimpleErrorToast(`Gagal memproses file: ${file.name}`, 'Silakan coba file lain');
         }
       }
 
@@ -767,23 +770,16 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
 
       if (response.ok) {
         const ticket = await response.json();
-        toast.success(`Ticket ${ticket.ticketNumber} created successfully`);
+        toast.success(`Tiket ${ticket.ticketNumber} berhasil dibuat`);
         onSuccess?.();
         router.push('/tickets');
       } else {
-        const error = await response.json();
-        console.error('Failed to create ticket:', error);
-        if (error.details) {
-          // Show validation errors
-          const errorMessages = error.details.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(', ');
-          toast.error(`Validation error: ${errorMessages}`);
-        } else {
-          toast.error(error.error || 'Failed to create ticket');
-        }
+        console.error('Failed to create ticket:', response.status);
+        await showApiErrorToast(response, 'Gagal membuat tiket');
       }
     } catch (error) {
       console.error('Error creating ticket:', error);
-      toast.error('Failed to create ticket');
+      showSimpleErrorToast('Gagal membuat tiket', 'Terjadi kesalahan sistem. Silakan coba lagi.');
     } finally {
       setIsSubmitting(false);
     }
@@ -1272,6 +1268,22 @@ export function TicketForm({ onSuccess, onCancel }: TicketFormProps) {
       {/* Ticket Form */}
       {selectedService && (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          {/* Form Error Summary */}
+          <FormErrorSummary
+            errors={errors}
+            fieldLabels={{
+              title: 'Judul',
+              description: 'Deskripsi',
+              serviceId: 'Layanan',
+              priority: 'Prioritas',
+              category: 'Kategori ITIL',
+              issueClassification: 'Klasifikasi Masalah',
+              categoryId: 'Kategori',
+              subcategoryId: 'Subkategori',
+              itemId: 'Item'
+            }}
+          />
+
           <Card>
             <CardHeader>
               <CardTitle>Ticket Details</CardTitle>

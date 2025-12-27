@@ -19,6 +19,12 @@ import {
 } from '@/lib/services/omni.service';
 import { logger } from '@/lib/services/logging.service';
 import { metrics } from '@/lib/services/metrics.service';
+import {
+  createErrorResponse,
+  handleZodError,
+  handleUnknownError,
+  ErrorCode
+} from '@/lib/errors/api-error-response';
 
 // Helper function to determine sort order
 function getSortOrder(sortBy: string, sortOrder: string) {
@@ -83,7 +89,10 @@ export async function GET(request: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return createErrorResponse(ErrorCode.AUTH_UNAUTHORIZED, {
+        path: '/api/tickets',
+        suggestion: 'Silakan login terlebih dahulu'
+      });
     }
 
     const { searchParams } = new URL(request.url);
@@ -153,10 +162,12 @@ export async function GET(request: NextRequest) {
     } else {
       // User explicitly requested confidential tickets - check permissions
       if (!['MANAGER', 'MANAGER_IT'].includes(session.user.role)) {
-        return NextResponse.json(
-          { error: 'Insufficient permissions to access confidential tickets' },
-          { status: 403 }
-        );
+        return createErrorResponse(ErrorCode.AUTH_FORBIDDEN, {
+          message: 'Tidak memiliki akses ke tiket konfidensial',
+          details: 'Hanya Manager, Manager IT, atau Security Analyst yang dapat mengakses tiket konfidensial',
+          path: '/api/tickets',
+          suggestion: 'Hubungi administrator jika Anda memerlukan akses'
+        });
       }
     }
 
@@ -442,10 +453,12 @@ export async function GET(request: NextRequest) {
     if (securityClassification) {
       // Only allow security classification filtering for authorized roles
       if (!['ADMIN', 'SUPER_ADMIN', 'SECURITY_ANALYST', 'MANAGER', 'MANAGER_IT'].includes(session.user.role)) {
-        return NextResponse.json(
-          { error: 'Insufficient permissions to filter by security classification' },
-          { status: 403 }
-        );
+        return createErrorResponse(ErrorCode.AUTH_FORBIDDEN, {
+          message: 'Tidak memiliki akses untuk filter klasifikasi keamanan',
+          details: 'Hanya Admin, Super Admin, Security Analyst, Manager, atau Manager IT yang dapat menggunakan filter ini',
+          path: '/api/tickets',
+          suggestion: 'Hubungi administrator jika Anda memerlukan akses'
+        });
       }
       where.securityClassification = securityClassification;
     }
@@ -932,10 +945,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('Error fetching tickets:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleUnknownError(error, { path: '/api/tickets' });
   }
 }
 
@@ -947,15 +957,20 @@ export async function POST(request: NextRequest) {
   try {
     session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return createErrorResponse(ErrorCode.AUTH_UNAUTHORIZED, {
+        path: '/api/tickets',
+        suggestion: 'Silakan login terlebih dahulu'
+      });
     }
 
     // MANAGER role cannot create tickets - they can only approve them
     if (session.user.role === 'MANAGER') {
-      return NextResponse.json(
-        { error: 'Managers are not allowed to create tickets. Managers can only approve tickets.' },
-        { status: 403 }
-      );
+      return createErrorResponse(ErrorCode.AUTH_FORBIDDEN, {
+        message: 'Manager tidak diizinkan membuat tiket',
+        details: 'Role Manager hanya dapat melakukan approval tiket, tidak dapat membuat tiket baru',
+        path: '/api/tickets',
+        suggestion: 'Gunakan akun dengan role User atau Technician untuk membuat tiket'
+      });
     }
 
     // Debug logging for session
@@ -971,7 +986,12 @@ export async function POST(request: NextRequest) {
     
     if (!userExists) {
       console.error('User not found in database:', session.user.id);
-      return NextResponse.json({ error: 'User not found' }, { status: 400 });
+      return createErrorResponse(ErrorCode.RESOURCE_NOT_FOUND, {
+        message: 'User tidak ditemukan',
+        details: `User ID ${session.user.id} tidak ditemukan dalam database`,
+        path: '/api/tickets',
+        suggestion: 'Silakan logout dan login kembali'
+      });
     }
 
     const body = await request.json();
@@ -1084,11 +1104,14 @@ export async function POST(request: NextRequest) {
         );
       } else {
         // No suggestion available, return error
-        return NextResponse.json({
-          error: 'Priority validation failed',
-          details: priorityValidation.errors,
-          requiresJustification: priorityValidation.requiresJustification
-        }, { status: 400 });
+        return createErrorResponse(ErrorCode.VALIDATION_FAILED, {
+          message: 'Validasi prioritas gagal',
+          details: priorityValidation.errors.join('. '),
+          path: '/api/tickets',
+          suggestion: priorityValidation.requiresJustification
+            ? 'Berikan justifikasi untuk prioritas yang dipilih'
+            : 'Pilih prioritas yang sesuai dengan tingkat urgensi'
+        });
       }
     }
 
@@ -1123,10 +1146,12 @@ export async function POST(request: NextRequest) {
     // Check permissions for confidential tickets and security fields
     if (isConfidential || securityClassification || securityFindings) {
       if (!['ADMIN', 'SECURITY_ANALYST', 'MANAGER', 'MANAGER_IT'].includes(session.user.role)) {
-        return NextResponse.json(
-          { error: 'Insufficient permissions to create confidential or security-classified tickets' },
-          { status: 403 }
-        );
+        return createErrorResponse(ErrorCode.AUTH_FORBIDDEN, {
+          message: 'Tidak memiliki akses untuk membuat tiket konfidensial',
+          details: 'Hanya Admin, Security Analyst, Manager, atau Manager IT yang dapat membuat tiket dengan klasifikasi keamanan',
+          path: '/api/tickets',
+          suggestion: 'Hubungi administrator jika Anda memerlukan akses'
+        });
       }
     }
 
@@ -1172,7 +1197,12 @@ export async function POST(request: NextRequest) {
     });
 
     if (!service) {
-      return NextResponse.json({ error: 'Service not found' }, { status: 400 });
+      return createErrorResponse(ErrorCode.RESOURCE_NOT_FOUND, {
+        message: 'Layanan tidak ditemukan',
+        details: `Service ID ${validatedData.serviceId} tidak ditemukan`,
+        path: '/api/tickets',
+        suggestion: 'Pilih layanan dari daftar yang tersedia'
+      });
     }
 
     // Process field values - need to handle both regular fields and field templates
@@ -1749,18 +1779,10 @@ export async function POST(request: NextRequest) {
     
     if (error instanceof z.ZodError) {
       console.error('Validation error details:', error.errors);
-      return NextResponse.json(
-        { error: 'Validation error', details: error.errors },
-        { status: 400 }
-      );
+      return handleZodError(error, '/api/tickets');
     }
-    
+
     console.error('Error creating ticket:', error);
-    // Provide more detailed error message
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
-    );
+    return handleUnknownError(error, { path: '/api/tickets' });
   }
 }
