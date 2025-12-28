@@ -267,18 +267,20 @@ export function VisibilitySettings({
           <>
             <Separator />
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <Label className="text-base font-medium">Pilih Role</Label>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-shrink-0">
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     onClick={handleSelectAllRoles}
                     disabled={disabled}
+                    className="flex items-center gap-1 whitespace-nowrap"
                   >
-                    <Check className="h-3 w-3 mr-1" />
-                    Pilih Semua
+                    <Check className="h-3 w-3" />
+                    <span className="hidden sm:inline">Pilih Semua</span>
+                    <span className="sm:hidden">Semua</span>
                   </Button>
                   <Button
                     type="button"
@@ -286,9 +288,11 @@ export function VisibilitySettings({
                     size="sm"
                     onClick={handleClearAllRoles}
                     disabled={disabled}
+                    className="flex items-center gap-1 whitespace-nowrap"
                   >
-                    <X className="h-3 w-3 mr-1" />
-                    Hapus Semua
+                    <X className="h-3 w-3" />
+                    <span className="hidden sm:inline">Hapus Semua</span>
+                    <span className="sm:hidden">Hapus</span>
                   </Button>
                 </div>
               </div>
@@ -332,18 +336,20 @@ export function VisibilitySettings({
           <>
             <Separator />
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <Label className="text-base font-medium">Pilih Cabang</Label>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-shrink-0">
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     onClick={handleSelectAllBranches}
                     disabled={disabled || loadingBranches}
+                    className="flex items-center gap-1 whitespace-nowrap"
                   >
-                    <Check className="h-3 w-3 mr-1" />
-                    Pilih Semua
+                    <Check className="h-3 w-3" />
+                    <span className="hidden sm:inline">Pilih Semua</span>
+                    <span className="sm:hidden">Semua</span>
                   </Button>
                   <Button
                     type="button"
@@ -351,9 +357,11 @@ export function VisibilitySettings({
                     size="sm"
                     onClick={handleClearAllBranches}
                     disabled={disabled}
+                    className="flex items-center gap-1 whitespace-nowrap"
                   >
-                    <X className="h-3 w-3 mr-1" />
-                    Hapus Semua
+                    <X className="h-3 w-3" />
+                    <span className="hidden sm:inline">Hapus Semua</span>
+                    <span className="sm:hidden">Hapus</span>
                   </Button>
                 </div>
               </div>
