@@ -4,11 +4,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import {
   Globe,
@@ -322,13 +320,15 @@ export function VisibilitySettings({
                       }`}
                       onClick={() => !disabled && handleRoleToggle(role.value)}
                     >
-                      <Checkbox
+                      <input
+                        type="checkbox"
                         id={`role-${role.value}`}
                         checked={isChecked}
                         disabled={disabled}
-                        className="mt-0.5 pointer-events-none"
+                        readOnly
+                        className="h-4 w-4 mt-0.5 rounded border-gray-300 text-primary focus:ring-primary pointer-events-none"
                       />
-                      <Label
+                      <label
                         htmlFor={`role-${role.value}`}
                         className="flex-1 cursor-pointer"
                       >
@@ -336,7 +336,7 @@ export function VisibilitySettings({
                         <p className="text-xs text-muted-foreground leading-relaxed">
                           {role.description}
                         </p>
-                      </Label>
+                      </label>
                     </div>
                   );
                 })}
@@ -447,53 +447,53 @@ export function VisibilitySettings({
                   </div>
                 </div>
               ) : (
-                <div className="border-2 rounded-lg">
-                  <ScrollArea className="h-[280px]">
-                    <div className="p-2 space-y-1">
-                      {filteredBranches.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-8 text-center">
-                          <Building2 className="h-12 w-12 text-muted-foreground/50 mb-2" />
-                          <p className="text-sm text-muted-foreground font-medium">
-                            {branchSearch ? 'Tidak ada cabang yang cocok' : 'Tidak ada cabang tersedia'}
+                <div className="border-2 rounded-lg max-h-[280px] overflow-y-auto">
+                  <div className="p-2 space-y-1">
+                    {filteredBranches.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-8 text-center">
+                        <Building2 className="h-12 w-12 text-muted-foreground/50 mb-2" />
+                        <p className="text-sm text-muted-foreground font-medium">
+                          {branchSearch ? 'Tidak ada cabang yang cocok' : 'Tidak ada cabang tersedia'}
+                        </p>
+                        {branchSearch && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Coba kata kunci lain
                           </p>
-                          {branchSearch && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Coba kata kunci lain
-                            </p>
-                          )}
-                        </div>
-                      ) : (
-                        filteredBranches.map((branch) => {
-                          const isChecked = visibleToBranches.includes(branch.id);
-                          return (
-                            <div
-                              key={branch.id}
-                              className={`flex items-center space-x-3 p-3 rounded-md transition-colors cursor-pointer ${
-                                isChecked
-                                  ? 'bg-primary/10 hover:bg-primary/15'
-                                  : 'hover:bg-muted/50'
-                              }`}
-                              onClick={() => !disabled && handleBranchToggle(branch.id)}
-                            >
-                              <Checkbox
-                                checked={isChecked}
-                                disabled={disabled}
-                                className="flex-shrink-0 pointer-events-none"
-                              />
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm font-medium truncate">{branch.name}</span>
-                                  <Badge variant="outline" className="px-1.5 py-0 text-xs font-mono">
-                                    {branch.code}
-                                  </Badge>
-                                </div>
+                        )}
+                      </div>
+                    ) : (
+                      filteredBranches.map((branch) => {
+                        const isChecked = visibleToBranches.includes(branch.id);
+                        return (
+                          <div
+                            key={branch.id}
+                            className={`flex items-center space-x-3 p-3 rounded-md transition-colors cursor-pointer ${
+                              isChecked
+                                ? 'bg-primary/10 hover:bg-primary/15'
+                                : 'hover:bg-muted/50'
+                            }`}
+                            onClick={() => !disabled && handleBranchToggle(branch.id)}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              disabled={disabled}
+                              readOnly
+                              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary flex-shrink-0 pointer-events-none"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium truncate">{branch.name}</span>
+                                <span className="px-1.5 py-0 text-xs font-mono border rounded">
+                                  {branch.code}
+                                </span>
                               </div>
                             </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  </ScrollArea>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
               )}
 

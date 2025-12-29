@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Search, Plus, Filter, BookOpen, MessageSquare, Paperclip, Eye, Calendar, User } from 'lucide-react'
+import { Search, Plus, Filter, BookOpen, MessageSquare, Paperclip, Eye, Calendar, User, Edit, Send } from 'lucide-react'
+import { toast } from 'sonner'
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 
@@ -190,6 +191,38 @@ export default function KnowledgeListingClient() {
   }
 
   const canCreateArticle = session?.user?.role && ['ADMIN', 'MANAGER', 'TECHNICIAN'].includes(session.user.role)
+
+  // Check if user can edit an article
+  const canEditArticle = (article: KnowledgeArticle) => {
+    if (!session?.user) return false
+    if (['ADMIN', 'SUPER_ADMIN', 'MANAGER'].includes(session.user.role)) return true
+    return article.author.id === session.user.id
+  }
+
+  // Publish article handler
+  const handlePublish = async (articleId: string, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    try {
+      const response = await fetch(`/api/knowledge/${articleId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'PUBLISHED' })
+      })
+
+      if (response.ok) {
+        toast.success('Artikel berhasil dipublikasikan')
+        fetchArticles() // Refresh the list
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'Gagal mempublikasikan artikel')
+      }
+    } catch (error) {
+      console.error('Error publishing article:', error)
+      toast.error('Gagal mempublikasikan artikel')
+    }
+  }
 
   const selectedCategoryData = categories.find(cat => cat.id === selectedCategory)
   const selectedSubcategoryData = selectedCategoryData?.subcategories?.find(sub => sub.id === selectedSubcategory)
@@ -374,10 +407,10 @@ export default function KnowledgeListingClient() {
           {articles.map((article) => (
             <Card key={article.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-6">
-                <div className="flex items-start justify-between">
+                <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-2">
-                      <Link 
+                      <Link
                         href={`/knowledge/${article.id}`}
                         className="text-lg font-semibold text-gray-900 hover:text-blue-600 transition-colors truncate"
                       >
@@ -385,7 +418,7 @@ export default function KnowledgeListingClient() {
                       </Link>
                       {getStatusBadge(article.status)}
                     </div>
-                    
+
                     {article.summary && (
                       <p className="text-gray-600 mb-3 line-clamp-2">{article.summary}</p>
                     )}
@@ -438,6 +471,29 @@ export default function KnowledgeListingClient() {
                       )}
                     </div>
                   </div>
+
+                  {/* Action Buttons */}
+                  {canEditArticle(article) && (
+                    <div className="flex flex-col gap-2 flex-shrink-0">
+                      {article.status !== 'PUBLISHED' && (
+                        <Button
+                          size="sm"
+                          variant="default"
+                          className="flex items-center gap-1.5"
+                          onClick={(e) => handlePublish(article.id, e)}
+                        >
+                          <Send className="h-3.5 w-3.5" />
+                          Publish
+                        </Button>
+                      )}
+                      <Link href={`/knowledge/${article.id}/edit`}>
+                        <Button size="sm" variant="outline" className="flex items-center gap-1.5 w-full">
+                          <Edit className="h-3.5 w-3.5" />
+                          Edit
+                        </Button>
+                      </Link>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

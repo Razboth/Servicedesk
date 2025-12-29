@@ -26,7 +26,8 @@ import {
   Globe,
   Users,
   Building2,
-  Lock
+  Lock,
+  Send
 } from 'lucide-react'
 import Link from 'next/link'
 import { formatDistanceToNow, format } from 'date-fns'
@@ -34,7 +35,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { AttachmentList } from '@/components/knowledge/attachment-list'
@@ -217,6 +217,30 @@ export default function KnowledgeArticleView({ articleId }: Props) {
     }
   }
 
+  // Handle article publish
+  const handlePublish = async () => {
+    try {
+      const response = await fetch(`/api/knowledge/${articleId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ status: 'PUBLISHED' })
+      })
+
+      if (response.ok) {
+        toast.success('Artikel berhasil dipublikasikan')
+        fetchArticle()
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'Gagal mempublikasikan artikel')
+      }
+    } catch (error) {
+      console.error('Error publishing article:', error)
+      toast.error('Gagal mempublikasikan artikel')
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex justify-center py-12">
@@ -287,13 +311,17 @@ export default function KnowledgeArticleView({ articleId }: Props) {
     }
   }
 
-  const canEdit = session?.user?.role === 'ADMIN' || 
+  const canEdit = session?.user?.role === 'ADMIN' ||
+                 session?.user?.role === 'SUPER_ADMIN' ||
                  session?.user?.role === 'MANAGER' ||
                  article.authorId === session?.user?.id
 
-  const canDelete = session?.user?.role === 'ADMIN' || 
+  const canDelete = session?.user?.role === 'ADMIN' ||
+                   session?.user?.role === 'SUPER_ADMIN' ||
                    session?.user?.role === 'MANAGER' ||
                    article.authorId === session?.user?.id
+
+  const canPublish = canEdit && (article.status === 'DRAFT' || article.status === 'UNDER_REVIEW')
 
   const isExpired = article.expiresAt && new Date(article.expiresAt) < new Date()
 
@@ -308,35 +336,50 @@ export default function KnowledgeArticleView({ articleId }: Props) {
           </Link>
         </Button>
 
-        {(canEdit || canDelete) && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {canEdit && (
-                <DropdownMenuItem asChild>
-                  <Link href={`/knowledge/${articleId}/edit`} className="flex items-center gap-2">
-                    <Edit className="h-4 w-4" />
-                    Edit Article
-                  </Link>
-                </DropdownMenuItem>
-              )}
-              {canEdit && canDelete && <DropdownMenuSeparator />}
-              {canDelete && (
-                <DropdownMenuItem 
+        <div className="flex items-center gap-2">
+          {/* Publish Button - Show for draft/under review articles */}
+          {canPublish && (
+            <Button
+              variant="default"
+              size="sm"
+              onClick={handlePublish}
+              className="flex items-center gap-2"
+            >
+              <Send className="h-4 w-4" />
+              Publish
+            </Button>
+          )}
+
+          {/* Edit Button */}
+          {canEdit && (
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/knowledge/${articleId}/edit`} className="flex items-center gap-2">
+                <Edit className="h-4 w-4" />
+                Edit
+              </Link>
+            </Button>
+          )}
+
+          {/* More Options Dropdown */}
+          {canDelete && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
                   onClick={handleDelete}
                   className="text-red-600 flex items-center gap-2"
                 >
                   <AlertTriangle className="h-4 w-4" />
                   Delete Article
                 </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
       </div>
 
       {/* Article Header */}

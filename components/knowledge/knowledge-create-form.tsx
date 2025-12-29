@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -81,6 +81,32 @@ export default function KnowledgeCreateForm() {
 
   const watchedFields = watch(['categoryId', 'subcategoryId', 'tags', 'visibility', 'visibleToRoles', 'visibleToBranches'])
   const [categoryId, subcategoryId, tags, visibility, visibleToRoles, visibleToBranches] = watchedFields
+
+  // Memoize visibility settings to prevent re-render loops
+  const stableVisibleToRoles = useMemo(() => visibleToRoles || [], [JSON.stringify(visibleToRoles)])
+  const stableVisibleToBranches = useMemo(() => visibleToBranches || [], [JSON.stringify(visibleToBranches)])
+
+  // Stable callback for visibility changes
+  const handleVisibilitySettingsChange = useCallback((settings: {
+    visibility: KnowledgeVisibility;
+    visibleToRoles: string[];
+    visibleToBranches: string[];
+  }) => {
+    // Only update if values actually changed to prevent re-render loops
+    const currentVisibility = visibility || 'EVERYONE'
+    const currentRoles = visibleToRoles || []
+    const currentBranches = visibleToBranches || []
+
+    if (settings.visibility !== currentVisibility) {
+      setValue('visibility', settings.visibility)
+    }
+    if (JSON.stringify(settings.visibleToRoles) !== JSON.stringify(currentRoles)) {
+      setValue('visibleToRoles', settings.visibleToRoles)
+    }
+    if (JSON.stringify(settings.visibleToBranches) !== JSON.stringify(currentBranches)) {
+      setValue('visibleToBranches', settings.visibleToBranches)
+    }
+  }, [setValue, visibility, visibleToRoles, visibleToBranches])
 
   // Fetch categories for the dropdown
   const fetchCategories = useCallback(async () => {
@@ -563,13 +589,9 @@ export default function KnowledgeCreateForm() {
           {/* Visibility Settings */}
           <VisibilitySettings
             visibility={(visibility as KnowledgeVisibility) || 'EVERYONE'}
-            visibleToRoles={visibleToRoles || []}
-            visibleToBranches={visibleToBranches || []}
-            onChange={(settings) => {
-              setValue('visibility', settings.visibility)
-              setValue('visibleToRoles', settings.visibleToRoles)
-              setValue('visibleToBranches', settings.visibleToBranches)
-            }}
+            visibleToRoles={stableVisibleToRoles}
+            visibleToBranches={stableVisibleToBranches}
+            onChange={handleVisibilitySettingsChange}
             disabled={isSubmitting || loading}
           />
         </div>
