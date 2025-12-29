@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { ArrowLeft, Save, Eye, Plus, X, BookOpen, Tag, Calendar, Layers, Upload, FileText, Trash2 } from 'lucide-react'
@@ -60,7 +60,7 @@ export default function KnowledgeCreateForm() {
   const [newTag, setNewTag] = useState('')
   const [attachments, setAttachments] = useState<File[]>([])
   const [uploadingAttachments, setUploadingAttachments] = useState(false)
-  
+
   const {
     register,
     handleSubmit,
@@ -124,7 +124,7 @@ export default function KnowledgeCreateForm() {
       }
 
       const article = await response.json()
-      
+
       // Upload attachments if any
       if (attachments.length > 0) {
         setUploadingAttachments(true)
@@ -132,7 +132,7 @@ export default function KnowledgeCreateForm() {
           for (const file of attachments) {
             const formData = new FormData()
             formData.append('file', file)
-            
+
             await fetch(`/api/knowledge/${article.id}/attachments`, {
               method: 'POST',
               body: formData
@@ -145,7 +145,7 @@ export default function KnowledgeCreateForm() {
           setUploadingAttachments(false)
         }
       }
-      
+
       toast.success('Knowledge article created successfully!')
       router.push(`/knowledge/${article.id}`)
     } catch (error) {
@@ -183,13 +183,13 @@ export default function KnowledgeCreateForm() {
   const selectedSubcategory = selectedCategory?.subcategories?.find(sub => sub.id === subcategoryId)
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 overflow-x-hidden">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       {/* Header Actions */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <Link href="/knowledge" className="w-full sm:w-auto">
-          <Button variant="outline" className="flex items-center gap-2 w-full sm:w-auto">
-            <ArrowLeft className="h-4 w-4 flex-shrink-0" />
-            <span className="truncate">Back to Knowledge Base</span>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-2">
+        <Link href="/knowledge">
+          <Button variant="outline" type="button" className="flex items-center gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Knowledge Base
           </Button>
         </Link>
 
@@ -209,121 +209,137 @@ export default function KnowledgeCreateForm() {
             className="flex items-center gap-2 flex-1 sm:flex-initial"
           >
             {isSubmitting || loading ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white flex-shrink-0"></div>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
             ) : (
-              <Save className="h-4 w-4 flex-shrink-0" />
+              <Save className="h-4 w-4" />
             )}
-            <span className="truncate">{isSubmitting || loading ? 'Creating...' : 'Create Article'}</span>
+            {isSubmitting || loading ? 'Creating...' : 'Create Article'}
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 min-w-0">
-        {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6 min-w-0">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main Content - 2 columns on large screens */}
+        <div className="lg:col-span-2 space-y-6">
           {/* Basic Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BookOpen className="h-5 w-5" />
+          <Card className="border-2">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <BookOpen className="h-5 w-5 text-primary" />
                 Article Content
               </CardTitle>
+              <CardDescription className="text-sm">
+                Write your knowledge article with clear and helpful information
+              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="title">Title *</Label>
+            <CardContent className="space-y-5">
+              <div className="space-y-2">
+                <Label htmlFor="title" className="text-sm font-medium">
+                  Title <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="title"
                   {...register('title')}
-                  placeholder="Enter article title"
-                  className={errors.title ? 'border-red-500' : ''}
+                  placeholder="Enter a descriptive title for your article"
+                  className={`h-11 ${errors.title ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                 />
                 {errors.title && (
-                  <p className="text-sm text-red-500 mt-1">{errors.title.message}</p>
+                  <p className="text-sm text-red-500 flex items-center gap-1">
+                    {errors.title.message}
+                  </p>
                 )}
               </div>
 
-              <div>
-                <Label htmlFor="summary">Summary</Label>
+              <div className="space-y-2">
+                <Label htmlFor="summary" className="text-sm font-medium">
+                  Summary
+                </Label>
                 <Textarea
                   id="summary"
                   {...register('summary')}
                   placeholder="Brief summary of the article (optional)"
-                  rows={2}
+                  rows={3}
                   className={errors.summary ? 'border-red-500' : ''}
                 />
                 {errors.summary && (
-                  <p className="text-sm text-red-500 mt-1">{errors.summary.message}</p>
+                  <p className="text-sm text-red-500">{errors.summary.message}</p>
                 )}
               </div>
 
-              <div>
-                <Label htmlFor="content">Content *</Label>
+              <div className="space-y-2">
+                <Label htmlFor="content" className="text-sm font-medium">
+                  Content <span className="text-red-500">*</span>
+                </Label>
                 <Textarea
                   id="content"
                   {...register('content')}
-                  placeholder="Write your article content here. You can use markdown formatting."
-                  rows={12}
-                  className={errors.content ? 'border-red-500' : ''}
+                  placeholder="Write your article content here. You can use markdown formatting for better presentation."
+                  rows={14}
+                  className={`font-mono text-sm ${errors.content ? 'border-red-500' : ''}`}
                 />
                 {errors.content && (
-                  <p className="text-sm text-red-500 mt-1">{errors.content.message}</p>
+                  <p className="text-sm text-red-500">{errors.content.message}</p>
                 )}
-                <p className="text-sm text-gray-500 mt-1">
-                  Tip: You can use markdown formatting for better presentation
+                <p className="text-xs text-muted-foreground">
+                  Tip: You can use markdown formatting (e.g., **bold**, *italic*, # headings)
                 </p>
               </div>
             </CardContent>
           </Card>
 
           {/* Attachments */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Upload className="h-5 w-5" />
+          <Card className="border-2">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Upload className="h-5 w-5 text-primary" />
                 Attachments
               </CardTitle>
+              <CardDescription className="text-sm">
+                Upload supporting documents, images, or files
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="file-upload">Upload Documents</Label>
-                <div className="mt-2">
-                  <input
-                    id="file-upload"
-                    type="file"
-                    multiple
-                    accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.gif,.xlsx,.xls,.ppt,.pptx"
-                    onChange={(e) => {
-                      const files = Array.from(e.target.files || [])
-                      setAttachments(prev => [...prev, ...files])
-                    }}
-                    className="hidden"
-                  />
-                  <Label
-                    htmlFor="file-upload"
-                    className="flex items-center justify-center w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-gray-400 transition-colors"
-                  >
-                    <Upload className="h-5 w-5 mr-2" />
-                    Click to upload or drag and drop
-                  </Label>
-                </div>
-                <p className="text-sm text-gray-500 mt-1">
-                  Supported formats: PDF, DOC, DOCX, TXT, Images, Excel, PowerPoint
+                <input
+                  id="file-upload"
+                  type="file"
+                  multiple
+                  accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.gif,.xlsx,.xls,.ppt,.pptx"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || [])
+                    setAttachments(prev => [...prev, ...files])
+                  }}
+                  className="hidden"
+                />
+                <Label
+                  htmlFor="file-upload"
+                  className="flex flex-col items-center justify-center w-full px-6 py-8 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-primary hover:bg-primary/5 transition-all"
+                >
+                  <Upload className="h-10 w-10 text-muted-foreground mb-3" />
+                  <span className="text-sm font-medium text-foreground">Click to upload files</span>
+                  <span className="text-xs text-muted-foreground mt-1">or drag and drop</span>
+                </Label>
+                <p className="text-xs text-muted-foreground mt-3">
+                  Supported formats: PDF, DOC, DOCX, TXT, Images (PNG, JPG, GIF), Excel, PowerPoint
                 </p>
               </div>
 
               {attachments.length > 0 && (
-                <div className="space-y-2">
-                  <Label>Selected Files ({attachments.length})</Label>
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium">
+                    Selected Files ({attachments.length})
+                  </Label>
                   <div className="space-y-2">
                     {attachments.map((file, index) => (
-                      <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded gap-2 min-w-0">
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                          <FileText className="h-4 w-4 text-gray-500 flex-shrink-0" />
-                          <span className="text-sm text-gray-700 truncate">{file.name}</span>
-                          <span className="text-xs text-gray-500 whitespace-nowrap flex-shrink-0">
-                            ({(file.size / 1024 / 1024).toFixed(2)} MB)
-                          </span>
+                      <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <FileText className="h-5 w-5 text-primary flex-shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium truncate">{file.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {(file.size / 1024 / 1024).toFixed(2)} MB
+                            </p>
+                          </div>
                         </div>
                         <Button
                           type="button"
@@ -332,9 +348,9 @@ export default function KnowledgeCreateForm() {
                           onClick={() => {
                             setAttachments(prev => prev.filter((_, i) => i !== index))
                           }}
-                          className="flex-shrink-0"
+                          className="flex-shrink-0 hover:bg-red-100 hover:text-red-600"
                         >
-                          <Trash2 className="h-4 w-4 text-red-500" />
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     ))}
@@ -345,24 +361,27 @@ export default function KnowledgeCreateForm() {
           </Card>
         </div>
 
-        {/* Sidebar */}
-        <div className="space-y-6 min-w-0">
+        {/* Sidebar - 1 column on large screens */}
+        <div className="space-y-6">
           {/* Article Settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Eye className="h-5 w-5" />
+          <Card className="border-2">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Eye className="h-5 w-5 text-primary" />
                 Article Settings
               </CardTitle>
+              <CardDescription className="text-sm">
+                Configure publication and expiration
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="status">Status</Label>
+              <div className="space-y-2">
+                <Label htmlFor="status" className="text-sm font-medium">Status</Label>
                 <Select
                   value={watch('status')}
                   onValueChange={(value: 'DRAFT' | 'UNDER_REVIEW' | 'PUBLISHED') => setValue('status', value)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-11">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -373,14 +392,17 @@ export default function KnowledgeCreateForm() {
                 </Select>
               </div>
 
-              <div>
-                <Label htmlFor="expiresAt">Expiration Date (Optional)</Label>
+              <div className="space-y-2">
+                <Label htmlFor="expiresAt" className="text-sm font-medium">
+                  Expiration Date (Optional)
+                </Label>
                 <Input
                   id="expiresAt"
                   type="datetime-local"
                   {...register('expiresAt')}
+                  className="h-11"
                 />
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-xs text-muted-foreground">
                   Leave empty if article doesn't expire
                 </p>
               </div>
@@ -388,16 +410,19 @@ export default function KnowledgeCreateForm() {
           </Card>
 
           {/* Category Selection */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Layers className="h-5 w-5" />
+          <Card className="border-2">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Layers className="h-5 w-5 text-primary" />
                 Categorization
               </CardTitle>
+              <CardDescription className="text-sm">
+                Organize your article by category
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <Label>Category</Label>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Category</Label>
                 <Select
                   value={categoryId || 'none'}
                   onValueChange={(value) => {
@@ -407,7 +432,7 @@ export default function KnowledgeCreateForm() {
                     setValue('itemId', undefined)
                   }}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-11">
                     <SelectValue placeholder="Select Category" />
                   </SelectTrigger>
                   <SelectContent>
@@ -422,8 +447,8 @@ export default function KnowledgeCreateForm() {
               </div>
 
               {selectedCategory && (
-                <div>
-                  <Label>Subcategory</Label>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Subcategory</Label>
                   <Select
                     value={subcategoryId || 'none'}
                     onValueChange={(value) => {
@@ -432,7 +457,7 @@ export default function KnowledgeCreateForm() {
                       setValue('itemId', undefined)
                     }}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-11">
                       <SelectValue placeholder="Select Subcategory" />
                     </SelectTrigger>
                     <SelectContent>
@@ -448,8 +473,8 @@ export default function KnowledgeCreateForm() {
               )}
 
               {selectedSubcategory && (
-                <div>
-                  <Label>Item</Label>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Item</Label>
                   <Select
                     value={watch('itemId') || 'none'}
                     onValueChange={(value) => {
@@ -457,7 +482,7 @@ export default function KnowledgeCreateForm() {
                       setValue('itemId', newValue)
                     }}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-11">
                       <SelectValue placeholder="Select Item" />
                     </SelectTrigger>
                     <SelectContent>
@@ -475,12 +500,15 @@ export default function KnowledgeCreateForm() {
           </Card>
 
           {/* Tags */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Tag className="h-5 w-5" />
+          <Card className="border-2">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Tag className="h-5 w-5 text-primary" />
                 Tags
               </CardTitle>
+              <CardDescription className="text-sm">
+                Add keywords to improve searchability
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex gap-2">
@@ -488,42 +516,46 @@ export default function KnowledgeCreateForm() {
                   value={newTag}
                   onChange={(e) => setNewTag(e.target.value)}
                   onKeyPress={handleTagKeyPress}
-                  placeholder="Add a tag"
-                  className="flex-1"
+                  placeholder="Type a tag and press Enter"
+                  className="flex-1 h-10"
                 />
                 <Button
                   type="button"
                   onClick={addTag}
                   size="sm"
                   disabled={!newTag.trim()}
+                  className="h-10 px-4"
                 >
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
 
               {tags && tags.length > 0 && (
-                <div className="flex flex-wrap gap-2 max-w-full">
-                  {tags.map((tag, index) => (
-                    <Badge
-                      key={index}
-                      variant="secondary"
-                      className="flex items-center gap-1 max-w-full"
-                    >
-                      <span className="truncate max-w-[150px]">{tag}</span>
-                      <button
-                        type="button"
-                        onClick={() => removeTag(tag)}
-                        className="ml-1 hover:text-red-500 flex-shrink-0"
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Active Tags ({tags.length})</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {tags.map((tag, index) => (
+                      <Badge
+                        key={index}
+                        variant="secondary"
+                        className="flex items-center gap-1.5 px-3 py-1.5"
                       >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </Badge>
-                  ))}
+                        <span className="text-sm">{tag}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeTag(tag)}
+                          className="hover:text-destructive transition-colors"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
               )}
 
-              <p className="text-sm text-gray-500">
-                Tags help users find your article more easily
+              <p className="text-xs text-muted-foreground">
+                Tags help users find your article more easily through search
               </p>
             </CardContent>
           </Card>

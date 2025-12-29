@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default async function CreateKnowledgeArticlePage() {
   const session = await auth()
-  
+
   if (!session) {
     redirect('/auth/signin')
   }
@@ -22,19 +22,24 @@ export default async function CreateKnowledgeArticlePage() {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-4xl overflow-x-hidden">
+    <div className="container mx-auto px-4 sm:px-6 py-6 max-w-7xl">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 break-words">Create Knowledge Article</h1>
-        <p className="text-gray-600 mt-1 break-words">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+          Create Knowledge Article
+        </h1>
+        <p className="text-gray-600 dark:text-gray-400 mt-2">
           Share your knowledge and help others solve similar issues
         </p>
       </div>
 
       {/* Form */}
       <Suspense fallback={
-        <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="flex justify-center items-center py-20">
+          <div className="flex flex-col items-center gap-3">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+            <p className="text-sm text-muted-foreground">Loading form...</p>
+          </div>
         </div>
       }>
         <KnowledgeCreateForm />
