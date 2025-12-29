@@ -42,8 +42,13 @@ export async function GET(
     // CUIDs start with 'c' and are 25 chars, slugs are typically longer with hyphens
     const isCuid = /^c[a-z0-9]{24}$/.test(id);
 
+    // Build query - always filter by isActive for consistency with listing
+    const whereClause = isCuid
+      ? { id, isActive: true }
+      : { slug: id, isActive: true };
+
     const article = await prisma.knowledgeArticle.findFirst({
-      where: isCuid ? { id } : { slug: id },
+      where: whereClause,
       include: {
         author: {
           select: {
