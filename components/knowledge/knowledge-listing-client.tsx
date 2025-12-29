@@ -206,7 +206,7 @@ export default function KnowledgeListingClient() {
 
     try {
       const response = await fetch(`/api/knowledge/${articleId}`, {
-        method: 'PATCH',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'PUBLISHED' })
       })

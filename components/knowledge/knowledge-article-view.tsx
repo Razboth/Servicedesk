@@ -221,7 +221,7 @@ export default function KnowledgeArticleView({ articleId }: Props) {
   const handlePublish = async () => {
     try {
       const response = await fetch(`/api/knowledge/${articleId}`, {
-        method: 'PATCH',
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },
