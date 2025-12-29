@@ -325,9 +325,8 @@ export function VisibilitySettings({
                       <Checkbox
                         id={`role-${role.value}`}
                         checked={isChecked}
-                        onCheckedChange={() => handleRoleToggle(role.value)}
                         disabled={disabled}
-                        className="mt-0.5"
+                        className="mt-0.5 pointer-events-none"
                       />
                       <Label
                         htmlFor={`role-${role.value}`}
@@ -478,9 +477,8 @@ export function VisibilitySettings({
                             >
                               <Checkbox
                                 checked={isChecked}
-                                onCheckedChange={() => handleBranchToggle(branch.id)}
                                 disabled={disabled}
-                                className="flex-shrink-0"
+                                className="flex-shrink-0 pointer-events-none"
                               />
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
