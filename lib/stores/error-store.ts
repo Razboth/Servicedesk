@@ -144,14 +144,15 @@ export const useErrorStore = create<ErrorStore>((set, get) => ({
 
 /**
  * Hook to get the current error for display
+ * Uses individual selectors to prevent infinite re-renders
  */
 export function useCurrentError() {
-  return useErrorStore(state => ({
-    error: state.currentError,
-    isOpen: state.isDetailsOpen,
-    hide: state.hideErrorDetails,
-    setOpen: state.setDetailsOpen,
-  }));
+  const error = useErrorStore(state => state.currentError);
+  const isOpen = useErrorStore(state => state.isDetailsOpen);
+  const hide = useErrorStore(state => state.hideErrorDetails);
+  const setOpen = useErrorStore(state => state.setDetailsOpen);
+
+  return { error, isOpen, hide, setOpen };
 }
 
 /**
@@ -165,5 +166,7 @@ export function useAddError() {
  * Hook to get recent errors
  */
 export function useRecentErrors(limit = 10) {
-  return useErrorStore(state => state.getRecentErrors(limit));
+  const errors = useErrorStore(state => state.errors);
+  // Filter and slice in the component to avoid creating new arrays in selector
+  return errors.filter(e => !e.dismissed).slice(0, limit);
 }
