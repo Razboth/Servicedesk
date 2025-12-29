@@ -47,7 +47,7 @@ export async function PUT(
         branchId: true,
         resolvedAt: true,
         closedAt: true,
-        sociomileTicketId: true,
+        // sociomileTicketId removed - column may not exist in older databases
         service: {
           select: {
             name: true,
@@ -325,8 +325,8 @@ export async function PATCH(
         title: true,
         status: true,
         resolvedAt: true,
-        closedAt: true,
-        sociomileTicketId: true
+        closedAt: true
+        // sociomileTicketId removed - column may not exist in older databases
       }
     });
 
