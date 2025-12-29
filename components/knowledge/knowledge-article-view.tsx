@@ -353,7 +353,7 @@ export default function KnowledgeArticleView({ articleId }: Props) {
           {/* Edit Button */}
           {canEdit && (
             <Button variant="outline" size="sm" asChild>
-              <Link href={`/knowledge/${articleId}/edit`} className="flex items-center gap-2">
+              <Link href={`/knowledge/${article.slug}/edit`} className="flex items-center gap-2">
                 <Edit className="h-4 w-4" />
                 Edit
               </Link>

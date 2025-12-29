@@ -22,7 +22,7 @@ const updateArticleSchema = z.object({
   visibleToBranches: z.array(z.string()).optional()
 });
 
-// GET: Get single knowledge article
+// GET: Get single knowledge article (supports both ID and slug)
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -30,7 +30,7 @@ export async function GET(
   try {
     const { id } = await params;
     const session = await auth();
-    
+
     if (!session) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -38,8 +38,12 @@ export async function GET(
       );
     }
 
-    const article = await prisma.knowledgeArticle.findUnique({
-      where: { id },
+    // Try to find by ID first, then by slug
+    // CUIDs start with 'c' and are 25 chars, slugs are typically longer with hyphens
+    const isCuid = /^c[a-z0-9]{24}$/.test(id);
+
+    const article = await prisma.knowledgeArticle.findFirst({
+      where: isCuid ? { id } : { slug: id },
       include: {
         author: {
           select: {
@@ -187,15 +191,15 @@ export async function GET(
   }
 }
 
-// PUT: Update knowledge article
+// PUT: Update knowledge article (supports both ID and slug)
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { id: idOrSlug } = await params;
     const session = await auth();
-    
+
     if (!session) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -206,9 +210,12 @@ export async function PUT(
     const body = await request.json();
     const data = updateArticleSchema.parse(body);
 
+    // Find by ID or slug
+    const isCuid = /^c[a-z0-9]{24}$/.test(idOrSlug);
+
     // Get current article
-    const currentArticle = await prisma.knowledgeArticle.findUnique({
-      where: { id },
+    const currentArticle = await prisma.knowledgeArticle.findFirst({
+      where: isCuid ? { id: idOrSlug } : { slug: idOrSlug },
       include: {
         versions: {
           orderBy: { version: 'desc' },
@@ -224,6 +231,9 @@ export async function PUT(
         { status: 404 }
       );
     }
+
+    // Use the actual article ID for all operations
+    const id = currentArticle.id;
 
     // Check permissions - allow authors to edit their own articles
     const canEdit = session.user.role === 'ADMIN' || 
@@ -475,15 +485,15 @@ export async function PUT(
   }
 }
 
-// DELETE: Delete knowledge article (soft delete)
+// DELETE: Delete knowledge article (soft delete, supports both ID and slug)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { id: idOrSlug } = await params;
     const session = await auth();
-    
+
     if (!session) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -491,9 +501,12 @@ export async function DELETE(
       );
     }
 
+    // Find by ID or slug
+    const isCuid = /^c[a-z0-9]{24}$/.test(idOrSlug);
+
     // Get current article
-    const article = await prisma.knowledgeArticle.findUnique({
-      where: { id }
+    const article = await prisma.knowledgeArticle.findFirst({
+      where: isCuid ? { id: idOrSlug } : { slug: idOrSlug }
     });
 
     if (!article) {
@@ -503,8 +516,11 @@ export async function DELETE(
       );
     }
 
+    // Use actual article ID
+    const id = article.id;
+
     // Check permissions
-    const canDelete = session.user.role === 'ADMIN' || 
+    const canDelete = session.user.role === 'ADMIN' ||
                      session.user.role === 'MANAGER' ||
                      (session.user.role === 'TECHNICIAN' && article.authorId === session.user.id);
 

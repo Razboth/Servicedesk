@@ -200,12 +200,12 @@ export default function KnowledgeListingClient() {
   }
 
   // Publish article handler
-  const handlePublish = async (articleId: string, e: React.MouseEvent) => {
+  const handlePublish = async (articleSlug: string, e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
 
     try {
-      const response = await fetch(`/api/knowledge/${articleId}`, {
+      const response = await fetch(`/api/knowledge/${articleSlug}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'PUBLISHED' })
@@ -411,7 +411,7 @@ export default function KnowledgeListingClient() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-2">
                       <Link
-                        href={`/knowledge/${article.id}`}
+                        href={`/knowledge/${article.slug}`}
                         className="text-lg font-semibold text-gray-900 hover:text-blue-600 transition-colors truncate"
                       >
                         {article.title}
@@ -480,13 +480,13 @@ export default function KnowledgeListingClient() {
                           size="sm"
                           variant="default"
                           className="flex items-center gap-1.5"
-                          onClick={(e) => handlePublish(article.id, e)}
+                          onClick={(e) => handlePublish(article.slug, e)}
                         >
                           <Send className="h-3.5 w-3.5" />
                           Publish
                         </Button>
                       )}
-                      <Link href={`/knowledge/${article.id}/edit`}>
+                      <Link href={`/knowledge/${article.slug}/edit`}>
                         <Button size="sm" variant="outline" className="flex items-center gap-1.5 w-full">
                           <Edit className="h-3.5 w-3.5" />
                           Edit
