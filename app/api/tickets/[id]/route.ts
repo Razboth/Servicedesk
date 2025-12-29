@@ -314,7 +314,7 @@ export async function PATCH(
         createdById: true,
         assignedToId: true,
         status: true,
-        // sociomileTicketId removed - column may not exist in older databases
+        sociomileTicketId: true,
         service: {
           select: {
             name: true
@@ -687,7 +687,7 @@ export async function PUT(
         createdById: true,
         assignedToId: true,
         status: true,
-        // sociomileTicketId removed - column may not exist in older databases
+        sociomileTicketId: true,
         service: {
           select: {
             name: true
