@@ -176,7 +176,7 @@ export async function GET(
     // Increment view count (but not for the author)
     if (article.authorId !== session.user.id) {
       await prisma.knowledgeArticle.update({
-        where: { id },
+        where: { id: article.id },
         data: { views: { increment: 1 } }
       });
     }
