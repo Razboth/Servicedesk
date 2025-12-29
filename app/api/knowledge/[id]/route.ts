@@ -237,10 +237,21 @@ export async function PUT(
       );
     }
 
-    // Check if content has changed significantly to create new version
-    const contentChanged = data.title && data.title !== currentArticle.title ||
-                          data.content && data.content !== currentArticle.content ||
-                          data.summary !== currentArticle.summary;
+    // Track which content fields changed (for version history)
+    const changedFields: string[] = [];
+
+    if (data.title !== undefined && data.title !== currentArticle.title) {
+      changedFields.push('title');
+    }
+    if (data.content !== undefined && data.content !== currentArticle.content) {
+      changedFields.push('content');
+    }
+    if (data.summary !== undefined && data.summary !== currentArticle.summary) {
+      changedFields.push('summary');
+    }
+
+    // Only create version if actual content changed (not just status/visibility)
+    const contentChanged = changedFields.length > 0;
 
     // Extract visibility-related fields
     const { visibleToBranches, ...updateFields } = data;
@@ -393,6 +404,15 @@ export async function PUT(
       const latestVersion = currentArticle.versions[0];
       const nextVersion = latestVersion ? latestVersion.version + 1 : 1;
 
+      // Generate descriptive change notes
+      const fieldLabels: Record<string, string> = {
+        title: 'Judul',
+        content: 'Konten',
+        summary: 'Ringkasan'
+      };
+      const changedFieldLabels = changedFields.map(f => fieldLabels[f] || f);
+      const autoChangeNotes = `Updated: ${changedFieldLabels.join(', ')}`;
+
       await prisma.knowledgeVersion.create({
         data: {
           articleId: id,
@@ -400,7 +420,7 @@ export async function PUT(
           title: updatedArticle.title,
           content: updatedArticle.content,
           summary: updatedArticle.summary,
-          changeNotes: data.changeNotes || 'Updated content',
+          changeNotes: data.changeNotes || autoChangeNotes,
           authorId: session.user.id
         }
       });
