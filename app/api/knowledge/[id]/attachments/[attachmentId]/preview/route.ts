@@ -33,9 +33,12 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const sheetIndex = parseInt(searchParams.get('sheet') || '0', 10);
 
+    // Support both ID and slug lookup
+    const isCuid = /^c[a-z0-9]{24}$/.test(id);
+
     // Check if article exists and user can access it
-    const article = await prisma.knowledgeArticle.findUnique({
-      where: { id },
+    const article = await prisma.knowledgeArticle.findFirst({
+      where: isCuid ? { id } : { slug: id },
       select: {
         id: true,
         status: true,
@@ -117,11 +120,11 @@ export async function GET(
       }
     }
 
-    // Get attachment info
+    // Get attachment info (use actual article.id, not the URL parameter)
     const attachment = await prisma.knowledgeAttachment.findUnique({
       where: {
         id: attachmentId,
-        articleId: id
+        articleId: article.id
       }
     });
 
