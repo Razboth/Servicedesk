@@ -96,14 +96,21 @@ export function AttachmentPreview({
     }
   }
 
-  useEffect(() => {
-    if (attachments && currentIndex !== localCurrentIndex) {
-      setLocalCurrentIndex(currentIndex)
-    }
-  }, [currentIndex, attachments])
+  // Sync local index with prop - use length instead of reference to avoid unnecessary triggers
+  const attachmentsLength = attachments?.length ?? 0
 
   useEffect(() => {
-    if (isOpen && currentAttachment) {
+    if (attachmentsLength > 0 && currentIndex !== localCurrentIndex) {
+      setLocalCurrentIndex(currentIndex)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentIndex, attachmentsLength]) // Intentionally exclude localCurrentIndex to prevent loops
+
+  // Track attachment ID to prevent unnecessary reloads
+  const currentAttachmentId = currentAttachment?.id
+
+  useEffect(() => {
+    if (isOpen && currentAttachmentId) {
       loadAttachment()
     }
     return () => {
@@ -114,7 +121,7 @@ export function AttachmentPreview({
         URL.revokeObjectURL(pdfUrl)
       }
     }
-  }, [isOpen, currentAttachment, localCurrentIndex])
+  }, [isOpen, currentAttachmentId, localCurrentIndex])
 
   const loadAttachment = async () => {
     setLoading(true)
