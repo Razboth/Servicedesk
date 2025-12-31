@@ -123,6 +123,9 @@ export function AttachmentPreview({
     }
   }, [isOpen, currentAttachmentId, localCurrentIndex])
 
+  // Max file size for inline preview (3MB) - larger files should be downloaded
+  const MAX_PREVIEW_SIZE = 3 * 1024 * 1024
+
   const loadAttachment = async () => {
     setLoading(true)
     setError(null)
@@ -132,6 +135,12 @@ export function AttachmentPreview({
     setPdfUrl(null)
 
     try {
+      // Check file size before attempting to load
+      if (currentAttachment.size > MAX_PREVIEW_SIZE) {
+        const sizeMB = (currentAttachment.size / (1024 * 1024)).toFixed(2)
+        throw new Error(`File terlalu besar untuk pratinjau (${sizeMB}MB). Silakan unduh file untuk melihatnya.`)
+      }
+
       const ticketId = currentAttachment.ticketId || getTicketId()
       if (!ticketId) {
         throw new Error('Could not determine ticket ID')
@@ -141,7 +150,8 @@ export function AttachmentPreview({
         id: currentAttachment.id,
         ticketId,
         commentId: currentAttachment.commentId,
-        mimeType: currentAttachment.mimeType
+        mimeType: currentAttachment.mimeType,
+        size: currentAttachment.size
       })
 
       // Build the correct API URL based on whether it's a comment attachment or ticket attachment
@@ -161,6 +171,12 @@ export function AttachmentPreview({
 
       const blob = await response.blob()
       console.log('[AttachmentPreview] Received blob:', blob.size, 'bytes')
+
+      // Double-check blob size
+      if (blob.size > MAX_PREVIEW_SIZE) {
+        const sizeMB = (blob.size / (1024 * 1024)).toFixed(2)
+        throw new Error(`File terlalu besar untuk pratinjau (${sizeMB}MB). Silakan unduh file untuk melihatnya.`)
+      }
 
       const url = URL.createObjectURL(blob)
 
