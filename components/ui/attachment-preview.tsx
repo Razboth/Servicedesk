@@ -127,11 +127,22 @@ export function AttachmentPreview({
     setLoading(true)
     setError(null)
 
+    // Clear previous URLs
+    setImageUrl(null)
+    setPdfUrl(null)
+
     try {
       const ticketId = currentAttachment.ticketId || getTicketId()
       if (!ticketId) {
         throw new Error('Could not determine ticket ID')
       }
+
+      console.log('[AttachmentPreview] Loading attachment:', {
+        id: currentAttachment.id,
+        ticketId,
+        commentId: currentAttachment.commentId,
+        mimeType: currentAttachment.mimeType
+      })
 
       // Build the correct API URL based on whether it's a comment attachment or ticket attachment
       let apiUrl: string
@@ -143,10 +154,14 @@ export function AttachmentPreview({
 
       const response = await fetch(apiUrl)
       if (!response.ok) {
-        throw new Error('Failed to load attachment')
+        const errorText = await response.text()
+        console.error('[AttachmentPreview] API error:', response.status, errorText)
+        throw new Error(`Failed to load attachment: ${response.status}`)
       }
 
       const blob = await response.blob()
+      console.log('[AttachmentPreview] Received blob:', blob.size, 'bytes')
+
       const url = URL.createObjectURL(blob)
 
       if (isImage) {
@@ -155,6 +170,7 @@ export function AttachmentPreview({
         setPdfUrl(url)
       }
     } catch (err) {
+      console.error('[AttachmentPreview] Error:', err)
       setError(err instanceof Error ? err.message : 'Failed to load attachment')
     } finally {
       setLoading(false)
