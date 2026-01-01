@@ -323,18 +323,12 @@ export default function TicketDetailPage() {
   // Helper function to check if ticket is a Transaction Claims ticket
   const isTransactionClaimTicket = (ticket: Ticket | null): boolean => {
     if (!ticket) return false;
-    const categoryId = ticket.service?.tier1Category?.id;
-    const categoryName = ticket.service?.tier1Category?.name;
+    const categoryName = (ticket.service?.tier1Category?.name || '').toLowerCase();
 
-    // Check by category ID or name
-    const transactionClaimCategoryIds = [
-      'cmekrqi45001qhluspcsta20x', // Transaction Claims
-      'cmekrqi3t001ghlusklheksqz'  // ATM Services
-    ];
-
-    return transactionClaimCategoryIds.includes(categoryId || '') ||
-           categoryName === 'Klaim Transaksi' ||
-           categoryName === 'ATM Services';
+    // Check by tier 1 category name (case-insensitive, flexible matching)
+    return categoryName.includes('transaction claim') ||
+           categoryName.includes('klaim transaksi') ||
+           categoryName.includes('atm service');
   };
 
   // Handle sending ticket to Omni/Sociomile
