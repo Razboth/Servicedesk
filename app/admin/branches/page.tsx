@@ -164,6 +164,8 @@ export default function BranchesPage() {
       const params = new URLSearchParams({
         page: pagination.page.toString(),
         limit: pagination.limit.toString(),
+        sortBy: 'name',
+        sortOrder: 'asc',
         ...(search && { search }),
         ...(status !== 'all' && { status })
       });

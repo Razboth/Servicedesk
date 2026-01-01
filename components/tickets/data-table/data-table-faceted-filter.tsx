@@ -93,7 +93,8 @@ export function DataTableFacetedFilter<TData, TValue>({
                 return (
                   <CommandItem
                     key={option.value}
-                    value={option.value}
+                    value={option.label}
+                    keywords={[option.value]}
                     disabled={false}
                     onSelect={() => {
                       if (isSelected) {
