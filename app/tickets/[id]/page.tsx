@@ -2165,7 +2165,7 @@ export default function TicketDetailPage() {
               )}
 
               {/* Omni/Sociomile Integration Card - Sidebar, Collapsible */}
-              {isTransactionClaimTicket(ticket) && ticket?.assignedTo?.email === session?.user?.email && (
+              {isTransactionClaimTicket(ticket) && (ticket?.assignedTo?.email === session?.user?.email || ['ADMIN', 'SUPER_ADMIN'].includes(session?.user?.role || '')) && (
                 <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/20 overflow-hidden">
                   <button
                     onClick={() => setIsOmniExpanded(!isOmniExpanded)}
