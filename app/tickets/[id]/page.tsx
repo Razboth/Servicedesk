@@ -2165,7 +2165,11 @@ export default function TicketDetailPage() {
               )}
 
               {/* Omni/Sociomile Integration Card - Sidebar, Collapsible */}
-              {isTransactionClaimTicket(ticket) && (ticket?.assignedTo?.email === session?.user?.email || ['ADMIN', 'SUPER_ADMIN'].includes(session?.user?.role || '')) && (
+              {isTransactionClaimTicket(ticket) && (
+                ticket?.assignedTo?.email === session?.user?.email || // Assigned technician
+                ticket?.createdBy?.email === session?.user?.email || // Ticket creator
+                ['ADMIN', 'SUPER_ADMIN', 'MANAGER'].includes(session?.user?.role || '') // Admins and managers
+              ) && (
                 <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/20 overflow-hidden">
                   <button
                     onClick={() => setIsOmniExpanded(!isOmniExpanded)}
