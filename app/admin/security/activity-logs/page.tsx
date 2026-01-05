@@ -230,12 +230,12 @@ export default function ActivityLogsPage() {
 
                 <div className="space-y-2">
                   <Label>Entity</Label>
-                  <Select value={entity} onValueChange={setEntity}>
+                  <Select value={entity || 'all'} onValueChange={(val) => setEntity(val === 'all' ? '' : val)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Semua entity" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Semua Entity</SelectItem>
+                      <SelectItem value="all">Semua Entity</SelectItem>
                       <SelectItem value="USER">User</SelectItem>
                       <SelectItem value="TICKET">Ticket</SelectItem>
                       <SelectItem value="SERVICE">Service</SelectItem>
