@@ -419,7 +419,6 @@ model TicketFieldValue {
   @@unique([ticketId, fieldId])
   @@index([ticketId])
   @@index([fieldId])
-  @@index([fieldId, value])
   @@map("ticket_field_values")
 }
 
