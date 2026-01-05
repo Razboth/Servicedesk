@@ -82,6 +82,11 @@ model User {
   passwordResetTokens    PasswordResetToken[]
   dailyTaskLists         DailyTaskList[]
 
+  // Audit and security tracking
+  auditSessions          UserAuditSession[]
+  profileChanges         ProfileChangeLog[]  @relation("ProfileChanges")
+  profileChangesBy       ProfileChangeLog[]  @relation("ProfileChangedBy")
+
   // Knowledge base collaboration
   knowledgeCollaborations KnowledgeCollaborator[] @relation("CollaboratorUser")
   invitedCollaborators    KnowledgeCollaborator[] @relation("InvitedByUser")
@@ -672,15 +677,60 @@ model AuditLog {
 }
 
 model LoginAttempt {
-  id            String   @id @default(cuid())
+  id            String              @id @default(cuid())
   email         String
   ipAddress     String?
   userAgent     String?
   success       Boolean
-  attemptedAt   DateTime @default(now())
-  lockTriggered Boolean  @default(false)
+  attemptedAt   DateTime            @default(now())
+  lockTriggered Boolean             @default(false)
+  failureReason LoginFailureReason? // Detailed reason for failed login
+  deviceInfo    Json?               // Browser, OS, device type info
 
+  @@index([email, attemptedAt])
+  @@index([ipAddress, attemptedAt])
   @@map("login_attempts")
+}
+
+// User session tracking for audit and security
+model UserAuditSession {
+  id           String    @id @default(cuid())
+  userId       String
+  sessionToken String    @unique
+  ipAddress    String?
+  userAgent    String?
+  deviceInfo   Json?     // Browser, OS, device type
+  location     String?   // Geo-location if available
+  loginAt      DateTime  @default(now())
+  logoutAt     DateTime?
+  isActive     Boolean   @default(true)
+  logoutReason String?   // manual, timeout, forced, session_expired
+  isNewDevice  Boolean   @default(false)
+
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isActive])
+  @@index([loginAt])
+  @@map("user_audit_sessions")
+}
+
+// Track profile changes for audit
+model ProfileChangeLog {
+  id         String   @id @default(cuid())
+  userId     String
+  fieldName  String   // email, phone, name, avatar, role
+  oldValue   String?
+  newValue   String?
+  changedBy  String   // ID of user who made the change
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  user       User     @relation("ProfileChanges", fields: [userId], references: [id], onDelete: Cascade)
+  changedByUser User  @relation("ProfileChangedBy", fields: [changedBy], references: [id])
+
+  @@index([userId, createdAt])
+  @@map("profile_change_logs")
 }
 
 model PasswordResetToken {
@@ -1390,6 +1440,16 @@ enum NetworkMedia {
   VSAT
   M2M
   FO
+}
+
+enum LoginFailureReason {
+  WRONG_PASSWORD
+  USER_NOT_FOUND
+  ACCOUNT_INACTIVE
+  ACCOUNT_LOCKED
+  RATE_LIMITED
+  SESSION_EXPIRED
+  INVALID_TOKEN
 }
 
 enum UserRole {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import * as XLSX from 'xlsx';
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,8 +15,9 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
+    const exportFormat = searchParams.get('export'); // csv or xlsx
     const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '50');
+    const limit = exportFormat ? 10000 : parseInt(searchParams.get('limit') || '50'); // Higher limit for export
     const userId = searchParams.get('userId');
     const action = searchParams.get('action');
     const entity = searchParams.get('entity');
@@ -72,6 +74,75 @@ export async function GET(request: NextRequest) {
       skip,
       take: limit
     });
+
+    // Handle export if requested
+    if (exportFormat) {
+      const exportData = logs.map(log => ({
+        'Waktu': new Date(log.createdAt).toLocaleString('id-ID'),
+        'User': log.user?.name || '-',
+        'Email': log.user?.email || '-',
+        'Role': log.user?.role || '-',
+        'Cabang': log.user?.branch?.name || '-',
+        'Aksi': log.action,
+        'Entitas': log.entity,
+        'ID Entitas': log.entityId || '-',
+        'Alamat IP': log.ipAddress || '-',
+        'Browser': log.userAgent?.substring(0, 50) || '-'
+      }));
+
+      if (exportFormat === 'csv') {
+        const headers = Object.keys(exportData[0] || {});
+        const csvRows = [
+          headers.join(','),
+          ...exportData.map(row =>
+            headers.map(h => {
+              const value = row[h as keyof typeof row];
+              if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+                return `"${value.replace(/"/g, '""')}"`;
+              }
+              return value;
+            }).join(',')
+          )
+        ];
+        const csvContent = csvRows.join('\n');
+
+        return new NextResponse(csvContent, {
+          headers: {
+            'Content-Type': 'text/csv; charset=utf-8',
+            'Content-Disposition': `attachment; filename="activity-logs-${new Date().toISOString().split('T')[0]}.csv"`
+          }
+        });
+      }
+
+      if (exportFormat === 'xlsx') {
+        const worksheet = XLSX.utils.json_to_sheet(exportData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Activity Logs');
+
+        // Set column widths
+        worksheet['!cols'] = [
+          { wch: 20 }, // Waktu
+          { wch: 25 }, // User
+          { wch: 30 }, // Email
+          { wch: 15 }, // Role
+          { wch: 20 }, // Cabang
+          { wch: 25 }, // Aksi
+          { wch: 15 }, // Entitas
+          { wch: 25 }, // ID Entitas
+          { wch: 15 }, // Alamat IP
+          { wch: 30 }, // Browser
+        ];
+
+        const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+        return new NextResponse(buffer, {
+          headers: {
+            'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition': `attachment; filename="activity-logs-${new Date().toISOString().split('T')[0]}.xlsx"`
+          }
+        });
+      }
+    }
 
     // Get action statistics
     const actionStats = await prisma.auditLog.groupBy({

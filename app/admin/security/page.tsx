@@ -27,12 +27,12 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { PageHeader } from '@/components/ui/page-header'
-import { 
-  Shield, 
-  Lock, 
-  Unlock, 
-  RotateCcw, 
-  Eye, 
+import {
+  Shield,
+  Lock,
+  Unlock,
+  RotateCcw,
+  Eye,
   EyeOff,
   AlertTriangle,
   Clock,
@@ -43,10 +43,15 @@ import {
   Tablet,
   AlertCircle,
   CheckCircle,
-  XCircle
+  XCircle,
+  FileText,
+  History,
+  LogOut,
+  ChevronRight
 } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { toast } from 'sonner'
+import Link from 'next/link'
 
 interface User {
   id: string
@@ -233,6 +238,60 @@ export default function SecurityDashboard() {
       />
       
       <div className="space-y-6">
+        {/* Quick Access Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Link href="/admin/security/audit-reports">
+            <Card className="hover:bg-accent/50 transition-colors cursor-pointer">
+              <CardContent className="flex items-center justify-between p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                    <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <h3 className="font-medium">Audit Reports</h3>
+                    <p className="text-sm text-muted-foreground">Generate & export audit reports</p>
+                  </div>
+                </div>
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link href="/admin/security/activity-logs">
+            <Card className="hover:bg-accent/50 transition-colors cursor-pointer">
+              <CardContent className="flex items-center justify-between p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
+                    <History className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div>
+                    <h3 className="font-medium">Activity Logs</h3>
+                    <p className="text-sm text-muted-foreground">View all system activities</p>
+                  </div>
+                </div>
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link href="/admin/security/sessions">
+            <Card className="hover:bg-accent/50 transition-colors cursor-pointer">
+              <CardContent className="flex items-center justify-between p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-orange-100 dark:bg-orange-900 rounded-lg">
+                    <LogOut className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                  </div>
+                  <div>
+                    <h3 className="font-medium">Session Management</h3>
+                    <p className="text-sm text-muted-foreground">Manage active user sessions</p>
+                  </div>
+                </div>
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+              </CardContent>
+            </Card>
+          </Link>
+        </div>
+
         <div className="flex items-center space-x-2">
           <Switch
             id="locked-filter"
