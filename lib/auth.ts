@@ -1,11 +1,12 @@
 import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient, LoginFailureReason } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import { headers } from 'next/headers'
 import { getConfig } from '@/lib/env-config'
 import { logger } from '@/lib/services/logging.service'
 import { metrics } from '@/lib/services/metrics.service'
+import { createSession, parseUserAgent } from '@/lib/audit/session-tracker'
 
 const prisma = new PrismaClient()
 
@@ -94,7 +95,15 @@ async function isAccountLocked(username: string): Promise<boolean> {
 }
 
 // Helper function to record login attempt
-async function recordLoginAttempt(username: string, success: boolean, ipAddress?: string, userAgent?: string): Promise<void> {
+async function recordLoginAttempt(
+  username: string,
+  success: boolean,
+  ipAddress?: string,
+  userAgent?: string,
+  failureReason?: LoginFailureReason
+): Promise<void> {
+  const deviceInfo = userAgent ? parseUserAgent(userAgent) : undefined
+
   const user = await prisma.user.findUnique({
     where: { username },
     select: { id: true, loginAttempts: true, email: true }
@@ -107,7 +116,9 @@ async function recordLoginAttempt(username: string, success: boolean, ipAddress?
         email: username, // Store username in email field for backward compatibility
         success: false,
         ipAddress,
-        userAgent
+        userAgent,
+        failureReason: LoginFailureReason.USER_NOT_FOUND,
+        deviceInfo: deviceInfo ? JSON.parse(JSON.stringify(deviceInfo)) : undefined
       }
     })
     return
@@ -115,7 +126,7 @@ async function recordLoginAttempt(username: string, success: boolean, ipAddress?
 
   const newAttempts = success ? 0 : user.loginAttempts + 1
   const shouldLock = !success && newAttempts >= MAX_LOGIN_ATTEMPTS
-  
+
   // Update user login tracking
   await prisma.user.update({
     where: { username },
@@ -134,7 +145,9 @@ async function recordLoginAttempt(username: string, success: boolean, ipAddress?
       success,
       ipAddress,
       userAgent,
-      lockTriggered: shouldLock
+      lockTriggered: shouldLock,
+      failureReason: success ? undefined : failureReason,
+      deviceInfo: deviceInfo ? JSON.parse(JSON.stringify(deviceInfo)) : undefined
     }
   })
 
@@ -143,8 +156,9 @@ async function recordLoginAttempt(username: string, success: boolean, ipAddress?
     logger.loginSuccess(user.id, user.email, ipAddress, userAgent)
     metrics.loginAttempt(true)
   } else {
-    logger.loginFailed(user.email, 'invalid_credentials', ipAddress, userAgent)
-    metrics.loginAttempt(false, 'invalid_credentials')
+    const reason = failureReason || 'invalid_credentials'
+    logger.loginFailed(user.email, reason, ipAddress, userAgent)
+    metrics.loginAttempt(false, reason)
 
     if (shouldLock) {
       logger.accountLocked(user.email, `${MAX_LOGIN_ATTEMPTS} failed attempts`, ipAddress)
@@ -224,11 +238,35 @@ const authOptions = {
         try {
           // Check if account is locked
           if (await isAccountLocked(username)) {
-            await recordLoginAttempt(username, false, ipAddress, userAgent || undefined)
+            await recordLoginAttempt(username, false, ipAddress, userAgent || undefined, LoginFailureReason.ACCOUNT_LOCKED)
             throw new Error('ACCOUNT_LOCKED')
           }
 
-          // Find user in database
+          // Find user in database (first check if user exists at all)
+          const userExists = await prisma.user.findUnique({
+            where: { username: username },
+            select: { id: true, isActive: true, password: true }
+          })
+
+          // User doesn't exist
+          if (!userExists) {
+            await recordLoginAttempt(username, false, ipAddress, userAgent || undefined, LoginFailureReason.USER_NOT_FOUND)
+            return null
+          }
+
+          // User exists but is inactive
+          if (!userExists.isActive) {
+            await recordLoginAttempt(username, false, ipAddress, userAgent || undefined, LoginFailureReason.ACCOUNT_INACTIVE)
+            return null
+          }
+
+          // User has no password set
+          if (!userExists.password) {
+            await recordLoginAttempt(username, false, ipAddress, userAgent || undefined, LoginFailureReason.WRONG_PASSWORD)
+            return null
+          }
+
+          // Get full user data
           const user = await prisma.user.findUnique({
             where: {
               username: username,
@@ -239,22 +277,30 @@ const authOptions = {
             }
           })
 
-          if (!user || !user.password) {
-            await recordLoginAttempt(username, false, ipAddress, userAgent || undefined)
+          if (!user) {
+            await recordLoginAttempt(username, false, ipAddress, userAgent || undefined, LoginFailureReason.USER_NOT_FOUND)
             return null
           }
 
           // Verify password
-          const isPasswordValid = await bcrypt.compare(password, user.password)
+          const isPasswordValid = await bcrypt.compare(password, user.password!)
 
           if (!isPasswordValid) {
-            await recordLoginAttempt(username, false, ipAddress, userAgent || undefined)
+            await recordLoginAttempt(username, false, ipAddress, userAgent || undefined, LoginFailureReason.WRONG_PASSWORD)
             return null
           }
 
           // Successful login - record attempt and update activity
           await recordLoginAttempt(username, true, ipAddress, userAgent || undefined)
-          
+
+          // Create audit session for tracking
+          try {
+            await createSession(user.id, ipAddress || undefined, userAgent || undefined)
+          } catch (sessionError) {
+            console.error('Failed to create audit session:', sessionError)
+            // Don't fail login if session creation fails
+          }
+
           // Update isFirstLogin to false after successful first login
           if (user.isFirstLogin) {
             await prisma.user.update({
