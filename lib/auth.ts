@@ -295,7 +295,11 @@ const authOptions = {
 
           // Create audit session for tracking
           try {
-            await createSession(user.id, ipAddress || undefined, userAgent || undefined)
+            await createSession({
+              userId: user.id,
+              ipAddress: ipAddress || undefined,
+              userAgent: userAgent || undefined
+            })
           } catch (sessionError) {
             console.error('Failed to create audit session:', sessionError)
             // Don't fail login if session creation fails
