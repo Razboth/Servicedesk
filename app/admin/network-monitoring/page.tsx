@@ -1,24 +1,22 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { 
-  Activity, 
-  AlertTriangle, 
-  CheckCircle2, 
+import {
+  AlertTriangle,
+  CheckCircle2,
   Clock,
   MapPin,
   RefreshCw,
@@ -29,20 +27,12 @@ import {
   Wifi,
   WifiOff,
   Globe,
-  Play,
-  Pause,
-  SkipForward,
-  Settings,
-  Timer,
-  Target,
-  ArrowRight,
-  Zap,
   Ticket,
-  Plus,
   ExternalLink,
   TrendingUp,
   TrendingDown,
-  BarChart3
+  Radio,
+  Activity
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -58,17 +48,17 @@ interface NetworkEndpoint {
   networkVendor?: string;
   branchId?: string;
   branchName?: string;
-}
-
-interface PingResult {
-  id: string;
-  status: 'ONLINE' | 'OFFLINE' | 'SLOW' | 'TIMEOUT' | 'ERROR';
-  responseTimeMs?: number;
-  packetLoss?: number;
-  errorMessage?: string;
-  checkedAt: string;
-  ipAddress: string;
-  ipType: 'PRIMARY' | 'BACKUP';
+  lastStatus?: {
+    status: 'ONLINE' | 'OFFLINE' | 'SLOW' | 'TIMEOUT' | 'ERROR' | 'WARNING' | 'MAINTENANCE';
+    responseTimeMs?: number;
+    checkedAt: string;
+    errorMessage?: string;
+    packetLoss?: number;
+    previousStatus?: string;
+    statusChangedAt?: string;
+    downSince?: string;
+    uptimePercentage?: number;
+  };
 }
 
 interface NetworkStats {
@@ -78,17 +68,15 @@ interface NetworkStats {
   slow: number;
   error: number;
   avgResponseTime: number;
-  lastCycleCompletedAt?: string;
-  cycleCount: number;
+  lastRefresh: string;
 }
 
 export default function NetworkMonitoringPage() {
   const { data: session } = useSession();
   const router = useRouter();
-  
+
   // Core data
   const [endpoints, setEndpoints] = useState<NetworkEndpoint[]>([]);
-  const [pingResults, setPingResults] = useState<Map<string, PingResult>>(new Map());
   const [stats, setStats] = useState<NetworkStats>({
     total: 0,
     online: 0,
@@ -96,74 +84,62 @@ export default function NetworkMonitoringPage() {
     slow: 0,
     error: 0,
     avgResponseTime: 0,
-    cycleCount: 0
+    lastRefresh: new Date().toISOString()
   });
-  
-  // Loop control
-  const [isRunning, setIsRunning] = useState(false);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isCurrentlyPinging, setIsCurrentlyPinging] = useState(false);
-  const [pingDelay, setPingDelay] = useState(2000); // 2 seconds default
-  const [skipOffline, setSkipOffline] = useState(false);
-  const [cycleCount, setCycleCount] = useState(0);
-  
+
   // UI state
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
-  
-  // Refs
-  const pingTimeoutRef = useRef<NodeJS.Timeout>();
-  const abortControllerRef = useRef<AbortController>();
-  
-  // Load initial data
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [refreshInterval, setRefreshInterval] = useState(30000); // 30 seconds
+
+  // Load initial data and set up auto-refresh
   useEffect(() => {
     loadEndpoints();
+
+    // Auto-refresh interval
+    let interval: NodeJS.Timeout;
+    if (autoRefresh) {
+      interval = setInterval(() => {
+        loadEndpoints(true);
+      }, refreshInterval);
+    }
+
     return () => {
-      // Cleanup on unmount
-      if (pingTimeoutRef.current) clearTimeout(pingTimeoutRef.current);
-      if (abortControllerRef.current) abortControllerRef.current.abort();
+      if (interval) clearInterval(interval);
     };
-  }, []);
+  }, [autoRefresh, refreshInterval]);
 
-  // Update stats when ping results change
-  useEffect(() => {
-    updateStats();
-  }, [pingResults, endpoints]);
-
-  const loadEndpoints = async () => {
+  const loadEndpoints = async (isRefresh = false) => {
     try {
-      setLoading(true);
-      const response = await fetch('/api/admin/network-monitoring/endpoints');
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+
+      const response = await fetch('/api/admin/network-monitoring/endpoints?includeStatus=true');
       if (response.ok) {
         const data = await response.json();
         setEndpoints(data.endpoints);
-        // Initialize ping results with unknown status
-        const initialResults = new Map();
-        data.endpoints.forEach((endpoint: NetworkEndpoint) => {
-          initialResults.set(endpoint.id, {
-            id: endpoint.id,
-            status: 'ERROR',
-            checkedAt: new Date().toISOString(),
-            ipAddress: endpoint.ipAddress,
-            ipType: 'PRIMARY'
-          });
-        });
-        setPingResults(initialResults);
+        calculateStats(data.endpoints);
       } else {
-        toast.error('Failed to load network endpoints');
+        toast.error('Failed to load network status');
       }
     } catch (error) {
       console.error('Error loading endpoints:', error);
-      toast.error('Error loading network endpoints');
+      toast.error('Error loading network status');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  const updateStats = () => {
-    const total = endpoints.length;
+  const calculateStats = (endpointList: NetworkEndpoint[]) => {
+    const total = endpointList.length;
     let online = 0;
     let offline = 0;
     let slow = 0;
@@ -171,25 +147,28 @@ export default function NetworkMonitoringPage() {
     let totalResponseTime = 0;
     let responseTimeCount = 0;
 
-    pingResults.forEach((result) => {
-      switch (result.status) {
+    endpointList.forEach((endpoint) => {
+      const status = endpoint.lastStatus?.status;
+      switch (status) {
         case 'ONLINE':
           online++;
           break;
         case 'OFFLINE':
+        case 'TIMEOUT':
           offline++;
           break;
         case 'SLOW':
+        case 'WARNING':
           slow++;
           break;
-        case 'TIMEOUT':
         case 'ERROR':
+        case 'MAINTENANCE':
           error++;
           break;
       }
-      
-      if (result.responseTimeMs && result.responseTimeMs > 0) {
-        totalResponseTime += result.responseTimeMs;
+
+      if (endpoint.lastStatus?.responseTimeMs && endpoint.lastStatus.responseTimeMs > 0) {
+        totalResponseTime += endpoint.lastStatus.responseTimeMs;
         responseTimeCount++;
       }
     });
@@ -201,133 +180,11 @@ export default function NetworkMonitoringPage() {
       slow,
       error,
       avgResponseTime: responseTimeCount > 0 ? Math.round(totalResponseTime / responseTimeCount) : 0,
-      cycleCount
+      lastRefresh: new Date().toISOString()
     });
   };
 
-  const pingEndpoint = async (endpoint: NetworkEndpoint): Promise<PingResult | null> => {
-    try {
-      // Abort previous request if still running
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-      
-      abortControllerRef.current = new AbortController();
-      
-      const response = await fetch('/api/admin/network-monitoring/ping', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          endpointId: endpoint.id,
-          type: endpoint.type
-        }),
-        signal: abortControllerRef.current.signal
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        return data.result;
-      } else {
-        return {
-          id: endpoint.id,
-          status: 'ERROR',
-          errorMessage: 'Failed to ping endpoint',
-          checkedAt: new Date().toISOString(),
-          ipAddress: endpoint.ipAddress,
-          ipType: 'PRIMARY'
-        };
-      }
-    } catch (error: any) {
-      if (error.name === 'AbortError') {
-        return null; // Request was aborted, don't update
-      }
-      
-      return {
-        id: endpoint.id,
-        status: 'ERROR',
-        errorMessage: error.message || 'Network error',
-        checkedAt: new Date().toISOString(),
-        ipAddress: endpoint.ipAddress,
-        ipType: 'PRIMARY'
-      };
-    }
-  };
-
-  const pingNext = useCallback(async () => {
-    if (!isRunning || endpoints.length === 0) return;
-    
-    setIsCurrentlyPinging(true);
-    const endpoint = endpoints[currentIndex];
-    
-    // Skip offline endpoints if option is enabled
-    if (skipOffline) {
-      const currentResult = pingResults.get(endpoint.id);
-      if (currentResult && currentResult.status === 'OFFLINE') {
-        // Move to next endpoint immediately
-        setCurrentIndex((prev) => (prev + 1) % endpoints.length);
-        setIsCurrentlyPinging(false);
-        
-        // Schedule next ping with minimal delay
-        pingTimeoutRef.current = setTimeout(pingNext, 100);
-        return;
-      }
-    }
-
-    const result = await pingEndpoint(endpoint);
-    
-    if (result) {
-      setPingResults(prev => new Map(prev.set(result.id, result)));
-    }
-    
-    // Move to next endpoint
-    const nextIndex = (currentIndex + 1) % endpoints.length;
-    setCurrentIndex(nextIndex);
-    
-    // If we completed a full cycle, increment counter
-    if (nextIndex === 0) {
-      setCycleCount(prev => prev + 1);
-    }
-    
-    setIsCurrentlyPinging(false);
-    
-    // Schedule next ping
-    if (isRunning) {
-      pingTimeoutRef.current = setTimeout(pingNext, pingDelay);
-    }
-  }, [isRunning, currentIndex, endpoints, pingResults, skipOffline, pingDelay]);
-
-  // Start/stop the ping loop
-  useEffect(() => {
-    if (isRunning && !isCurrentlyPinging && endpoints.length > 0) {
-      pingTimeoutRef.current = setTimeout(pingNext, 100);
-    } else if (!isRunning && pingTimeoutRef.current) {
-      clearTimeout(pingTimeoutRef.current);
-    }
-    
-    return () => {
-      if (pingTimeoutRef.current) clearTimeout(pingTimeoutRef.current);
-    };
-  }, [isRunning, pingNext]);
-
-  const toggleMonitoring = () => {
-    setIsRunning(!isRunning);
-    if (!isRunning) {
-      toast.success('Continuous monitoring started');
-    } else {
-      toast.info('Continuous monitoring stopped');
-      if (pingTimeoutRef.current) clearTimeout(pingTimeoutRef.current);
-    }
-  };
-
-  const skipToNext = () => {
-    if (pingTimeoutRef.current) clearTimeout(pingTimeoutRef.current);
-    setCurrentIndex((prev) => (prev + 1) % endpoints.length);
-    if (isRunning) {
-      pingTimeoutRef.current = setTimeout(pingNext, 100);
-    }
-  };
-
-  const createNetworkTicket = async (endpoint: NetworkEndpoint, pingResult?: PingResult) => {
+  const createNetworkTicket = async (endpoint: NetworkEndpoint) => {
     try {
       const response = await fetch('/api/admin/network-monitoring/create-ticket', {
         method: 'POST',
@@ -335,16 +192,14 @@ export default function NetworkMonitoringPage() {
         body: JSON.stringify({
           endpointId: endpoint.id,
           endpointType: endpoint.type,
-          incidentType: pingResult?.status || 'OUTAGE',
-          pingResult: pingResult
+          incidentType: endpoint.lastStatus?.status || 'OUTAGE',
+          pingResult: endpoint.lastStatus
         })
       });
 
       if (response.ok) {
         const data = await response.json();
         toast.success(`Network ticket created: ${data.ticket.id.slice(-8)}`);
-        // Optionally navigate to the ticket
-        // router.push(`/tickets/${data.ticket.id}`);
       } else {
         const error = await response.json();
         toast.error(`Failed to create ticket: ${error.error}`);
@@ -355,94 +210,38 @@ export default function NetworkMonitoringPage() {
     }
   };
 
-  const createTicketsForOfflineEndpoints = async () => {
-    const offlineEndpoints = endpoints.filter(endpoint => {
-      const result = pingResults.get(endpoint.id);
-      return result && ['OFFLINE', 'TIMEOUT', 'ERROR'].includes(result.status);
-    });
-
-    if (offlineEndpoints.length === 0) {
-      toast.info('No offline endpoints found');
-      return;
-    }
-
-    const confirmation = confirm(
-      `Create tickets for ${offlineEndpoints.length} offline endpoints?\n\n` +
-      offlineEndpoints.slice(0, 5).map(e => `- ${e.code} (${e.name})`).join('\n') +
-      (offlineEndpoints.length > 5 ? `\n... and ${offlineEndpoints.length - 5} more` : '')
-    );
-
-    if (!confirmation) return;
-
-    toast.info(`Creating tickets for ${offlineEndpoints.length} offline endpoints...`);
-    
-    let successCount = 0;
-    let failureCount = 0;
-
-    for (const endpoint of offlineEndpoints) {
-      try {
-        const result = pingResults.get(endpoint.id);
-        const response = await fetch('/api/admin/network-monitoring/create-ticket', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            endpointId: endpoint.id,
-            endpointType: endpoint.type,
-            incidentType: result?.status || 'OUTAGE',
-            pingResult: result
-          })
-        });
-
-        if (response.ok) {
-          successCount++;
-        } else {
-          failureCount++;
-        }
-      } catch (error) {
-        console.error(`Error creating ticket for ${endpoint.code}:`, error);
-        failureCount++;
-      }
-      
-      // Small delay between requests to avoid overwhelming the server
-      await new Promise(resolve => setTimeout(resolve, 200));
-    }
-
-    if (successCount > 0) {
-      toast.success(`Successfully created ${successCount} network incident tickets`);
-    }
-    if (failureCount > 0) {
-      toast.error(`Failed to create ${failureCount} tickets`);
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status?: string) => {
     switch (status) {
       case 'ONLINE':
         return <CheckCircle2 className="h-4 w-4 text-green-500" />;
       case 'SLOW':
+      case 'WARNING':
         return <Clock className="h-4 w-4 text-yellow-500" />;
       case 'OFFLINE':
       case 'TIMEOUT':
         return <WifiOff className="h-4 w-4 text-red-500" />;
       case 'ERROR':
+      case 'MAINTENANCE':
         return <AlertTriangle className="h-4 w-4 text-red-500" />;
       default:
-        return <Loader2 className="h-4 w-4 text-gray-400" />;
+        return <Radio className="h-4 w-4 text-gray-400" />;
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status?: string) => {
     switch (status) {
       case 'ONLINE': return 'bg-green-100 text-green-800 border-green-200';
-      case 'SLOW': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'SLOW':
+      case 'WARNING': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'OFFLINE':
       case 'TIMEOUT': return 'bg-red-100 text-red-800 border-red-200';
-      case 'ERROR': return 'bg-red-100 text-red-800 border-red-200';
+      case 'ERROR':
+      case 'MAINTENANCE': return 'bg-red-100 text-red-800 border-red-200';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
-  const getResponseTimeColor = (responseTime: number | undefined) => {
+  const getResponseTimeColor = (responseTime?: number) => {
     if (!responseTime) return 'text-gray-500';
     if (responseTime < 100) return 'text-green-600';
     if (responseTime < 300) return 'text-yellow-600';
@@ -450,16 +249,9 @@ export default function NetworkMonitoringPage() {
     return 'text-red-600';
   };
 
-  const formatDuration = (seconds: number): string => {
-    if (seconds < 60) return `${seconds}s`;
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
-    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
-    const days = Math.floor(seconds / 86400);
-    const hours = Math.floor((seconds % 86400) / 3600);
-    return `${days}d ${hours}h`;
-  };
-
-  const formatTimeAgo = (date: Date): string => {
+  const formatTimeAgo = (dateString?: string): string => {
+    if (!dateString) return 'Never';
+    const date = new Date(dateString);
     const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
     if (seconds < 60) return `${seconds}s ago`;
     if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
@@ -467,23 +259,26 @@ export default function NetworkMonitoringPage() {
     return `${Math.floor(seconds / 86400)}d ago`;
   };
 
-  const getUptimeColor = (percentage: number): string => {
-    if (percentage >= 99) return 'text-green-600';
-    if (percentage >= 95) return 'text-yellow-600';
-    if (percentage >= 90) return 'text-orange-600';
-    return 'text-red-600';
+  const isStale = (dateString?: string): boolean => {
+    if (!dateString) return true;
+    const date = new Date(dateString);
+    const minutes = (Date.now() - date.getTime()) / 1000 / 60;
+    return minutes > 10; // Consider stale if no update in 10 minutes
   };
 
   const filteredEndpoints = endpoints.filter(endpoint => {
-    const matchesSearch = searchTerm === '' || 
+    const matchesSearch = searchTerm === '' ||
       endpoint.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
       endpoint.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (endpoint.location && endpoint.location.toLowerCase().includes(searchTerm.toLowerCase()));
-    
+
     const matchesType = typeFilter === 'all' || endpoint.type === typeFilter;
-    
-    const result = pingResults.get(endpoint.id);
-    const matchesStatus = statusFilter === 'all' || (result && result.status.toLowerCase() === statusFilter.toLowerCase());
+
+    const status = endpoint.lastStatus?.status?.toLowerCase() || '';
+    const matchesStatus = statusFilter === 'all' ||
+      status === statusFilter.toLowerCase() ||
+      (statusFilter === 'offline' && (status === 'offline' || status === 'timeout')) ||
+      (statusFilter === 'error' && (status === 'error' || status === 'maintenance'));
 
     return matchesSearch && matchesType && matchesStatus;
   });
@@ -493,14 +288,11 @@ export default function NetworkMonitoringPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading network endpoints...</p>
+          <p className="text-gray-600">Loading network status...</p>
         </div>
       </div>
     );
   }
-
-  const currentEndpoint = endpoints[currentIndex];
-  const nextEndpoint = endpoints[(currentIndex + 1) % endpoints.length];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -514,60 +306,63 @@ export default function NetworkMonitoringPage() {
                 Network Monitoring Dashboard
               </h1>
               <p className="mt-2 text-gray-600">
-                Continuous monitoring of branch and ATM network connectivity
+                Real-time status from external monitoring systems
               </p>
             </div>
-            
-            {/* Control Panel */}
+
+            {/* Status Panel */}
             <Card className="p-4">
               <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <Badge variant={isRunning ? "default" : "secondary"} className="flex items-center gap-1">
-                    {isRunning ? <Activity className="h-3 w-3" /> : <Pause className="h-3 w-3" />}
-                    {isRunning ? "RUNNING" : "STOPPED"}
-                  </Badge>
-                  <Button
-                    variant={isRunning ? "destructive" : "default"}
-                    size="sm"
-                    onClick={toggleMonitoring}
-                    disabled={endpoints.length === 0}
+                <Badge variant="default" className="flex items-center gap-1 bg-green-600">
+                  <Radio className="h-3 w-3" />
+                  PASSIVE MODE
+                </Badge>
+
+                <div className="border-l pl-4 flex items-center gap-2">
+                  <span className="text-sm text-gray-500">Auto-refresh:</span>
+                  <Select
+                    value={autoRefresh ? refreshInterval.toString() : 'off'}
+                    onValueChange={(val) => {
+                      if (val === 'off') {
+                        setAutoRefresh(false);
+                      } else {
+                        setAutoRefresh(true);
+                        setRefreshInterval(parseInt(val));
+                      }
+                    }}
                   >
-                    {isRunning ? <Pause className="h-4 w-4 mr-1" /> : <Play className="h-4 w-4 mr-1" />}
-                    {isRunning ? "Stop" : "Start"}
-                  </Button>
-                  {isRunning && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={skipToNext}
-                      disabled={isCurrentlyPinging}
-                    >
-                      <SkipForward className="h-4 w-4 mr-1" />
-                      Skip
-                    </Button>
-                  )}
-                </div>
-                
-                <div className="border-l pl-4">
-                  <Select value={pingDelay.toString()} onValueChange={(value) => setPingDelay(parseInt(value))}>
-                    <SelectTrigger className="w-[120px]">
+                    <SelectTrigger className="w-[100px]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="1000">Fast (1s)</SelectItem>
-                      <SelectItem value="2000">Normal (2s)</SelectItem>
-                      <SelectItem value="3000">Slow (3s)</SelectItem>
-                      <SelectItem value="5000">Very Slow (5s)</SelectItem>
+                      <SelectItem value="off">Off</SelectItem>
+                      <SelectItem value="10000">10s</SelectItem>
+                      <SelectItem value="30000">30s</SelectItem>
+                      <SelectItem value="60000">1m</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => loadEndpoints(true)}
+                  disabled={refreshing}
+                >
+                  <RefreshCw className={`h-4 w-4 mr-1 ${refreshing ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
+              </div>
+              <div className="mt-2 text-xs text-gray-500 flex items-center gap-1">
+                <Activity className="h-3 w-3" />
+                Last updated: {formatTimeAgo(stats.lastRefresh)}
               </div>
             </Card>
           </div>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">Total Endpoints</CardTitle>
@@ -617,47 +412,7 @@ export default function NetworkMonitoringPage() {
               </div>
             </CardContent>
           </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Cycles</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">{stats.cycleCount}</div>
-            </CardContent>
-          </Card>
         </div>
-
-        {/* Current Status */}
-        {isRunning && currentEndpoint && (
-          <Card className="mb-6 border-blue-200 bg-blue-50">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <Target className="h-5 w-5 text-blue-600" />
-                    <span className="font-medium">Currently checking:</span>
-                    <Badge variant="outline" className="flex items-center gap-1">
-                      {currentEndpoint.type === 'BRANCH' ? <Building2 className="h-3 w-3" /> : <Server className="h-3 w-3" />}
-                      {currentEndpoint.code} - {currentEndpoint.name}
-                    </Badge>
-                    {isCurrentlyPinging && <Loader2 className="h-4 w-4 animate-spin text-blue-600" />}
-                  </div>
-                </div>
-                {nextEndpoint && (
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <span>Next:</span>
-                    <Badge variant="secondary" className="flex items-center gap-1">
-                      {nextEndpoint.type === 'BRANCH' ? <Building2 className="h-3 w-3" /> : <Server className="h-3 w-3" />}
-                      {nextEndpoint.code}
-                    </Badge>
-                    <ArrowRight className="h-4 w-4" />
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Filters */}
         <Card className="mb-6">
@@ -696,23 +451,6 @@ export default function NetworkMonitoringPage() {
                   <SelectItem value="error">Error</SelectItem>
                 </SelectContent>
               </Select>
-              <Button
-                variant="outline"
-                onClick={() => setSkipOffline(!skipOffline)}
-                className={skipOffline ? 'bg-blue-50 border-blue-200' : ''}
-              >
-                <Zap className="h-4 w-4 mr-2" />
-                {skipOffline ? 'Skipping Offline' : 'Check All'}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => createTicketsForOfflineEndpoints()}
-                className="text-red-600 border-red-300 hover:bg-red-50"
-                disabled={stats.offline === 0}
-              >
-                <Ticket className="h-4 w-4 mr-2" />
-                Create Tickets for Offline ({stats.offline})
-              </Button>
             </div>
           </CardContent>
         </Card>
@@ -720,16 +458,17 @@ export default function NetworkMonitoringPage() {
         {/* Endpoints Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filteredEndpoints.map((endpoint) => {
-            const result = pingResults.get(endpoint.id);
-            const isCurrentlyChecking = isRunning && currentIndex === endpoints.findIndex(e => e.id === endpoint.id);
-            
+            const status = endpoint.lastStatus;
+            const stale = isStale(status?.checkedAt);
+
             return (
-              <Card 
-                key={endpoint.id} 
+              <Card
+                key={endpoint.id}
                 className={`hover:shadow-lg transition-all ${
-                  isCurrentlyChecking ? 'border-blue-400 shadow-lg ring-2 ring-blue-200' : 
-                  result?.status === 'OFFLINE' ? 'border-red-300' : 
-                  result?.status === 'ONLINE' ? 'border-green-300' : ''
+                  stale ? 'border-gray-300 opacity-75' :
+                  status?.status === 'OFFLINE' || status?.status === 'TIMEOUT' ? 'border-red-300' :
+                  status?.status === 'ONLINE' ? 'border-green-300' :
+                  status?.status === 'SLOW' || status?.status === 'WARNING' ? 'border-yellow-300' : ''
                 }`}
               >
                 <CardHeader className="pb-3">
@@ -741,13 +480,24 @@ export default function NetworkMonitoringPage() {
                         <Server className="h-5 w-5 text-purple-600" />
                       )}
                       {endpoint.code}
-                      {isCurrentlyChecking && <Loader2 className="h-4 w-4 animate-spin text-blue-600" />}
                     </CardTitle>
-                    {result && (
-                      <Badge className={`${getStatusColor(result.status)} text-xs`}>
-                        {result.status}
-                      </Badge>
-                    )}
+                    <div className="flex items-center gap-1">
+                      {stale && (
+                        <Badge variant="outline" className="text-xs text-orange-600 border-orange-300">
+                          Stale
+                        </Badge>
+                      )}
+                      {status && (
+                        <Badge className={`${getStatusColor(status.status)} text-xs`}>
+                          {status.status}
+                        </Badge>
+                      )}
+                      {!status && (
+                        <Badge variant="secondary" className="text-xs">
+                          No Data
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                   <CardDescription className="flex items-center gap-1">
                     <MapPin className="h-3 w-3" />
@@ -758,9 +508,9 @@ export default function NetworkMonitoringPage() {
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center justify-between">
                       <span className="text-gray-500">IP Address:</span>
-                      <span className="font-mono text-xs">{endpoint.ipAddress}</span>
+                      <span className="font-mono text-xs">{endpoint.ipAddress || 'N/A'}</span>
                     </div>
-                    
+
                     {endpoint.networkMedia && (
                       <div className="flex items-center justify-between">
                         <span className="text-gray-500">Network:</span>
@@ -770,145 +520,79 @@ export default function NetworkMonitoringPage() {
                         </Badge>
                       </div>
                     )}
-                    
+
                     {endpoint.branchName && endpoint.type === 'ATM' && (
                       <div className="flex items-center justify-between">
                         <span className="text-gray-500">Branch:</span>
                         <span className="text-xs">{endpoint.branchName}</span>
                       </div>
                     )}
-                    
-                    {result && (
+
+                    {status && (
                       <>
-                        {result.responseTimeMs && (
+                        {status.responseTimeMs !== undefined && status.responseTimeMs > 0 && (
                           <div className="flex items-center justify-between">
                             <span className="text-gray-500">Response:</span>
-                            <span className={`font-medium ${getResponseTimeColor(result.responseTimeMs)}`}>
-                              {result.responseTimeMs}ms
+                            <span className={`font-medium ${getResponseTimeColor(status.responseTimeMs)}`}>
+                              {status.responseTimeMs}ms
                             </span>
                           </div>
                         )}
-                        
-                        {(result as any).packetLoss !== undefined && (result as any).packetLoss > 0 && (
+
+                        {status.packetLoss !== undefined && status.packetLoss > 0 && (
                           <div className="flex items-center justify-between">
                             <span className="text-gray-500">Packet Loss:</span>
                             <span className="font-medium text-red-600">
-                              {(result as any).packetLoss.toFixed(1)}%
+                              {status.packetLoss.toFixed(1)}%
                             </span>
                           </div>
                         )}
-                        
+
                         <div className="flex items-center justify-between">
-                          <span className="text-gray-500">Last Check:</span>
-                          <span className="text-xs">
-                            {new Date((result as any).checkedAt).toLocaleTimeString()}
+                          <span className="text-gray-500">Last Update:</span>
+                          <span className={`text-xs ${stale ? 'text-orange-600' : ''}`}>
+                            {formatTimeAgo(status.checkedAt)}
                           </span>
                         </div>
-                        
-                        {/* Uptime Information */}
-                        {(result as any).uptimePercentage !== undefined && (
-                          <div className="flex items-center justify-between">
-                            <span className="text-gray-500">Uptime:</span>
-                            <span className={`font-medium flex items-center gap-1 ${getUptimeColor((result as any).uptimePercentage)}`}>
-                              <TrendingUp className="h-3 w-3" />
-                              {(result as any).uptimePercentage}%
-                            </span>
-                          </div>
-                        )}
-                        
-                        {/* Downtime Information for offline endpoints */}
-                        {(result as any).downSince && ['OFFLINE', 'TIMEOUT', 'ERROR'].includes(result.status) && (
-                          <div className="flex items-center justify-between">
-                            <span className="text-gray-500">Down since:</span>
-                            <span className="text-red-600 font-medium text-xs">
-                              {formatTimeAgo(new Date((result as any).downSince))}
-                            </span>
-                          </div>
-                        )}
-                        
-                        {/* Current downtime duration */}
-                        {(result as any).currentDowntimeSeconds && (result as any).currentDowntimeSeconds > 0 && (
-                          <div className="flex items-center justify-between">
-                            <span className="text-gray-500">Downtime:</span>
-                            <span className="text-red-600 font-medium flex items-center gap-1">
-                              <TrendingDown className="h-3 w-3" />
-                              {formatDuration((result as any).currentDowntimeSeconds)}
-                            </span>
-                          </div>
-                        )}
-                        
-                        {/* Status change information */}
-                        {(result as any).statusChangedAt && (result as any).previousStatus && (
-                          <div className="flex items-center justify-between">
-                            <span className="text-gray-500">Status changed:</span>
-                            <span className="text-xs">
-                              {formatTimeAgo(new Date((result as any).statusChangedAt))}
-                            </span>
-                          </div>
-                        )}
-                        
-                        {/* Previous status information */}
-                        {(result as any).previousStatus && (result as any).previousStatus !== result.status && (
-                          <div className="flex items-center justify-between">
-                            <span className="text-gray-500">Was:</span>
-                            <Badge variant="outline" className={`text-xs ${getStatusColor((result as any).previousStatus)}`}>
-                              {(result as any).previousStatus}
-                            </Badge>
-                          </div>
-                        )}
-                        
-                        {(result as any).errorMessage && (
+
+                        {status.errorMessage && (
                           <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
-                            {(result as any).errorMessage}
+                            {status.errorMessage}
                           </div>
                         )}
-
-                        {/* Action Buttons */}
-                        <div className="mt-3 pt-2 border-t flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="flex-1 text-xs"
-                            onClick={() => {
-                              if (endpoint.type === 'BRANCH') {
-                                router.push(`/admin/branches/${endpoint.id}`);
-                              } else {
-                                router.push(`/manager/atms/${endpoint.id}`);
-                              }
-                            }}
-                          >
-                            <ExternalLink className="h-3 w-3 mr-1" />
-                            Details
-                          </Button>
-
-                          {/* Show ticket button for failed/problematic states */}
-                          {result && ['OFFLINE', 'SLOW', 'TIMEOUT', 'ERROR'].includes(result.status) && (
-                            <Button
-                              size="sm"
-                              variant="default"
-                              className="flex-1 text-xs bg-red-600 hover:bg-red-700"
-                              onClick={() => createNetworkTicket(endpoint, result)}
-                            >
-                              <Ticket className="h-3 w-3 mr-1" />
-                              Create Ticket
-                            </Button>
-                          )}
-
-                          {/* Manual ticket creation for any status */}
-                          {result && result.status === 'ONLINE' && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="flex-1 text-xs"
-                              onClick={() => createNetworkTicket(endpoint, result)}
-                            >
-                              <Plus className="h-3 w-3 mr-1" />
-                              Report Issue
-                            </Button>
-                          )}
-                        </div>
                       </>
                     )}
+
+                    {/* Action Buttons */}
+                    <div className="mt-3 pt-2 border-t flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 text-xs"
+                        onClick={() => {
+                          if (endpoint.type === 'BRANCH') {
+                            router.push(`/admin/branches/${endpoint.id}`);
+                          } else {
+                            router.push(`/admin/atms/${endpoint.id}`);
+                          }
+                        }}
+                      >
+                        <ExternalLink className="h-3 w-3 mr-1" />
+                        Details
+                      </Button>
+
+                      {status && ['OFFLINE', 'SLOW', 'TIMEOUT', 'ERROR', 'WARNING'].includes(status.status) && (
+                        <Button
+                          size="sm"
+                          variant="default"
+                          className="flex-1 text-xs bg-red-600 hover:bg-red-700"
+                          onClick={() => createNetworkTicket(endpoint)}
+                        >
+                          <Ticket className="h-3 w-3 mr-1" />
+                          Create Ticket
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>

@@ -95,6 +95,64 @@ export async function POST(request: NextRequest) {
       }
     });
 
+    // Map ATM status to Network status for NetworkMonitoringLog
+    const networkStatus: NetworkStatus =
+      data.networkStatus ? (data.networkStatus as NetworkStatus) :
+      data.status === 'ONLINE' ? 'ONLINE' :
+      data.status === 'OFFLINE' ? 'OFFLINE' :
+      data.status === 'WARNING' ? 'SLOW' :
+      data.status === 'ERROR' ? 'ERROR' : 'OFFLINE';
+
+    // Get the latest status to track status changes
+    const lastLog = await prisma.networkMonitoringLog.findFirst({
+      where: { entityId: atm.id, entityType: 'ATM' },
+      orderBy: { checkedAt: 'desc' }
+    });
+
+    const now = new Date();
+    const statusChanged = !lastLog || lastLog.status !== networkStatus;
+
+    // Calculate uptime/downtime if there was a previous log
+    let uptimeSeconds = lastLog?.uptimeSeconds || 0;
+    let downtimeSeconds = lastLog?.downtimeSeconds || 0;
+    let downSince = lastLog?.downSince || null;
+
+    if (lastLog) {
+      const secondsSinceLastCheck = Math.floor((now.getTime() - lastLog.checkedAt.getTime()) / 1000);
+
+      if (lastLog.status === 'ONLINE') {
+        uptimeSeconds += secondsSinceLastCheck;
+      } else {
+        downtimeSeconds += secondsSinceLastCheck;
+      }
+    }
+
+    // Update downSince tracking
+    if (networkStatus === 'ONLINE') {
+      downSince = null;
+    } else if (!downSince && statusChanged) {
+      downSince = now;
+    }
+
+    // Create NetworkMonitoringLog entry for the endpoints API to read
+    const networkMonitoringLog = await prisma.networkMonitoringLog.create({
+      data: {
+        entityType: 'ATM',
+        entityId: atm.id,
+        ipAddress: data.ipAddress || atm.ipAddress || 'unknown',
+        status: networkStatus,
+        previousStatus: lastLog?.status || null,
+        responseTimeMs: data.responseTimeMs || null,
+        packetLoss: data.packetLoss || 0,
+        errorMessage: data.errorMessage || null,
+        statusChangedAt: statusChanged ? now : lastLog?.statusChangedAt || now,
+        downSince,
+        uptimeSeconds,
+        downtimeSeconds,
+        checkedAt: now
+      }
+    });
+
     // If ping data is provided, also create a NetworkPingResult
     let pingResult = null;
     if (data.ipAddress || data.networkStatus || data.responseTimeMs !== undefined) {
@@ -107,11 +165,7 @@ export async function POST(request: NextRequest) {
           ipAddress: data.ipAddress || atm.ipAddress || 'unknown',
           ipType: 'PRIMARY',
           networkMedia: atm.networkMedia,
-          status: (data.networkStatus as NetworkStatus) ||
-                  (data.status === 'ONLINE' ? 'ONLINE' :
-                   data.status === 'OFFLINE' ? 'OFFLINE' :
-                   data.status === 'WARNING' ? 'SLOW' :
-                   data.status === 'ERROR' ? 'ERROR' : 'OFFLINE'),
+          status: networkStatus,
           responseTimeMs: data.responseTimeMs || null,
           packetLoss: data.packetLoss || 0,
           minRtt: data.metrics?.minRtt || null,
@@ -121,7 +175,7 @@ export async function POST(request: NextRequest) {
           packetsTransmitted: data.metrics?.packetsTransmitted || null,
           packetsReceived: data.metrics?.packetsReceived || null,
           errorMessage: data.errorMessage || null,
-          checkedAt: new Date()
+          checkedAt: now
         }
       });
     }
@@ -132,9 +186,12 @@ export async function POST(request: NextRequest) {
       atmCode: atm.code,
       atmName: atm.name,
       status: data.status,
+      networkStatus,
       logId: monitoringLog.id,
+      networkMonitoringLogId: networkMonitoringLog.id,
       pingResultId: pingResult?.id || null,
-      timestamp: new Date().toISOString()
+      statusChanged,
+      timestamp: now.toISOString()
     });
 
   } catch (error) {
