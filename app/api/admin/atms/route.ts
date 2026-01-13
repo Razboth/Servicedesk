@@ -21,7 +21,7 @@ const atmSchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
-    
+
     if (!session) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -37,19 +37,53 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status'); // 'active', 'inactive', or null for all
     const sortBy = searchParams.get('sortBy') || 'code';
     const sortOrder = searchParams.get('sortOrder') || 'asc';
+    const problemsOnly = searchParams.get('problemsOnly') === 'true';
+    const includeNetworkStatus = searchParams.get('includeNetworkStatus') === 'true';
 
     const skip = (page - 1) * limit;
 
+    // Problem statuses for filtering
+    const problemStatuses = ['OFFLINE', 'SLOW', 'TIMEOUT', 'ERROR', 'WARNING', 'MAINTENANCE'];
+
+    // If problemsOnly, first get ATM IDs that have problems
+    let problemAtmIds: string[] = [];
+    if (problemsOnly) {
+      // Get latest status for each ATM from NetworkMonitoringLog
+      const latestLogs = await prisma.$queryRaw<Array<{ entityId: string; status: string }>>`
+        SELECT DISTINCT ON ("entityId") "entityId", "status"
+        FROM "network_monitoring_logs"
+        WHERE "entityType" = 'ATM'
+        ORDER BY "entityId", "checkedAt" DESC
+      `;
+
+      problemAtmIds = latestLogs
+        .filter(log => problemStatuses.includes(log.status))
+        .map(log => log.entityId);
+
+      // If no ATMs have problems, return empty result
+      if (problemAtmIds.length === 0) {
+        return NextResponse.json({
+          atms: [],
+          pagination: {
+            page,
+            limit,
+            total: 0,
+            totalPages: 0
+          }
+        });
+      }
+    }
+
     // Build where clause
     const where: any = {};
-    
+
     // Filter by branch for non-admin users
     if (session.user.role !== 'ADMIN' && session.user.branchId) {
       where.branchId = session.user.branchId;
     } else if (branchId) {
       where.branchId = branchId;
     }
-    
+
     if (search) {
       where.OR = [
         { code: { contains: search, mode: 'insensitive' } },
@@ -62,6 +96,11 @@ export async function GET(request: NextRequest) {
       where.isActive = true;
     } else if (status === 'inactive') {
       where.isActive = false;
+    }
+
+    // Filter by problem ATMs if problemsOnly
+    if (problemsOnly && problemAtmIds.length > 0) {
+      where.id = { in: problemAtmIds };
     }
 
     // Get total count
@@ -91,8 +130,45 @@ export async function GET(request: NextRequest) {
       }
     });
 
+    // If includeNetworkStatus, fetch latest network status for each ATM
+    let atmsWithStatus = atms;
+    if (includeNetworkStatus || problemsOnly) {
+      const atmIds = atms.map(atm => atm.id);
+
+      if (atmIds.length > 0) {
+        const networkLogs = await prisma.networkMonitoringLog.findMany({
+          where: {
+            entityType: 'ATM',
+            entityId: { in: atmIds }
+          },
+          orderBy: { checkedAt: 'desc' }
+        });
+
+        // Create a map of latest status for each ATM
+        const statusMap = new Map();
+        networkLogs.forEach(log => {
+          if (!statusMap.has(log.entityId)) {
+            statusMap.set(log.entityId, {
+              networkStatus: log.status,
+              responseTimeMs: log.responseTimeMs,
+              packetLoss: log.packetLoss,
+              errorMessage: log.errorMessage,
+              checkedAt: log.checkedAt,
+              statusChangedAt: log.statusChangedAt,
+              downSince: log.downSince
+            });
+          }
+        });
+
+        atmsWithStatus = atms.map(atm => ({
+          ...atm,
+          networkStatus: statusMap.get(atm.id) || null
+        }));
+      }
+    }
+
     return NextResponse.json({
-      atms,
+      atms: atmsWithStatus,
       pagination: {
         page,
         limit,
@@ -103,7 +179,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error fetching ATMs:', error);
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to fetch ATMs',
         details: error instanceof Error ? error.message : 'Unknown error',
         stack: process.env.NODE_ENV === 'development' ? (error as any).stack : undefined
