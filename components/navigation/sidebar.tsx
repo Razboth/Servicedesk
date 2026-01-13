@@ -515,25 +515,13 @@ export function Sidebar() {
               <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
               </svg>
-              {(!isCollapsed || isMobile) && 'Network Map'}
+              {(!isCollapsed || isMobile) && 'Branch Network'}
             </Link>
-            <Link href="/monitoring/atms" className={linkClass('/monitoring/atms')} onClick={handleLinkClick}>
+            <Link href="/monitoring/atm" className={linkClass('/monitoring/atm')} onClick={handleLinkClick}>
               <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
-              {(!isCollapsed || isMobile) && 'ATM Monitor'}
-            </Link>
-            <Link href="/monitoring/incidents" className={linkClass('/monitoring/incidents')} onClick={handleLinkClick}>
-              <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              {(!isCollapsed || isMobile) && 'Network Incidents'}
-            </Link>
-            <Link href="/monitoring/tickets" className={linkClass('/monitoring/tickets')} onClick={handleLinkClick}>
-              <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
-              </svg>
-              {(!isCollapsed || isMobile) && 'Auto Tickets'}
+              {(!isCollapsed || isMobile) && 'ATM Status'}
             </Link>
           </div>
         )}

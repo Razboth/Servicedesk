@@ -35,11 +35,7 @@ import {
   ChevronRight,
   MapPin,
   ToggleLeft,
-  ToggleRight,
-  WifiOff,
-  Clock,
-  Wifi,
-  RefreshCw
+  ToggleRight
 } from 'lucide-react';
 
 interface ATM {
@@ -56,15 +52,6 @@ interface ATM {
   };
   _count: {
     incidents: number;
-  };
-  networkStatus?: {
-    networkStatus: 'ONLINE' | 'OFFLINE' | 'SLOW' | 'TIMEOUT' | 'ERROR' | 'WARNING' | 'MAINTENANCE';
-    responseTimeMs?: number;
-    packetLoss?: number;
-    errorMessage?: string;
-    checkedAt: string;
-    statusChangedAt?: string;
-    downSince?: string;
   };
 }
 
@@ -125,8 +112,6 @@ export default function ATMsPage() {
       const params = new URLSearchParams({
         page: pagination.page.toString(),
         limit: pagination.limit.toString(),
-        problemsOnly: 'true',
-        includeNetworkStatus: 'true',
         ...(search && { search }),
         ...(selectedBranch !== 'all' && { branchId: selectedBranch }),
         ...(status !== 'all' && { status })
@@ -221,26 +206,17 @@ export default function ATMsPage() {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
-            <AlertTriangle className="h-8 w-8 text-red-600" />
-            ATM Problems Dashboard
+            <CreditCard className="h-8 w-8" />
+            ATM Management
           </h1>
-          <p className="text-gray-600 mt-1">ATMs with network issues (received via monitoring API)</p>
-          <p className="text-xs text-orange-600 mt-1">
-            Only showing ATMs with problems: OFFLINE, SLOW, TIMEOUT, ERROR, WARNING, MAINTENANCE
-          </p>
+          <p className="text-gray-600 mt-1">Manage bank ATMs across all branches</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => fetchATMs()}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
+        <Link href="/admin/atms/new">
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Add ATM
           </Button>
-          <Link href="/admin/atms/new">
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Add ATM
-            </Button>
-          </Link>
-        </div>
+        </Link>
       </div>
 
       <Card className="mb-6">
@@ -297,146 +273,94 @@ export default function ATMsPage() {
                 <TableHead>Branch</TableHead>
                 <TableHead>Location</TableHead>
                 <TableHead>IP Address</TableHead>
-                <TableHead>Network Status</TableHead>
-                <TableHead>Last Check</TableHead>
                 <TableHead className="text-center">Incidents</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8">
-                    Loading ATMs with problems...
+                  <TableCell colSpan={8} className="text-center py-8">
+                    Loading ATMs...
                   </TableCell>
                 </TableRow>
               ) : atms.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8">
-                    <div className="flex flex-col items-center gap-2">
-                      <Wifi className="h-12 w-12 text-green-500" />
-                      <p className="text-lg font-medium text-green-600">All ATMs are Online!</p>
-                      <p className="text-sm text-gray-500">No ATM problems detected from monitoring API</p>
-                    </div>
+                  <TableCell colSpan={8} className="text-center py-8">
+                    No ATMs found
                   </TableCell>
                 </TableRow>
               ) : (
-                atms.map((atm) => {
-                  const ns = atm.networkStatus;
-                  const getStatusBadge = () => {
-                    if (!ns) return <Badge variant="secondary">No Data</Badge>;
-                    switch (ns.networkStatus) {
-                      case 'OFFLINE':
-                      case 'TIMEOUT':
-                        return <Badge className="bg-red-100 text-red-800 border-red-200">{ns.networkStatus}</Badge>;
-                      case 'SLOW':
-                      case 'WARNING':
-                        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">{ns.networkStatus}</Badge>;
-                      case 'ERROR':
-                      case 'MAINTENANCE':
-                        return <Badge className="bg-red-100 text-red-800 border-red-200">{ns.networkStatus}</Badge>;
-                      default:
-                        return <Badge variant="secondary">{ns.networkStatus}</Badge>;
-                    }
-                  };
-
-                  const formatTimeAgo = (dateString?: string) => {
-                    if (!dateString) return 'Never';
-                    const date = new Date(dateString);
-                    const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
-                    if (seconds < 60) return `${seconds}s ago`;
-                    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-                    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-                    return `${Math.floor(seconds / 86400)}d ago`;
-                  };
-
-                  return (
-                    <TableRow key={atm.id} className="bg-red-50/50">
-                      <TableCell className="font-medium">{atm.code}</TableCell>
-                      <TableCell>{atm.name}</TableCell>
-                      <TableCell>
+                atms.map((atm) => (
+                  <TableRow key={atm.id}>
+                    <TableCell className="font-medium">{atm.code}</TableCell>
+                    <TableCell>{atm.name}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Building2 className="h-4 w-4 text-gray-400" />
+                        {atm.branch.name}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {atm.location ? (
                         <div className="flex items-center gap-1">
-                          <Building2 className="h-4 w-4 text-gray-400" />
-                          {atm.branch.name}
+                          <MapPin className="h-4 w-4 text-gray-400" />
+                          <span className="text-sm">{atm.location}</span>
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        {atm.location ? (
-                          <div className="flex items-center gap-1">
-                            <MapPin className="h-4 w-4 text-gray-400" />
-                            <span className="text-sm">{atm.location}</span>
-                          </div>
-                        ) : (
-                          <span className="text-sm text-gray-400">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-sm text-gray-600">
-                        {atm.ipAddress || '-'}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col gap-1">
-                          {getStatusBadge()}
-                          {ns?.responseTimeMs && (
-                            <span className="text-xs text-gray-500">{ns.responseTimeMs}ms</span>
-                          )}
-                          {ns?.packetLoss && ns.packetLoss > 0 && (
-                            <span className="text-xs text-red-500">{ns.packetLoss}% loss</span>
-                          )}
-                          {ns?.errorMessage && (
-                            <span className="text-xs text-red-600 truncate max-w-[150px]" title={ns.errorMessage}>
-                              {ns.errorMessage}
-                            </span>
-                          )}
+                      ) : (
+                        <span className="text-sm text-gray-400">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm text-gray-600">
+                      {atm.ipAddress || '-'}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {atm._count.incidents > 0 && (
+                        <div className="flex items-center justify-center gap-1">
+                          <AlertTriangle className="h-4 w-4 text-orange-500" />
+                          {atm._count.incidents}
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1 text-sm">
-                          <Clock className="h-3 w-3 text-gray-400" />
-                          {formatTimeAgo(ns?.checkedAt)}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {atm._count.incidents > 0 && (
-                          <div className="flex items-center justify-center gap-1">
-                            <AlertTriangle className="h-4 w-4 text-orange-500" />
-                            {atm._count.incidents}
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Link href={`/admin/atms/${atm.id}`}>
-                            <Button variant="ghost" size="sm" title="View ATM Details">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </Link>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleToggleStatus(atm)}
-                            title={atm.isActive ? "Deactivate ATM" : "Activate ATM"}
-                          >
-                            {atm.isActive ? (
-                              <ToggleRight className="h-4 w-4 text-green-600" />
-                            ) : (
-                              <ToggleLeft className="h-4 w-4 text-gray-400" />
-                            )}
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={atm.isActive ? 'success' : 'secondary'}>
+                        {atm.isActive ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Link href={`/admin/atms/${atm.id}`}>
+                          <Button variant="ghost" size="sm" title="Edit ATM">
+                            <Edit className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(atm.id)}
-                            disabled={false}
-                            title="Permanently delete ATM"
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
+                        </Link>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleToggleStatus(atm)}
+                          title={atm.isActive ? "Deactivate ATM" : "Activate ATM"}
+                        >
+                          {atm.isActive ? (
+                            <ToggleRight className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <ToggleLeft className="h-4 w-4 text-gray-400" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(atm.id)}
+                          disabled={false}
+                          title="Permanently delete ATM"
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
             </TableBody>
           </Table>
