@@ -46,9 +46,11 @@ export async function GET(request: NextRequest) {
     const problemStatuses = ['OFFLINE', 'SLOW', 'TIMEOUT', 'ERROR', 'WARNING', 'MAINTENANCE'];
 
     // If problemsOnly, first get ATM IDs that have problems
+    // ATMs without any NetworkMonitoringLog entry are treated as ONLINE (no problem)
     let problemAtmIds: string[] = [];
     if (problemsOnly) {
       // Get latest status for each ATM from NetworkMonitoringLog
+      // Only ATMs that have been reported with a problem status will be shown
       const latestLogs = await prisma.$queryRaw<Array<{ entityId: string; status: string }>>`
         SELECT DISTINCT ON ("entityId") "entityId", "status"
         FROM "network_monitoring_logs"
@@ -56,11 +58,13 @@ export async function GET(request: NextRequest) {
         ORDER BY "entityId", "checkedAt" DESC
       `;
 
+      // Only include ATMs that have explicit problem status
+      // ATMs with ONLINE status or no status at all are NOT shown
       problemAtmIds = latestLogs
         .filter(log => problemStatuses.includes(log.status))
         .map(log => log.entityId);
 
-      // If no ATMs have problems, return empty result
+      // If no ATMs have problems, return empty result immediately
       if (problemAtmIds.length === 0) {
         return NextResponse.json({
           atms: [],
