@@ -67,6 +67,7 @@ interface NetworkStats {
   offline: number;
   slow: number;
   error: number;
+  atmProblems: number;
   avgResponseTime: number;
   lastRefresh: string;
 }
@@ -83,6 +84,7 @@ export default function NetworkMonitoringPage() {
     offline: 0,
     slow: 0,
     error: 0,
+    atmProblems: 0,
     avgResponseTime: 0,
     lastRefresh: new Date().toISOString()
   });
@@ -144,11 +146,20 @@ export default function NetworkMonitoringPage() {
     let offline = 0;
     let slow = 0;
     let error = 0;
+    let atmProblems = 0;
     let totalResponseTime = 0;
     let responseTimeCount = 0;
 
+    const problemStatuses = ['OFFLINE', 'SLOW', 'TIMEOUT', 'ERROR', 'WARNING', 'MAINTENANCE'];
+
     endpointList.forEach((endpoint) => {
       const status = endpoint.lastStatus?.status;
+
+      // Count ATM problems
+      if (endpoint.type === 'ATM' && status && problemStatuses.includes(status)) {
+        atmProblems++;
+      }
+
       switch (status) {
         case 'ONLINE':
           online++;
@@ -179,6 +190,7 @@ export default function NetworkMonitoringPage() {
       offline,
       slow,
       error,
+      atmProblems,
       avgResponseTime: responseTimeCount > 0 ? Math.round(totalResponseTime / responseTimeCount) : 0,
       lastRefresh: new Date().toISOString()
     });
@@ -266,6 +278,9 @@ export default function NetworkMonitoringPage() {
     return minutes > 10; // Consider stale if no update in 10 minutes
   };
 
+  // ATMs are only shown if they have a problem status (not ONLINE or no status)
+  const problemStatuses = ['OFFLINE', 'SLOW', 'TIMEOUT', 'ERROR', 'WARNING', 'MAINTENANCE'];
+
   const filteredEndpoints = endpoints.filter(endpoint => {
     const matchesSearch = searchTerm === '' ||
       endpoint.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -274,11 +289,19 @@ export default function NetworkMonitoringPage() {
 
     const matchesType = typeFilter === 'all' || endpoint.type === typeFilter;
 
-    const status = endpoint.lastStatus?.status?.toLowerCase() || '';
+    const status = endpoint.lastStatus?.status || '';
+    const statusLower = status.toLowerCase();
+
+    // ATMs: only show if they have a problem status
+    if (endpoint.type === 'ATM') {
+      const hasProblems = problemStatuses.includes(status);
+      if (!hasProblems) return false; // Hide ATMs that are ONLINE or have no status
+    }
+
     const matchesStatus = statusFilter === 'all' ||
-      status === statusFilter.toLowerCase() ||
-      (statusFilter === 'offline' && (status === 'offline' || status === 'timeout')) ||
-      (statusFilter === 'error' && (status === 'error' || status === 'maintenance'));
+      statusLower === statusFilter.toLowerCase() ||
+      (statusFilter === 'offline' && (statusLower === 'offline' || statusLower === 'timeout')) ||
+      (statusFilter === 'error' && (statusLower === 'error' || statusLower === 'maintenance'));
 
     return matchesSearch && matchesType && matchesStatus;
   });
@@ -307,6 +330,9 @@ export default function NetworkMonitoringPage() {
               </h1>
               <p className="mt-2 text-gray-600">
                 Real-time status from external monitoring systems
+              </p>
+              <p className="text-xs text-orange-600 mt-1">
+                ATMs only appear when they have problems (offline, slow, error, etc.)
               </p>
             </div>
 
@@ -362,7 +388,7 @@ export default function NetworkMonitoringPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">Total Endpoints</CardTitle>
@@ -399,6 +425,16 @@ export default function NetworkMonitoringPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-yellow-600">{stats.slow}</div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-purple-200">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-purple-600">ATM Problems</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-purple-600">{stats.atmProblems}</div>
+              <p className="text-xs text-gray-500 mt-1">Showing on grid</p>
             </CardContent>
           </Card>
 
