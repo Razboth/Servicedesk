@@ -134,9 +134,28 @@ export async function POST(request: NextRequest) {
       downSince = now;
     }
 
-    // Create NetworkMonitoringLog entry for the endpoints API to read
-    const networkMonitoringLog = await prisma.networkMonitoringLog.create({
-      data: {
+    // Upsert NetworkMonitoringLog entry for the endpoints API to read
+    const networkMonitoringLog = await prisma.networkMonitoringLog.upsert({
+      where: {
+        entityType_entityId: {
+          entityType: 'ATM',
+          entityId: atm.id
+        }
+      },
+      update: {
+        ipAddress: data.ipAddress || atm.ipAddress || 'unknown',
+        status: networkStatus,
+        previousStatus: lastLog?.status || null,
+        responseTimeMs: data.responseTimeMs || null,
+        packetLoss: data.packetLoss || 0,
+        errorMessage: data.errorMessage || null,
+        statusChangedAt: statusChanged ? now : lastLog?.statusChangedAt || now,
+        downSince,
+        uptimeSeconds,
+        downtimeSeconds,
+        checkedAt: now
+      },
+      create: {
         entityType: 'ATM',
         entityId: atm.id,
         ipAddress: data.ipAddress || atm.ipAddress || 'unknown',
