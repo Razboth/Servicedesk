@@ -16,6 +16,12 @@ const nextConfig = {
     NEXTAUTH_URL: process.env.NEXTAUTH_URL,
     NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET
   },
+  experimental: {
+    // Increase body size limit for large file downloads (default is 4MB)
+    serverActions: {
+      bodySizeLimit: '50mb'
+    }
+  },
 }
 
 module.exports = nextConfig

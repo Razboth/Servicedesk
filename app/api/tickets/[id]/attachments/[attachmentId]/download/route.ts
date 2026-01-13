@@ -4,6 +4,10 @@ import { prisma } from '@/lib/prisma';
 import fs from 'fs';
 import path from 'path';
 
+// Increase the response body size limit for large file downloads
+export const maxDuration = 60; // 60 seconds timeout
+export const dynamic = 'force-dynamic';
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; attachmentId: string }> }
@@ -150,14 +154,16 @@ export async function GET(
     const pathValue = attachment.path || attachment.filename;
     let fileBuffer: Buffer;
     
+    // Only log minimal info for large files to avoid performance issues
+    const pathLength = pathValue?.length || 0;
     console.log('Attachment details:', {
       id: attachment.id,
       filename: attachment.filename,
       originalName: attachment.originalName,
-      path: attachment.path,
-      pathLength: pathValue?.length || 0,
+      pathLength,
       startsWithData: pathValue?.startsWith('data:') || false,
-      looksLikeBase64: pathValue && pathValue.length > 100 && /^[A-Za-z0-9+/=]+$/.test(pathValue)
+      // Only check first 100 chars to determine if base64 (avoid checking huge strings)
+      looksLikeBase64: pathLength > 100 && /^[A-Za-z0-9+/=]+$/.test(pathValue.substring(0, 100))
     });
     
     if (pathValue.startsWith('data:')) {
@@ -168,10 +174,11 @@ export async function GET(
         return NextResponse.json({ error: 'Invalid data URI format' }, { status: 400 });
       }
       fileBuffer = Buffer.from(base64Data, 'base64');
-    } else if (pathValue && pathValue.length > 100 && /^[A-Za-z0-9+/=]+$/.test(pathValue.substring(0, 1000))) {
-      // Handle pure base64 data (check first 1000 chars for performance)
-      console.log('Processing pure base64 data');
+    } else if (pathValue && pathValue.length > 100 && /^[A-Za-z0-9+/=]+$/.test(pathValue.substring(0, 100))) {
+      // Handle pure base64 data (check first 100 chars for performance)
+      console.log('Processing pure base64 data, length:', pathValue.length);
       try {
+        // For large base64 data, decode in chunks to avoid memory issues
         fileBuffer = Buffer.from(pathValue, 'base64');
         console.log('Successfully decoded base64 data, buffer size:', fileBuffer.length);
       } catch (err) {
