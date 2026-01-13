@@ -6,20 +6,19 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import {
   AlertTriangle,
@@ -33,6 +32,10 @@ import {
   AlertCircle,
   Wifi,
   Activity,
+  MapPin,
+  Network,
+  TrendingDown,
+  Calendar,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
@@ -78,34 +81,34 @@ interface PaginationInfo {
   totalPages: number;
 }
 
-const statusColors: Record<string, string> = {
-  ONLINE: 'bg-green-100 text-green-800',
-  OFFLINE: 'bg-red-100 text-red-800',
-  SLOW: 'bg-yellow-100 text-yellow-800',
-  TIMEOUT: 'bg-orange-100 text-orange-800',
-  ERROR: 'bg-red-100 text-red-800',
-  WARNING: 'bg-amber-100 text-amber-800',
-  MAINTENANCE: 'bg-blue-100 text-blue-800',
+const statusColors: Record<string, { bg: string; text: string; border: string }> = {
+  ONLINE: { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200' },
+  OFFLINE: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
+  SLOW: { bg: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-200' },
+  TIMEOUT: { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200' },
+  ERROR: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
+  WARNING: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
+  MAINTENANCE: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
 };
 
 const StatusIcon = ({ status }: { status: string }) => {
   switch (status) {
     case 'ONLINE':
-      return <Wifi className="h-4 w-4 text-green-600" />;
+      return <Wifi className="h-5 w-5 text-green-600" />;
     case 'OFFLINE':
-      return <WifiOff className="h-4 w-4 text-red-600" />;
+      return <WifiOff className="h-5 w-5 text-red-600" />;
     case 'SLOW':
-      return <Clock className="h-4 w-4 text-yellow-600" />;
+      return <Clock className="h-5 w-5 text-yellow-600" />;
     case 'TIMEOUT':
-      return <XCircle className="h-4 w-4 text-orange-600" />;
+      return <XCircle className="h-5 w-5 text-orange-600" />;
     case 'ERROR':
-      return <AlertCircle className="h-4 w-4 text-red-600" />;
+      return <AlertCircle className="h-5 w-5 text-red-600" />;
     case 'WARNING':
-      return <AlertTriangle className="h-4 w-4 text-amber-600" />;
+      return <AlertTriangle className="h-5 w-5 text-amber-600" />;
     case 'MAINTENANCE':
-      return <Activity className="h-4 w-4 text-blue-600" />;
+      return <Activity className="h-5 w-5 text-blue-600" />;
     default:
-      return <AlertCircle className="h-4 w-4 text-gray-400" />;
+      return <AlertCircle className="h-5 w-5 text-gray-400" />;
   }
 };
 
@@ -119,6 +122,8 @@ export default function ATMStatusPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [selectedATM, setSelectedATM] = useState<ATM | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
   const [pagination, setPagination] = useState<PaginationInfo>({
     page: 1,
     limit: 50,
@@ -230,6 +235,11 @@ export default function ATMStatusPage() {
     setPagination(prev => ({ ...prev, page: newPage }));
   };
 
+  const handleCardClick = (atm: ATM) => {
+    setSelectedATM(atm);
+    setModalOpen(true);
+  };
+
   const formatDuration = (dateString: string | null) => {
     if (!dateString) return '-';
     const start = new Date(dateString);
@@ -251,6 +261,7 @@ export default function ATMStatusPage() {
     return new Date(dateString).toLocaleString('id-ID', {
       day: '2-digit',
       month: 'short',
+      year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
     });
@@ -266,7 +277,7 @@ export default function ATMStatusPage() {
             ATM Status Monitor
           </h1>
           <p className="text-gray-600 mt-1">
-            Real-time ATM network status from external monitoring
+            Real-time ATM network status - showing only ATMs with problems
           </p>
         </div>
         <div className="flex items-center gap-4">
@@ -407,122 +418,118 @@ export default function ATMStatusPage() {
         </CardContent>
       </Card>
 
-      {/* Main Content */}
-      <Card>
-        <CardContent className="p-0">
-          {loading ? (
-            <div className="flex items-center justify-center py-16">
-              <RefreshCw className="h-8 w-8 animate-spin text-gray-400" />
-              <span className="ml-2 text-gray-500">Loading ATM status...</span>
-            </div>
-          ) : atms.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16">
+      {/* Main Content - Card Grid */}
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <RefreshCw className="h-8 w-8 animate-spin text-gray-400" />
+          <span className="ml-2 text-gray-500">Loading ATM status...</span>
+        </div>
+      ) : atms.length === 0 ? (
+        <Card>
+          <CardContent className="p-16">
+            <div className="flex flex-col items-center justify-center">
               <CheckCircle2 className="h-16 w-16 text-green-500 mb-4" />
               <h3 className="text-xl font-semibold text-green-700">All ATMs Online</h3>
               <p className="text-gray-500 mt-2">
                 No ATM problems detected. All systems operating normally.
               </p>
             </div>
-          ) : (
-            <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>ATM</TableHead>
-                    <TableHead>Branch</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead>IP Address</TableHead>
-                    <TableHead className="text-center">Status</TableHead>
-                    <TableHead className="text-center">Response</TableHead>
-                    <TableHead className="text-center">Packet Loss</TableHead>
-                    <TableHead>Down Since</TableHead>
-                    <TableHead>Last Check</TableHead>
-                    <TableHead>Error</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {atms.map((atm) => (
-                    <TableRow key={atm.id} className="hover:bg-gray-50">
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{atm.code}</div>
-                          <div className="text-sm text-gray-500">{atm.name}</div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Building2 className="h-4 w-4 text-gray-400" />
-                          <span className="text-sm">{atm.branch.name}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm text-gray-600">
-                        {atm.location || '-'}
-                      </TableCell>
-                      <TableCell className="text-sm font-mono text-gray-600">
-                        {atm.ipAddress || '-'}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {atm.networkStatus ? (
-                          <Badge className={`${statusColors[atm.networkStatus.networkStatus] || 'bg-gray-100 text-gray-800'}`}>
-                            <StatusIcon status={atm.networkStatus.networkStatus} />
-                            <span className="ml-1">{atm.networkStatus.networkStatus}</span>
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline">Unknown</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {atm.networkStatus?.responseTimeMs != null ? (
-                          <span className={`font-mono text-sm ${
-                            atm.networkStatus.responseTimeMs > 500 ? 'text-red-600' :
-                            atm.networkStatus.responseTimeMs > 200 ? 'text-yellow-600' :
-                            'text-green-600'
-                          }`}>
-                            {atm.networkStatus.responseTimeMs}ms
-                          </span>
-                        ) : '-'}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {atm.networkStatus?.packetLoss != null ? (
-                          <span className={`font-mono text-sm ${
-                            atm.networkStatus.packetLoss > 50 ? 'text-red-600' :
-                            atm.networkStatus.packetLoss > 10 ? 'text-yellow-600' :
-                            'text-green-600'
-                          }`}>
-                            {atm.networkStatus.packetLoss}%
-                          </span>
-                        ) : '-'}
-                      </TableCell>
-                      <TableCell>
-                        {atm.networkStatus?.downSince ? (
-                          <div>
-                            <div className="text-sm font-medium text-red-600">
-                              {formatDuration(atm.networkStatus.downSince)}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {formatTime(atm.networkStatus.downSince)}
-                            </div>
-                          </div>
-                        ) : '-'}
-                      </TableCell>
-                      <TableCell className="text-sm text-gray-500">
-                        {formatTime(atm.networkStatus?.checkedAt || null)}
-                      </TableCell>
-                      <TableCell>
-                        {atm.networkStatus?.errorMessage ? (
-                          <span className="text-sm text-red-600 max-w-[200px] truncate block" title={atm.networkStatus.errorMessage}>
-                            {atm.networkStatus.errorMessage}
-                          </span>
-                        ) : '-'}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* ATM Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
+            {atms.map((atm) => {
+              const status = atm.networkStatus?.networkStatus || 'UNKNOWN';
+              const colorScheme = statusColors[status] || statusColors.OFFLINE;
 
-              {/* Pagination */}
-              {pagination.totalPages > 1 && (
-                <div className="flex items-center justify-between px-4 py-4 border-t">
+              return (
+                <Card
+                  key={atm.id}
+                  className={`cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] border-2 ${colorScheme.border} ${colorScheme.bg}`}
+                  onClick={() => handleCardClick(atm)}
+                >
+                  <CardContent className="p-5">
+                    {/* Header with Status Badge */}
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <h3 className="font-bold text-lg text-gray-900 mb-1">{atm.code}</h3>
+                        <p className="text-sm text-gray-600 line-clamp-1">{atm.name}</p>
+                      </div>
+                      <Badge className={`${colorScheme.bg} ${colorScheme.text} border ${colorScheme.border} flex items-center gap-1`}>
+                        <StatusIcon status={status} />
+                        <span className="font-semibold">{status}</span>
+                      </Badge>
+                    </div>
+
+                    {/* Branch */}
+                    <div className="flex items-center gap-2 mb-2 text-sm text-gray-700">
+                      <Building2 className="h-4 w-4 text-gray-500" />
+                      <span className="font-medium">{atm.branch.name}</span>
+                    </div>
+
+                    {/* IP Address */}
+                    {atm.ipAddress && (
+                      <div className="flex items-center gap-2 mb-2 text-sm text-gray-600">
+                        <Network className="h-4 w-4 text-gray-500" />
+                        <span className="font-mono">{atm.ipAddress}</span>
+                      </div>
+                    )}
+
+                    {/* Down Duration */}
+                    {atm.networkStatus?.downSince && (
+                      <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-red-100 rounded-lg border border-red-200">
+                        <Clock className="h-4 w-4 text-red-600" />
+                        <div className="flex-1">
+                          <p className="text-xs text-red-600 font-medium">Down for</p>
+                          <p className="text-sm font-bold text-red-700">
+                            {formatDuration(atm.networkStatus.downSince)}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Metrics */}
+                    <div className="grid grid-cols-2 gap-2 pt-3 border-t border-gray-200">
+                      <div>
+                        <p className="text-xs text-gray-500">Response Time</p>
+                        <p className={`text-sm font-bold ${
+                          atm.networkStatus?.responseTimeMs == null ? 'text-gray-400' :
+                          atm.networkStatus.responseTimeMs > 500 ? 'text-red-600' :
+                          atm.networkStatus.responseTimeMs > 200 ? 'text-yellow-600' :
+                          'text-green-600'
+                        }`}>
+                          {atm.networkStatus?.responseTimeMs != null
+                            ? `${atm.networkStatus.responseTimeMs}ms`
+                            : '-'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Packet Loss</p>
+                        <p className={`text-sm font-bold ${
+                          atm.networkStatus?.packetLoss == null ? 'text-gray-400' :
+                          atm.networkStatus.packetLoss > 50 ? 'text-red-600' :
+                          atm.networkStatus.packetLoss > 10 ? 'text-yellow-600' :
+                          'text-green-600'
+                        }`}>
+                          {atm.networkStatus?.packetLoss != null
+                            ? `${atm.networkStatus.packetLoss}%`
+                            : '-'}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Pagination */}
+          {pagination.totalPages > 1 && (
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
                   <div className="text-sm text-gray-600">
                     Showing {(pagination.page - 1) * pagination.limit + 1} to{' '}
                     {Math.min(pagination.page * pagination.limit, pagination.total)} of{' '}
@@ -549,11 +556,200 @@ export default function ATMStatusPage() {
                     </Button>
                   </div>
                 </div>
-              )}
+              </CardContent>
+            </Card>
+          )}
+        </>
+      )}
+
+      {/* Detail Modal */}
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="max-w-2xl">
+          {selectedATM && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-3">
+                  <div className="flex-1">
+                    <div className="text-2xl font-bold">{selectedATM.code}</div>
+                    <div className="text-sm font-normal text-gray-600 mt-1">
+                      {selectedATM.name}
+                    </div>
+                  </div>
+                  {selectedATM.networkStatus && (
+                    <Badge className={`${statusColors[selectedATM.networkStatus.networkStatus]?.bg || 'bg-gray-100'} ${statusColors[selectedATM.networkStatus.networkStatus]?.text || 'text-gray-800'} border-2 ${statusColors[selectedATM.networkStatus.networkStatus]?.border || 'border-gray-300'} text-base px-4 py-2`}>
+                      <StatusIcon status={selectedATM.networkStatus.networkStatus} />
+                      <span className="ml-2 font-bold">{selectedATM.networkStatus.networkStatus}</span>
+                    </Badge>
+                  )}
+                </DialogTitle>
+                <DialogDescription>
+                  Complete ATM network status and diagnostic information
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4 mt-4">
+                {/* Basic Information */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                      <Building2 className="h-5 w-5 text-gray-600 mt-0.5" />
+                      <div>
+                        <p className="text-xs text-gray-500 font-medium">Branch</p>
+                        <p className="text-sm font-semibold text-gray-900">{selectedATM.branch.name}</p>
+                        <p className="text-xs text-gray-500 font-mono">Code: {selectedATM.branch.code}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                      <Network className="h-5 w-5 text-gray-600 mt-0.5" />
+                      <div>
+                        <p className="text-xs text-gray-500 font-medium">IP Address</p>
+                        <p className="text-sm font-semibold font-mono text-gray-900">
+                          {selectedATM.ipAddress || 'Not available'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {selectedATM.location && (
+                  <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                    <MapPin className="h-5 w-5 text-gray-600 mt-0.5" />
+                    <div>
+                      <p className="text-xs text-gray-500 font-medium">Location</p>
+                      <p className="text-sm font-semibold text-gray-900">{selectedATM.location}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Network Status Details */}
+                {selectedATM.networkStatus && (
+                  <>
+                    <div className="border-t pt-4">
+                      <h4 className="font-semibold text-sm text-gray-700 mb-3">Network Metrics</h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="p-3 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border border-blue-200">
+                          <p className="text-xs text-blue-600 font-medium mb-1">Response Time</p>
+                          <p className={`text-2xl font-bold ${
+                            selectedATM.networkStatus.responseTimeMs == null ? 'text-gray-400' :
+                            selectedATM.networkStatus.responseTimeMs > 500 ? 'text-red-600' :
+                            selectedATM.networkStatus.responseTimeMs > 200 ? 'text-yellow-600' :
+                            'text-green-600'
+                          }`}>
+                            {selectedATM.networkStatus.responseTimeMs != null
+                              ? `${selectedATM.networkStatus.responseTimeMs}ms`
+                              : 'N/A'}
+                          </p>
+                          {selectedATM.networkStatus.responseTimeMs != null && (
+                            <p className="text-xs text-gray-600 mt-1">
+                              {selectedATM.networkStatus.responseTimeMs > 500 ? 'Very Slow' :
+                               selectedATM.networkStatus.responseTimeMs > 200 ? 'Slow' : 'Good'}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="p-3 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg border border-purple-200">
+                          <p className="text-xs text-purple-600 font-medium mb-1">Packet Loss</p>
+                          <p className={`text-2xl font-bold ${
+                            selectedATM.networkStatus.packetLoss == null ? 'text-gray-400' :
+                            selectedATM.networkStatus.packetLoss > 50 ? 'text-red-600' :
+                            selectedATM.networkStatus.packetLoss > 10 ? 'text-yellow-600' :
+                            'text-green-600'
+                          }`}>
+                            {selectedATM.networkStatus.packetLoss != null
+                              ? `${selectedATM.networkStatus.packetLoss}%`
+                              : 'N/A'}
+                          </p>
+                          {selectedATM.networkStatus.packetLoss != null && (
+                            <p className="text-xs text-gray-600 mt-1">
+                              {selectedATM.networkStatus.packetLoss > 50 ? 'Critical' :
+                               selectedATM.networkStatus.packetLoss > 10 ? 'Warning' : 'Good'}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Downtime Information */}
+                    {selectedATM.networkStatus.downSince && (
+                      <div className="p-4 bg-red-50 border-2 border-red-200 rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <TrendingDown className="h-5 w-5 text-red-600" />
+                          <h4 className="font-semibold text-red-700">Downtime Information</h4>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 mt-3">
+                          <div>
+                            <p className="text-xs text-red-600 font-medium">Down Since</p>
+                            <p className="text-sm font-semibold text-red-800">
+                              {formatTime(selectedATM.networkStatus.downSince)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-red-600 font-medium">Duration</p>
+                            <p className="text-sm font-bold text-red-800">
+                              {formatDuration(selectedATM.networkStatus.downSince)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Error Message */}
+                    {selectedATM.networkStatus.errorMessage && (
+                      <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                        <div className="flex items-start gap-2">
+                          <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-xs text-amber-600 font-medium mb-1">Error Message</p>
+                            <p className="text-sm text-amber-900 font-mono">
+                              {selectedATM.networkStatus.errorMessage}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Timestamps */}
+                    <div className="border-t pt-4">
+                      <h4 className="font-semibold text-sm text-gray-700 mb-3">Monitoring Timestamps</h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg">
+                          <Calendar className="h-4 w-4 text-gray-500 mt-0.5" />
+                          <div>
+                            <p className="text-xs text-gray-500 font-medium">Last Checked</p>
+                            <p className="text-sm font-semibold text-gray-900">
+                              {formatTime(selectedATM.networkStatus.checkedAt)}
+                            </p>
+                          </div>
+                        </div>
+                        {selectedATM.networkStatus.statusChangedAt && (
+                          <div className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg">
+                            <Calendar className="h-4 w-4 text-gray-500 mt-0.5" />
+                            <div>
+                              <p className="text-xs text-gray-500 font-medium">Status Changed</p>
+                              <p className="text-sm font-semibold text-gray-900">
+                                {formatTime(selectedATM.networkStatus.statusChangedAt)}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Additional Info */}
+                <div className="flex items-center justify-between pt-3 border-t text-xs text-gray-500">
+                  <span>ATM ID: {selectedATM.id}</span>
+                  <span>Status: {selectedATM.isActive ? 'Active' : 'Inactive'}</span>
+                </div>
+              </div>
             </>
           )}
-        </CardContent>
-      </Card>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
