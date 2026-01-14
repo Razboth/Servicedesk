@@ -20,7 +20,7 @@ export async function POST(
     }
 
     // Only technicians, managers, and admins can assign tickets
-    if (!session.user.role || !['TECHNICIAN', 'MANAGER', 'ADMIN', 'SECURITY_ANALYST'].includes(session.user.role)) {
+    if (!session.user.role || !['TECHNICIAN', 'MANAGER', 'MANAGER_IT', 'ADMIN', 'SECURITY_ANALYST'].includes(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -50,7 +50,7 @@ export async function POST(
       return NextResponse.json({ error: 'Assignee not found' }, { status: 404 });
     }
 
-    if (!['TECHNICIAN', 'ADMIN', 'SECURITY_ANALYST'].includes(assignee.role)) {
+    if (!['TECHNICIAN', 'ADMIN', 'SECURITY_ANALYST', 'MANAGER_IT'].includes(assignee.role)) {
       return NextResponse.json({ error: 'Can only assign tickets to technicians' }, { status: 400 });
     }
 
@@ -139,7 +139,7 @@ export async function DELETE(
     }
 
     // Only technicians, managers, and admins can unassign tickets
-    if (!session.user.role || !['TECHNICIAN', 'MANAGER', 'ADMIN', 'SECURITY_ANALYST'].includes(session.user.role)) {
+    if (!session.user.role || !['TECHNICIAN', 'MANAGER', 'MANAGER_IT', 'ADMIN', 'SECURITY_ANALYST'].includes(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

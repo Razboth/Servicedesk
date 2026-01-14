@@ -335,8 +335,8 @@ export async function PATCH(
       // Admin can update everything
       canUpdate = true;
       allowedFields = Object.keys(validatedData);
-    } else if (session.user.role === 'TECHNICIAN' || session.user.role === 'SECURITY_ANALYST') {
-      // Technicians can only update tickets they are assigned to
+    } else if (session.user.role === 'TECHNICIAN' || session.user.role === 'SECURITY_ANALYST' || session.user.role === 'MANAGER_IT') {
+      // Technicians and MANAGER_IT can only update tickets they are assigned to
       if (existingTicket.assignedToId === session.user.id) {
         canUpdate = true;
         allowedFields = Object.keys(validatedData);
