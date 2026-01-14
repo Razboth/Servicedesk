@@ -64,72 +64,150 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
     // Get latest approval if it exists and is approved
     const latestApproval = ticket.approvals?.find(a => a.status === 'APPROVED');
 
-    // Generate QR code text if ticket is approved - plain text format for direct display
-    const qrText = latestApproval && latestApproval.approver ?
-      `TANDA TANGAN DIGITAL\nTiket: ${ticket.ticketNumber || ''}\nDisetujui Oleh: ${latestApproval.approver.name || ''}\nTanggal: ${format(new Date(latestApproval.updatedAt), 'dd MMM yyyy HH:mm')}\nStatus: DISETUJUI`
-      : null;
+    // Generate QR code data - using base64 encoded JSON for verification page
+    let qrCodeUrl = '';
+    if (latestApproval && latestApproval.approver) {
+      const qrData = {
+        ticketNumber: ticket.ticketNumber || '',
+        approverName: latestApproval.approver.name || '',
+        approvedDate: latestApproval.updatedAt,
+        status: 'DISETUJUI'
+      };
+      const encodedData = btoa(JSON.stringify(qrData));
+      qrCodeUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/qr/${encodedData}`;
+    }
 
-    // Status badge colors
+    // Status badge colors - inline styles for print compatibility
     const getStatusColor = (status: string) => {
-      const statusColors: Record<string, string> = {
-        'OPEN': 'bg-blue-100 text-blue-800 border-blue-300',
-        'IN_PROGRESS': 'bg-yellow-100 text-yellow-800 border-yellow-300',
-        'RESOLVED': 'bg-green-100 text-green-800 border-green-300',
-        'CLOSED': 'bg-gray-100 text-gray-800 border-gray-300',
+      const statusColors: Record<string, { bg: string; text: string; border: string }> = {
+        'OPEN': { bg: '#dbeafe', text: '#1e40af', border: '#3b82f6' },
+        'IN_PROGRESS': { bg: '#fef3c7', text: '#92400e', border: '#f59e0b' },
+        'RESOLVED': { bg: '#d1fae5', text: '#065f46', border: '#10b981' },
+        'CLOSED': { bg: '#f3f4f6', text: '#1f2937', border: '#6b7280' },
       };
-      return statusColors[status] || 'bg-gray-100 text-gray-800 border-gray-300';
+      return statusColors[status] || statusColors['OPEN'];
     };
 
-    // Priority badge colors
+    // Priority badge colors - inline styles for print compatibility
     const getPriorityColor = (priority: string) => {
-      const priorityColors: Record<string, string> = {
-        'EMERGENCY': 'bg-purple-100 text-purple-800 border-purple-300',
-        'CRITICAL': 'bg-red-100 text-red-800 border-red-300',
-        'HIGH': 'bg-orange-100 text-orange-800 border-orange-300',
-        'MEDIUM': 'bg-yellow-100 text-yellow-800 border-yellow-300',
-        'LOW': 'bg-blue-100 text-blue-800 border-blue-300',
+      const priorityColors: Record<string, { bg: string; text: string; border: string }> = {
+        'EMERGENCY': { bg: '#fae8ff', text: '#6b21a8', border: '#a855f7' },
+        'CRITICAL': { bg: '#fee2e2', text: '#991b1b', border: '#ef4444' },
+        'HIGH': { bg: '#fed7aa', text: '#9a3412', border: '#f97316' },
+        'MEDIUM': { bg: '#fef3c7', text: '#92400e', border: '#f59e0b' },
+        'LOW': { bg: '#dbeafe', text: '#1e40af', border: '#3b82f6' },
       };
-      return priorityColors[priority] || 'bg-gray-100 text-gray-800 border-gray-300';
+      return priorityColors[priority] || priorityColors['MEDIUM'];
     };
+
+    const statusColor = getStatusColor(ticket.status);
+    const priorityColor = getPriorityColor(ticket.priority);
 
     return (
-      <div ref={ref} className="bg-white text-black min-h-screen flex flex-col" style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
+      <div ref={ref} style={{
+        backgroundColor: '#ffffff',
+        color: '#000000',
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        fontFamily: 'Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif'
+      }}>
         {/* Header - Bank SulutGo Red */}
-        <div className="print-header px-6 py-3 mb-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <div className="bg-white rounded-lg p-1 shadow-sm">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/logo-bsg.png"
-                  alt="Bank SulutGo Logo"
-                  width={50}
-                  height={50}
-                  className="object-contain"
-                />
+        <div style={{
+          background: 'linear-gradient(135deg, #DC2626 0%, #B91C1C 100%)',
+          padding: '16px 24px',
+          marginBottom: '16px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{
+                backgroundColor: '#ffffff',
+                borderRadius: '8px',
+                padding: '8px',
+                boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+              }}>
+                <div style={{
+                  width: '48px',
+                  height: '48px',
+                  backgroundColor: '#DC2626',
+                  borderRadius: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <span style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '20px' }}>BSG</span>
+                </div>
               </div>
-              <div className="text-white">
-                <h1 className="text-xl font-bold tracking-tight">Bank SulutGo ServiceDesk</h1>
-                <p className="text-xs opacity-90">Manajemen Layanan TI</p>
+              <div style={{ color: '#ffffff' }}>
+                <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0, lineHeight: 1.2 }}>
+                  Bank SulutGo ServiceDesk
+                </h1>
+                <p style={{ fontSize: '12px', opacity: 0.9, margin: '4px 0 0 0' }}>
+                  Manajemen Layanan TI
+                </p>
               </div>
             </div>
-            <div className="text-right bg-white/10 backdrop-blur-sm px-4 py-2 rounded-lg border-2 border-white/30">
-              <p className="text-xs text-white/80 uppercase tracking-wider">Tiket</p>
-              <p className="text-xl font-bold text-white tracking-tight">{ticket.ticketNumber}</p>
+            <div style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.15)',
+              backdropFilter: 'blur(4px)',
+              padding: '12px 16px',
+              borderRadius: '8px',
+              border: '2px solid rgba(255, 255, 255, 0.3)'
+            }}>
+              <p style={{
+                fontSize: '10px',
+                color: 'rgba(255, 255, 255, 0.9)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                margin: '0 0 4px 0'
+              }}>
+                Tiket
+              </p>
+              <p style={{ fontSize: '20px', fontWeight: 'bold', color: '#ffffff', margin: 0 }}>
+                {ticket.ticketNumber}
+              </p>
             </div>
           </div>
         </div>
 
-        <div className="px-6 pb-4 flex-1">
+        <div style={{ padding: '0 24px 16px 24px', flex: 1 }}>
           {/* Title Section with Status and Priority */}
-          <div className="mb-3 pb-2 border-b border-gray-200">
-            <div className="flex justify-between items-start">
-              <h2 className="text-lg font-bold text-gray-900 flex-1 pr-3">{ticket.title}</h2>
-              <div className="flex gap-2">
-                <span className={`px-2 py-1 rounded text-xs font-semibold border ${getStatusColor(ticket.status)}`}>
+          <div style={{ marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid #e5e7eb' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <h2 style={{
+                fontSize: '18px',
+                fontWeight: 'bold',
+                color: '#111827',
+                flex: 1,
+                paddingRight: '16px',
+                margin: 0
+              }}>
+                {ticket.title}
+              </h2>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <span style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  backgroundColor: statusColor.bg,
+                  color: statusColor.text,
+                  border: `1px solid ${statusColor.border}`,
+                  whiteSpace: 'nowrap'
+                }}>
                   {ticket.status.replace('_', ' ')}
                 </span>
-                <span className={`px-2 py-1 rounded text-xs font-semibold border ${getPriorityColor(ticket.priority)}`}>
+                <span style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  backgroundColor: priorityColor.bg,
+                  color: priorityColor.text,
+                  border: `1px solid ${priorityColor.border}`,
+                  whiteSpace: 'nowrap'
+                }}>
                   {ticket.priority}
                 </span>
               </div>
@@ -137,50 +215,145 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
           </div>
 
           {/* Ticket Information Grid */}
-          <div className="mb-3">
-            <h3 className="text-sm font-bold text-gray-900 mb-2 flex items-center">
-              <span className="w-1 h-4 bg-red-600 mr-2 rounded"></span>
+          <div style={{ marginBottom: '16px' }}>
+            <h3 style={{
+              fontSize: '13px',
+              fontWeight: 'bold',
+              color: '#111827',
+              marginBottom: '12px',
+              display: 'flex',
+              alignItems: 'center'
+            }}>
+              <span style={{
+                width: '4px',
+                height: '16px',
+                backgroundColor: '#DC2626',
+                marginRight: '8px',
+                borderRadius: '2px'
+              }}></span>
               Informasi Tiket
             </h3>
-            <div className="grid grid-cols-2 gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
-              <div className="flex flex-col">
-                <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Layanan</span>
-                <span className="text-xs font-semibold text-gray-900">{ticket.service?.name || '-'}</span>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: '12px',
+              backgroundColor: '#f9fafb',
+              padding: '16px',
+              borderRadius: '8px',
+              border: '1px solid #e5e7eb'
+            }}>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{
+                  fontSize: '10px',
+                  fontWeight: 600,
+                  color: '#6b7280',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  marginBottom: '4px'
+                }}>
+                  Layanan
+                </span>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: '#111827' }}>
+                  {ticket.service?.name || '-'}
+                </span>
               </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Cabang</span>
-                <span className="text-xs font-semibold text-gray-900">
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{
+                  fontSize: '10px',
+                  fontWeight: 600,
+                  color: '#6b7280',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  marginBottom: '4px'
+                }}>
+                  Cabang
+                </span>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: '#111827' }}>
                   {ticket.branch?.name || '-'} {ticket.branch?.code ? `(${ticket.branch.code})` : ''}
                 </span>
               </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Pemohon</span>
-                <span className="text-xs font-semibold text-gray-900">{ticket.createdBy?.name || '-'}</span>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{
+                  fontSize: '10px',
+                  fontWeight: 600,
+                  color: '#6b7280',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  marginBottom: '4px'
+                }}>
+                  Pemohon
+                </span>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: '#111827' }}>
+                  {ticket.createdBy?.name || '-'}
+                </span>
               </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Dibuat</span>
-                <span className="text-xs font-semibold text-gray-900">
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{
+                  fontSize: '10px',
+                  fontWeight: 600,
+                  color: '#6b7280',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  marginBottom: '4px'
+                }}>
+                  Dibuat
+                </span>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: '#111827' }}>
                   {format(new Date(ticket.createdAt), 'dd MMM yyyy, HH:mm')}
                 </span>
               </div>
               {ticket.assignedTo && (
-                <div className="flex flex-col">
-                  <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Ditugaskan Ke</span>
-                  <span className="text-xs font-semibold text-gray-900">{ticket.assignedTo.name}</span>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{
+                    fontSize: '10px',
+                    fontWeight: 600,
+                    color: '#6b7280',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    marginBottom: '4px'
+                  }}>
+                    Ditugaskan Ke
+                  </span>
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#111827' }}>
+                    {ticket.assignedTo.name}
+                  </span>
                 </div>
               )}
             </div>
           </div>
 
           {/* Description */}
-          <div className="mb-3">
-            <h3 className="text-sm font-bold text-gray-900 mb-2 flex items-center">
-              <span className="w-1 h-4 bg-red-600 mr-2 rounded"></span>
+          <div style={{ marginBottom: '16px' }}>
+            <h3 style={{
+              fontSize: '13px',
+              fontWeight: 'bold',
+              color: '#111827',
+              marginBottom: '12px',
+              display: 'flex',
+              alignItems: 'center'
+            }}>
+              <span style={{
+                width: '4px',
+                height: '16px',
+                backgroundColor: '#DC2626',
+                marginRight: '8px',
+                borderRadius: '2px'
+              }}></span>
               Deskripsi
             </h3>
-            <div className="bg-gray-50 p-2 rounded-lg border border-gray-200">
+            <div style={{
+              backgroundColor: '#f9fafb',
+              padding: '12px',
+              borderRadius: '8px',
+              border: '1px solid #e5e7eb'
+            }}>
               <div
-                className="text-xs text-gray-800 whitespace-pre-wrap leading-snug"
+                style={{
+                  fontSize: '12px',
+                  color: '#1f2937',
+                  whiteSpace: 'pre-wrap',
+                  lineHeight: 1.5
+                }}
                 dangerouslySetInnerHTML={{ __html: ticket.description }}
               />
             </div>
@@ -188,18 +361,48 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
 
           {/* Custom Fields */}
           {ticket.fieldValues && ticket.fieldValues.length > 0 && (
-            <div className="mb-3">
-              <h3 className="text-sm font-bold text-gray-900 mb-2 flex items-center">
-                <span className="w-1 h-4 bg-red-600 mr-2 rounded"></span>
+            <div style={{ marginBottom: '16px' }}>
+              <h3 style={{
+                fontSize: '13px',
+                fontWeight: 'bold',
+                color: '#111827',
+                marginBottom: '12px',
+                display: 'flex',
+                alignItems: 'center'
+              }}>
+                <span style={{
+                  width: '4px',
+                  height: '16px',
+                  backgroundColor: '#DC2626',
+                  marginRight: '8px',
+                  borderRadius: '2px'
+                }}></span>
                 Informasi Tambahan
               </h3>
-              <div className="grid grid-cols-2 gap-2 bg-gray-50 p-3 rounded-lg border border-gray-200">
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, 1fr)',
+                gap: '12px',
+                backgroundColor: '#f9fafb',
+                padding: '16px',
+                borderRadius: '8px',
+                border: '1px solid #e5e7eb'
+              }}>
                 {ticket.fieldValues.map((fieldValue) => (
-                  <div key={fieldValue.id} className="flex flex-col">
-                    <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                  <div key={fieldValue.id} style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{
+                      fontSize: '10px',
+                      fontWeight: 600,
+                      color: '#6b7280',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      marginBottom: '4px'
+                    }}>
                       {fieldValue.field?.label || 'Field'}
                     </span>
-                    <span className="text-xs font-semibold text-gray-900">{fieldValue.value || '-'}</span>
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: '#111827' }}>
+                      {fieldValue.value || '-'}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -207,31 +410,86 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
           )}
 
           {/* Approval Information with QR Code */}
-          {latestApproval && qrText && (
-            <div className="mb-3">
-              <h3 className="text-sm font-bold text-gray-900 mb-2 flex items-center">
-                <span className="w-1 h-4 bg-red-600 mr-2 rounded"></span>
+          {latestApproval && qrCodeUrl && (
+            <div style={{ marginBottom: '16px' }}>
+              <h3 style={{
+                fontSize: '13px',
+                fontWeight: 'bold',
+                color: '#111827',
+                marginBottom: '12px',
+                display: 'flex',
+                alignItems: 'center'
+              }}>
+                <span style={{
+                  width: '4px',
+                  height: '16px',
+                  backgroundColor: '#DC2626',
+                  marginRight: '8px',
+                  borderRadius: '2px'
+                }}></span>
                 Informasi Persetujuan
               </h3>
-              <div className="grid grid-cols-3 gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
-                <div className="flex flex-col">
-                  <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Disetujui Oleh</span>
-                  <span className="text-xs font-semibold text-gray-900">{latestApproval.approver?.name || '-'}</span>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr auto',
+                gap: '16px',
+                backgroundColor: '#f9fafb',
+                padding: '16px',
+                borderRadius: '8px',
+                border: '1px solid #e5e7eb'
+              }}>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{
+                    fontSize: '10px',
+                    fontWeight: 600,
+                    color: '#6b7280',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    marginBottom: '4px'
+                  }}>
+                    Disetujui Oleh
+                  </span>
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#111827' }}>
+                    {latestApproval.approver?.name || '-'}
+                  </span>
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Tanggal Persetujuan</span>
-                  <span className="text-xs font-semibold text-gray-900">
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{
+                    fontSize: '10px',
+                    fontWeight: 600,
+                    color: '#6b7280',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    marginBottom: '4px'
+                  }}>
+                    Tanggal Persetujuan
+                  </span>
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#111827' }}>
                     {format(new Date(latestApproval.updatedAt), 'dd MMM yyyy, HH:mm')}
                   </span>
                 </div>
-                <div className="flex flex-col items-center justify-center border-l border-gray-300 pl-3">
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderLeft: '1px solid #d1d5db',
+                  paddingLeft: '16px'
+                }}>
                   <QRCodeSVG
-                    value={qrText}
-                    size={60}
+                    value={qrCodeUrl}
+                    size={80}
                     level="H"
                     includeMargin={false}
                   />
-                  <p className="text-[9px] text-gray-600 font-semibold mt-1 text-center">
+                  <p style={{
+                    fontSize: '9px',
+                    color: '#4b5563',
+                    fontWeight: 600,
+                    marginTop: '6px',
+                    textAlign: 'center',
+                    margin: '6px 0 0 0'
+                  }}>
                     Pindai untuk Verifikasi
                   </p>
                 </div>
@@ -241,34 +499,73 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
         </div>
 
         {/* Footer - Bank SulutGo Red */}
-        <div className="print-footer px-6 py-2">
-          <div className="flex justify-between items-center text-white text-xs">
-            <p className="font-semibold">© {new Date().getFullYear()} Bank SulutGo</p>
-            <p className="font-semibold">Dicetak: {format(new Date(), 'dd MMM yyyy, HH:mm')}</p>
+        <div style={{
+          background: 'linear-gradient(135deg, #B91C1C 0%, #991B1B 100%)',
+          padding: '12px 24px',
+          boxShadow: '0 -4px 6px -1px rgba(0, 0, 0, 0.1)'
+        }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            color: '#ffffff',
+            fontSize: '11px'
+          }}>
+            <p style={{ fontWeight: 600, margin: 0 }}>
+              © {new Date().getFullYear()} Bank SulutGo
+            </p>
+            <p style={{ fontWeight: 600, margin: 0 }}>
+              Dicetak: {format(new Date(), 'dd MMM yyyy, HH:mm')}
+            </p>
           </div>
         </div>
 
         {/* Print Styles */}
         <style jsx global>{`
           @media print {
-            body {
-              print-color-adjust: exact;
-              -webkit-print-color-adjust: exact;
+            * {
+              print-color-adjust: exact !important;
+              -webkit-print-color-adjust: exact !important;
+              color-adjust: exact !important;
             }
+
             @page {
               margin: 0;
-              size: A4;
+              size: A4 portrait;
             }
-          }
 
-          .print-header {
-            background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-          }
+            body {
+              margin: 0;
+              padding: 0;
+            }
 
-          .print-footer {
-            background: linear-gradient(135deg, #B91C1C 0%, #991B1B 100%);
-            box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1);
+            /* Optimize for faster printing */
+            img {
+              max-width: 100%;
+              height: auto;
+            }
+
+            /* Ensure QR code prints correctly */
+            svg {
+              shape-rendering: crispEdges;
+            }
+
+            /* Remove shadows for better print quality */
+            * {
+              box-shadow: none !important;
+              text-shadow: none !important;
+            }
+
+            /* Ensure backgrounds print */
+            div, span, p {
+              background-color: transparent;
+            }
+
+            /* Preserve specific backgrounds */
+            [style*="background"] {
+              print-color-adjust: exact !important;
+              -webkit-print-color-adjust: exact !important;
+            }
           }
         `}</style>
       </div>
