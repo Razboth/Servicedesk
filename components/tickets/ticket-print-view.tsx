@@ -64,18 +64,18 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
     // Get latest approval if it exists and is approved
     const latestApproval = ticket.approvals?.find(a => a.status === 'APPROVED');
 
-    // Generate QR code data - using base64 encoded JSON for verification page
-    let qrCodeUrl = '';
-    if (latestApproval && latestApproval.approver) {
-      const qrData = {
-        ticketNumber: ticket.ticketNumber || '',
-        approverName: latestApproval.approver.name || '',
-        approvedDate: latestApproval.updatedAt,
-        status: 'DISETUJUI'
-      };
-      const encodedData = btoa(JSON.stringify(qrData));
-      qrCodeUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/qr/${encodedData}`;
-    }
+    // Always generate QR code data for ticket verification
+    const qrData = {
+      ticketNumber: ticket.ticketNumber || '',
+      approverName: latestApproval?.approver?.name || '',
+      approvedDate: latestApproval?.updatedAt || ticket.createdAt,
+      status: latestApproval ? 'DISETUJUI' : ticket.status
+    };
+    const encodedData = typeof window !== 'undefined' ? btoa(JSON.stringify(qrData)) : '';
+    const qrCodeUrl = encodedData ? `${typeof window !== 'undefined' ? window.location.origin : ''}/qr/${encodedData}` : '';
+
+    // Plain text QR for direct scanning (always show)
+    const qrText = `TIKET: ${ticket.ticketNumber}\nStatus: ${ticket.status}\nPemohon: ${ticket.createdBy?.name || '-'}\nLayanan: ${ticket.service?.name || '-'}\nTanggal: ${format(new Date(ticket.createdAt), 'dd MMM yyyy HH:mm')}${latestApproval ? `\nDisetujui: ${latestApproval.approver?.name || '-'}` : ''}`;
 
     // Status badge colors - inline styles for print compatibility
     const getStatusColor = (status: string) => {
@@ -409,8 +409,8 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
             </div>
           )}
 
-          {/* Approval Information with QR Code */}
-          {latestApproval && qrCodeUrl && (
+          {/* Approval Information (if approved) */}
+          {latestApproval && (
             <div style={{ marginBottom: '16px' }}>
               <h3 style={{
                 fontSize: '13px',
@@ -431,25 +431,25 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
               </h3>
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: '1fr 1fr auto',
-                gap: '16px',
-                backgroundColor: '#f9fafb',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '12px',
+                backgroundColor: '#dcfce7',
                 padding: '16px',
                 borderRadius: '8px',
-                border: '1px solid #e5e7eb'
+                border: '2px solid #16a34a'
               }}>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   <span style={{
                     fontSize: '10px',
                     fontWeight: 600,
-                    color: '#6b7280',
+                    color: '#166534',
                     textTransform: 'uppercase',
                     letterSpacing: '0.05em',
                     marginBottom: '4px'
                   }}>
                     Disetujui Oleh
                   </span>
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#111827' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 700, color: '#166534' }}>
                     {latestApproval.approver?.name || '-'}
                   </span>
                 </div>
@@ -457,45 +457,149 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
                   <span style={{
                     fontSize: '10px',
                     fontWeight: 600,
-                    color: '#6b7280',
+                    color: '#166534',
                     textTransform: 'uppercase',
                     letterSpacing: '0.05em',
                     marginBottom: '4px'
                   }}>
                     Tanggal Persetujuan
                   </span>
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#111827' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 700, color: '#166534' }}>
                     {format(new Date(latestApproval.updatedAt), 'dd MMM yyyy, HH:mm')}
                   </span>
-                </div>
-                <div style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderLeft: '1px solid #d1d5db',
-                  paddingLeft: '16px'
-                }}>
-                  <QRCodeSVG
-                    value={qrCodeUrl}
-                    size={80}
-                    level="H"
-                    includeMargin={false}
-                  />
-                  <p style={{
-                    fontSize: '9px',
-                    color: '#4b5563',
-                    fontWeight: 600,
-                    marginTop: '6px',
-                    textAlign: 'center',
-                    margin: '6px 0 0 0'
-                  }}>
-                    Pindai untuk Verifikasi
-                  </p>
                 </div>
               </div>
             </div>
           )}
+
+          {/* QR Code Verification Section - Always Show */}
+          <div style={{
+            marginBottom: '16px',
+            padding: '20px',
+            backgroundColor: '#fef2f2',
+            borderRadius: '12px',
+            border: '2px solid #DC2626'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '24px'
+            }}>
+              {/* Left side - Verification info */}
+              <div style={{ flex: 1 }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  marginBottom: '12px'
+                }}>
+                  <div style={{
+                    width: '48px',
+                    height: '48px',
+                    backgroundColor: '#DC2626',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <span style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '16px' }}>BSG</span>
+                  </div>
+                  <div>
+                    <h4 style={{
+                      fontSize: '14px',
+                      fontWeight: 'bold',
+                      color: '#DC2626',
+                      margin: '0 0 4px 0'
+                    }}>
+                      Verifikasi Digital
+                    </h4>
+                    <p style={{
+                      fontSize: '11px',
+                      color: '#991b1b',
+                      margin: 0
+                    }}>
+                      Bank SulutGo ServiceDesk
+                    </p>
+                  </div>
+                </div>
+                <div style={{
+                  backgroundColor: '#ffffff',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: '1px solid #fecaca'
+                }}>
+                  <p style={{
+                    fontSize: '10px',
+                    color: '#991b1b',
+                    margin: '0 0 8px 0',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em'
+                  }}>
+                    Detail Tiket
+                  </p>
+                  <p style={{ fontSize: '11px', color: '#1f2937', margin: '0 0 4px 0' }}>
+                    <strong>No. Tiket:</strong> {ticket.ticketNumber}
+                  </p>
+                  <p style={{ fontSize: '11px', color: '#1f2937', margin: '0 0 4px 0' }}>
+                    <strong>Status:</strong> {ticket.status.replace('_', ' ')}
+                  </p>
+                  <p style={{ fontSize: '11px', color: '#1f2937', margin: '0 0 4px 0' }}>
+                    <strong>Pemohon:</strong> {ticket.createdBy?.name || '-'}
+                  </p>
+                  {latestApproval && (
+                    <p style={{ fontSize: '11px', color: '#16a34a', margin: '0', fontWeight: 600 }}>
+                      ✓ Disetujui oleh {latestApproval.approver?.name}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Right side - QR Code */}
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                padding: '16px',
+                backgroundColor: '#ffffff',
+                borderRadius: '12px',
+                border: '2px solid #DC2626'
+              }}>
+                <QRCodeSVG
+                  value={qrCodeUrl || qrText}
+                  size={100}
+                  level="H"
+                  includeMargin={false}
+                  style={{ display: 'block' }}
+                />
+                <p style={{
+                  fontSize: '10px',
+                  color: '#DC2626',
+                  fontWeight: 700,
+                  marginTop: '8px',
+                  textAlign: 'center',
+                  margin: '8px 0 0 0',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em'
+                }}>
+                  Pindai untuk Verifikasi
+                </p>
+              </div>
+            </div>
+
+            <p style={{
+              fontSize: '9px',
+              color: '#6b7280',
+              textAlign: 'center',
+              margin: '12px 0 0 0',
+              borderTop: '1px solid #fecaca',
+              paddingTop: '12px'
+            }}>
+              Dokumen ini dibuat secara elektronik oleh Bank SulutGo ServiceDesk.
+              Scan QR code untuk memverifikasi keaslian dokumen.
+            </p>
+          </div>
         </div>
 
         {/* Footer - Bank SulutGo Red */}
