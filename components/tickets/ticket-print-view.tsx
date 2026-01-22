@@ -67,404 +67,473 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
     // Always generate QR code data for ticket verification
     const qrData = {
       ticketNumber: ticket.ticketNumber || '',
+      status: ticket.status,
+      requester: ticket.createdBy?.name || '',
+      service: ticket.service?.name || '',
+      createdDate: ticket.createdAt,
       approverName: latestApproval?.approver?.name || '',
-      approvedDate: latestApproval?.updatedAt || ticket.createdAt,
-      status: latestApproval ? 'DISETUJUI' : ticket.status
+      approvedDate: latestApproval?.updatedAt || ''
     };
+
     const encodedData = typeof window !== 'undefined' ? btoa(JSON.stringify(qrData)) : '';
     const qrCodeUrl = encodedData ? `${typeof window !== 'undefined' ? window.location.origin : ''}/qr/${encodedData}` : '';
 
-    // Plain text QR for direct scanning (always show)
+    // Plain text QR as fallback
     const qrText = `TIKET: ${ticket.ticketNumber}\nStatus: ${ticket.status}\nPemohon: ${ticket.createdBy?.name || '-'}\nLayanan: ${ticket.service?.name || '-'}\nTanggal: ${format(new Date(ticket.createdAt), 'dd MMM yyyy HH:mm')}${latestApproval ? `\nDisetujui: ${latestApproval.approver?.name || '-'}` : ''}`;
-
-    // Status badge colors - inline styles for print compatibility
-    const getStatusColor = (status: string) => {
-      const statusColors: Record<string, { bg: string; text: string; border: string }> = {
-        'OPEN': { bg: '#dbeafe', text: '#1e40af', border: '#3b82f6' },
-        'IN_PROGRESS': { bg: '#fef3c7', text: '#92400e', border: '#f59e0b' },
-        'RESOLVED': { bg: '#d1fae5', text: '#065f46', border: '#10b981' },
-        'CLOSED': { bg: '#f3f4f6', text: '#1f2937', border: '#6b7280' },
-      };
-      return statusColors[status] || statusColors['OPEN'];
-    };
-
-    // Priority badge colors - inline styles for print compatibility
-    const getPriorityColor = (priority: string) => {
-      const priorityColors: Record<string, { bg: string; text: string; border: string }> = {
-        'EMERGENCY': { bg: '#fae8ff', text: '#6b21a8', border: '#a855f7' },
-        'CRITICAL': { bg: '#fee2e2', text: '#991b1b', border: '#ef4444' },
-        'HIGH': { bg: '#fed7aa', text: '#9a3412', border: '#f97316' },
-        'MEDIUM': { bg: '#fef3c7', text: '#92400e', border: '#f59e0b' },
-        'LOW': { bg: '#dbeafe', text: '#1e40af', border: '#3b82f6' },
-      };
-      return priorityColors[priority] || priorityColors['MEDIUM'];
-    };
-
-    const statusColor = getStatusColor(ticket.status);
-    const priorityColor = getPriorityColor(ticket.priority);
 
     return (
       <div ref={ref} style={{
         backgroundColor: '#ffffff',
-        color: '#000000',
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        fontFamily: 'Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif'
+        minHeight: '297mm',
+        width: '210mm',
+        margin: '0 auto',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+        fontSize: '14px',
+        lineHeight: '1.5',
+        color: '#1a1a1a',
+        position: 'relative',
+        boxSizing: 'border-box'
       }}>
-        {/* Header - Bank SulutGo Red */}
+        {/* Modern Header with BSG Branding */}
         <div style={{
-          background: 'linear-gradient(135deg, #DC2626 0%, #B91C1C 100%)',
-          padding: '16px 24px',
-          marginBottom: '16px',
-          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+          background: 'linear-gradient(135deg, #DC2626 0%, #B91C1C 50%, #991B1B 100%)',
+          padding: '24px 32px',
+          borderBottom: '4px solid #7F1D1D',
+          position: 'relative',
+          overflow: 'hidden'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          {/* Decorative background elements */}
+          <div style={{
+            position: 'absolute',
+            top: '-20px',
+            right: '-20px',
+            width: '150px',
+            height: '150px',
+            borderRadius: '50%',
+            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+            opacity: 0.5
+          }}></div>
+          <div style={{
+            position: 'absolute',
+            bottom: '-30px',
+            left: '60%',
+            width: '100px',
+            height: '100px',
+            borderRadius: '50%',
+            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+            opacity: 0.5
+          }}></div>
+
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            position: 'relative',
+            zIndex: 1
+          }}>
+            {/* Logo and Title */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+              {/* BSG Logo Box */}
               <div style={{
+                width: '72px',
+                height: '72px',
                 backgroundColor: '#ffffff',
-                borderRadius: '8px',
-                padding: '8px',
-                boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+                borderRadius: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                border: '3px solid #FEF2F2'
               }}>
                 <div style={{
-                  width: '48px',
-                  height: '48px',
+                  width: '60px',
+                  height: '60px',
                   backgroundColor: '#DC2626',
-                  borderRadius: '6px',
+                  borderRadius: '8px',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center'
+                  justifyContent: 'center',
+                  boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.1)'
                 }}>
-                  <span style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '20px' }}>BSG</span>
+                  <span style={{
+                    color: '#ffffff',
+                    fontWeight: '900',
+                    fontSize: '24px',
+                    letterSpacing: '1px'
+                  }}>
+                    BSG
+                  </span>
                 </div>
               </div>
-              <div style={{ color: '#ffffff' }}>
-                <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0, lineHeight: 1.2 }}>
+
+              {/* Title and Subtitle */}
+              <div>
+                <h1 style={{
+                  fontSize: '28px',
+                  fontWeight: '800',
+                  color: '#ffffff',
+                  margin: '0 0 4px 0',
+                  letterSpacing: '-0.5px',
+                  textShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+                }}>
                   Bank SulutGo ServiceDesk
                 </h1>
-                <p style={{ fontSize: '12px', opacity: 0.9, margin: '4px 0 0 0' }}>
-                  Manajemen Layanan TI
+                <p style={{
+                  fontSize: '13px',
+                  color: 'rgba(255, 255, 255, 0.95)',
+                  margin: 0,
+                  fontWeight: '500',
+                  letterSpacing: '0.5px'
+                }}>
+                  IT Service Management System
                 </p>
               </div>
             </div>
+
+            {/* Ticket Number Badge */}
             <div style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.15)',
-              backdropFilter: 'blur(4px)',
-              padding: '12px 16px',
-              borderRadius: '8px',
-              border: '2px solid rgba(255, 255, 255, 0.3)'
+              backgroundColor: '#ffffff',
+              padding: '16px 24px',
+              borderRadius: '12px',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+              border: '3px solid #FEF2F2',
+              textAlign: 'center',
+              minWidth: '180px'
             }}>
-              <p style={{
+              <div style={{
                 fontSize: '10px',
-                color: 'rgba(255, 255, 255, 0.9)',
+                color: '#DC2626',
+                fontWeight: '700',
                 textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                margin: '0 0 4px 0'
+                letterSpacing: '1.5px',
+                marginBottom: '4px'
               }}>
-                Tiket
-              </p>
-              <p style={{ fontSize: '20px', fontWeight: 'bold', color: '#ffffff', margin: 0 }}>
+                Nomor Tiket
+              </div>
+              <div style={{
+                fontSize: '24px',
+                fontWeight: '900',
+                color: '#991B1B',
+                letterSpacing: '0.5px'
+              }}>
                 {ticket.ticketNumber}
-              </p>
+              </div>
             </div>
           </div>
         </div>
 
-        <div style={{ padding: '0 24px 16px 24px', flex: 1 }}>
-          {/* Title Section with Status and Priority */}
-          <div style={{ marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid #e5e7eb' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        {/* Main Content Area */}
+        <div style={{ padding: '32px' }}>
+          {/* Ticket Title with Status and Priority Badges */}
+          <div style={{
+            marginBottom: '24px',
+            paddingBottom: '20px',
+            borderBottom: '2px solid #E5E7EB'
+          }}>
+            <div style={{ marginBottom: '12px' }}>
               <h2 style={{
-                fontSize: '18px',
-                fontWeight: 'bold',
+                fontSize: '22px',
+                fontWeight: '700',
                 color: '#111827',
-                flex: 1,
-                paddingRight: '16px',
-                margin: 0
+                margin: '0 0 12px 0',
+                lineHeight: '1.3'
               }}>
                 {ticket.title}
               </h2>
-              <div style={{ display: 'flex', gap: '8px' }}>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              {/* Status Badge */}
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                fontSize: '12px',
+                fontWeight: '700',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                backgroundColor:
+                  ticket.status === 'OPEN' ? '#DBEAFE' :
+                  ticket.status === 'IN_PROGRESS' ? '#FEF3C7' :
+                  ticket.status === 'RESOLVED' ? '#D1FAE5' :
+                  '#F3F4F6',
+                color:
+                  ticket.status === 'OPEN' ? '#1E40AF' :
+                  ticket.status === 'IN_PROGRESS' ? '#92400E' :
+                  ticket.status === 'RESOLVED' ? '#065F46' :
+                  '#1F2937',
+                border: `2px solid ${
+                  ticket.status === 'OPEN' ? '#3B82F6' :
+                  ticket.status === 'IN_PROGRESS' ? '#F59E0B' :
+                  ticket.status === 'RESOLVED' ? '#10B981' :
+                  '#6B7280'
+                }`
+              }}>
                 <span style={{
-                  padding: '6px 12px',
-                  borderRadius: '6px',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  backgroundColor: statusColor.bg,
-                  color: statusColor.text,
-                  border: `1px solid ${statusColor.border}`,
-                  whiteSpace: 'nowrap'
-                }}>
-                  {ticket.status.replace('_', ' ')}
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  backgroundColor: 'currentColor',
+                  marginRight: '8px',
+                  display: 'inline-block'
+                }}></span>
+                {ticket.status.replace('_', ' ')}
+              </div>
+
+              {/* Priority Badge */}
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                fontSize: '12px',
+                fontWeight: '700',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                backgroundColor:
+                  ticket.priority === 'EMERGENCY' ? '#FAE8FF' :
+                  ticket.priority === 'CRITICAL' ? '#FEE2E2' :
+                  ticket.priority === 'HIGH' ? '#FED7AA' :
+                  ticket.priority === 'MEDIUM' ? '#FEF3C7' :
+                  '#DBEAFE',
+                color:
+                  ticket.priority === 'EMERGENCY' ? '#6B21A8' :
+                  ticket.priority === 'CRITICAL' ? '#991B1B' :
+                  ticket.priority === 'HIGH' ? '#9A3412' :
+                  ticket.priority === 'MEDIUM' ? '#92400E' :
+                  '#1E40AF',
+                border: `2px solid ${
+                  ticket.priority === 'EMERGENCY' ? '#A855F7' :
+                  ticket.priority === 'CRITICAL' ? '#EF4444' :
+                  ticket.priority === 'HIGH' ? '#F97316' :
+                  ticket.priority === 'MEDIUM' ? '#F59E0B' :
+                  '#3B82F6'
+                }`
+              }}>
+                <span style={{ marginRight: '6px' }}>
+                  {ticket.priority === 'EMERGENCY' || ticket.priority === 'CRITICAL' ? '🔴' :
+                   ticket.priority === 'HIGH' ? '🟠' :
+                   ticket.priority === 'MEDIUM' ? '🟡' : '🔵'}
                 </span>
-                <span style={{
-                  padding: '6px 12px',
-                  borderRadius: '6px',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  backgroundColor: priorityColor.bg,
-                  color: priorityColor.text,
-                  border: `1px solid ${priorityColor.border}`,
-                  whiteSpace: 'nowrap'
-                }}>
-                  {ticket.priority}
-                </span>
+                {ticket.priority}
               </div>
             </div>
           </div>
 
           {/* Ticket Information Grid */}
-          <div style={{ marginBottom: '16px' }}>
-            <h3 style={{
-              fontSize: '13px',
-              fontWeight: 'bold',
-              color: '#111827',
-              marginBottom: '12px',
+          <div style={{ marginBottom: '24px' }}>
+            <div style={{
               display: 'flex',
-              alignItems: 'center'
+              alignItems: 'center',
+              marginBottom: '16px',
+              gap: '12px'
             }}>
-              <span style={{
-                width: '4px',
-                height: '16px',
+              <div style={{
+                width: '5px',
+                height: '24px',
                 backgroundColor: '#DC2626',
-                marginRight: '8px',
-                borderRadius: '2px'
-              }}></span>
-              Informasi Tiket
-            </h3>
+                borderRadius: '3px'
+              }}></div>
+              <h3 style={{
+                fontSize: '16px',
+                fontWeight: '700',
+                color: '#111827',
+                margin: 0,
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px'
+              }}>
+                Informasi Tiket
+              </h3>
+            </div>
+
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(2, 1fr)',
-              gap: '12px',
-              backgroundColor: '#f9fafb',
-              padding: '16px',
-              borderRadius: '8px',
-              border: '1px solid #e5e7eb'
+              gap: '16px',
+              backgroundColor: '#F9FAFB',
+              padding: '20px',
+              borderRadius: '12px',
+              border: '2px solid #E5E7EB'
             }}>
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{
-                  fontSize: '10px',
-                  fontWeight: 600,
-                  color: '#6b7280',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  marginBottom: '4px'
-                }}>
-                  Layanan
-                </span>
-                <span style={{ fontSize: '12px', fontWeight: 600, color: '#111827' }}>
-                  {ticket.service?.name || '-'}
-                </span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{
-                  fontSize: '10px',
-                  fontWeight: 600,
-                  color: '#6b7280',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  marginBottom: '4px'
-                }}>
-                  Cabang
-                </span>
-                <span style={{ fontSize: '12px', fontWeight: 600, color: '#111827' }}>
-                  {ticket.branch?.name || '-'} {ticket.branch?.code ? `(${ticket.branch.code})` : ''}
-                </span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{
-                  fontSize: '10px',
-                  fontWeight: 600,
-                  color: '#6b7280',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  marginBottom: '4px'
-                }}>
-                  Pemohon
-                </span>
-                <span style={{ fontSize: '12px', fontWeight: 600, color: '#111827' }}>
-                  {ticket.createdBy?.name || '-'}
-                </span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{
-                  fontSize: '10px',
-                  fontWeight: 600,
-                  color: '#6b7280',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  marginBottom: '4px'
-                }}>
-                  Dibuat
-                </span>
-                <span style={{ fontSize: '12px', fontWeight: 600, color: '#111827' }}>
-                  {format(new Date(ticket.createdAt), 'dd MMM yyyy, HH:mm')}
-                </span>
-              </div>
+              <InfoField label="Layanan" value={ticket.service?.name || '-'} />
+              <InfoField
+                label="Cabang"
+                value={`${ticket.branch?.name || '-'} ${ticket.branch?.code ? `(${ticket.branch.code})` : ''}`}
+              />
+              <InfoField label="Pemohon" value={ticket.createdBy?.name || '-'} />
+              <InfoField
+                label="Dibuat"
+                value={format(new Date(ticket.createdAt), 'dd MMM yyyy, HH:mm')}
+              />
               {ticket.assignedTo && (
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <span style={{
-                    fontSize: '10px',
-                    fontWeight: 600,
-                    color: '#6b7280',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    marginBottom: '4px'
-                  }}>
-                    Ditugaskan Ke
-                  </span>
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#111827' }}>
-                    {ticket.assignedTo.name}
-                  </span>
-                </div>
+                <InfoField label="Ditugaskan Ke" value={ticket.assignedTo.name} />
               )}
             </div>
           </div>
 
-          {/* Description */}
-          <div style={{ marginBottom: '16px' }}>
-            <h3 style={{
-              fontSize: '13px',
-              fontWeight: 'bold',
-              color: '#111827',
-              marginBottom: '12px',
-              display: 'flex',
-              alignItems: 'center'
-            }}>
-              <span style={{
-                width: '4px',
-                height: '16px',
-                backgroundColor: '#DC2626',
-                marginRight: '8px',
-                borderRadius: '2px'
-              }}></span>
-              Deskripsi
-            </h3>
+          {/* Description Section */}
+          <div style={{ marginBottom: '24px' }}>
             <div style={{
-              backgroundColor: '#f9fafb',
-              padding: '12px',
-              borderRadius: '8px',
-              border: '1px solid #e5e7eb'
+              display: 'flex',
+              alignItems: 'center',
+              marginBottom: '16px',
+              gap: '12px'
+            }}>
+              <div style={{
+                width: '5px',
+                height: '24px',
+                backgroundColor: '#DC2626',
+                borderRadius: '3px'
+              }}></div>
+              <h3 style={{
+                fontSize: '16px',
+                fontWeight: '700',
+                color: '#111827',
+                margin: 0,
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px'
+              }}>
+                Deskripsi
+              </h3>
+            </div>
+
+            <div style={{
+              backgroundColor: '#F9FAFB',
+              padding: '20px',
+              borderRadius: '12px',
+              border: '2px solid #E5E7EB',
+              minHeight: '80px'
             }}>
               <div
                 style={{
-                  fontSize: '12px',
-                  color: '#1f2937',
+                  fontSize: '13px',
+                  color: '#374151',
+                  lineHeight: '1.7',
                   whiteSpace: 'pre-wrap',
-                  lineHeight: 1.5
+                  wordWrap: 'break-word'
                 }}
                 dangerouslySetInnerHTML={{ __html: ticket.description }}
               />
             </div>
           </div>
 
-          {/* Custom Fields */}
+          {/* Custom Fields Section */}
           {ticket.fieldValues && ticket.fieldValues.length > 0 && (
-            <div style={{ marginBottom: '16px' }}>
-              <h3 style={{
-                fontSize: '13px',
-                fontWeight: 'bold',
-                color: '#111827',
-                marginBottom: '12px',
+            <div style={{ marginBottom: '24px' }}>
+              <div style={{
                 display: 'flex',
-                alignItems: 'center'
+                alignItems: 'center',
+                marginBottom: '16px',
+                gap: '12px'
               }}>
-                <span style={{
-                  width: '4px',
-                  height: '16px',
+                <div style={{
+                  width: '5px',
+                  height: '24px',
                   backgroundColor: '#DC2626',
-                  marginRight: '8px',
-                  borderRadius: '2px'
-                }}></span>
-                Informasi Tambahan
-              </h3>
+                  borderRadius: '3px'
+                }}></div>
+                <h3 style={{
+                  fontSize: '16px',
+                  fontWeight: '700',
+                  color: '#111827',
+                  margin: 0,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }}>
+                  Informasi Tambahan
+                </h3>
+              </div>
+
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(2, 1fr)',
-                gap: '12px',
-                backgroundColor: '#f9fafb',
-                padding: '16px',
-                borderRadius: '8px',
-                border: '1px solid #e5e7eb'
+                gap: '16px',
+                backgroundColor: '#F9FAFB',
+                padding: '20px',
+                borderRadius: '12px',
+                border: '2px solid #E5E7EB'
               }}>
                 {ticket.fieldValues.map((fieldValue) => (
-                  <div key={fieldValue.id} style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span style={{
-                      fontSize: '10px',
-                      fontWeight: 600,
-                      color: '#6b7280',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
-                      marginBottom: '4px'
-                    }}>
-                      {fieldValue.field?.label || 'Field'}
-                    </span>
-                    <span style={{ fontSize: '12px', fontWeight: 600, color: '#111827' }}>
-                      {fieldValue.value || '-'}
-                    </span>
-                  </div>
+                  <InfoField
+                    key={fieldValue.id}
+                    label={fieldValue.field?.label || 'Field'}
+                    value={fieldValue.value || '-'}
+                  />
                 ))}
               </div>
             </div>
           )}
 
-          {/* Approval Information (if approved) */}
+          {/* Approval Information Section */}
           {latestApproval && (
-            <div style={{ marginBottom: '16px' }}>
-              <h3 style={{
-                fontSize: '13px',
-                fontWeight: 'bold',
-                color: '#111827',
-                marginBottom: '12px',
+            <div style={{ marginBottom: '24px' }}>
+              <div style={{
                 display: 'flex',
-                alignItems: 'center'
+                alignItems: 'center',
+                marginBottom: '16px',
+                gap: '12px'
               }}>
-                <span style={{
-                  width: '4px',
-                  height: '16px',
-                  backgroundColor: '#DC2626',
-                  marginRight: '8px',
-                  borderRadius: '2px'
-                }}></span>
-                Informasi Persetujuan
-              </h3>
+                <div style={{
+                  width: '5px',
+                  height: '24px',
+                  backgroundColor: '#16A34A',
+                  borderRadius: '3px'
+                }}></div>
+                <h3 style={{
+                  fontSize: '16px',
+                  fontWeight: '700',
+                  color: '#111827',
+                  margin: 0,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }}>
+                  Informasi Persetujuan
+                </h3>
+              </div>
+
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '12px',
-                backgroundColor: '#dcfce7',
-                padding: '16px',
-                borderRadius: '8px',
-                border: '2px solid #16a34a'
+                gridTemplateColumns: 'repeat(2, 1fr)',
+                gap: '16px',
+                backgroundColor: '#DCFCE7',
+                padding: '20px',
+                borderRadius: '12px',
+                border: '3px solid #16A34A'
               }}>
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <span style={{
-                    fontSize: '10px',
-                    fontWeight: 600,
+                    fontSize: '11px',
+                    fontWeight: '700',
                     color: '#166534',
                     textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    marginBottom: '4px'
+                    letterSpacing: '1px'
                   }}>
                     Disetujui Oleh
                   </span>
-                  <span style={{ fontSize: '14px', fontWeight: 700, color: '#166534' }}>
+                  <span style={{
+                    fontSize: '15px',
+                    fontWeight: '700',
+                    color: '#14532D'
+                  }}>
                     {latestApproval.approver?.name || '-'}
                   </span>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <span style={{
-                    fontSize: '10px',
-                    fontWeight: 600,
+                    fontSize: '11px',
+                    fontWeight: '700',
                     color: '#166534',
                     textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    marginBottom: '4px'
+                    letterSpacing: '1px'
                   }}>
                     Tanggal Persetujuan
                   </span>
-                  <span style={{ fontSize: '14px', fontWeight: 700, color: '#166534' }}>
+                  <span style={{
+                    fontSize: '15px',
+                    fontWeight: '700',
+                    color: '#14532D'
+                  }}>
                     {format(new Date(latestApproval.updatedAt), 'dd MMM yyyy, HH:mm')}
                   </span>
                 </div>
@@ -472,159 +541,213 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
             </div>
           )}
 
-          {/* QR Code Verification Section - Always Show */}
+          {/* QR Code Verification Section - ALWAYS VISIBLE */}
           <div style={{
-            marginBottom: '16px',
-            padding: '20px',
-            backgroundColor: '#fef2f2',
-            borderRadius: '12px',
-            border: '2px solid #DC2626'
+            backgroundColor: '#FEF2F2',
+            borderRadius: '16px',
+            border: '3px solid #DC2626',
+            padding: '28px',
+            marginBottom: '24px',
+            boxShadow: '0 4px 6px rgba(220, 38, 38, 0.1)'
           }}>
             <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '24px'
+              display: 'grid',
+              gridTemplateColumns: '1fr auto',
+              gap: '32px',
+              alignItems: 'center'
             }}>
-              {/* Left side - Verification info */}
-              <div style={{ flex: 1 }}>
+              {/* Left: Verification Information */}
+              <div>
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '12px',
-                  marginBottom: '12px'
+                  gap: '16px',
+                  marginBottom: '20px'
                 }}>
+                  {/* BSG Icon */}
                   <div style={{
-                    width: '48px',
-                    height: '48px',
+                    width: '56px',
+                    height: '56px',
                     backgroundColor: '#DC2626',
-                    borderRadius: '8px',
+                    borderRadius: '10px',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center'
+                    justifyContent: 'center',
+                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
                   }}>
-                    <span style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '16px' }}>BSG</span>
+                    <span style={{
+                      color: '#ffffff',
+                      fontWeight: '900',
+                      fontSize: '18px',
+                      letterSpacing: '0.5px'
+                    }}>
+                      BSG
+                    </span>
                   </div>
+
+                  {/* Title */}
                   <div>
                     <h4 style={{
-                      fontSize: '14px',
-                      fontWeight: 'bold',
+                      fontSize: '18px',
+                      fontWeight: '800',
                       color: '#DC2626',
-                      margin: '0 0 4px 0'
+                      margin: '0 0 4px 0',
+                      letterSpacing: '0.3px'
                     }}>
                       Verifikasi Digital
                     </h4>
                     <p style={{
-                      fontSize: '11px',
-                      color: '#991b1b',
-                      margin: 0
+                      fontSize: '12px',
+                      color: '#991B1B',
+                      margin: 0,
+                      fontWeight: '600'
                     }}>
                       Bank SulutGo ServiceDesk
                     </p>
                   </div>
                 </div>
+
+                {/* Ticket Details Box */}
                 <div style={{
                   backgroundColor: '#ffffff',
-                  padding: '12px',
-                  borderRadius: '8px',
-                  border: '1px solid #fecaca'
+                  padding: '16px',
+                  borderRadius: '10px',
+                  border: '2px solid #FECACA'
                 }}>
-                  <p style={{
+                  <div style={{
                     fontSize: '10px',
-                    color: '#991b1b',
-                    margin: '0 0 8px 0',
-                    fontWeight: 600,
+                    color: '#991B1B',
+                    fontWeight: '700',
                     textTransform: 'uppercase',
-                    letterSpacing: '0.05em'
+                    letterSpacing: '1px',
+                    marginBottom: '12px'
                   }}>
                     Detail Tiket
-                  </p>
-                  <p style={{ fontSize: '11px', color: '#1f2937', margin: '0 0 4px 0' }}>
-                    <strong>No. Tiket:</strong> {ticket.ticketNumber}
-                  </p>
-                  <p style={{ fontSize: '11px', color: '#1f2937', margin: '0 0 4px 0' }}>
-                    <strong>Status:</strong> {ticket.status.replace('_', ' ')}
-                  </p>
-                  <p style={{ fontSize: '11px', color: '#1f2937', margin: '0 0 4px 0' }}>
-                    <strong>Pemohon:</strong> {ticket.createdBy?.name || '-'}
-                  </p>
-                  {latestApproval && (
-                    <p style={{ fontSize: '11px', color: '#16a34a', margin: '0', fontWeight: 600 }}>
-                      ✓ Disetujui oleh {latestApproval.approver?.name}
-                    </p>
-                  )}
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <DetailRow label="No. Tiket" value={ticket.ticketNumber} />
+                    <DetailRow label="Status" value={ticket.status.replace('_', ' ')} />
+                    <DetailRow label="Pemohon" value={ticket.createdBy?.name || '-'} />
+                    <DetailRow label="Layanan" value={ticket.service?.name || '-'} />
+                    <DetailRow
+                      label="Tanggal"
+                      value={format(new Date(ticket.createdAt), 'dd MMM yyyy, HH:mm')}
+                    />
+                    {latestApproval && (
+                      <div style={{
+                        marginTop: '4px',
+                        paddingTop: '8px',
+                        borderTop: '1px solid #FEE2E2'
+                      }}>
+                        <span style={{
+                          fontSize: '12px',
+                          color: '#16A34A',
+                          fontWeight: '700'
+                        }}>
+                          ✓ Disetujui oleh {latestApproval.approver?.name}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* Right side - QR Code */}
+              {/* Right: QR Code */}
               <div style={{
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                padding: '16px',
-                backgroundColor: '#ffffff',
-                borderRadius: '12px',
-                border: '2px solid #DC2626'
+                gap: '12px'
               }}>
-                <QRCodeSVG
-                  value={qrCodeUrl || qrText}
-                  size={100}
-                  level="H"
-                  includeMargin={false}
-                  style={{ display: 'block' }}
-                />
-                <p style={{
-                  fontSize: '10px',
-                  color: '#DC2626',
-                  fontWeight: 700,
-                  marginTop: '8px',
+                <div style={{
+                  backgroundColor: '#ffffff',
+                  padding: '20px',
+                  borderRadius: '12px',
+                  border: '3px solid #DC2626',
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                }}>
+                  <QRCodeSVG
+                    value={qrCodeUrl || qrText}
+                    size={120}
+                    level="H"
+                    includeMargin={false}
+                    style={{ display: 'block' }}
+                  />
+                </div>
+                <div style={{
                   textAlign: 'center',
-                  margin: '8px 0 0 0',
+                  fontSize: '11px',
+                  fontWeight: '800',
+                  color: '#DC2626',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.05em'
+                  letterSpacing: '1px'
                 }}>
                   Pindai untuk Verifikasi
-                </p>
+                </div>
               </div>
             </div>
 
-            <p style={{
-              fontSize: '9px',
-              color: '#6b7280',
-              textAlign: 'center',
-              margin: '12px 0 0 0',
-              borderTop: '1px solid #fecaca',
-              paddingTop: '12px'
+            {/* Bottom Notice */}
+            <div style={{
+              marginTop: '20px',
+              paddingTop: '16px',
+              borderTop: '2px solid #FECACA',
+              textAlign: 'center'
             }}>
-              Dokumen ini dibuat secara elektronik oleh Bank SulutGo ServiceDesk.
-              Scan QR code untuk memverifikasi keaslian dokumen.
-            </p>
+              <p style={{
+                fontSize: '10px',
+                color: '#6B7280',
+                margin: 0,
+                lineHeight: '1.6'
+              }}>
+                Dokumen ini dibuat secara elektronik oleh Bank SulutGo ServiceDesk.
+                <br />
+                Scan QR code untuk memverifikasi keaslian dan detail lengkap dokumen ini.
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Footer - Bank SulutGo Red */}
+        {/* Footer */}
         <div style={{
-          background: 'linear-gradient(135deg, #B91C1C 0%, #991B1B 100%)',
-          padding: '12px 24px',
-          boxShadow: '0 -4px 6px -1px rgba(0, 0, 0, 0.1)'
+          background: 'linear-gradient(135deg, #991B1B 0%, #7F1D1D 100%)',
+          padding: '16px 32px',
+          borderTop: '4px solid #450A0A',
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0
         }}>
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
             color: '#ffffff',
-            fontSize: '11px'
+            fontSize: '11px',
+            fontWeight: '600'
           }}>
-            <p style={{ fontWeight: 600, margin: 0 }}>
-              © {new Date().getFullYear()} Bank SulutGo
-            </p>
-            <p style={{ fontWeight: 600, margin: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>©</span>
+              <span>{new Date().getFullYear()}</span>
+              <span>Bank SulutGo</span>
+              <span style={{
+                marginLeft: '8px',
+                padding: '2px 8px',
+                backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                borderRadius: '4px',
+                fontSize: '10px'
+              }}>
+                ServiceDesk
+              </span>
+            </div>
+            <div>
               Dicetak: {format(new Date(), 'dd MMM yyyy, HH:mm')}
-            </p>
+            </div>
           </div>
         </div>
 
-        {/* Print Styles */}
+        {/* Print-Specific Styles */}
         <style jsx global>{`
           @media print {
             * {
@@ -638,37 +761,43 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
               size: A4 portrait;
             }
 
-            body {
+            html, body {
               margin: 0;
               padding: 0;
+              width: 210mm;
+              height: 297mm;
             }
 
-            /* Optimize for faster printing */
-            img {
-              max-width: 100%;
-              height: auto;
-            }
-
-            /* Ensure QR code prints correctly */
-            svg {
-              shape-rendering: crispEdges;
-            }
-
-            /* Remove shadows for better print quality */
-            * {
-              box-shadow: none !important;
-              text-shadow: none !important;
-            }
-
-            /* Ensure backgrounds print */
-            div, span, p {
-              background-color: transparent;
-            }
-
-            /* Preserve specific backgrounds */
-            [style*="background"] {
+            /* Ensure backgrounds and colors print correctly */
+            div, span, p, h1, h2, h3, h4 {
               print-color-adjust: exact !important;
               -webkit-print-color-adjust: exact !important;
+            }
+
+            /* QR Code optimization */
+            svg {
+              shape-rendering: crispEdges;
+              print-color-adjust: exact !important;
+              -webkit-print-color-adjust: exact !important;
+            }
+
+            /* Remove unnecessary shadows for print */
+            .no-print-shadow {
+              box-shadow: none !important;
+            }
+
+            /* Ensure page breaks are controlled */
+            .avoid-break {
+              page-break-inside: avoid;
+              break-inside: avoid;
+            }
+          }
+
+          @media screen {
+            /* Screen-only adjustments */
+            body {
+              background-color: #f3f4f6;
+              padding: 20px;
             }
           }
         `}</style>
@@ -678,3 +807,55 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
 );
 
 TicketPrintView.displayName = 'TicketPrintView';
+
+// Helper Components
+function InfoField({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+      <span style={{
+        fontSize: '11px',
+        fontWeight: '700',
+        color: '#6B7280',
+        textTransform: 'uppercase',
+        letterSpacing: '0.8px'
+      }}>
+        {label}
+      </span>
+      <span style={{
+        fontSize: '13px',
+        fontWeight: '600',
+        color: '#111827',
+        lineHeight: '1.4'
+      }}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{
+      display: 'flex',
+      justifyContent: 'space-between',
+      gap: '12px',
+      fontSize: '12px'
+    }}>
+      <span style={{
+        color: '#6B7280',
+        fontWeight: '600',
+        minWidth: '80px'
+      }}>
+        {label}:
+      </span>
+      <span style={{
+        color: '#111827',
+        fontWeight: '700',
+        flex: 1,
+        textAlign: 'right'
+      }}>
+        {value}
+      </span>
+    </div>
+  );
+}
