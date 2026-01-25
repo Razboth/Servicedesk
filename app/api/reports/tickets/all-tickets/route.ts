@@ -497,6 +497,7 @@ export async function GET(request: NextRequest) {
     const itemMap = new Map(items.map(i => [i.id, i.name]));
 
     // Format response
+    // Note: Removed old category/subcategory/item fields - only using Service 3-tier system
     const formattedTickets = tickets.map(ticket => {
       return {
         id: ticket.id,
@@ -505,9 +506,6 @@ export async function GET(request: NextRequest) {
         description: ticket.description,
         status: ticket.status,
         priority: ticket.priority,
-        category: ticket.categoryId ? (categoryMap.get(ticket.categoryId) || '-') : '-',
-        subcategory: ticket.subcategoryId ? (subcategoryMap.get(ticket.subcategoryId) || '-') : '-',
-        item: ticket.itemId ? (itemMap.get(ticket.itemId) || '-') : '-',
         service: ticket.service?.name || 'N/A',
         serviceCategory: ticket.service?.tier1Category?.name || '-',
         serviceSubcategory: ticket.service?.tier2Subcategory?.name || '-',
@@ -919,6 +917,7 @@ export async function POST(request: NextRequest) {
     const exportItemMap = new Map(exportItems.map(i => [i.id, i.name]));
 
     // Format data for export
+    // Note: Removed old Category/Subcategory/Item columns (F,G,H) - only using Service 3-tier system
     const formattedData = tickets.map(t => {
       return {
         'Ticket #': t.ticketNumber,
@@ -926,9 +925,6 @@ export async function POST(request: NextRequest) {
         'Description': t.description,
         'Status': t.status,
         'Priority': t.priority,
-        'Category': t.categoryId ? (exportCategoryMap.get(t.categoryId) || '-') : '-',
-        'Subcategory': t.subcategoryId ? (exportSubcategoryMap.get(t.subcategoryId) || '-') : '-',
-        'Item': t.itemId ? (exportItemMap.get(t.itemId) || '-') : '-',
         'Service': t.service?.name || 'N/A',
         'Service Category': t.service?.tier1Category?.name || '-',
         'Service Subcategory': t.service?.tier2Subcategory?.name || '-',

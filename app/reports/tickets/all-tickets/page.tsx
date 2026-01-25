@@ -37,9 +37,6 @@ interface Ticket {
   description: string
   status: string
   priority: string
-  category: string
-  subcategory: string
-  item: string
   service: string
   serviceCategory: string
   serviceSubcategory: string
@@ -776,7 +773,7 @@ export default function AllTicketsReport() {
                             {ticket.title}
                           </p>
                           <p className="text-xs text-muted-foreground truncate mt-0.5 md:hidden">
-                            {ticket.category} • {ticket.branchCode}
+                            {ticket.serviceCategory} • {ticket.branchCode}
                           </p>
                         </a>
                       </TableCell>
@@ -784,11 +781,10 @@ export default function AllTicketsReport() {
                       <TableCell>{getPriorityBadge(ticket.priority)}</TableCell>
                       <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
                         <div className="flex flex-col gap-0.5">
-                          <span className="font-medium text-foreground">{ticket.category}</span>
-                          {ticket.serviceCategory && ticket.serviceCategory !== '-' && (
+                          <span className="font-medium text-foreground">{ticket.serviceCategory || '-'}</span>
+                          {ticket.serviceSubcategory && ticket.serviceSubcategory !== '-' && (
                             <span className="text-xs text-muted-foreground">
-                              Service: {ticket.serviceCategory}
-                              {ticket.serviceSubcategory && ticket.serviceSubcategory !== '-' && ` > ${ticket.serviceSubcategory}`}
+                              {ticket.serviceSubcategory}
                               {ticket.serviceItem && ticket.serviceItem !== '-' && ` > ${ticket.serviceItem}`}
                             </span>
                           )}
