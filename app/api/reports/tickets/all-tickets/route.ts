@@ -498,7 +498,14 @@ export async function GET(request: NextRequest) {
 
     // Format response
     // Note: Removed old category/subcategory/item fields - only using Service 3-tier system
+    // Resolution time is calculated from slaStartAt (approval date) instead of createdAt
     const formattedTickets = tickets.map(ticket => {
+      // Calculate resolution time from SLA start (approval date or creation date for non-approval tickets)
+      const slaStart = (ticket as any).slaStartAt ? new Date((ticket as any).slaStartAt) : new Date(ticket.createdAt);
+      const resolutionTime = ticket.resolvedAt
+        ? Math.round((new Date(ticket.resolvedAt).getTime() - slaStart.getTime()) / (1000 * 60 * 60))
+        : null;
+
       return {
         id: ticket.id,
         ticketNumber: ticket.ticketNumber,
@@ -518,13 +525,13 @@ export async function GET(request: NextRequest) {
         assignedTo: ticket.assignedTo?.name || 'Unassigned',
         assignedToEmail: ticket.assignedTo?.email || '',
         createdAt: ticket.createdAt,
+        slaStartAt: (ticket as any).slaStartAt || null,
         updatedAt: ticket.updatedAt,
         resolvedAt: ticket.resolvedAt,
         closedAt: ticket.closedAt,
         claimedAt: ticket.comments[0]?.createdAt || null,
         responseTime: null, // Field removed as firstResponseAt doesn't exist
-        resolutionTime: ticket.resolvedAt ?
-          Math.round((new Date(ticket.resolvedAt).getTime() - new Date(ticket.createdAt).getTime()) / (1000 * 60 * 60)) : null,
+        resolutionTime: resolutionTime,
         approvalStatus: ticket.approvals[0]?.status || null,
         approvedBy: ticket.approvals[0]?.approver?.name || null,
         commentCount: ticket._count.comments,
@@ -918,7 +925,14 @@ export async function POST(request: NextRequest) {
 
     // Format data for export
     // Note: Removed old Category/Subcategory/Item columns (F,G,H) - only using Service 3-tier system
+    // Resolution time is calculated from slaStartAt (approval date) instead of createdAt
     const formattedData = tickets.map(t => {
+      // Calculate resolution time from SLA start (approval date or creation date for non-approval tickets)
+      const slaStart = (t as any).slaStartAt ? new Date((t as any).slaStartAt) : new Date(t.createdAt);
+      const resolutionTimeHrs = t.resolvedAt
+        ? Math.round((new Date(t.resolvedAt).getTime() - slaStart.getTime()) / (1000 * 60 * 60))
+        : '';
+
       return {
         'Ticket #': t.ticketNumber,
         'Title': t.title,
@@ -940,12 +954,12 @@ export async function POST(request: NextRequest) {
         'Vendor Name': t.vendorTickets[0]?.vendor?.name || '',
         'Vendor Status': t.vendorTickets[0]?.status || '',
         'Created Date': new Date(t.createdAt).toISOString(),
+        'SLA Start Date': (t as any).slaStartAt ? new Date((t as any).slaStartAt).toISOString() : '',
         'Updated Date': new Date(t.updatedAt).toISOString(),
         'Resolved Date': t.resolvedAt ? new Date(t.resolvedAt).toISOString() : '',
         'Closed Date': t.closedAt ? new Date(t.closedAt).toISOString() : '',
         'Claimed Date': t.comments[0]?.createdAt ? new Date(t.comments[0].createdAt).toISOString() : '',
-        'Resolution Time (hrs)': t.resolvedAt ?
-          Math.round((new Date(t.resolvedAt).getTime() - new Date(t.createdAt).getTime()) / (1000 * 60 * 60)) : ''
+        'Resolution Time (hrs)': resolutionTimeHrs
       };
     });
 

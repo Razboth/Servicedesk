@@ -152,15 +152,18 @@ export async function POST(request: NextRequest) {
     // When approved, ticket moves to OPEN status so it can be worked on
     const newStatus = validatedData.action === 'approve' ? 'OPEN' : 'REJECTED';
     const approvalStatus = validatedData.action === 'approve' ? 'APPROVED' : 'REJECTED';
+    const now = new Date();
 
     // Process bulk approval in transaction
     const result = await prisma.$transaction(async (tx) => {
-      // Update ticket statuses
+      // Update ticket statuses - set slaStartAt when approving (SLA starts from approval)
       const updatedTickets = await tx.ticket.updateMany({
         where: { id: { in: validatedData.ticketIds } },
-        data: { 
+        data: {
           status: newStatus,
-          updatedAt: new Date()
+          updatedAt: now,
+          // SLA starts when ticket is approved (not when created)
+          ...(validatedData.action === 'approve' && { slaStartAt: now })
         }
       });
 

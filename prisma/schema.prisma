@@ -344,6 +344,7 @@ model Ticket {
   updatedAt              DateTime              @updatedAt
   resolvedAt             DateTime?
   closedAt               DateTime?
+  slaStartAt             DateTime?             // SLA starts from approval or creation (for non-approval tickets)
   category               TicketCategory        @default(INCIDENT)
   securityClassification String?
   securityFindings       Json?
@@ -405,6 +406,7 @@ model Ticket {
   @@index([createdById])
   @@index([status, priority])
   @@index([serviceId, status])
+  @@index([slaStartAt])
   @@map("tickets")
 }
 

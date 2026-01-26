@@ -1387,6 +1387,9 @@ export async function POST(request: NextRequest) {
         createdById: session.user.id,
         branchId: targetBranchId, // Use target branch (either user's or ATM owner's)
         assignedToId: assignedToId, // Auto-assign to technician creator (or branch manager for ATM claims)
+        // SLA starts immediately for non-approval tickets or auto-approved tickets
+        // For PENDING_APPROVAL tickets, slaStartAt will be set when approved
+        slaStartAt: initialStatus === 'OPEN' ? new Date() : null,
         // Security fields (using processed values for Security Analysts)
         isConfidential: isConfidential,
         securityClassification: securityClassification,
