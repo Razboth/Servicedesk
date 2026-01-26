@@ -566,6 +566,7 @@ export default function ServicesPage() {
       tier3ItemId: service.tier3ItemId || undefined,
       supportGroupId: service.supportGroupId || undefined,
       priority: service.priority || 'MEDIUM',
+      defaultItilCategory: service.defaultItilCategory || 'INCIDENT',
       estimatedHours: service.estimatedHours || 4,
       slaHours: service.slaHours || 24,
       requiresApproval: service.requiresApproval ?? true,
@@ -1336,7 +1337,7 @@ export default function ServicesPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="edit-supportGroupId">Support Group</Label>
                   <Select
@@ -1368,6 +1369,24 @@ export default function ServicesPage() {
                       {priorities.map(priority => (
                         <SelectItem key={priority.value} value={priority.value}>
                           {priority.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-defaultItilCategory">ITIL Category</Label>
+                  <Select
+                    value={editService.defaultItilCategory || 'INCIDENT'}
+                    onValueChange={(value: any) => setEditService(prev => ({ ...prev, defaultItilCategory: value }))}
+                  >
+                    <SelectTrigger className="bg-background">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {itilCategories.map(category => (
+                        <SelectItem key={category.value} value={category.value}>
+                          {category.label}
                         </SelectItem>
                       ))}
                     </SelectContent>

@@ -16,6 +16,7 @@ const updateServiceSchema = z.object({
   tier3ItemId: z.string().optional(),
   supportGroupId: z.string().optional(), // Changed from supportGroup enum to supportGroupId
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL', 'EMERGENCY']).optional(),
+  defaultItilCategory: z.enum(['INCIDENT', 'SERVICE_REQUEST', 'CHANGE_REQUEST', 'EVENT_REQUEST']).optional(),
   estimatedHours: z.number().min(1).optional(),
   slaHours: z.number().min(1).optional(),
   requiresApproval: z.boolean().optional(),
