@@ -19,10 +19,9 @@ export async function GET(request: NextRequest) {
     // Filters
     const status = searchParams.get('status');
     const priority = searchParams.get('priority');
-    const categoryId = searchParams.get('categoryId');
-    const subcategoryId = searchParams.get('subcategoryId');
-    const itemId = searchParams.get('itemId');
-    const serviceId = searchParams.get('serviceId');
+    const tier1CategoryId = searchParams.get('tier1CategoryId');
+    const tier2SubcategoryId = searchParams.get('tier2SubcategoryId');
+    const tier3ItemId = searchParams.get('tier3ItemId');
     const technicianId = searchParams.get('technicianId');
     const branchId = searchParams.get('branchId');
     const startDate = searchParams.get('startDate');
@@ -63,7 +62,7 @@ export async function GET(request: NextRequest) {
           { service: { tier1CategoryId: TRANSACTION_CLAIMS_CATEGORY_ID } }
         ];
         // Skip category filter if filtering by Transaction Claims
-        if (categoryId === TRANSACTION_CLAIMS_CATEGORY_ID) {
+        if (tier1CategoryId === TRANSACTION_CLAIMS_CATEGORY_ID) {
           skipCategoryFilter = true;
         }
       } else {
@@ -96,7 +95,7 @@ export async function GET(request: NextRequest) {
           { service: { tier1CategoryId: TRANSACTION_CLAIMS_CATEGORY_ID } }
         ];
         // Skip category filter if filtering by Transaction Claims
-        if (categoryId === TRANSACTION_CLAIMS_CATEGORY_ID) {
+        if (tier1CategoryId === TRANSACTION_CLAIMS_CATEGORY_ID) {
           skipCategoryFilter = true;
         }
       } else if (isTransactionClaimsSupport) {
@@ -112,7 +111,7 @@ export async function GET(request: NextRequest) {
           { service: { tier1CategoryId: ATM_SERVICES_CATEGORY_ID } }
         ];
         // Skip category filter if filtering by their authorized categories
-        if (categoryId === TRANSACTION_CLAIMS_CATEGORY_ID || categoryId === ATM_SERVICES_CATEGORY_ID) {
+        if (tier1CategoryId === TRANSACTION_CLAIMS_CATEGORY_ID || tier1CategoryId === ATM_SERVICES_CATEGORY_ID) {
           skipCategoryFilter = true;
         }
       } else {
@@ -163,56 +162,30 @@ export async function GET(request: NextRequest) {
     if (priority && priority !== 'ALL') {
       whereClause.priority = priority;
     }
-    // Filter by category - check ALL possible locations:
-    // 1. ticket.categoryId (ticket's direct category field)
-    // 2. service.tier1CategoryId (service's NEW 3-tier system)
-    // 3. service.categoryId (service's OLD ServiceCategory system)
-    // IMPORTANT: The categoryId passed is from the NEW Category table, but we need to also
-    // check for ServiceCategories with the same NAME (they have different IDs)
-    // Skip for users who already have full access through role-based filtering
-    if (categoryId && categoryId !== 'ALL' && !skipCategoryFilter) {
-      // First, get the category name to find matching ServiceCategory
-      const selectedCategory = await prisma.category.findUnique({
-        where: { id: categoryId },
-        select: { name: true }
-      });
-
-      // Find ServiceCategory with the same name (if exists)
-      const matchingServiceCategory = selectedCategory
-        ? await prisma.serviceCategory.findFirst({
-            where: {
-              name: selectedCategory.name,
-              isActive: true
-            },
-            select: { id: true }
-          })
-        : null;
-
-      const categoryFilter = {
-        OR: [
-          { categoryId: categoryId },  // Direct ticket field (NEW Category ID)
-          { service: { tier1CategoryId: categoryId } },  // Service 3-tier categorization (NEW Category ID)
-          { service: { categoryId: categoryId } },  // Service old category (try NEW Category ID first)
-          ...(matchingServiceCategory
-            ? [{ service: { categoryId: matchingServiceCategory.id } }]  // Service old category (OLD ServiceCategory ID)
-            : [])
-        ]
-      };
-
+    // 3-tier category filtering via service fields
+    if (tier1CategoryId && tier1CategoryId !== 'ALL' && !skipCategoryFilter) {
+      const categoryFilter = { service: { tier1CategoryId: tier1CategoryId } };
       if (whereClause.AND) {
         whereClause.AND.push(categoryFilter);
       } else {
         whereClause.AND = [categoryFilter];
       }
     }
-    if (subcategoryId && subcategoryId !== 'ALL') {
-      whereClause.subcategoryId = subcategoryId;
+    if (tier2SubcategoryId && tier2SubcategoryId !== 'ALL') {
+      const subcategoryFilter = { service: { tier2SubcategoryId: tier2SubcategoryId } };
+      if (whereClause.AND) {
+        whereClause.AND.push(subcategoryFilter);
+      } else {
+        whereClause.AND = [subcategoryFilter];
+      }
     }
-    if (itemId && itemId !== 'ALL') {
-      whereClause.itemId = itemId;
-    }
-    if (serviceId && serviceId !== 'ALL') {
-      whereClause.serviceId = serviceId;
+    if (tier3ItemId && tier3ItemId !== 'ALL') {
+      const itemFilter = { service: { tier3ItemId: tier3ItemId } };
+      if (whereClause.AND) {
+        whereClause.AND.push(itemFilter);
+      } else {
+        whereClause.AND = [itemFilter];
+      }
     }
     if (technicianId && technicianId !== 'ALL') {
       whereClause.assignedToId = technicianId;
@@ -437,20 +410,20 @@ export async function GET(request: NextRequest) {
         select: { id: true, name: true },
         orderBy: { name: 'asc' }
       }),
-      subcategories: categoryId && categoryId !== 'ALL' ? 
+      subcategories: tier1CategoryId && tier1CategoryId !== 'ALL' ?
         await prisma.subcategory.findMany({
-          where: { 
+          where: {
             isActive: true,
-            categoryId: categoryId
+            categoryId: tier1CategoryId
           },
           select: { id: true, name: true },
           orderBy: { name: 'asc' }
         }) : [],
-      items: subcategoryId && subcategoryId !== 'ALL' ?
+      items: tier2SubcategoryId && tier2SubcategoryId !== 'ALL' ?
         await prisma.item.findMany({
           where: {
             isActive: true,
-            subcategoryId: subcategoryId
+            subcategoryId: tier2SubcategoryId
           },
           select: { id: true, name: true },
           orderBy: { name: 'asc' }
@@ -572,7 +545,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { format = 'csv', filters = {} } = body;
+    const { format = 'csv', filters = {}, columns = [] as string[] } = body;
 
     // Build where clause with SAME logic as GET endpoint
     const whereClause: any = {};
@@ -606,7 +579,7 @@ export async function POST(request: NextRequest) {
           { service: { tier1CategoryId: TRANSACTION_CLAIMS_CATEGORY_ID } }
         ];
         // Skip category filter if filtering by Transaction Claims
-        if (filters.categoryId === TRANSACTION_CLAIMS_CATEGORY_ID) {
+        if (filters.tier1CategoryId === TRANSACTION_CLAIMS_CATEGORY_ID) {
           skipCategoryFilter = true;
         }
       } else {
@@ -639,7 +612,7 @@ export async function POST(request: NextRequest) {
           { service: { tier1CategoryId: TRANSACTION_CLAIMS_CATEGORY_ID } }
         ];
         // Skip category filter if filtering by Transaction Claims
-        if (filters.categoryId === TRANSACTION_CLAIMS_CATEGORY_ID) {
+        if (filters.tier1CategoryId === TRANSACTION_CLAIMS_CATEGORY_ID) {
           skipCategoryFilter = true;
         }
       } else if (isTransactionClaimsSupport) {
@@ -655,7 +628,7 @@ export async function POST(request: NextRequest) {
           { service: { tier1CategoryId: ATM_SERVICES_CATEGORY_ID } }
         ];
         // Skip category filter if filtering by their authorized categories
-        if (filters.categoryId === TRANSACTION_CLAIMS_CATEGORY_ID || filters.categoryId === ATM_SERVICES_CATEGORY_ID) {
+        if (filters.tier1CategoryId === TRANSACTION_CLAIMS_CATEGORY_ID || filters.tier1CategoryId === ATM_SERVICES_CATEGORY_ID) {
           skipCategoryFilter = true;
         }
       } else {
@@ -706,56 +679,30 @@ export async function POST(request: NextRequest) {
     if (filters.priority && filters.priority !== 'ALL') {
       whereClause.priority = filters.priority;
     }
-    // Filter by category - check ALL possible locations:
-    // 1. ticket.categoryId (ticket's direct category field)
-    // 2. service.tier1CategoryId (service's NEW 3-tier system)
-    // 3. service.categoryId (service's OLD ServiceCategory system)
-    // IMPORTANT: The categoryId passed is from the NEW Category table, but we need to also
-    // check for ServiceCategories with the same NAME (they have different IDs)
-    // Skip for users who already have full access through role-based filtering
-    if (filters.categoryId && filters.categoryId !== 'ALL' && !skipCategoryFilter) {
-      // First, get the category name to find matching ServiceCategory
-      const selectedCategoryExport = await prisma.category.findUnique({
-        where: { id: filters.categoryId },
-        select: { name: true }
-      });
-
-      // Find ServiceCategory with the same name (if exists)
-      const matchingServiceCategoryExport = selectedCategoryExport
-        ? await prisma.serviceCategory.findFirst({
-            where: {
-              name: selectedCategoryExport.name,
-              isActive: true
-            },
-            select: { id: true }
-          })
-        : null;
-
-      const categoryFilter = {
-        OR: [
-          { categoryId: filters.categoryId },  // Direct ticket field (NEW Category ID)
-          { service: { tier1CategoryId: filters.categoryId } },  // Service 3-tier categorization (NEW Category ID)
-          { service: { categoryId: filters.categoryId } },  // Service old category (try NEW Category ID first)
-          ...(matchingServiceCategoryExport
-            ? [{ service: { categoryId: matchingServiceCategoryExport.id } }]  // Service old category (OLD ServiceCategory ID)
-            : [])
-        ]
-      };
-
+    // 3-tier category filtering via service fields
+    if (filters.tier1CategoryId && filters.tier1CategoryId !== 'ALL' && !skipCategoryFilter) {
+      const categoryFilter = { service: { tier1CategoryId: filters.tier1CategoryId } };
       if (whereClause.AND) {
         whereClause.AND.push(categoryFilter);
       } else {
         whereClause.AND = [categoryFilter];
       }
     }
-    if (filters.subcategoryId && filters.subcategoryId !== 'ALL') {
-      whereClause.subcategoryId = filters.subcategoryId;
+    if (filters.tier2SubcategoryId && filters.tier2SubcategoryId !== 'ALL') {
+      const subcategoryFilter = { service: { tier2SubcategoryId: filters.tier2SubcategoryId } };
+      if (whereClause.AND) {
+        whereClause.AND.push(subcategoryFilter);
+      } else {
+        whereClause.AND = [subcategoryFilter];
+      }
     }
-    if (filters.itemId && filters.itemId !== 'ALL') {
-      whereClause.itemId = filters.itemId;
-    }
-    if (filters.serviceId && filters.serviceId !== 'ALL') {
-      whereClause.serviceId = filters.serviceId;
+    if (filters.tier3ItemId && filters.tier3ItemId !== 'ALL') {
+      const itemFilter = { service: { tier3ItemId: filters.tier3ItemId } };
+      if (whereClause.AND) {
+        whereClause.AND.push(itemFilter);
+      } else {
+        whereClause.AND = [itemFilter];
+      }
     }
     if (filters.technicianId && filters.technicianId !== 'ALL') {
       whereClause.assignedToId = filters.technicianId;
@@ -963,9 +910,50 @@ export async function POST(request: NextRequest) {
       };
     });
 
+    // Column filtering for export
+    const COLUMN_EXPORT_MAP: Record<string, string[]> = {
+      ticketNumber: ['Ticket #'],
+      title: ['Title', 'Description'],
+      status: ['Status'],
+      priority: ['Priority'],
+      serviceCategory: ['Service Category', 'Service Subcategory', 'Service Item'],
+      service: ['Service'],
+      branch: ['Branch', 'Branch Code'],
+      createdBy: ['Created By', 'Created By Email'],
+      assignedTo: ['Assigned To', 'Assigned To Email'],
+      createdAt: ['Created Date', 'SLA Start Date', 'Updated Date'],
+      claimedAt: ['Claimed Date'],
+      resolvedAt: ['Resolved Date', 'Closed Date'],
+      resolutionTime: ['Resolution Time (hrs)'],
+      supportGroup: ['Support Group'],
+      vendorTicketNumber: ['Vendor Ticket #', 'Vendor Name', 'Vendor Status'],
+    };
+
+    let exportData = formattedData;
+    if (columns && columns.length > 0) {
+      const allowedHeaders = new Set<string>();
+      for (const col of columns) {
+        const headers = COLUMN_EXPORT_MAP[col];
+        if (headers) {
+          headers.forEach(h => allowedHeaders.add(h));
+        }
+      }
+      if (allowedHeaders.size > 0) {
+        exportData = formattedData.map(row => {
+          const filtered: Record<string, any> = {};
+          for (const key of Object.keys(row)) {
+            if (allowedHeaders.has(key)) {
+              filtered[key] = row[key as keyof typeof row];
+            }
+          }
+          return filtered;
+        });
+      }
+    }
+
     if (format === 'xlsx') {
       const XLSX = require('xlsx');
-      const worksheet = XLSX.utils.json_to_sheet(formattedData);
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Tickets');
       const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
@@ -977,10 +965,10 @@ export async function POST(request: NextRequest) {
         }
       });
     } else if (format === 'csv') {
-      const headers = Object.keys(formattedData[0] || {});
+      const headers = Object.keys(exportData[0] || {});
       const csv = [
         headers.join(','),
-        ...formattedData.map(row =>
+        ...exportData.map(row =>
           headers.map(header => {
             const value = String(row[header as keyof typeof row] || '');
             // Escape quotes and wrap in quotes if contains comma, quote, or newline
@@ -1000,7 +988,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({ tickets: formattedData });
+    return NextResponse.json({ tickets: exportData });
 
   } catch (error) {
     console.error('Error exporting tickets report:', error);

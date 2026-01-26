@@ -9,8 +9,9 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
-  FileDown,
   RefreshCw,
   Search,
   Filter,
@@ -26,7 +27,8 @@ import {
   X,
   ChevronDown,
   ChevronUp,
-  Download
+  Download,
+  SlidersHorizontal
 } from 'lucide-react'
 import { format } from 'date-fns'
 
@@ -82,10 +84,37 @@ interface ReportData {
   }
   filters: {
     categories: Array<{ id: string; name: string }>
+    subcategories: Array<{ id: string; name: string }>
+    items: Array<{ id: string; name: string }>
     branches: Array<{ id: string; name: string; code: string }>
     technicians: Array<{ id: string; name: string; email: string }>
   }
 }
+
+// Column definitions
+const COLUMN_DEFS = [
+  { key: 'ticketNumber', label: 'Ticket #', default: true },
+  { key: 'title', label: 'Judul', default: true },
+  { key: 'status', label: 'Status', default: true },
+  { key: 'priority', label: 'Prioritas', default: true },
+  { key: 'serviceCategory', label: 'Kategori', default: true },
+  { key: 'service', label: 'Layanan', default: true },
+  { key: 'branch', label: 'Cabang', default: true },
+  { key: 'createdBy', label: 'Pembuat', default: true },
+  { key: 'assignedTo', label: 'Ditugaskan', default: false },
+  { key: 'createdAt', label: 'Tanggal Dibuat', default: true },
+  { key: 'claimedAt', label: 'Tanggal Klaim', default: false },
+  { key: 'resolvedAt', label: 'Tanggal Selesai', default: false },
+  { key: 'resolutionTime', label: 'Waktu Resolusi', default: false },
+  { key: 'supportGroup', label: 'Support Group', default: false },
+  { key: 'approvalStatus', label: 'Status Approval', default: false },
+  { key: 'vendorTicketNumber', label: 'Tiket Vendor', default: false },
+  { key: 'activity', label: 'Aktivitas', default: false },
+] as const
+
+const DEFAULT_COLUMNS = COLUMN_DEFS.filter(c => c.default).map(c => c.key)
+const ALL_COLUMN_KEYS = COLUMN_DEFS.map(c => c.key)
+const STORAGE_KEY = 'all-tickets-report-columns'
 
 export default function AllTicketsReport() {
   const { data: session } = useSession()
@@ -101,7 +130,9 @@ export default function AllTicketsReport() {
   const [searchTerm, setSearchTerm] = useState('')
   const [status, setStatus] = useState('ALL')
   const [priority, setPriority] = useState('ALL')
-  const [categoryId, setCategoryId] = useState('ALL')
+  const [tier1CategoryId, setTier1CategoryId] = useState('ALL')
+  const [tier2SubcategoryId, setTier2SubcategoryId] = useState('ALL')
+  const [tier3ItemId, setTier3ItemId] = useState('ALL')
   const [branchId, setBranchId] = useState('ALL')
   const [technicianId, setTechnicianId] = useState('ALL')
   const [startDate, setStartDate] = useState('')
@@ -109,19 +140,40 @@ export default function AllTicketsReport() {
   const [sortBy, setSortBy] = useState('createdAt')
   const [sortOrder, setSortOrder] = useState('desc')
 
+  // Column selection with localStorage persistence
+  const [selectedColumns, setSelectedColumns] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY)
+        if (saved) {
+          const parsed = JSON.parse(saved)
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed
+        }
+      } catch {}
+    }
+    return [...DEFAULT_COLUMNS]
+  })
+
+  // Persist column selection
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(selectedColumns))
+  }, [selectedColumns])
+
   // Calculate active filter count
   const activeFilterCount = useMemo(() => {
     let count = 0
     if (status !== 'ALL') count++
     if (priority !== 'ALL') count++
-    if (categoryId !== 'ALL') count++
+    if (tier1CategoryId !== 'ALL') count++
+    if (tier2SubcategoryId !== 'ALL') count++
+    if (tier3ItemId !== 'ALL') count++
     if (branchId !== 'ALL') count++
     if (technicianId !== 'ALL') count++
     if (startDate) count++
     if (endDate) count++
     if (searchTerm) count++
     return count
-  }, [status, priority, categoryId, branchId, technicianId, startDate, endDate, searchTerm])
+  }, [status, priority, tier1CategoryId, tier2SubcategoryId, tier3ItemId, branchId, technicianId, startDate, endDate, searchTerm])
 
   // Auto-search with debounce
   useEffect(() => {
@@ -137,7 +189,19 @@ export default function AllTicketsReport() {
 
   useEffect(() => {
     fetchData()
-  }, [page, status, priority, categoryId, branchId, technicianId, startDate, endDate, sortBy, sortOrder])
+  }, [page, status, priority, tier1CategoryId, tier2SubcategoryId, tier3ItemId, branchId, technicianId, startDate, endDate, sortBy, sortOrder])
+
+  // Cascading tier handlers
+  const handleTier1Change = (value: string) => {
+    setTier1CategoryId(value)
+    setTier2SubcategoryId('ALL')
+    setTier3ItemId('ALL')
+  }
+
+  const handleTier2Change = (value: string) => {
+    setTier2SubcategoryId(value)
+    setTier3ItemId('ALL')
+  }
 
   const fetchData = async () => {
     try {
@@ -147,7 +211,9 @@ export default function AllTicketsReport() {
         limit: '50',
         ...(status !== 'ALL' && { status }),
         ...(priority !== 'ALL' && { priority }),
-        ...(categoryId !== 'ALL' && { categoryId }),
+        ...(tier1CategoryId !== 'ALL' && { tier1CategoryId }),
+        ...(tier2SubcategoryId !== 'ALL' && { tier2SubcategoryId }),
+        ...(tier3ItemId !== 'ALL' && { tier3ItemId }),
         ...(branchId !== 'ALL' && { branchId }),
         ...(technicianId !== 'ALL' && { technicianId }),
         ...(startDate && { startDate }),
@@ -173,7 +239,9 @@ export default function AllTicketsReport() {
     setSearchTerm('')
     setStatus('ALL')
     setPriority('ALL')
-    setCategoryId('ALL')
+    setTier1CategoryId('ALL')
+    setTier2SubcategoryId('ALL')
+    setTier3ItemId('ALL')
     setBranchId('ALL')
     setTechnicianId('ALL')
     setStartDate('')
@@ -191,10 +259,13 @@ export default function AllTicketsReport() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           format: exportFormat,
+          columns: selectedColumns,
           filters: {
             status: status !== 'ALL' ? status : undefined,
             priority: priority !== 'ALL' ? priority : undefined,
-            categoryId: categoryId !== 'ALL' ? categoryId : undefined,
+            tier1CategoryId: tier1CategoryId !== 'ALL' ? tier1CategoryId : undefined,
+            tier2SubcategoryId: tier2SubcategoryId !== 'ALL' ? tier2SubcategoryId : undefined,
+            tier3ItemId: tier3ItemId !== 'ALL' ? tier3ItemId : undefined,
             branchId: branchId !== 'ALL' ? branchId : undefined,
             technicianId: technicianId !== 'ALL' ? technicianId : undefined,
             startDate,
@@ -220,6 +291,20 @@ export default function AllTicketsReport() {
       setExporting(false)
     }
   }
+
+  // Column selection helpers
+  const toggleColumn = (key: string, checked: boolean | 'indeterminate') => {
+    if (checked === true) {
+      setSelectedColumns(prev => [...prev, key])
+    } else {
+      setSelectedColumns(prev => prev.filter(k => k !== key))
+    }
+  }
+
+  const selectAllColumns = () => setSelectedColumns([...ALL_COLUMN_KEYS])
+  const selectDefaultColumns = () => setSelectedColumns([...DEFAULT_COLUMNS])
+
+  const isColumnVisible = (key: string) => selectedColumns.includes(key)
 
   const getStatusBadge = (status: string, vendorTicketNumber?: string | null, vendorName?: string | null) => {
     const statusConfig: Record<string, { icon: any; className: string; textClassName: string; label: string }> = {
@@ -342,6 +427,151 @@ export default function AllTicketsReport() {
     )
   }
 
+  // Render a table cell for a given column key
+  const renderCell = (key: string, ticket: Ticket) => {
+    switch (key) {
+      case 'ticketNumber':
+        return (
+          <a
+            href={`/tickets/${ticket.id}`}
+            className="text-primary hover:underline font-semibold font-mono text-sm"
+          >
+            #{ticket.ticketNumber}
+          </a>
+        )
+      case 'title':
+        return (
+          <a href={`/tickets/${ticket.id}`} className="block hover:text-primary transition-colors">
+            <p className="truncate font-medium text-foreground group-hover:text-primary">
+              {ticket.title}
+            </p>
+          </a>
+        )
+      case 'status':
+        return getStatusBadge(ticket.status, ticket.vendorTicketNumber, ticket.vendorName)
+      case 'priority':
+        return getPriorityBadge(ticket.priority)
+      case 'serviceCategory':
+        return (
+          <div className="flex flex-col gap-0.5">
+            <span className="font-medium text-foreground">{ticket.serviceCategory || '-'}</span>
+            {ticket.serviceSubcategory && ticket.serviceSubcategory !== '-' && (
+              <span className="text-xs text-muted-foreground">
+                {ticket.serviceSubcategory}
+                {ticket.serviceItem && ticket.serviceItem !== '-' && ` > ${ticket.serviceItem}`}
+              </span>
+            )}
+          </div>
+        )
+      case 'service':
+        return (
+          <span className="truncate block text-sm text-muted-foreground" title={ticket.service}>
+            {ticket.service}
+          </span>
+        )
+      case 'branch':
+        return (
+          <div className="flex items-center gap-1.5 text-muted-foreground">
+            <Building className="h-3.5 w-3.5 shrink-0" />
+            <span className="text-sm">{ticket.branchCode}</span>
+          </div>
+        )
+      case 'createdBy':
+        return (
+          <div className="flex items-center gap-1.5 text-muted-foreground">
+            <User className="h-3.5 w-3.5 shrink-0" />
+            <span className="text-sm truncate max-w-[120px]" title={ticket.createdBy}>
+              {ticket.createdBy}
+            </span>
+          </div>
+        )
+      case 'assignedTo':
+        return (
+          <span className="text-sm text-muted-foreground truncate max-w-[120px]">
+            {ticket.assignedTo || '-'}
+          </span>
+        )
+      case 'createdAt':
+        return (
+          <span className="text-sm text-muted-foreground whitespace-nowrap">
+            {format(new Date(ticket.createdAt), 'MMM dd, yyyy')}
+          </span>
+        )
+      case 'claimedAt':
+        return (
+          <span className="text-sm text-muted-foreground whitespace-nowrap">
+            {ticket.claimedAt ? format(new Date(ticket.claimedAt), 'MMM dd, yyyy HH:mm') : '-'}
+          </span>
+        )
+      case 'resolvedAt':
+        return (
+          <span className="text-sm text-muted-foreground whitespace-nowrap">
+            {ticket.resolvedAt ? format(new Date(ticket.resolvedAt), 'MMM dd, yyyy') : '-'}
+          </span>
+        )
+      case 'resolutionTime':
+        return ticket.resolutionTime ? (
+          <Badge variant="secondary" className="font-mono">
+            {ticket.resolutionTime}h
+          </Badge>
+        ) : (
+          <span className="text-muted-foreground">-</span>
+        )
+      case 'supportGroup':
+        return (
+          <span className="text-sm text-muted-foreground">
+            {ticket.supportGroup || '-'}
+          </span>
+        )
+      case 'approvalStatus':
+        return (
+          <span className="text-sm text-muted-foreground">
+            {ticket.approvalStatus || '-'}
+          </span>
+        )
+      case 'vendorTicketNumber':
+        return (
+          <span className="text-sm text-muted-foreground font-mono">
+            {ticket.vendorTicketNumber || '-'}
+          </span>
+        )
+      case 'activity':
+        return (
+          <div className="flex items-center justify-center gap-2">
+            {ticket.commentCount > 0 && (
+              <Badge
+                variant="secondary"
+                className="bg-chart-2/20 text-chart-2 border-chart-2/30 text-xs font-medium"
+              >
+                {ticket.commentCount} {ticket.commentCount === 1 ? 'comment' : 'comments'}
+              </Badge>
+            )}
+            {ticket.attachmentCount > 0 && (
+              <Badge
+                variant="secondary"
+                className="bg-chart-4/20 text-chart-4 border-chart-4/30 text-xs font-medium"
+              >
+                {ticket.attachmentCount} {ticket.attachmentCount === 1 ? 'file' : 'files'}
+              </Badge>
+            )}
+            {ticket.commentCount === 0 && ticket.attachmentCount === 0 && (
+              <span className="text-xs text-muted-foreground">-</span>
+            )}
+          </div>
+        )
+      default:
+        return null
+    }
+  }
+
+  // Column header labels for the table
+  const getHeaderLabel = (key: string) => {
+    const col = COLUMN_DEFS.find(c => c.key === key)
+    return col?.label || key
+  }
+
+  const visibleColumns = COLUMN_DEFS.filter(c => isColumnVisible(c.key))
+
   if (!session) return null
 
   return (
@@ -372,6 +602,49 @@ export default function AllTicketsReport() {
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             <span className="hidden sm:inline">Refresh</span>
           </Button>
+
+          {/* Column Picker */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="touch-target">
+                <SlidersHorizontal className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Kolom</span>
+                <Badge variant="secondary" className="ml-1.5 h-5 px-1.5 text-[10px]">
+                  {selectedColumns.length}
+                </Badge>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72" align="end">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium text-sm">Pilih Kolom</h4>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={selectAllColumns}>
+                      Semua
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={selectDefaultColumns}>
+                      Default
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-1 max-h-64 overflow-y-auto">
+                  {COLUMN_DEFS.map(col => (
+                    <label
+                      key={col.key}
+                      className="flex items-center gap-2.5 py-1.5 px-2 hover:bg-muted/50 rounded cursor-pointer"
+                    >
+                      <Checkbox
+                        checked={selectedColumns.includes(col.key)}
+                        onCheckedChange={(checked) => toggleColumn(col.key, checked)}
+                        className="h-4 w-4 min-h-0 min-w-0"
+                      />
+                      <span className="text-sm">{col.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
 
           {/* Export Controls Group */}
           <div className="flex items-center gap-2 p-1 bg-muted/50 rounded-lg border border-border">
@@ -599,14 +872,14 @@ export default function AllTicketsReport() {
               {data && (
                 <div className="space-y-2">
                   <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    Category
+                    Kategori
                   </label>
-                  <Select value={categoryId} onValueChange={setCategoryId}>
+                  <Select value={tier1CategoryId} onValueChange={handleTier1Change}>
                     <SelectTrigger className="touch-target" aria-label="Filter by category">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ALL">All Categories</SelectItem>
+                      <SelectItem value="ALL">Semua Kategori</SelectItem>
                       {data.filters.categories.map((cat) => (
                         <SelectItem key={cat.id} value={cat.id}>
                           {cat.name}
@@ -617,6 +890,53 @@ export default function AllTicketsReport() {
                 </div>
               )}
             </div>
+
+            {/* 3-Tier Category Cascade: Subcategory & Item */}
+            {data && (tier1CategoryId !== 'ALL' || tier2SubcategoryId !== 'ALL') && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {tier1CategoryId !== 'ALL' && data.filters.subcategories.length > 0 && (
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      Sub Kategori
+                    </label>
+                    <Select value={tier2SubcategoryId} onValueChange={handleTier2Change}>
+                      <SelectTrigger className="touch-target" aria-label="Filter by subcategory">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ALL">Semua Sub Kategori</SelectItem>
+                        {data.filters.subcategories.map((sub) => (
+                          <SelectItem key={sub.id} value={sub.id}>
+                            {sub.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {tier2SubcategoryId !== 'ALL' && data.filters.items.length > 0 && (
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      Item
+                    </label>
+                    <Select value={tier3ItemId} onValueChange={setTier3ItemId}>
+                      <SelectTrigger className="touch-target" aria-label="Filter by item">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ALL">Semua Item</SelectItem>
+                        {data.filters.items.map((item) => (
+                          <SelectItem key={item.id} value={item.id}>
+                            {item.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Secondary Filters */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 pt-2 border-t border-border">
@@ -741,115 +1061,39 @@ export default function AllTicketsReport() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50 hover:bg-muted/50">
-                    <TableHead className="w-[110px] font-semibold">Ticket #</TableHead>
-                    <TableHead className="min-w-[200px] font-semibold">Title</TableHead>
-                    <TableHead className="font-semibold">Status</TableHead>
-                    <TableHead className="font-semibold">Priority</TableHead>
-                    <TableHead className="hidden md:table-cell font-semibold">Category</TableHead>
-                    <TableHead className="hidden lg:table-cell font-semibold">Service</TableHead>
-                    <TableHead className="hidden xl:table-cell font-semibold">Branch</TableHead>
-                    <TableHead className="hidden xl:table-cell font-semibold">Created By</TableHead>
-                    <TableHead className="hidden 2xl:table-cell font-semibold">Assigned To</TableHead>
-                    <TableHead className="font-semibold">Created</TableHead>
-                    <TableHead className="hidden lg:table-cell font-semibold">Claim Date</TableHead>
-                    <TableHead className="hidden lg:table-cell font-semibold text-right">Time</TableHead>
-                    <TableHead className="hidden xl:table-cell text-center font-semibold">Activity</TableHead>
+                    {visibleColumns.map(col => (
+                      <TableHead
+                        key={col.key}
+                        className={`font-semibold ${
+                          col.key === 'ticketNumber' ? 'w-[110px]' :
+                          col.key === 'title' ? 'min-w-[200px]' :
+                          col.key === 'service' ? 'max-w-[150px]' :
+                          col.key === 'resolutionTime' ? 'text-right' :
+                          col.key === 'activity' ? 'text-center' :
+                          ''
+                        }`}
+                      >
+                        {col.label}
+                      </TableHead>
+                    ))}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {data.tickets.map((ticket) => (
                     <TableRow key={ticket.id} className="group hover:bg-muted/30 transition-colors">
-                      <TableCell className="font-mono text-sm">
-                        <a
-                          href={`/tickets/${ticket.id}`}
-                          className="text-primary hover:underline font-semibold"
+                      {visibleColumns.map(col => (
+                        <TableCell
+                          key={col.key}
+                          className={
+                            col.key === 'service' ? 'max-w-[150px]' :
+                            col.key === 'title' ? 'max-w-[250px]' :
+                            col.key === 'resolutionTime' ? 'text-right' :
+                            ''
+                          }
                         >
-                          #{ticket.ticketNumber}
-                        </a>
-                      </TableCell>
-                      <TableCell className="max-w-[250px]">
-                        <a href={`/tickets/${ticket.id}`} className="block hover:text-primary transition-colors">
-                          <p className="truncate font-medium text-foreground group-hover:text-primary">
-                            {ticket.title}
-                          </p>
-                          <p className="text-xs text-muted-foreground truncate mt-0.5 md:hidden">
-                            {ticket.serviceCategory} • {ticket.branchCode}
-                          </p>
-                        </a>
-                      </TableCell>
-                      <TableCell>{getStatusBadge(ticket.status, ticket.vendorTicketNumber, ticket.vendorName)}</TableCell>
-                      <TableCell>{getPriorityBadge(ticket.priority)}</TableCell>
-                      <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
-                        <div className="flex flex-col gap-0.5">
-                          <span className="font-medium text-foreground">{ticket.serviceCategory || '-'}</span>
-                          {ticket.serviceSubcategory && ticket.serviceSubcategory !== '-' && (
-                            <span className="text-xs text-muted-foreground">
-                              {ticket.serviceSubcategory}
-                              {ticket.serviceItem && ticket.serviceItem !== '-' && ` > ${ticket.serviceItem}`}
-                            </span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell text-sm text-muted-foreground max-w-[150px]">
-                        <span className="truncate block" title={ticket.service}>
-                          {ticket.service}
-                        </span>
-                      </TableCell>
-                      <TableCell className="hidden xl:table-cell">
-                        <div className="flex items-center gap-1.5 text-muted-foreground">
-                          <Building className="h-3.5 w-3.5 shrink-0" />
-                          <span className="text-sm">{ticket.branchCode}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden xl:table-cell">
-                        <div className="flex items-center gap-1.5 text-muted-foreground">
-                          <User className="h-3.5 w-3.5 shrink-0" />
-                          <span className="text-sm truncate max-w-[120px]" title={ticket.createdBy}>
-                            {ticket.createdBy}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden 2xl:table-cell text-sm text-muted-foreground truncate max-w-[120px]">
-                        {ticket.assignedTo || '-'}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                        {format(new Date(ticket.createdAt), 'MMM dd, yyyy')}
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell text-sm text-muted-foreground whitespace-nowrap">
-                        {ticket.claimedAt ? format(new Date(ticket.claimedAt), 'MMM dd, yyyy HH:mm') : '-'}
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell text-sm text-right">
-                        {ticket.resolutionTime ? (
-                          <Badge variant="secondary" className="font-mono">
-                            {ticket.resolutionTime}h
-                          </Badge>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="hidden xl:table-cell">
-                        <div className="flex items-center justify-center gap-2">
-                          {ticket.commentCount > 0 && (
-                            <Badge
-                              variant="secondary"
-                              className="bg-chart-2/20 text-chart-2 border-chart-2/30 text-xs font-medium"
-                            >
-                              {ticket.commentCount} {ticket.commentCount === 1 ? 'comment' : 'comments'}
-                            </Badge>
-                          )}
-                          {ticket.attachmentCount > 0 && (
-                            <Badge
-                              variant="secondary"
-                              className="bg-chart-4/20 text-chart-4 border-chart-4/30 text-xs font-medium"
-                            >
-                              {ticket.attachmentCount} {ticket.attachmentCount === 1 ? 'file' : 'files'}
-                            </Badge>
-                          )}
-                          {ticket.commentCount === 0 && ticket.attachmentCount === 0 && (
-                            <span className="text-xs text-muted-foreground">-</span>
-                          )}
-                        </div>
-                      </TableCell>
+                          {renderCell(col.key, ticket)}
+                        </TableCell>
+                      ))}
                     </TableRow>
                   ))}
                 </TableBody>
