@@ -486,6 +486,7 @@ export async function GET(request: NextRequest) {
         description: ticket.description,
         status: ticket.status,
         priority: ticket.priority,
+        type: ticket.category || 'INCIDENT',
         service: ticket.service?.name || 'N/A',
         serviceCategory: ticket.service?.tier1Category?.name || '-',
         serviceSubcategory: ticket.service?.tier2Subcategory?.name || '-',
@@ -886,6 +887,15 @@ export async function POST(request: NextRequest) {
         'Description': t.description,
         'Status': t.status,
         'Priority': t.priority,
+        'Type': (() => {
+          const labels: Record<string, string> = {
+            INCIDENT: 'Insiden',
+            SERVICE_REQUEST: 'Permintaan Layanan',
+            CHANGE_REQUEST: 'Permintaan Perubahan',
+            EVENT_REQUEST: 'Permintaan Event'
+          };
+          return labels[t.category] || t.category || 'Insiden';
+        })(),
         'Service': t.service?.name || 'N/A',
         'Service Category': t.service?.tier1Category?.name || '-',
         'Service Subcategory': t.service?.tier2Subcategory?.name || '-',
@@ -916,6 +926,7 @@ export async function POST(request: NextRequest) {
       title: ['Title', 'Description'],
       status: ['Status'],
       priority: ['Priority'],
+      type: ['Type'],
       serviceCategory: ['Service Category', 'Service Subcategory', 'Service Item'],
       service: ['Service'],
       branch: ['Branch', 'Branch Code'],

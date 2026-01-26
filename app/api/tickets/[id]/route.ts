@@ -18,6 +18,7 @@ const updateTicketSchema = z.object({
   justification: z.string().optional(),
   status: z.enum(['OPEN', 'PENDING', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'IN_PROGRESS', 'PENDING_VENDOR', 'RESOLVED', 'CLOSED', 'CANCELLED']).optional(),
   assignedToId: z.string().nullable().optional(),
+  category: z.enum(['INCIDENT', 'SERVICE_REQUEST', 'CHANGE_REQUEST', 'EVENT_REQUEST']).optional(),
   issueClassification: z.enum(['INCIDENT', 'SERVICE_REQUEST', 'CHANGE_REQUEST', 'PROBLEM']).optional(),
   rootCause: z.string().optional(),
   resolutionNotes: z.string().optional(),
@@ -314,6 +315,7 @@ export async function PATCH(
         createdById: true,
         assignedToId: true,
         status: true,
+        category: true,
         sociomileTicketId: true,
         service: {
           select: {
@@ -330,7 +332,7 @@ export async function PATCH(
     // Check permissions for updates based on role
     let canUpdate = false;
     let allowedFields: string[] = [];
-    
+
     if (session.user.role === 'ADMIN') {
       // Admin can update everything
       canUpdate = true;
@@ -398,6 +400,9 @@ export async function PATCH(
     if (validatedData.status && validatedData.status !== existingTicket.status) {
       changes.status = { old: existingTicket.status, new: validatedData.status };
     }
+    if (validatedData.category && validatedData.category !== existingTicket.category) {
+      changes.category = { old: existingTicket.category, new: validatedData.category };
+    }
 
     // Update the ticket
     const updatedTicket = await prisma.ticket.update({
@@ -458,16 +463,48 @@ export async function PATCH(
 
     // Create audit log if there were changes
     if (Object.keys(changes).length > 0) {
+      const oldValues: any = {};
+      const newValues: any = { updatedBy: session.user.name || session.user.email };
+      if (changes.status) {
+        oldValues.status = changes.status.old;
+        newValues.status = changes.status.new;
+      }
+      if (changes.category) {
+        oldValues.category = changes.category.old;
+        newValues.category = changes.category.new;
+      }
+
       await prisma.auditLog.create({
         data: {
           userId: session.user.id,
-          action: 'STATUS_UPDATE',
+          action: changes.category ? 'CATEGORY_RECLASSIFICATION' : 'STATUS_UPDATE',
           entity: 'TICKET',
           entityId: id,
-          oldValues: changes.status ? { status: changes.status.old } : {},
-          newValues: changes.status ? { status: changes.status.new, updatedBy: session.user.name || session.user.email } : {}
+          oldValues,
+          newValues
         },
       });
+
+      // Create reclassification comment when category changes
+      if (changes.category) {
+        const categoryLabels: Record<string, string> = {
+          INCIDENT: 'Insiden',
+          SERVICE_REQUEST: 'Permintaan Layanan',
+          CHANGE_REQUEST: 'Permintaan Perubahan',
+          EVENT_REQUEST: 'Permintaan Event'
+        };
+        const oldLabel = categoryLabels[changes.category.old] || changes.category.old;
+        const newLabel = categoryLabels[changes.category.new] || changes.category.new;
+
+        await prisma.ticketComment.create({
+          data: {
+            ticketId: id,
+            userId: session.user.id,
+            content: `Tipe tiket direklasifikasi dari "${oldLabel}" menjadi "${newLabel}"`,
+            isInternal: true
+          }
+        });
+      }
 
       // Log status change for Grafana/Loki
       if (changes.status) {
@@ -692,6 +729,7 @@ export async function PUT(
         createdById: true,
         assignedToId: true,
         status: true,
+        category: true,
         sociomileTicketId: true,
         service: {
           select: {
@@ -914,12 +952,14 @@ export async function PUT(
       await prisma.auditLog.create({
         data: {
           userId: session.user.id,
-          action: 'UPDATE_TICKET',
+          action: validatedData.category && validatedData.category !== existingTicket.category
+            ? 'CATEGORY_RECLASSIFICATION'
+            : 'UPDATE_TICKET',
           entity: 'Ticket',
           entityId: id,
-          oldValues: { 
+          oldValues: {
             priority: existingTicket.priority,
-            // Add other changed fields as needed
+            ...(validatedData.category ? { category: existingTicket.category } : {}),
           },
           newValues: {
             ...updateData,
@@ -932,8 +972,29 @@ export async function PUT(
           }
         }
       });
+
+      // Create reclassification comment when category changes
+      if (validatedData.category && validatedData.category !== existingTicket.category) {
+        const categoryLabels: Record<string, string> = {
+          INCIDENT: 'Insiden',
+          SERVICE_REQUEST: 'Permintaan Layanan',
+          CHANGE_REQUEST: 'Permintaan Perubahan',
+          EVENT_REQUEST: 'Permintaan Event'
+        };
+        const oldLabel = categoryLabels[existingTicket.category] || existingTicket.category;
+        const newLabel = categoryLabels[validatedData.category] || validatedData.category;
+
+        await prisma.ticketComment.create({
+          data: {
+            ticketId: id,
+            userId: session.user.id,
+            content: `Tipe tiket direklasifikasi dari "${oldLabel}" menjadi "${newLabel}"`,
+            isInternal: true
+          }
+        });
+      }
     }
-    
+
     // Emit general update event
     emitTicketUpdated(id, validatedData, session.user.id);
 

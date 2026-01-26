@@ -1196,6 +1196,9 @@ export async function POST(request: NextRequest) {
       }
     });
 
+    // Determine ticket category (ITIL type) from service's default, fallback to client value, then INCIDENT
+    const ticketCategory = service?.defaultItilCategory || validatedData.category || 'INCIDENT';
+
     if (!service) {
       return createErrorResponse(ErrorCode.RESOURCE_NOT_FOUND, {
         message: 'Layanan tidak ditemukan',
@@ -1377,7 +1380,7 @@ export async function POST(request: NextRequest) {
         title: validatedData.title,
         description: validatedData.description,
         serviceId: validatedData.serviceId,
-        category: validatedData.category,
+        category: ticketCategory,
         issueClassification: validatedData.issueClassification,
         categoryId: validatedData.categoryId,
         subcategoryId: validatedData.subcategoryId,

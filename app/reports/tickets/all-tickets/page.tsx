@@ -39,6 +39,7 @@ interface Ticket {
   description: string
   status: string
   priority: string
+  type: string
   service: string
   serviceCategory: string
   serviceSubcategory: string
@@ -97,6 +98,7 @@ const COLUMN_DEFS = [
   { key: 'title', label: 'Judul', default: true },
   { key: 'status', label: 'Status', default: true },
   { key: 'priority', label: 'Prioritas', default: true },
+  { key: 'type', label: 'Tipe', default: true },
   { key: 'serviceCategory', label: 'Kategori', default: true },
   { key: 'service', label: 'Layanan', default: true },
   { key: 'branch', label: 'Cabang', default: true },
@@ -451,6 +453,43 @@ export default function AllTicketsReport() {
         return getStatusBadge(ticket.status, ticket.vendorTicketNumber, ticket.vendorName)
       case 'priority':
         return getPriorityBadge(ticket.priority)
+      case 'type': {
+        const typeConfig: Record<string, { className: string; textClassName: string; label: string }> = {
+          INCIDENT: {
+            className: 'bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800',
+            textClassName: 'text-amber-700 dark:text-amber-400',
+            label: 'Insiden'
+          },
+          SERVICE_REQUEST: {
+            className: 'bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800',
+            textClassName: 'text-blue-700 dark:text-blue-400',
+            label: 'Permintaan Layanan'
+          },
+          CHANGE_REQUEST: {
+            className: 'bg-purple-50 border-purple-200 dark:bg-purple-950/30 dark:border-purple-800',
+            textClassName: 'text-purple-700 dark:text-purple-400',
+            label: 'Permintaan Perubahan'
+          },
+          EVENT_REQUEST: {
+            className: 'bg-teal-50 border-teal-200 dark:bg-teal-950/30 dark:border-teal-800',
+            textClassName: 'text-teal-700 dark:text-teal-400',
+            label: 'Permintaan Event'
+          }
+        }
+        const tc = typeConfig[ticket.type] || {
+          className: 'bg-slate-50 border-slate-200 dark:bg-slate-900/30 dark:border-slate-800',
+          textClassName: 'text-slate-600 dark:text-slate-400',
+          label: ticket.type || '-'
+        }
+        return (
+          <Badge
+            variant="outline"
+            className={`${tc.className} ${tc.textClassName} inline-flex items-center px-2 py-0.5 font-medium shadow-sm`}
+          >
+            <span className="text-xs font-semibold">{tc.label}</span>
+          </Badge>
+        )
+      }
       case 'serviceCategory':
         return (
           <div className="flex flex-col gap-0.5">

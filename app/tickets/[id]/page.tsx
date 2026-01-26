@@ -115,6 +115,7 @@ interface Ticket {
   description: string;
   status: string;
   priority: string;
+  category?: string;
   createdAt: string;
   updatedAt: string;
   resolvedAt?: string;
@@ -200,6 +201,29 @@ const getPriorityBadgeVariant = (priority: string): "default" | "secondary" | "d
   }
 };
 
+// Category (ITIL type) badge variant mapping
+const getCategoryBadgeVariant = (category: string): "default" | "secondary" | "destructive" | "outline" | "warning" | "success" | "info" | "warning-soft" | "success-soft" | "info-soft" | "default-soft" | "destructive-soft" => {
+  switch (category) {
+    case 'INCIDENT':
+      return 'warning-soft';
+    case 'SERVICE_REQUEST':
+      return 'info-soft';
+    case 'CHANGE_REQUEST':
+      return 'default-soft';
+    case 'EVENT_REQUEST':
+      return 'success-soft';
+    default:
+      return 'secondary';
+  }
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  INCIDENT: 'Insiden',
+  SERVICE_REQUEST: 'Permintaan Layanan',
+  CHANGE_REQUEST: 'Permintaan Perubahan',
+  EVENT_REQUEST: 'Permintaan Event'
+};
+
 export default function TicketDetailPage() {
   const { data: session, status } = useSession();
   const params = useParams();
@@ -223,6 +247,7 @@ export default function TicketDetailPage() {
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [isUploading, setIsUploading] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [isUpdatingCategory, setIsUpdatingCategory] = useState(false);
   const [showResolveModal, setShowResolveModal] = useState(false);
   const [resolutionComment, setResolutionComment] = useState('');
   const [isSubmittingResolution, setIsSubmittingResolution] = useState(false);
@@ -1049,6 +1074,40 @@ export default function TicketDetailPage() {
     return false;
   };
 
+  const canReclassifyTicket = () => {
+    if (!session?.user?.role || !ticket) return false;
+    // Admin can always reclassify
+    if (session.user.role === 'ADMIN') return true;
+    // Assigned technician or security analyst can reclassify
+    if ((session.user.role === 'TECHNICIAN' || session.user.role === 'SECURITY_ANALYST') &&
+        ticket.assignedTo?.email === session.user.email) {
+      return true;
+    }
+    // Manager IT can reclassify
+    if (session.user.role === 'MANAGER_IT') return true;
+    return false;
+  };
+
+  const handleCategoryChange = async (newCategory: string) => {
+    if (!ticket || newCategory === ticket.category) return;
+    setIsUpdatingCategory(true);
+    try {
+      const response = await fetch(`/api/tickets/${ticket.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category: newCategory })
+      });
+      if (!response.ok) throw new Error('Failed to update category');
+      const updatedTicket = await response.json();
+      setTicket(prev => prev ? { ...prev, category: updatedTicket.category, comments: updatedTicket.comments || prev.comments } : prev);
+      await fetchTicket(); // Refresh to get the new comment
+    } catch (err) {
+      console.error('Error updating category:', err);
+    } finally {
+      setIsUpdatingCategory(false);
+    }
+  };
+
   const canClaimTicket = () => {
     if (!session?.user?.role || !ticket) return false;
 
@@ -1262,6 +1321,31 @@ export default function TicketDetailPage() {
                   <Badge variant={getPriorityBadgeVariant(ticket.priority)}>
                     {ticket.priority}
                   </Badge>
+                  {ticket.category && (
+                    canReclassifyTicket() ? (
+                      <Select
+                        value={ticket.category}
+                        onValueChange={handleCategoryChange}
+                        disabled={isUpdatingCategory}
+                      >
+                        <SelectTrigger className="h-7 w-auto min-w-0 gap-1 border-0 bg-transparent p-0 focus:ring-0 [&>svg]:h-3 [&>svg]:w-3">
+                          <Badge variant={getCategoryBadgeVariant(ticket.category)}>
+                            {CATEGORY_LABELS[ticket.category] || ticket.category}
+                          </Badge>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="INCIDENT">Insiden</SelectItem>
+                          <SelectItem value="SERVICE_REQUEST">Permintaan Layanan</SelectItem>
+                          <SelectItem value="CHANGE_REQUEST">Permintaan Perubahan</SelectItem>
+                          <SelectItem value="EVENT_REQUEST">Permintaan Event</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Badge variant={getCategoryBadgeVariant(ticket.category)}>
+                        {CATEGORY_LABELS[ticket.category] || ticket.category}
+                      </Badge>
+                    )
+                  )}
                   {!ticket.assignedToId && (
                     <Badge variant="warning-soft" size="sm">
                       <AlertCircle className="h-3 w-3 mr-1" />
