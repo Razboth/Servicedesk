@@ -157,6 +157,14 @@ export async function DELETE(
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
+    // Prevent unassigning tickets in terminal statuses
+    const terminalStatuses = ['RESOLVED', 'CLOSED', 'CANCELLED'];
+    if (terminalStatuses.includes(existingTicket.status)) {
+      return NextResponse.json({
+        error: `Cannot unassign a ticket with status ${existingTicket.status}. The assignee must remain for accountability.`
+      }, { status: 400 });
+    }
+
     // Update ticket to remove assignment
     const updatedTicket = await prisma.ticket.update({
       where: { id: ticketId },

@@ -267,6 +267,14 @@ export async function DELETE(
       }
     }
 
+    // Prevent releasing tickets in terminal statuses
+    const terminalStatuses = ['RESOLVED', 'CLOSED', 'CANCELLED'];
+    if (terminalStatuses.includes(existingTicket.status)) {
+      return NextResponse.json({
+        error: `Cannot release a ticket with status ${existingTicket.status}. The assignee must remain for accountability.`
+      }, { status: 400 });
+    }
+
     // Unclaim the ticket
     const newStatus = existingTicket.status === 'IN_PROGRESS' ? 'OPEN' : existingTicket.status;
     const updatedTicket = await prisma.ticket.update({
