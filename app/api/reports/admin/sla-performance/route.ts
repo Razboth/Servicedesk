@@ -46,11 +46,23 @@ export async function GET(request: NextRequest) {
                   select: { name: true }
                 }
               }
+            },
+            service: {
+              select: {
+                resolutionHours: true,
+                responseHours: true,
+                businessHoursOnly: true
+              }
             }
           }
         }
       }
     });
+
+    // Helper: get SLA start time (approval time or SLATracking creation time)
+    const getSlaStart = (sla: any): Date => {
+      return sla.ticket?.slaStartAt ? new Date(sla.ticket.slaStartAt) : new Date(sla.createdAt);
+    };
 
     // Calculate overall SLA metrics
     const totalSlaRecords = slaData.length;
@@ -67,7 +79,7 @@ export async function GET(request: NextRequest) {
       slaData
         .filter(sla => sla.responseTime)
         .reduce((sum, sla) => {
-          const responseHours = (sla.responseTime!.getTime() - sla.createdAt.getTime()) / (1000 * 60 * 60);
+          const responseHours = (sla.responseTime!.getTime() - getSlaStart(sla).getTime()) / (1000 * 60 * 60);
           return sum + responseHours;
         }, 0) / slaData.filter(sla => sla.responseTime).length : 0;
 
@@ -75,7 +87,7 @@ export async function GET(request: NextRequest) {
       slaData
         .filter(sla => sla.resolutionTime)
         .reduce((sum, sla) => {
-          const resolutionHours = (sla.resolutionTime!.getTime() - sla.createdAt.getTime()) / (1000 * 60 * 60);
+          const resolutionHours = (sla.resolutionTime!.getTime() - getSlaStart(sla).getTime()) / (1000 * 60 * 60);
           return sum + resolutionHours;
         }, 0) / slaData.filter(sla => sla.resolutionTime).length : 0;
 
@@ -89,7 +101,7 @@ export async function GET(request: NextRequest) {
           prioritySla
             .filter(sla => sla.responseTime)
             .reduce((sum, sla) => {
-              const responseHours = (sla.responseTime!.getTime() - sla.createdAt.getTime()) / (1000 * 60 * 60);
+              const responseHours = (sla.responseTime!.getTime() - getSlaStart(sla).getTime()) / (1000 * 60 * 60);
               return sum + responseHours;
             }, 0) / prioritySla.filter(sla => sla.responseTime).length : 0;
 
@@ -126,7 +138,7 @@ export async function GET(request: NextRequest) {
       if (sla.isResolutionBreached) acc[category].resolutionBreaches++;
       
       if (sla.responseTime) {
-        const responseHours = (sla.responseTime.getTime() - sla.createdAt.getTime()) / (1000 * 60 * 60);
+        const responseHours = (sla.responseTime.getTime() - getSlaStart(sla).getTime()) / (1000 * 60 * 60);
         acc[category].totalResponseTime += responseHours;
         acc[category].responseCount++;
       }
@@ -211,7 +223,7 @@ export async function GET(request: NextRequest) {
       // Tickets resolved within 50% of SLA time
       excellentPerformance: slaData.filter(sla => {
         if (!sla.resolutionTime || !sla.ticket.service.resolutionHours) return false;
-        const actualTime = (sla.resolutionTime.getTime() - sla.createdAt.getTime()) / (1000 * 60 * 60);
+        const actualTime = (sla.resolutionTime.getTime() - getSlaStart(sla).getTime()) / (1000 * 60 * 60);
         const targetTime = sla.ticket.service.resolutionHours;
         return actualTime <= (targetTime * 0.5);
       }).length,
@@ -254,7 +266,7 @@ export async function GET(request: NextRequest) {
     };
 
     slaData.filter(sla => sla.responseTime).forEach(sla => {
-      const responseHours = (sla.responseTime!.getTime() - sla.createdAt.getTime()) / (1000 * 60 * 60);
+      const responseHours = (sla.responseTime!.getTime() - getSlaStart(sla).getTime()) / (1000 * 60 * 60);
       if (responseHours < 1) responseTimeRanges.immediate++;
       else if (responseHours <= 4) responseTimeRanges.fast++;
       else if (responseHours <= 24) responseTimeRanges.normal++;

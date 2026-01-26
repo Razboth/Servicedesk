@@ -242,6 +242,29 @@ export async function POST(
       data: { updatedAt: new Date() }
     });
 
+    // Track first response time in SLATracking
+    // First non-internal comment by non-creator counts as first response
+    if (!validatedData.isInternal && session.user.id !== ticket.createdById) {
+      try {
+        const slaTracking = await prisma.sLATracking.findFirst({
+          where: { ticketId: id, responseTime: null }
+        });
+
+        if (slaTracking) {
+          const now = new Date();
+          await prisma.sLATracking.update({
+            where: { id: slaTracking.id },
+            data: {
+              responseTime: now,
+              isResponseBreached: now > slaTracking.responseDeadline
+            }
+          });
+        }
+      } catch (slaError) {
+        console.error('Error updating SLA response time:', slaError);
+      }
+    }
+
     // Create audit log for comment creation
     await createAuditLog({
       userId: session.user.id,

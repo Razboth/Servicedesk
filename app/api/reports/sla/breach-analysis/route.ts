@@ -117,21 +117,31 @@ export async function GET(request: NextRequest) {
       const responseSlaHours = serviceResponseSla || priorityTargets.response;
       const resolutionSlaHours = serviceResolutionSla || priorityTargets.resolution;
 
-      // Calculate actual times
-      const createdAt = new Date(ticket.createdAt);
-      const firstResponseAt = ticket.firstResponseAt ? new Date(ticket.firstResponseAt) : null;
+      // Calculate actual times - use slaStartAt (approval time) or createdAt
+      const slaStart = ticket.slaStartAt ? new Date(ticket.slaStartAt) : new Date(ticket.createdAt);
+      const slaPausedTotal = (ticket as any).slaPausedTotal || 0;
+      const slaPausedAt = (ticket as any).slaPausedAt ? new Date((ticket as any).slaPausedAt) : null;
+      const firstResponseAt = (ticket as any).firstResponseAt ? new Date((ticket as any).firstResponseAt) : null;
       const resolvedAt = ticket.resolvedAt ? new Date(ticket.resolvedAt) : null;
-      const assignedAt = ticket.assignedAt ? new Date(ticket.assignedAt) : null;
+      const assignedAt = (ticket as any).assignedAt ? new Date((ticket as any).assignedAt) : null;
+
+      // Helper to get effective elapsed hours accounting for pause time
+      const getElapsed = (endTime: Date): number => {
+        let elapsedMs = endTime.getTime() - slaStart.getTime() - slaPausedTotal;
+        if (slaPausedAt && endTime >= slaPausedAt) {
+          elapsedMs -= (endTime.getTime() - slaPausedAt.getTime());
+        }
+        return Math.max(0, elapsedMs / (1000 * 60 * 60));
+      };
 
       // Calculate response time
       let actualResponseHours = 0;
       let responseBreached = false;
       if (firstResponseAt) {
-        actualResponseHours = (firstResponseAt.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+        actualResponseHours = getElapsed(firstResponseAt);
         responseBreached = actualResponseHours > responseSlaHours;
       } else if (ticket.status !== 'CLOSED' && ticket.status !== 'RESOLVED') {
-        // Still open, check if response SLA is breached
-        actualResponseHours = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+        actualResponseHours = getElapsed(now);
         responseBreached = actualResponseHours > responseSlaHours;
       }
 
@@ -139,18 +149,17 @@ export async function GET(request: NextRequest) {
       let actualResolutionHours = 0;
       let resolutionBreached = false;
       if (resolvedAt) {
-        actualResolutionHours = (resolvedAt.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+        actualResolutionHours = getElapsed(resolvedAt);
         resolutionBreached = actualResolutionHours > resolutionSlaHours;
       } else if (ticket.status !== 'CLOSED' && ticket.status !== 'RESOLVED') {
-        // Still open, check if resolution SLA is breached
-        actualResolutionHours = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+        actualResolutionHours = getElapsed(now);
         resolutionBreached = actualResolutionHours > resolutionSlaHours;
       }
 
       // Calculate assignment time
       let actualAssignmentHours = 0;
       if (assignedAt) {
-        actualAssignmentHours = (assignedAt.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+        actualAssignmentHours = getElapsed(assignedAt);
       }
 
       // Get SLA tracking data if available
@@ -185,7 +194,7 @@ export async function GET(request: NextRequest) {
         breachSeverity: resolutionBreached ? 
           (actualResolutionHours > resolutionSlaHours * 2 ? 'SEVERE' : 'MODERATE') : 
           (responseBreached ? 'MINOR' : 'NONE'),
-        daysSinceCreated: Math.floor((now.getTime() - createdAt.getTime()) / (24 * 60 * 60 * 1000))
+        daysSinceCreated: Math.floor((now.getTime() - slaStart.getTime()) / (24 * 60 * 60 * 1000))
       };
     });
 

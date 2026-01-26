@@ -317,6 +317,9 @@ export async function PATCH(
         status: true,
         category: true,
         sociomileTicketId: true,
+        slaStartAt: true,
+        slaPausedAt: true,
+        slaPausedTotal: true,
         service: {
           select: {
             name: true
@@ -393,6 +396,20 @@ export async function PATCH(
     // Clear closedAt timestamp when reopening a closed ticket
     if (existingTicket.status === 'CLOSED' && validatedData.status && validatedData.status !== 'CLOSED') {
       updateData.closedAt = null;
+    }
+
+    // SLA pause: entering PENDING_VENDOR
+    if (validatedData.status === 'PENDING_VENDOR' && existingTicket.status !== 'PENDING_VENDOR') {
+      updateData.slaPausedAt = new Date();
+    }
+
+    // SLA resume: leaving PENDING_VENDOR
+    if (existingTicket.status === 'PENDING_VENDOR' && validatedData.status && validatedData.status !== 'PENDING_VENDOR') {
+      if (existingTicket.slaPausedAt) {
+        const pausedMs = Date.now() - new Date(existingTicket.slaPausedAt).getTime();
+        updateData.slaPausedTotal = (existingTicket.slaPausedTotal || 0) + pausedMs;
+      }
+      updateData.slaPausedAt = null;
     }
 
     // Track what's changing for audit log
@@ -599,6 +616,46 @@ export async function PATCH(
       }
     }
 
+    // Auto-update SLA breach flags on status change
+    if (validatedData.status && validatedData.status !== existingTicket.status) {
+      try {
+        const slaTracking = await prisma.sLATracking.findFirst({
+          where: { ticketId: existingTicket.id }
+        });
+
+        if (slaTracking) {
+          const nowSla = new Date();
+          const updateSla: any = {};
+
+          // Record first response time when moving to IN_PROGRESS
+          if (validatedData.status === 'IN_PROGRESS' && !slaTracking.responseTime) {
+            updateSla.responseTime = nowSla;
+            updateSla.isResponseBreached = nowSla > slaTracking.responseDeadline;
+          }
+
+          // Record resolution time when resolving
+          if (validatedData.status === 'RESOLVED') {
+            updateSla.resolutionTime = nowSla;
+            updateSla.isResolutionBreached = nowSla > slaTracking.resolutionDeadline;
+          }
+
+          // Check escalation
+          if (!slaTracking.isEscalated && nowSla > slaTracking.escalationDeadline) {
+            updateSla.isEscalated = true;
+          }
+
+          if (Object.keys(updateSla).length > 0) {
+            await prisma.sLATracking.update({
+              where: { id: slaTracking.id },
+              data: updateSla
+            });
+          }
+        }
+      } catch (slaError) {
+        console.error('Error updating SLA breach flags:', slaError);
+      }
+    }
+
     // Send email notification for ticket updates
     if (validatedData.status && validatedData.status !== existingTicket.status) {
       // Determine email notification type based on status change
@@ -732,6 +789,9 @@ export async function PUT(
         status: true,
         category: true,
         sociomileTicketId: true,
+        slaStartAt: true,
+        slaPausedAt: true,
+        slaPausedTotal: true,
         service: {
           select: {
             name: true
@@ -896,6 +956,20 @@ export async function PUT(
       updateData.closedAt = new Date();
     }
 
+    // SLA pause: entering PENDING_VENDOR
+    if (validatedData.status === 'PENDING_VENDOR' && existingTicket.status !== 'PENDING_VENDOR') {
+      updateData.slaPausedAt = new Date();
+    }
+
+    // SLA resume: leaving PENDING_VENDOR
+    if (existingTicket.status === 'PENDING_VENDOR' && validatedData.status && validatedData.status !== 'PENDING_VENDOR') {
+      if (existingTicket.slaPausedAt) {
+        const pausedMs = Date.now() - new Date(existingTicket.slaPausedAt).getTime();
+        updateData.slaPausedTotal = (existingTicket.slaPausedTotal || 0) + pausedMs;
+      }
+      updateData.slaPausedAt = null;
+    }
+
     const updatedTicket = await prisma.ticket.update({
       where: { id },
       data: updateData,
@@ -910,6 +984,43 @@ export async function PUT(
         }
       }
     });
+
+    // Auto-update SLA breach flags on status change
+    if (validatedData.status && validatedData.status !== existingTicket.status) {
+      try {
+        const slaTracking = await prisma.sLATracking.findFirst({
+          where: { ticketId: existingTicket.id }
+        });
+
+        if (slaTracking) {
+          const nowSla = new Date();
+          const updateSla: any = {};
+
+          if (validatedData.status === 'IN_PROGRESS' && !slaTracking.responseTime) {
+            updateSla.responseTime = nowSla;
+            updateSla.isResponseBreached = nowSla > slaTracking.responseDeadline;
+          }
+
+          if (validatedData.status === 'RESOLVED') {
+            updateSla.resolutionTime = nowSla;
+            updateSla.isResolutionBreached = nowSla > slaTracking.resolutionDeadline;
+          }
+
+          if (!slaTracking.isEscalated && nowSla > slaTracking.escalationDeadline) {
+            updateSla.isEscalated = true;
+          }
+
+          if (Object.keys(updateSla).length > 0) {
+            await prisma.sLATracking.update({
+              where: { id: slaTracking.id },
+              data: updateSla
+            });
+          }
+        }
+      } catch (slaError) {
+        console.error('Error updating SLA breach flags (PUT):', slaError);
+      }
+    }
 
     // Emit socket events for real-time updates
     if (validatedData.status && validatedData.status !== existingTicket.status) {

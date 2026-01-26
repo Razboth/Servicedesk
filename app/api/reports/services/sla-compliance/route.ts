@@ -90,21 +90,24 @@ export async function GET(request: NextRequest) {
           if (slaTracking.isResponseBreached && slaTracking.isResolutionBreached) bothBreaches++;
           
           if (slaTracking.responseTime) {
-            const respTime = (slaTracking.responseTime.getTime() - ticket.createdAt.getTime()) / (1000 * 60); // minutes
+            const slaStart = ticket.slaStartAt ? new Date(ticket.slaStartAt).getTime() : ticket.createdAt.getTime();
+            const respTime = (slaTracking.responseTime.getTime() - slaStart) / (1000 * 60); // minutes
             totalResponseTime += respTime;
             ticketsWithResponse++;
           }
-          
+
           if (slaTracking.resolutionTime) {
-            const resTime = (slaTracking.resolutionTime.getTime() - ticket.createdAt.getTime()) / (1000 * 60 * 60); // hours
+            const slaStart = ticket.slaStartAt ? new Date(ticket.slaStartAt).getTime() : ticket.createdAt.getTime();
+            const resTime = (slaTracking.resolutionTime.getTime() - slaStart) / (1000 * 60 * 60); // hours
             totalResolutionTime += resTime;
             ticketsWithResolution++;
           }
         } else {
-          // Calculate from ticket timestamps if no SLA tracking (field removed as it doesn't exist)
-          
+          // Calculate from ticket timestamps if no SLA tracking
+
           if (ticket.resolvedAt) {
-            const resTime = (new Date(ticket.resolvedAt).getTime() - ticket.createdAt.getTime()) / (1000 * 60 * 60);
+            const slaStart = ticket.slaStartAt ? new Date(ticket.slaStartAt).getTime() : ticket.createdAt.getTime();
+            const resTime = (new Date(ticket.resolvedAt).getTime() - slaStart) / (1000 * 60 * 60);
             totalResolutionTime += resTime;
             ticketsWithResolution++;
             

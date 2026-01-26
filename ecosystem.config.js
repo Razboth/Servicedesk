@@ -126,5 +126,27 @@ module.exports = {
     max_restarts: 5,
     
     args: 'start'
+  },
+  {
+    // SLA Breach Checker Cron Job
+    // Runs every 15 minutes to check for SLA breaches and send notifications
+    name: 'bsg-sla-checker',
+    script: 'node',
+    args: '-e "const https = require(\'https\'); const options = {hostname: \'localhost\', port: 443, path: \'/api/cron/sla-check?key=\' + (process.env.SLA_CRON_SECRET || \'\'), method: \'GET\', rejectUnauthorized: false}; const req = https.request(options, (res) => { let data = \'\'; res.on(\'data\', c => data += c); res.on(\'end\', () => console.log(new Date().toISOString() + \' SLA Check:\', data)); }); req.on(\'error\', console.error); req.end();"',
+    cron_restart: '*/15 * * * *',
+    autorestart: false,
+    watch: false,
+    instances: 1,
+    exec_mode: 'fork',
+
+    env: {
+      NODE_ENV: 'production',
+      SLA_CRON_SECRET: process.env.SLA_CRON_SECRET || 'change-this-secret'
+    },
+
+    error_file: './logs/pm2-sla-checker-error.log',
+    out_file: './logs/pm2-sla-checker-out.log',
+    merge_logs: true,
+    time: true
   }]
 };

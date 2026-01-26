@@ -105,6 +105,26 @@ export async function POST(
       }
     });
 
+    // Record first response time in SLATracking on assignment
+    try {
+      const slaTracking = await prisma.sLATracking.findFirst({
+        where: { ticketId: ticketId, responseTime: null }
+      });
+
+      if (slaTracking) {
+        const now = new Date();
+        await prisma.sLATracking.update({
+          where: { id: slaTracking.id },
+          data: {
+            responseTime: now,
+            isResponseBreached: now > slaTracking.responseDeadline
+          }
+        });
+      }
+    } catch (slaError) {
+      console.error('Error updating SLA response time on assignment:', slaError);
+    }
+
     return NextResponse.json({
       message: 'Ticket assigned successfully',
       ticket: updatedTicket

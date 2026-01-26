@@ -123,22 +123,28 @@ export async function GET(request: NextRequest) {
       return createApiErrorResponse('Ticket not found', 404)
     }
 
-    // Calculate SLA status
+    // Calculate SLA status using slaStartAt (approval time) or createdAt
     const now = new Date()
-    const createdAt = new Date(ticket.createdAt)
-    const hoursElapsed = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60)
-    
+    const slaStart = ticket.slaStartAt ? new Date(ticket.slaStartAt) : new Date(ticket.createdAt)
+    const slaPausedTotal = (ticket as any).slaPausedTotal || 0
+    const slaPausedAt = (ticket as any).slaPausedAt ? new Date((ticket as any).slaPausedAt) : null
+    let effectiveElapsedMs = now.getTime() - slaStart.getTime() - slaPausedTotal
+    if (slaPausedAt) effectiveElapsedMs -= (now.getTime() - slaPausedAt.getTime())
+    const hoursElapsed = Math.max(0, effectiveElapsedMs) / (1000 * 60 * 60)
+
     const serviceData = ticket.service as any
     const slaStatus = {
       hoursElapsed: Math.round(hoursElapsed * 100) / 100,
-      responseDeadline: serviceData?.responseHours ? 
-        new Date(createdAt.getTime() + (serviceData.responseHours * 60 * 60 * 1000)) : null,
-      resolutionDeadline: serviceData?.resolutionHours ? 
-        new Date(createdAt.getTime() + (serviceData.resolutionHours * 60 * 60 * 1000)) : null,
-      isResponseBreached: serviceData?.responseHours ? 
+      slaStartedAt: slaStart,
+      responseDeadline: serviceData?.responseHours ?
+        new Date(slaStart.getTime() + (serviceData.responseHours * 60 * 60 * 1000)) : null,
+      resolutionDeadline: serviceData?.resolutionHours ?
+        new Date(slaStart.getTime() + (serviceData.resolutionHours * 60 * 60 * 1000)) : null,
+      isResponseBreached: serviceData?.responseHours ?
         hoursElapsed > serviceData.responseHours : false,
-      isResolutionBreached: serviceData?.resolutionHours ? 
-        hoursElapsed > serviceData.resolutionHours && !ticket.resolvedAt : false
+      isResolutionBreached: serviceData?.resolutionHours ?
+        hoursElapsed > serviceData.resolutionHours && !ticket.resolvedAt : false,
+      isPaused: !!slaPausedAt
     }
 
     // Build response based on detail level
@@ -259,6 +265,9 @@ export async function POST(request: NextRequest) {
         updatedAt: true,
         resolvedAt: true,
         closedAt: true,
+        slaStartAt: true,
+        slaPausedAt: true,
+        slaPausedTotal: true,
         service: {
           select: {
             name: true,
@@ -284,17 +293,21 @@ export async function POST(request: NextRequest) {
     // Calculate SLA status for each ticket
     const ticketsWithSla = tickets.map(ticket => {
       const now = new Date()
-      const createdAt = new Date(ticket.createdAt)
-      const hoursElapsed = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60)
-      
+      const slaStart = (ticket as any).slaStartAt ? new Date((ticket as any).slaStartAt) : new Date(ticket.createdAt)
+      const slaPausedTotal = (ticket as any).slaPausedTotal || 0
+      const slaPausedAt = (ticket as any).slaPausedAt ? new Date((ticket as any).slaPausedAt) : null
+      let effectiveElapsedMs = now.getTime() - slaStart.getTime() - slaPausedTotal
+      if (slaPausedAt) effectiveElapsedMs -= (now.getTime() - slaPausedAt.getTime())
+      const hoursElapsed = Math.max(0, effectiveElapsedMs) / (1000 * 60 * 60)
+
       const serviceInfo = ticket.service as any
       return {
         ...ticket,
         slaStatus: {
           hoursElapsed: Math.round(hoursElapsed * 100) / 100,
-          isResponseBreached: serviceInfo?.responseHours ? 
+          isResponseBreached: serviceInfo?.responseHours ?
             hoursElapsed > serviceInfo.responseHours : false,
-          isResolutionBreached: serviceInfo?.resolutionHours ? 
+          isResolutionBreached: serviceInfo?.resolutionHours ?
             hoursElapsed > serviceInfo.resolutionHours && !ticket.resolvedAt : false
         }
       }

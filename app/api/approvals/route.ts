@@ -221,6 +221,44 @@ export async function POST(request: NextRequest) {
         }
       });
 
+      // Create SLATracking records for each approved ticket
+      for (const ticket of approvedTickets) {
+        try {
+          const service = ticket.service;
+          if (service) {
+            let slaTemplate = await prisma.sLATemplate.findUnique({
+              where: { serviceId: service.id }
+            });
+
+            if (!slaTemplate) {
+              slaTemplate = await prisma.sLATemplate.create({
+                data: {
+                  serviceId: service.id,
+                  responseHours: (service as any).responseHours || 4,
+                  resolutionHours: (service as any).resolutionHours || 24,
+                  escalationHours: (service as any).escalationHours || 48,
+                  businessHoursOnly: (service as any).businessHoursOnly ?? true
+                }
+              });
+            }
+
+            await prisma.sLATracking.create({
+              data: {
+                ticketId: ticket.id,
+                slaTemplateId: slaTemplate.id,
+                responseDeadline: new Date(now.getTime() + (slaTemplate.responseHours * 60 * 60 * 1000)),
+                resolutionDeadline: new Date(now.getTime() + (slaTemplate.resolutionHours * 60 * 60 * 1000)),
+                escalationDeadline: new Date(now.getTime() + (slaTemplate.escalationHours * 60 * 60 * 1000)),
+                isResponseBreached: false,
+                isResolutionBreached: false
+              }
+            });
+          }
+        } catch (slaError) {
+          console.error(`Failed to create SLATracking for ticket ${ticket.ticketNumber}:`, slaError);
+        }
+      }
+
       // Send email notifications for each approved ticket
       for (const ticket of approvedTickets) {
         await sendTicketNotification(ticket.id, 'ticket_approved', {

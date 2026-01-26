@@ -916,9 +916,20 @@ export async function GET(request: NextRequest) {
           return slaStatus === 'within'; // Consider completed tickets as "within SLA"
         }
 
-        const createdAt = new Date(ticket.createdAt);
-        const slaDeadline = new Date(createdAt.getTime() + (ticket.service.slaHours * 60 * 60 * 1000));
-        const hoursRemaining = (slaDeadline.getTime() - now.getTime()) / (1000 * 60 * 60);
+        // Skip tickets still pending approval (SLA hasn't started yet)
+        if (!ticket.slaStartAt && ticket.status === 'PENDING_APPROVAL') {
+          return slaStatus === 'within';
+        }
+
+        // Use slaStartAt (approval time) or createdAt as SLA start
+        const slaStart = ticket.slaStartAt ? new Date(ticket.slaStartAt) : new Date(ticket.createdAt);
+        const effectiveElapsedMs = (now.getTime() - slaStart.getTime()) - ((ticket as any).slaPausedTotal || 0);
+        // If currently paused, subtract time since pause started
+        const pausedAt = (ticket as any).slaPausedAt;
+        const adjustedElapsedMs = pausedAt ? effectiveElapsedMs - (now.getTime() - new Date(pausedAt).getTime()) : effectiveElapsedMs;
+
+        const slaDeadlineMs = ticket.service.slaHours * 60 * 60 * 1000;
+        const hoursRemaining = (slaDeadlineMs - adjustedElapsedMs) / (1000 * 60 * 60);
         const percentRemaining = hoursRemaining / ticket.service.slaHours;
 
         if (slaStatus === 'breached') {
@@ -1549,6 +1560,44 @@ export async function POST(request: NextRequest) {
         await prisma.ticketTask.createMany({
           data: tasksToCreate
         });
+      }
+    }
+
+    // Create SLATracking record for the ticket if SLA has started
+    if (service && ticket.slaStartAt) {
+      try {
+        // Find or create SLA template for this service
+        let slaTemplate = await prisma.sLATemplate.findUnique({
+          where: { serviceId: service.id }
+        });
+
+        if (!slaTemplate) {
+          slaTemplate = await prisma.sLATemplate.create({
+            data: {
+              serviceId: service.id,
+              responseHours: service.responseHours || 4,
+              resolutionHours: service.resolutionHours || 24,
+              escalationHours: service.escalationHours || 48,
+              businessHoursOnly: service.businessHoursOnly ?? true
+            }
+          });
+        }
+
+        const slaStart = new Date(ticket.slaStartAt);
+        await prisma.sLATracking.create({
+          data: {
+            ticketId: ticket.id,
+            slaTemplateId: slaTemplate.id,
+            responseDeadline: new Date(slaStart.getTime() + (slaTemplate.responseHours * 60 * 60 * 1000)),
+            resolutionDeadline: new Date(slaStart.getTime() + (slaTemplate.resolutionHours * 60 * 60 * 1000)),
+            escalationDeadline: new Date(slaStart.getTime() + (slaTemplate.escalationHours * 60 * 60 * 1000)),
+            isResponseBreached: false,
+            isResolutionBreached: false
+          }
+        });
+      } catch (slaError) {
+        console.error('Error creating SLATracking:', slaError);
+        // Non-critical: don't fail ticket creation if SLA tracking fails
       }
     }
 
