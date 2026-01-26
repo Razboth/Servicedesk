@@ -111,9 +111,9 @@ export async function PUT(
       updatedAt: new Date()
     };
 
-    // Auto-assign ticket to current user if status changes to RESOLVED/CANCELLED and no one is assigned
+    // Auto-assign ticket to current user if status changes to a terminal state and no one is assigned
     // This ensures someone is recorded as having worked on the ticket
-    if (['RESOLVED', 'CANCELLED'].includes(validatedData.status) && !existingTicket.assignedToId) {
+    if (['RESOLVED', 'CLOSED', 'CANCELLED'].includes(validatedData.status) && !existingTicket.assignedToId) {
       updateData.assignedToId = session.user.id;
     }
 

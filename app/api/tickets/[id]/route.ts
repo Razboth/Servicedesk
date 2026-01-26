@@ -377,12 +377,17 @@ export async function PATCH(
 
     // Prepare update data
     const updateData: any = { ...validatedData };
-    
+
+    // Auto-assign ticket to current user if moving to terminal state and no one is assigned
+    if (validatedData.status && ['RESOLVED', 'CLOSED', 'CANCELLED'].includes(validatedData.status) && !existingTicket.assignedToId) {
+      updateData.assignedToId = session.user.id;
+    }
+
     // Set resolution timestamp when status changes to RESOLVED
     if (validatedData.status === 'RESOLVED' && existingTicket.status !== 'RESOLVED') {
       updateData.resolvedAt = new Date();
     }
-    
+
     // Clear closedAt timestamp when reopening a closed ticket
     if (existingTicket.status === 'CLOSED' && validatedData.status && validatedData.status !== 'CLOSED') {
       updateData.closedAt = null;
@@ -393,7 +398,7 @@ export async function PATCH(
     if (validatedData.status && validatedData.status !== existingTicket.status) {
       changes.status = { old: existingTicket.status, new: validatedData.status };
     }
-    
+
     // Update the ticket
     const updatedTicket = await prisma.ticket.update({
       where: { id },
@@ -836,12 +841,17 @@ export async function PUT(
 
     // Prepare update data
     const updateData: any = finalUpdateData;
-    
+
+    // Auto-assign ticket to current user if moving to terminal state and no one is assigned
+    if (validatedData.status && ['RESOLVED', 'CLOSED', 'CANCELLED'].includes(validatedData.status) && !existingTicket.assignedToId) {
+      updateData.assignedToId = session.user.id;
+    }
+
     // Set resolution timestamp when status changes to RESOLVED
     if (validatedData.status === 'RESOLVED' && existingTicket.status !== 'RESOLVED') {
       updateData.resolvedAt = new Date();
     }
-    
+
     // Set closed timestamp when status changes to CLOSED
     if (validatedData.status === 'CLOSED' && existingTicket.status !== 'CLOSED') {
       updateData.closedAt = new Date();
