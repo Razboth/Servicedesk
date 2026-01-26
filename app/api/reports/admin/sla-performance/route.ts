@@ -2,7 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
-// GET /api/reports/admin/sla-performance - Get SLA & performance excellence analytics for admin
+// Helper: calculate elapsed hours with pause awareness
+function calcElapsedHours(start: Date, end: Date, pausedTotalMs: number, pausedAt: Date | null): number {
+  let elapsedMs = end.getTime() - start.getTime() - pausedTotalMs;
+  // If currently paused, subtract ongoing pause duration
+  if (pausedAt) {
+    elapsedMs -= (new Date().getTime() - pausedAt.getTime());
+  }
+  return Math.max(0, elapsedMs / (1000 * 60 * 60));
+}
+
+// GET /api/reports/admin/sla-performance
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
@@ -10,7 +20,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Only admins can access this report
     if (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN') {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
@@ -19,296 +28,346 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate') || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
     const endDate = searchParams.get('endDate') || new Date().toISOString();
 
-    // Get all SLA tracking data
+    // Fetch SLA tracking data with full relations
     const slaData = await prisma.sLATracking.findMany({
       where: {
         createdAt: {
           gte: new Date(startDate),
-          lte: new Date(endDate)
-        }
+          lte: new Date(endDate),
+        },
       },
       include: {
         ticket: {
           include: {
             assignedTo: {
               select: {
+                id: true,
                 name: true,
+                email: true,
                 branchId: true,
-                branch: {
-                  select: { name: true }
-                }
-              }
+                branch: { select: { name: true, code: true } },
+                supportGroup: { select: { name: true } },
+              },
             },
             createdBy: {
               select: {
                 branchId: true,
-                branch: {
-                  select: { name: true }
-                }
-              }
+                branch: { select: { name: true, code: true } },
+              },
             },
             service: {
               select: {
                 resolutionHours: true,
                 responseHours: true,
-                businessHoursOnly: true
-              }
-            }
-          }
-        }
-      }
+                businessHoursOnly: true,
+                tier1Category: { select: { name: true } },
+              },
+            },
+          },
+        },
+      },
     });
 
-    // Helper: get SLA start time (approval time or SLATracking creation time)
+    // Helper: get SLA start time
     const getSlaStart = (sla: any): Date => {
       return sla.ticket?.slaStartAt ? new Date(sla.ticket.slaStartAt) : new Date(sla.createdAt);
     };
 
-    // Calculate overall SLA metrics
+    // Helper: get pause-aware elapsed hours
+    const getElapsedHours = (sla: any, endTime: Date): number => {
+      const start = getSlaStart(sla);
+      const pausedTotal = sla.ticket?.slaPausedTotal || 0;
+      const pausedAt = sla.ticket?.slaPausedAt ? new Date(sla.ticket.slaPausedAt) : null;
+      return calcElapsedHours(start, endTime, pausedTotal, pausedAt);
+    };
+
+    // --- Summary Calculations ---
     const totalSlaRecords = slaData.length;
-    const responseBreaches = slaData.filter(sla => sla.isResponseBreached).length;
-    const resolutionBreaches = slaData.filter(sla => sla.isResolutionBreached).length;
-    const compliantTickets = slaData.filter(sla => !sla.isResponseBreached && !sla.isResolutionBreached).length;
+    const responseBreaches = slaData.filter(s => s.isResponseBreached).length;
+    const resolutionBreaches = slaData.filter(s => s.isResolutionBreached).length;
+    const compliantTickets = slaData.filter(s => !s.isResponseBreached && !s.isResolutionBreached).length;
+    const totalEscalated = slaData.filter(s => s.isEscalated).length;
+    const activeBreaches = slaData.filter(s =>
+      (s.isResponseBreached || s.isResolutionBreached) &&
+      !s.resolutionTime
+    ).length;
+    const pausedTickets = slaData.filter(s => s.ticket?.slaPausedAt != null).length;
 
     const overallCompliance = totalSlaRecords > 0 ? Math.round((compliantTickets / totalSlaRecords) * 100) : 0;
     const responseCompliance = totalSlaRecords > 0 ? Math.round(((totalSlaRecords - responseBreaches) / totalSlaRecords) * 100) : 0;
     const resolutionCompliance = totalSlaRecords > 0 ? Math.round(((totalSlaRecords - resolutionBreaches) / totalSlaRecords) * 100) : 0;
 
-    // Calculate average response and resolution times
-    const avgResponseTime = slaData.filter(sla => sla.responseTime).length > 0 ?
-      slaData
-        .filter(sla => sla.responseTime)
-        .reduce((sum, sla) => {
-          const responseHours = (sla.responseTime!.getTime() - getSlaStart(sla).getTime()) / (1000 * 60 * 60);
-          return sum + responseHours;
-        }, 0) / slaData.filter(sla => sla.responseTime).length : 0;
+    // Avg response/resolution hours (pause-aware)
+    const slaWithResponse = slaData.filter(s => s.responseTime);
+    const avgResponseHours = slaWithResponse.length > 0
+      ? slaWithResponse.reduce((sum, s) => sum + getElapsedHours(s, s.responseTime!), 0) / slaWithResponse.length
+      : 0;
 
-    const avgResolutionTime = slaData.filter(sla => sla.resolutionTime).length > 0 ?
-      slaData
-        .filter(sla => sla.resolutionTime)
-        .reduce((sum, sla) => {
-          const resolutionHours = (sla.resolutionTime!.getTime() - getSlaStart(sla).getTime()) / (1000 * 60 * 60);
-          return sum + resolutionHours;
-        }, 0) / slaData.filter(sla => sla.resolutionTime).length : 0;
+    const slaWithResolution = slaData.filter(s => s.resolutionTime);
+    const avgResolutionHours = slaWithResolution.length > 0
+      ? slaWithResolution.reduce((sum, s) => sum + getElapsedHours(s, s.resolutionTime!), 0) / slaWithResolution.length
+      : 0;
 
-    // SLA performance by priority
-    const priorityPerformance = await Promise.all(
-      ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].map(async priority => {
-        const prioritySla = slaData.filter(sla => sla.ticket.priority === priority);
-        const priorityCompliant = prioritySla.filter(sla => !sla.isResponseBreached && !sla.isResolutionBreached);
-        
-        const avgPriorityResponse = prioritySla.filter(sla => sla.responseTime).length > 0 ?
-          prioritySla
-            .filter(sla => sla.responseTime)
-            .reduce((sum, sla) => {
-              const responseHours = (sla.responseTime!.getTime() - getSlaStart(sla).getTime()) / (1000 * 60 * 60);
-              return sum + responseHours;
-            }, 0) / prioritySla.filter(sla => sla.responseTime).length : 0;
+    // Avg pause duration
+    const pausedSlas = slaData.filter(s => (s.ticket?.slaPausedTotal || 0) > 0);
+    const avgPauseDurationHours = pausedSlas.length > 0
+      ? pausedSlas.reduce((sum, s) => sum + (s.ticket.slaPausedTotal || 0) / (1000 * 60 * 60), 0) / pausedSlas.length
+      : 0;
 
-        return {
-          priority,
-          totalTickets: prioritySla.length,
-          compliantTickets: priorityCompliant.length,
-          complianceRate: prioritySla.length > 0 ? Math.round((priorityCompliant.length / prioritySla.length) * 100) : 0,
-          avgResponseTime: Math.round(avgPriorityResponse * 10) / 10,
-          responseBreaches: prioritySla.filter(sla => sla.isResponseBreached).length,
-          resolutionBreaches: prioritySla.filter(sla => sla.isResolutionBreached).length
-        };
-      })
-    );
+    // --- Technician Performance ---
+    const techMap = new Map<string, any>();
+    for (const sla of slaData) {
+      const tech = sla.ticket?.assignedTo;
+      if (!tech?.id) continue;
 
-    // SLA performance by service category
-    const categoryPerformance = slaData.reduce((acc, sla) => {
-      const category = 'Other'; // Category is not directly on ticket model
-      if (!acc[category]) {
-        acc[category] = {
-          total: 0,
-          compliant: 0,
+      if (!techMap.has(tech.id)) {
+        techMap.set(tech.id, {
+          id: tech.id,
+          name: tech.name,
+          email: tech.email,
+          branch: tech.branch?.name || 'Unknown',
+          branchCode: tech.branch?.code || '',
+          supportGroups: new Set<string>(),
+          totalTickets: 0,
+          resolvedTickets: 0,
+          openTickets: 0,
+          overdueTickets: 0,
           responseBreaches: 0,
           resolutionBreaches: 0,
-          totalResponseTime: 0,
-          responseCount: 0
-        };
-      }
-      acc[category].total++;
-      if (!sla.isResponseBreached && !sla.isResolutionBreached) {
-        acc[category].compliant++;
-      }
-      if (sla.isResponseBreached) acc[category].responseBreaches++;
-      if (sla.isResolutionBreached) acc[category].resolutionBreaches++;
-      
-      if (sla.responseTime) {
-        const responseHours = (sla.responseTime.getTime() - getSlaStart(sla).getTime()) / (1000 * 60 * 60);
-        acc[category].totalResponseTime += responseHours;
-        acc[category].responseCount++;
-      }
-      
-      return acc;
-    }, {} as Record<string, any>);
-
-    const categoryStats = Object.entries(categoryPerformance).map(([category, stats]) => ({
-      category,
-      totalTickets: stats.total,
-      compliantTickets: stats.compliant,
-      complianceRate: stats.total > 0 ? Math.round((stats.compliant / stats.total) * 100) : 0,
-      responseBreaches: stats.responseBreaches,
-      resolutionBreaches: stats.resolutionBreaches,
-      avgResponseTime: stats.responseCount > 0 ? Math.round((stats.totalResponseTime / stats.responseCount) * 10) / 10 : 0
-    })).sort((a, b) => b.totalTickets - a.totalTickets);
-
-    // SLA performance by branch
-    const branchPerformance = slaData.reduce((acc, sla) => {
-      const branchName = sla.ticket.assignedTo?.branch?.name || sla.ticket.createdBy?.branch?.name || 'Unknown';
-      if (!acc[branchName]) {
-        acc[branchName] = {
-          total: 0,
-          compliant: 0,
-          responseBreaches: 0,
-          resolutionBreaches: 0
-        };
-      }
-      acc[branchName].total++;
-      if (!sla.isResponseBreached && !sla.isResolutionBreached) {
-        acc[branchName].compliant++;
-      }
-      if (sla.isResponseBreached) acc[branchName].responseBreaches++;
-      if (sla.isResolutionBreached) acc[branchName].resolutionBreaches++;
-      
-      return acc;
-    }, {} as Record<string, any>);
-
-    const branchStats = Object.entries(branchPerformance).map(([branch, stats]) => ({
-      branch,
-      totalTickets: stats.total,
-      compliantTickets: stats.compliant,
-      complianceRate: stats.total > 0 ? Math.round((stats.compliant / stats.total) * 100) : 0,
-      responseBreaches: stats.responseBreaches,
-      resolutionBreaches: stats.resolutionBreaches
-    })).sort((a, b) => b.complianceRate - a.complianceRate);
-
-    // Daily SLA compliance trends
-    const dailyTrends = await Promise.all(
-      Array.from({ length: 30 }, async (_, i) => {
-        const date = new Date();
-        date.setDate(date.getDate() - (29 - i));
-        const dateStart = new Date(date);
-        dateStart.setHours(0, 0, 0, 0);
-        const dateEnd = new Date(date);
-        dateEnd.setHours(23, 59, 59, 999);
-
-        const daySlA = await prisma.sLATracking.findMany({
-          where: {
-            createdAt: {
-              gte: dateStart,
-              lte: dateEnd
-            }
-          }
+          totalResponseHours: 0,
+          responseCount: 0,
+          totalResolutionHours: 0,
+          resolutionCount: 0,
+          excellenceCount: 0,
         });
+      }
 
-        const dayCompliant = daySlA.filter(sla => !sla.isResponseBreached && !sla.isResolutionBreached).length;
-        const complianceRate = daySlA.length > 0 ? Math.round((dayCompliant / daySlA.length) * 100) : 0;
+      const t = techMap.get(tech.id)!;
+      if (tech.supportGroup?.name) t.supportGroups.add(tech.supportGroup.name);
+      t.totalTickets++;
 
-        return {
-          date: date.toISOString().split('T')[0],
-          value: complianceRate,
-          total: daySlA.length,
-          compliant: dayCompliant,
-          label: `${complianceRate}% compliance (${dayCompliant}/${daySlA.length})`
-        };
-      })
-    );
+      if (sla.resolutionTime) {
+        t.resolvedTickets++;
+        const hrs = getElapsedHours(sla, sla.resolutionTime);
+        t.totalResolutionHours += hrs;
+        t.resolutionCount++;
+        // Excellence: resolved in < 50% of SLA time
+        if (sla.ticket.service?.resolutionHours) {
+          if (hrs <= sla.ticket.service.resolutionHours * 0.5) {
+            t.excellenceCount++;
+          }
+        }
+      } else {
+        t.openTickets++;
+        if (sla.isResolutionBreached) t.overdueTickets++;
+      }
 
-    // Performance excellence metrics
-    const excellenceMetrics = {
-      // Tickets resolved within 50% of SLA time
-      excellentPerformance: slaData.filter(sla => {
-        if (!sla.resolutionTime || !sla.ticket.service.resolutionHours) return false;
-        const actualTime = (sla.resolutionTime.getTime() - getSlaStart(sla).getTime()) / (1000 * 60 * 60);
-        const targetTime = sla.ticket.service.resolutionHours;
-        return actualTime <= (targetTime * 0.5);
-      }).length,
+      if (sla.responseTime) {
+        t.totalResponseHours += getElapsedHours(sla, sla.responseTime);
+        t.responseCount++;
+      }
 
-      // Tickets meeting SLA exactly
-      meetingSLA: compliantTickets,
+      if (sla.isResponseBreached) t.responseBreaches++;
+      if (sla.isResolutionBreached) t.resolutionBreaches++;
+    }
 
-      // Critical incidents (urgent tickets)
-      criticalIncidents: slaData.filter(sla => sla.ticket.priority === 'CRITICAL').length,
-      
-      // Critical incidents resolved on time
-      criticalOnTime: slaData.filter(sla => 
-        sla.ticket.priority === 'CRITICAL' && !sla.isResponseBreached && !sla.isResolutionBreached
-      ).length
-    };
+    const technicians = Array.from(techMap.values()).map(t => ({
+      id: t.id,
+      name: t.name,
+      email: t.email,
+      branch: t.branch,
+      branchCode: t.branchCode,
+      supportGroups: Array.from(t.supportGroups) as string[],
+      totalTickets: t.totalTickets,
+      resolvedTickets: t.resolvedTickets,
+      openTickets: t.openTickets,
+      overdueTickets: t.overdueTickets,
+      responseBreaches: t.responseBreaches,
+      resolutionBreaches: t.resolutionBreaches,
+      slaCompliance: t.totalTickets > 0
+        ? Math.round(((t.totalTickets - t.responseBreaches - t.resolutionBreaches + (Math.min(t.responseBreaches, t.resolutionBreaches))) / t.totalTickets) * 100)
+        : 100,
+      resolutionRate: t.totalTickets > 0
+        ? Math.round((t.resolvedTickets / t.totalTickets) * 100)
+        : 0,
+      avgResponseHours: t.responseCount > 0 ? Math.round((t.totalResponseHours / t.responseCount) * 10) / 10 : 0,
+      avgResolutionHours: t.resolutionCount > 0 ? Math.round((t.totalResolutionHours / t.resolutionCount) * 10) / 10 : 0,
+      excellenceCount: t.excellenceCount,
+    })).sort((a, b) => b.slaCompliance - a.slaCompliance);
 
-    // Identify top performers (branches/categories with best SLA)
-    const topPerformingBranches = branchStats
-      .filter(branch => branch.totalTickets >= 10)
-      .slice(0, 5);
-
-    const topPerformingCategories = categoryStats
-      .filter(cat => cat.totalTickets >= 10)
-      .sort((a, b) => b.complianceRate - a.complianceRate)
-      .slice(0, 5);
-
-    // Identify areas needing attention
-    const improvementAreas = {
-      highBreachBranches: branchStats.filter(branch => branch.complianceRate < 80 && branch.totalTickets >= 5),
-      problematicCategories: categoryStats.filter(cat => cat.complianceRate < 80 && cat.totalTickets >= 5),
-      frequentBreaches: slaData.filter(sla => sla.isResponseBreached && sla.isResolutionBreached).length
-    };
-
-    // Response time distribution
-    const responseTimeRanges = {
-      immediate: 0,    // < 1 hour
-      fast: 0,         // 1-4 hours  
-      normal: 0,       // 4-24 hours
-      slow: 0          // > 24 hours
-    };
-
-    slaData.filter(sla => sla.responseTime).forEach(sla => {
-      const responseHours = (sla.responseTime!.getTime() - getSlaStart(sla).getTime()) / (1000 * 60 * 60);
-      if (responseHours < 1) responseTimeRanges.immediate++;
-      else if (responseHours <= 4) responseTimeRanges.fast++;
-      else if (responseHours <= 24) responseTimeRanges.normal++;
-      else responseTimeRanges.slow++;
+    // --- By Priority ---
+    const byPriority = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].map(priority => {
+      const pSla = slaData.filter(s => s.ticket.priority === priority);
+      const pCompliant = pSla.filter(s => !s.isResponseBreached && !s.isResolutionBreached);
+      const pResp = pSla.filter(s => s.responseTime);
+      const avgResp = pResp.length > 0
+        ? pResp.reduce((sum, s) => sum + getElapsedHours(s, s.responseTime!), 0) / pResp.length
+        : 0;
+      return {
+        priority,
+        total: pSla.length,
+        compliant: pCompliant.length,
+        complianceRate: pSla.length > 0 ? Math.round((pCompliant.length / pSla.length) * 100) : 0,
+        responseBreaches: pSla.filter(s => s.isResponseBreached).length,
+        resolutionBreaches: pSla.filter(s => s.isResolutionBreached).length,
+        avgResponseHours: Math.round(avgResp * 10) / 10,
+      };
     });
 
-    const responseTimeDistribution = [
-      { label: 'Immediate (<1h)', value: responseTimeRanges.immediate },
-      { label: 'Fast (1-4h)', value: responseTimeRanges.fast },
-      { label: 'Normal (4-24h)', value: responseTimeRanges.normal },
-      { label: 'Slow (>24h)', value: responseTimeRanges.slow }
+    // --- By Category (fixed: use tier1Category.name) ---
+    const catMap: Record<string, { total: number; compliant: number; responseBreaches: number; resolutionBreaches: number; totalResponseHours: number; responseCount: number }> = {};
+    for (const sla of slaData) {
+      const cat = sla.ticket.service?.tier1Category?.name || 'Uncategorized';
+      if (!catMap[cat]) {
+        catMap[cat] = { total: 0, compliant: 0, responseBreaches: 0, resolutionBreaches: 0, totalResponseHours: 0, responseCount: 0 };
+      }
+      const c = catMap[cat];
+      c.total++;
+      if (!sla.isResponseBreached && !sla.isResolutionBreached) c.compliant++;
+      if (sla.isResponseBreached) c.responseBreaches++;
+      if (sla.isResolutionBreached) c.resolutionBreaches++;
+      if (sla.responseTime) {
+        c.totalResponseHours += getElapsedHours(sla, sla.responseTime);
+        c.responseCount++;
+      }
+    }
+
+    const byCategory = Object.entries(catMap)
+      .map(([category, s]) => ({
+        category,
+        total: s.total,
+        compliant: s.compliant,
+        complianceRate: s.total > 0 ? Math.round((s.compliant / s.total) * 100) : 0,
+        responseBreaches: s.responseBreaches,
+        resolutionBreaches: s.resolutionBreaches,
+        avgResponseHours: s.responseCount > 0 ? Math.round((s.totalResponseHours / s.responseCount) * 10) / 10 : 0,
+      }))
+      .sort((a, b) => b.total - a.total);
+
+    // --- By Branch ---
+    const branchMap: Record<string, { total: number; compliant: number; responseBreaches: number; resolutionBreaches: number }> = {};
+    for (const sla of slaData) {
+      const branch = sla.ticket.assignedTo?.branch?.name || sla.ticket.createdBy?.branch?.name || 'Unknown';
+      if (!branchMap[branch]) {
+        branchMap[branch] = { total: 0, compliant: 0, responseBreaches: 0, resolutionBreaches: 0 };
+      }
+      const b = branchMap[branch];
+      b.total++;
+      if (!sla.isResponseBreached && !sla.isResolutionBreached) b.compliant++;
+      if (sla.isResponseBreached) b.responseBreaches++;
+      if (sla.isResolutionBreached) b.resolutionBreaches++;
+    }
+
+    const byBranch = Object.entries(branchMap)
+      .map(([branch, s]) => ({
+        branch,
+        total: s.total,
+        compliant: s.compliant,
+        complianceRate: s.total > 0 ? Math.round((s.compliant / s.total) * 100) : 0,
+        responseBreaches: s.responseBreaches,
+        resolutionBreaches: s.resolutionBreaches,
+      }))
+      .sort((a, b) => b.complianceRate - a.complianceRate);
+
+    // --- Trends: Daily (last 30 days) ---
+    // Group slaData by date for efficient daily calculation
+    const dailyMap: Record<string, { total: number; compliant: number }> = {};
+    for (const sla of slaData) {
+      const dateKey = new Date(sla.createdAt).toISOString().split('T')[0];
+      if (!dailyMap[dateKey]) dailyMap[dateKey] = { total: 0, compliant: 0 };
+      dailyMap[dateKey].total++;
+      if (!sla.isResponseBreached && !sla.isResolutionBreached) dailyMap[dateKey].compliant++;
+    }
+
+    const dailyTrends: Array<{ date: string; value: number; total: number; compliant: number; label: string }> = [];
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateKey = d.toISOString().split('T')[0];
+      const entry = dailyMap[dateKey] || { total: 0, compliant: 0 };
+      const rate = entry.total > 0 ? Math.round((entry.compliant / entry.total) * 100) : 0;
+      dailyTrends.push({
+        date: dateKey,
+        value: rate,
+        total: entry.total,
+        compliant: entry.compliant,
+        label: `${rate}% compliance (${entry.compliant}/${entry.total})`,
+      });
+    }
+
+    // --- Trends: Monthly (last 6 months) ---
+    const monthlyMap: Record<string, { total: number; compliant: number }> = {};
+    for (const sla of slaData) {
+      const d = new Date(sla.createdAt);
+      const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      if (!monthlyMap[monthKey]) monthlyMap[monthKey] = { total: 0, compliant: 0 };
+      monthlyMap[monthKey].total++;
+      if (!sla.isResponseBreached && !sla.isResolutionBreached) monthlyMap[monthKey].compliant++;
+    }
+
+    // Also fetch from DB for months that might be outside our fetched range
+    const monthlyTrends: Array<{ date: string; value: number; total: number; compliant: number; label: string }> = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+      let entry = monthlyMap[monthKey];
+      if (!entry) {
+        // Fetch from DB for this month
+        const monthStart = new Date(d.getFullYear(), d.getMonth(), 1);
+        const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
+        const monthSla = await prisma.sLATracking.findMany({
+          where: { createdAt: { gte: monthStart, lte: monthEnd } },
+          select: { isResponseBreached: true, isResolutionBreached: true },
+        });
+        entry = {
+          total: monthSla.length,
+          compliant: monthSla.filter(s => !s.isResponseBreached && !s.isResolutionBreached).length,
+        };
+      }
+
+      const rate = entry.total > 0 ? Math.round((entry.compliant / entry.total) * 100) : 0;
+      monthlyTrends.push({
+        date: monthKey,
+        value: rate,
+        total: entry.total,
+        compliant: entry.compliant,
+        label: `${rate}% compliance`,
+      });
+    }
+
+    // --- Response Time Distribution ---
+    const dist = { immediate: 0, fast: 0, normal: 0, slow: 0 };
+    for (const sla of slaWithResponse) {
+      const hrs = getElapsedHours(sla, sla.responseTime!);
+      if (hrs < 1) dist.immediate++;
+      else if (hrs <= 4) dist.fast++;
+      else if (hrs <= 24) dist.normal++;
+      else dist.slow++;
+    }
+
+    const responseDistribution = [
+      { label: 'Immediate (<1h)', value: dist.immediate },
+      { label: 'Fast (1-4h)', value: dist.fast },
+      { label: 'Normal (4-24h)', value: dist.normal },
+      { label: 'Slow (>24h)', value: dist.slow },
     ];
 
-    // Monthly performance trends
-    const monthlyPerformance = await Promise.all(
-      Array.from({ length: 6 }, async (_, i) => {
-        const date = new Date();
-        date.setMonth(date.getMonth() - (5 - i));
-        const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
-        const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+    // --- Excellence ---
+    const excellenceCount = slaData.filter(sla => {
+      if (!sla.resolutionTime || !sla.ticket.service?.resolutionHours) return false;
+      const hrs = getElapsedHours(sla, sla.resolutionTime);
+      return hrs <= sla.ticket.service.resolutionHours * 0.5;
+    }).length;
 
-        const monthSla = await prisma.sLATracking.findMany({
-          where: {
-            createdAt: {
-              gte: monthStart,
-              lte: monthEnd
-            }
-          }
-        });
+    const criticalSla = slaData.filter(s => s.ticket.priority === 'CRITICAL');
+    const criticalOnTime = criticalSla.filter(s => !s.isResponseBreached && !s.isResolutionBreached).length;
 
-        const monthCompliant = monthSla.filter(sla => !sla.isResponseBreached && !sla.isResolutionBreached).length;
-        const complianceRate = monthSla.length > 0 ? Math.round((monthCompliant / monthSla.length) * 100) : 0;
-
-        return {
-          date: monthStart.toISOString().substring(0, 7),
-          value: complianceRate,
-          total: monthSla.length,
-          compliant: monthCompliant,
-          label: `${complianceRate}% compliance`
-        };
-      })
-    );
+    // --- Improvements ---
+    const highBreachBranches = byBranch.filter(b => b.complianceRate < 80 && b.total >= 5);
+    const problematicCategories = byCategory.filter(c => c.complianceRate < 80 && c.total >= 5);
+    const frequentBreaches = slaData.filter(s => s.isResponseBreached && s.isResolutionBreached).length;
 
     return NextResponse.json({
       summary: {
@@ -318,46 +377,38 @@ export async function GET(request: NextRequest) {
         resolutionCompliance,
         responseBreaches,
         resolutionBreaches,
-        avgResponseTime: Math.round(avgResponseTime * 10) / 10,
-        avgResolutionTime: Math.round(avgResolutionTime * 10) / 10
+        avgResponseHours: Math.round(avgResponseHours * 10) / 10,
+        avgResolutionHours: Math.round(avgResolutionHours * 10) / 10,
+        totalEscalated,
+        activeBreaches,
+        pausedTickets,
+        avgPauseDurationHours: Math.round(avgPauseDurationHours * 10) / 10,
       },
-      excellence: {
-        excellentPerformance: excellenceMetrics.excellentPerformance,
-        excellenceRate: totalSlaRecords > 0 ? Math.round((excellenceMetrics.excellentPerformance / totalSlaRecords) * 100) : 0,
-        criticalIncidents: excellenceMetrics.criticalIncidents,
-        criticalOnTime: excellenceMetrics.criticalOnTime,
-        criticalComplianceRate: excellenceMetrics.criticalIncidents > 0 ? 
-          Math.round((excellenceMetrics.criticalOnTime / excellenceMetrics.criticalIncidents) * 100) : 0
-      },
-      performance: {
-        byPriority: priorityPerformance,
-        byCategory: categoryStats,
-        byBranch: branchStats,
-        topBranches: topPerformingBranches,
-        topCategories: topPerformingCategories
-      },
+      technicians,
+      byPriority,
+      byCategory,
+      byBranch,
       trends: {
         daily: dailyTrends,
-        monthly: monthlyPerformance,
-        responseTime: responseTimeDistribution
+        monthly: monthlyTrends,
+      },
+      responseDistribution,
+      excellence: {
+        excellenceRate: totalSlaRecords > 0 ? Math.round((excellenceCount / totalSlaRecords) * 100) : 0,
+        criticalIncidents: criticalSla.length,
+        criticalOnTime,
+        criticalComplianceRate: criticalSla.length > 0 ? Math.round((criticalOnTime / criticalSla.length) * 100) : 0,
       },
       improvements: {
-        highBreachBranches: improvementAreas.highBreachBranches,
-        problematicCategories: improvementAreas.problematicCategories,
-        frequentBreaches: improvementAreas.frequentBreaches,
-        totalImprovementAreas: improvementAreas.highBreachBranches.length + improvementAreas.problematicCategories.length
+        highBreachBranches,
+        problematicCategories,
+        frequentBreaches,
+        totalImprovementAreas: highBreachBranches.length + problematicCategories.length,
       },
-      period: {
-        startDate,
-        endDate
-      }
+      period: { startDate, endDate },
     });
-
   } catch (error) {
-    console.error('Error fetching SLA & performance excellence data:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    console.error('Error fetching SLA performance data:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

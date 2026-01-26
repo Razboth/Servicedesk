@@ -8,9 +8,30 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
-import { Download, AlertCircle, CheckCircle, XCircle, Clock, TrendingUp, Shield } from 'lucide-react';
+import {
+  BarChart, Bar, LineChart, Line, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+} from 'recharts';
+import { Download, AlertCircle, CheckCircle, XCircle, Clock, TrendingUp, Shield, Users, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
+
+const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316', '#84cc16'];
+const HOUR_LABELS = Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, '0')}:00`);
+const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+interface TechnicianSLA {
+  id: string;
+  name: string;
+  branch: string;
+  supportGroups: string[];
+  totalTickets: number;
+  resolvedTickets: number;
+  responseBreaches: number;
+  resolutionBreaches: number;
+  slaCompliance: number;
+  avgResponseMinutes: number;
+  avgResolutionHours: number;
+}
 
 export default function ServiceSLAComplianceReport() {
   const [data, setData] = useState<any>(null);
@@ -28,18 +49,12 @@ export default function ServiceSLAComplianceReport() {
     try {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - parseInt(dateRange));
-      
       const params = new URLSearchParams({
         startDate: startDate.toISOString(),
-        endDate: new Date().toISOString()
+        endDate: new Date().toISOString(),
       });
-
-      if (categoryFilter !== 'all') {
-        params.append('categoryId', categoryFilter);
-      }
-      if (supportGroupFilter !== 'all') {
-        params.append('supportGroupId', supportGroupFilter);
-      }
+      if (categoryFilter !== 'all') params.append('categoryId', categoryFilter);
+      if (supportGroupFilter !== 'all') params.append('supportGroupId', supportGroupFilter);
 
       const response = await fetch(`/api/reports/services/sla-compliance?${params}`);
       const result = await response.json();
@@ -53,20 +68,13 @@ export default function ServiceSLAComplianceReport() {
 
   const exportToCSV = () => {
     if (!data) return;
-
     const csv = [
       ['Service Name', 'Category', 'Support Group', 'Total Tickets', 'Response Compliance', 'Resolution Compliance', 'Overall Compliance', 'Response Breaches', 'Resolution Breaches'],
       ...data.services.map((s: any) => [
-        s.name,
-        s.category,
-        s.supportGroup,
-        s.totalTickets,
-        `${s.metrics.responseCompliance}%`,
-        `${s.metrics.resolutionCompliance}%`,
-        `${s.metrics.overallCompliance}%`,
-        s.breaches.response,
-        s.breaches.resolution
-      ])
+        s.name, s.category, s.supportGroup, s.totalTickets,
+        `${s.metrics.responseCompliance}%`, `${s.metrics.resolutionCompliance}%`, `${s.metrics.overallCompliance}%`,
+        s.breaches.response, s.breaches.resolution,
+      ]),
     ].map(row => row.join(',')).join('\n');
 
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -77,14 +85,6 @@ export default function ServiceSLAComplianceReport() {
     a.click();
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
   const getComplianceColor = (compliance: number) => {
     if (compliance >= 90) return '#10b981';
     if (compliance >= 75) return '#3b82f6';
@@ -92,7 +92,57 @@ export default function ServiceSLAComplianceReport() {
     return '#ef4444';
   };
 
-  const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];
+  const getComplianceBadge = (compliance: number): "success" | "default" | "warning" | "destructive" => {
+    if (compliance >= 90) return 'success';
+    if (compliance >= 75) return 'default';
+    if (compliance >= 60) return 'warning';
+    return 'destructive';
+  };
+
+  const formatDuration = (hours: number) => {
+    if (hours < 1) return `${Math.round(hours * 60)}m`;
+    if (hours < 24) return `${Math.round(hours * 10) / 10}h`;
+    return `${Math.round((hours / 24) * 10) / 10}d`;
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading SLA compliance data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Prepare breach by hour/day chart data
+  const breachByHourData = (data?.breachAnalysis?.byHour || []).map((count: number, idx: number) => ({
+    hour: HOUR_LABELS[idx],
+    breaches: count,
+  }));
+
+  const breachByDayData = (data?.breachAnalysis?.byDayOfWeek || []).map((count: number, idx: number) => ({
+    day: DAY_LABELS[idx],
+    breaches: count,
+  }));
+
+  // Technician data
+  const technicians: TechnicianSLA[] = data?.technicians || [];
+
+  // Radar chart data for top 5 technicians
+  const top5Techs = technicians.slice(0, 5);
+  const radarData = top5Techs.length > 0 ? [
+    { metric: 'SLA %', ...Object.fromEntries(top5Techs.map(t => [t.name, t.slaCompliance])) },
+    {
+      metric: 'Resolution %',
+      ...Object.fromEntries(top5Techs.map(t => [t.name, t.totalTickets > 0 ? Math.round((t.resolvedTickets / t.totalTickets) * 100) : 0])),
+    },
+    {
+      metric: 'Resp Speed',
+      ...Object.fromEntries(top5Techs.map(t => [t.name, Math.max(0, 100 - Math.min(t.avgResponseMinutes, 100))])),
+    },
+  ] : [];
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -120,7 +170,7 @@ export default function ServiceSLAComplianceReport() {
         </div>
       </div>
 
-      {/* Overall Compliance Status */}
+      {/* Overall Compliance Alert */}
       {data?.summary.overallCompliance < 90 && (
         <Alert>
           <AlertCircle className="h-4 w-4" />
@@ -140,61 +190,43 @@ export default function ServiceSLAComplianceReport() {
             <div className="text-2xl font-bold" style={{ color: getComplianceColor(data?.summary.overallCompliance || 0) }}>
               {data?.summary.overallCompliance || 0}%
             </div>
-            <Progress 
-              value={data?.summary.overallCompliance || 0} 
-              className="mt-2"
-              style={{ '--progress-color': getComplianceColor(data?.summary.overallCompliance || 0) } as any}
-            />
+            <Progress value={data?.summary.overallCompliance || 0} className="mt-2" />
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Response Compliance</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{data?.summary.overallResponseCompliance || 0}%</div>
-            <p className="text-xs text-muted-foreground">
-              {data?.summary.totalResponseBreaches || 0} breaches
-            </p>
+            <p className="text-xs text-muted-foreground">{data?.summary.totalResponseBreaches || 0} breaches</p>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Resolution Compliance</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{data?.summary.overallResolutionCompliance || 0}%</div>
-            <p className="text-xs text-muted-foreground">
-              {data?.summary.totalResolutionBreaches || 0} breaches
-            </p>
+            <p className="text-xs text-muted-foreground">{data?.summary.totalResolutionBreaches || 0} breaches</p>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Total Tickets</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{data?.summary.totalTickets || 0}</div>
-            <p className="text-xs text-muted-foreground">
-              {data?.summary.activeServices || 0} active services
-            </p>
+            <p className="text-xs text-muted-foreground">{data?.summary.activeServices || 0} active services</p>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Status</CardTitle>
           </CardHeader>
           <CardContent>
-            <Badge 
-              variant={
-                data?.summary.complianceStatus === 'Excellent' ? 'success' :
-                data?.summary.complianceStatus === 'Good' ? 'default' :
-                data?.summary.complianceStatus === 'Fair' ? 'warning' : 'destructive'
-              }
+            <Badge
+              variant={getComplianceBadge(data?.summary.overallCompliance || 0)}
               className="text-lg px-3 py-1"
             >
               {data?.summary.complianceStatus || 'Unknown'}
@@ -207,11 +239,12 @@ export default function ServiceSLAComplianceReport() {
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="services">Services</TabsTrigger>
+          <TabsTrigger value="technicians">Technician SLA</TabsTrigger>
           <TabsTrigger value="breaches">Breach Analysis</TabsTrigger>
-          <TabsTrigger value="groups">By Group</TabsTrigger>
-          <TabsTrigger value="categories">By Category</TabsTrigger>
+          <TabsTrigger value="groups-categories">Categories & Groups</TabsTrigger>
         </TabsList>
 
+        {/* ====== TAB 1: OVERVIEW ====== */}
         <TabsContent value="overview" className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Top Performers */}
@@ -222,14 +255,14 @@ export default function ServiceSLAComplianceReport() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {data?.topPerformers.map((service: any, idx: number) => (
+                  {data?.topPerformers?.map((service: any) => (
                     <div key={service.id} className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <CheckCircle className="h-4 w-4 text-green-500" />
                         <div>
                           <p className="text-sm font-medium">{service.name}</p>
                           <p className="text-xs text-muted-foreground">
-                            {service.supportGroup} • {service.totalTickets} tickets
+                            {service.supportGroup} - {service.totalTickets} tickets
                           </p>
                         </div>
                       </div>
@@ -248,7 +281,7 @@ export default function ServiceSLAComplianceReport() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {data?.needsAttention.map((service: any, idx: number) => (
+                  {data?.needsAttention?.map((service: any) => (
                     <div key={service.id} className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <XCircle className="h-4 w-4 text-red-500" />
@@ -267,7 +300,7 @@ export default function ServiceSLAComplianceReport() {
             </Card>
           </div>
 
-          {/* Compliance Trends */}
+          {/* Compliance Overview Chart */}
           <Card>
             <CardHeader>
               <CardTitle>Compliance Overview</CardTitle>
@@ -280,13 +313,13 @@ export default function ServiceSLAComplianceReport() {
                     {
                       name: 'Response',
                       compliance: data?.summary.overallResponseCompliance || 0,
-                      breaches: data?.summary.totalResponseBreaches || 0
+                      breaches: data?.summary.totalResponseBreaches || 0,
                     },
                     {
                       name: 'Resolution',
                       compliance: data?.summary.overallResolutionCompliance || 0,
-                      breaches: data?.summary.totalResolutionBreaches || 0
-                    }
+                      breaches: data?.summary.totalResolutionBreaches || 0,
+                    },
                   ]}
                 >
                   <CartesianGrid strokeDasharray="3 3" />
@@ -303,6 +336,7 @@ export default function ServiceSLAComplianceReport() {
           </Card>
         </TabsContent>
 
+        {/* ====== TAB 2: SERVICES ====== */}
         <TabsContent value="services" className="space-y-4">
           <Card>
             <CardHeader>
@@ -321,26 +355,22 @@ export default function ServiceSLAComplianceReport() {
                       <th className="text-center p-2">SLA Resolution</th>
                       <th className="text-center p-2">Response Comp.</th>
                       <th className="text-center p-2">Resolution Comp.</th>
-                      <th className="text-center p-2">Overall Comp.</th>
+                      <th className="text-center p-2">Overall</th>
                       <th className="text-center p-2">Status</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {data?.services.filter((s: any) => s.totalTickets > 0).map((service: any) => (
+                    {data?.services?.filter((s: any) => s.totalTickets > 0).map((service: any) => (
                       <tr key={service.id} className="border-b hover:bg-muted/50">
                         <td className="p-2">
-                          <div>
-                            <p className="font-medium">{service.name}</p>
-                            <p className="text-xs text-muted-foreground">{service.supportGroup}</p>
-                          </div>
+                          <p className="font-medium">{service.name}</p>
+                          <p className="text-xs text-muted-foreground">{service.supportGroup}</p>
                         </td>
                         <td className="p-2">
-                          <div>
-                            <p className="text-sm">{service.category}</p>
-                            {service.subcategory !== '-' && (
-                              <p className="text-xs text-muted-foreground">{service.subcategory}</p>
-                            )}
-                          </div>
+                          <p className="text-sm">{service.category}</p>
+                          {service.subcategory !== '-' && (
+                            <p className="text-xs text-muted-foreground">{service.subcategory}</p>
+                          )}
                         </td>
                         <td className="text-center p-2">{service.totalTickets}</td>
                         <td className="text-center p-2">{service.slaResponseTime || '-'} min</td>
@@ -362,19 +392,13 @@ export default function ServiceSLAComplianceReport() {
                           </div>
                         </td>
                         <td className="text-center p-2">
-                          <Badge 
-                            variant={
-                              service.metrics.overallCompliance >= 90 ? 'success' :
-                              service.metrics.overallCompliance >= 75 ? 'default' :
-                              service.metrics.overallCompliance >= 60 ? 'warning' : 'destructive'
-                            }
-                          >
+                          <Badge variant={getComplianceBadge(service.metrics.overallCompliance)}>
                             {service.metrics.overallCompliance}%
                           </Badge>
                         </td>
                         <td className="text-center p-2">
-                          <div 
-                            className="w-3 h-3 rounded-full mx-auto" 
+                          <div
+                            className="w-3 h-3 rounded-full mx-auto"
                             style={{ backgroundColor: service.performance.color }}
                             title={service.performance.status}
                           />
@@ -388,6 +412,146 @@ export default function ServiceSLAComplianceReport() {
           </Card>
         </TabsContent>
 
+        {/* ====== TAB 3: TECHNICIAN SLA (NEW) ====== */}
+        <TabsContent value="technicians" className="space-y-4">
+          {/* Summary Row */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Total Technicians</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{technicians.length}</div>
+                <p className="text-xs text-muted-foreground">With assigned tickets</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Avg SLA Compliance</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {technicians.length > 0
+                    ? Math.round(technicians.reduce((s, t) => s + t.slaCompliance, 0) / technicians.length)
+                    : 0}%
+                </div>
+                <p className="text-xs text-muted-foreground">Across all technicians</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Avg Response Time</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {technicians.length > 0
+                    ? Math.round(technicians.reduce((s, t) => s + t.avgResponseMinutes, 0) / technicians.length)
+                    : 0} min
+                </div>
+                <p className="text-xs text-muted-foreground">Average first response</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Top 10 Technicians BarChart */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Top 10 Technicians by SLA Compliance
+              </CardTitle>
+              <CardDescription>Ranked by overall SLA compliance percentage</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={400}>
+                <BarChart
+                  data={technicians.slice(0, 10)}
+                  layout="vertical"
+                  margin={{ left: 120 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis type="number" domain={[0, 100]} />
+                  <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 12 }} />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="slaCompliance" name="SLA Compliance %" fill="#10b981" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Radar Chart - Top 5 Comparison */}
+          {radarData.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Top 5 Technician Comparison</CardTitle>
+                <CardDescription>Multi-dimensional performance comparison (SLA, Resolution, Response Speed)</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={350}>
+                  <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
+                    <PolarGrid />
+                    <PolarAngleAxis dataKey="metric" />
+                    <PolarRadiusAxis angle={30} domain={[0, 100]} />
+                    {top5Techs.map((tech, idx) => (
+                      <Radar
+                        key={tech.id}
+                        name={tech.name}
+                        dataKey={tech.name}
+                        stroke={COLORS[idx]}
+                        fill={COLORS[idx]}
+                        fillOpacity={0.15}
+                      />
+                    ))}
+                    <Legend />
+                    <Tooltip />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Technician Detail List */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Technician Details</CardTitle>
+              <CardDescription>Individual technician SLA metrics</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {technicians.map((tech) => (
+                  <div key={tech.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary">
+                        {tech.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">{tech.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {tech.branch}
+                          {tech.supportGroups.length > 0 ? ` - ${tech.supportGroups[0]}` : ''}
+                          {' '}- {tech.totalTickets} tickets ({tech.resolvedTickets} resolved)
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Resp: {tech.avgResponseMinutes}m avg - Res: {formatDuration(tech.avgResolutionHours)} avg -
+                          Breaches: {tech.responseBreaches} resp / {tech.resolutionBreaches} res
+                        </p>
+                      </div>
+                    </div>
+                    <Badge variant={getComplianceBadge(tech.slaCompliance)}>
+                      {tech.slaCompliance}%
+                    </Badge>
+                  </div>
+                ))}
+                {technicians.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-8">No technician data available</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ====== TAB 4: BREACH ANALYSIS (ENHANCED) ====== */}
         <TabsContent value="breaches" className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Breach by Priority */}
@@ -398,18 +562,18 @@ export default function ServiceSLAComplianceReport() {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={250}>
-                  <BarChart data={data?.breachAnalysis.byPriority}>
+                  <BarChart data={data?.breachAnalysis?.byPriority}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="priority" />
                     <YAxis />
                     <Tooltip />
-                    <Bar dataKey="count" fill="#ef4444" />
+                    <Bar dataKey="count" fill="#ef4444" name="Breaches" />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
 
-            {/* Breach Patterns */}
+            {/* Peak Breach Times */}
             <Card>
               <CardHeader>
                 <CardTitle>Breach Patterns</CardTitle>
@@ -421,23 +585,107 @@ export default function ServiceSLAComplianceReport() {
                     <p className="text-sm font-medium mb-2">Peak Breach Hour</p>
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-2xl font-bold">{data?.breachAnalysis.peakBreachHour}:00</span>
+                      <span className="text-2xl font-bold">{data?.breachAnalysis?.peakBreachHour ?? 0}:00</span>
                     </div>
                   </div>
                   <div>
                     <p className="text-sm font-medium mb-2">Peak Breach Day</p>
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-2xl font-bold">{data?.breachAnalysis.peakBreachDay}</span>
+                      <span className="text-2xl font-bold">{data?.breachAnalysis?.peakBreachDay || '-'}</span>
                     </div>
                   </div>
                 </div>
               </CardContent>
             </Card>
           </div>
+
+          {/* Breaches by Hour of Day */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Breaches by Hour of Day</CardTitle>
+              <CardDescription>Distribution of SLA breaches across hours</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={breachByHourData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="hour" tick={{ fontSize: 10 }} interval={1} />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="breaches" fill="#f59e0b" name="Breaches" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Breaches by Day of Week */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Breaches by Day of Week</CardTitle>
+              <CardDescription>Which days see the most SLA breaches</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={breachByDayData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="day" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="breaches" fill="#8b5cf6" name="Breaches" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
         </TabsContent>
 
-        <TabsContent value="groups" className="space-y-4">
+        {/* ====== TAB 5: CATEGORIES & GROUPS ====== */}
+        <TabsContent value="groups-categories" className="space-y-4">
+          {/* Category Compliance Chart */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Category Compliance</CardTitle>
+              <CardDescription>SLA performance by service category</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={data?.categoryCompliance}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} tick={{ fontSize: 11 }} />
+                  <YAxis domain={[0, 100]} />
+                  <Tooltip />
+                  <Bar dataKey="avgCompliance" fill="#3b82f6" name="Avg Compliance %" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Category Details */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Category Details</CardTitle>
+              <CardDescription>Breakdown by category</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {data?.categoryCompliance?.map((category: any) => (
+                  <div key={category.name} className="flex items-center justify-between py-2 border-b last:border-0">
+                    <div>
+                      <p className="font-medium">{category.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {category.serviceCount} services - {category.totalTickets} tickets - {category.totalBreaches} breaches
+                      </p>
+                    </div>
+                    <Badge variant={getComplianceBadge(category.avgCompliance)}>
+                      {category.avgCompliance}% compliance
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Support Group Compliance */}
           <Card>
             <CardHeader>
               <CardTitle>Support Group Compliance</CardTitle>
@@ -445,7 +693,7 @@ export default function ServiceSLAComplianceReport() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {data?.supportGroupCompliance.sort((a: any, b: any) => b.avgCompliance - a.avgCompliance).map((group: any) => (
+                {data?.supportGroupCompliance?.sort((a: any, b: any) => b.avgCompliance - a.avgCompliance).map((group: any) => (
                   <div key={group.name} className="space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -456,72 +704,12 @@ export default function ServiceSLAComplianceReport() {
                         <span className="text-sm text-muted-foreground">
                           {group.serviceCount} services | {group.totalTickets} tickets
                         </span>
-                        <Badge 
-                          variant={
-                            group.avgCompliance >= 90 ? 'success' :
-                            group.avgCompliance >= 75 ? 'default' :
-                            group.avgCompliance >= 60 ? 'warning' : 'destructive'
-                          }
-                        >
+                        <Badge variant={getComplianceBadge(group.avgCompliance)}>
                           {group.avgCompliance}%
                         </Badge>
                       </div>
                     </div>
-                    <Progress 
-                      value={group.avgCompliance} 
-                      className="h-2"
-                      style={{ '--progress-color': getComplianceColor(group.avgCompliance) } as any}
-                    />
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="categories" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Category Compliance</CardTitle>
-              <CardDescription>SLA performance by service category</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={data?.categoryCompliance}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="avgCompliance" fill="#3b82f6" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Category Details</CardTitle>
-              <CardDescription>Breakdown by category</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {data?.categoryCompliance.map((category: any) => (
-                  <div key={category.name} className="flex items-center justify-between py-2 border-b last:border-0">
-                    <div>
-                      <p className="font-medium">{category.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {category.serviceCount} services • {category.totalTickets} tickets • {category.totalBreaches} breaches
-                      </p>
-                    </div>
-                    <Badge 
-                      variant={
-                        category.avgCompliance >= 90 ? 'success' :
-                        category.avgCompliance >= 75 ? 'default' :
-                        category.avgCompliance >= 60 ? 'warning' : 'destructive'
-                      }
-                    >
-                      {category.avgCompliance}% compliance
-                    </Badge>
+                    <Progress value={group.avgCompliance} className="h-2" />
                   </div>
                 ))}
               </div>
@@ -532,9 +720,3 @@ export default function ServiceSLAComplianceReport() {
     </div>
   );
 }
-
-const Calendar = ({ className }: { className?: string }) => (
-  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-  </svg>
-);
