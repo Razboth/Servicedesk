@@ -474,6 +474,11 @@ export default function AllTicketsReport() {
             className: 'bg-teal-50 border-teal-200 dark:bg-teal-950/30 dark:border-teal-800',
             textClassName: 'text-teal-700 dark:text-teal-400',
             label: 'Permintaan Event'
+          },
+          HUMAN_ERROR: {
+            className: 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800',
+            textClassName: 'text-red-700 dark:text-red-400',
+            label: 'Kesalahan Manusia'
           }
         }
         const tc = typeConfig[ticket.type] || {

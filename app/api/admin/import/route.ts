@@ -62,12 +62,13 @@ function mapPriority(priorityStr: string): 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL
   return 'MEDIUM';
 }
 
-function mapITILCategory(categoryStr: string): 'INCIDENT' | 'SERVICE_REQUEST' | 'CHANGE_REQUEST' | 'EVENT_REQUEST' {
+function mapITILCategory(categoryStr: string): 'INCIDENT' | 'SERVICE_REQUEST' | 'CHANGE_REQUEST' | 'EVENT_REQUEST' | 'HUMAN_ERROR' {
   if (!categoryStr) return 'SERVICE_REQUEST';
   const category = categoryStr.toUpperCase().trim();
   if (category.includes('INCIDENT')) return 'INCIDENT';
   if (category.includes('CHANGE')) return 'CHANGE_REQUEST';
   if (category.includes('EVENT')) return 'EVENT_REQUEST';
+  if (category.includes('HUMAN') || category.includes('ERROR')) return 'HUMAN_ERROR';
   return 'SERVICE_REQUEST';
 }
 

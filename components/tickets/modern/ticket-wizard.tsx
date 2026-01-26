@@ -2383,10 +2383,11 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                             value={formData.category}
                             onChange={(value) => setFormData({ ...formData, category: value })}
                             options={[
-                              { value: 'INCIDENT', label: 'Incident' },
-                              { value: 'SERVICE_REQUEST', label: 'Service Request' },
-                              { value: 'CHANGE_REQUEST', label: 'Change Request' },
-                              { value: 'EVENT_REQUEST', label: 'Event Request' }
+                              { value: 'INCIDENT', label: 'Insiden' },
+                              { value: 'SERVICE_REQUEST', label: 'Permintaan Layanan' },
+                              { value: 'CHANGE_REQUEST', label: 'Permintaan Perubahan' },
+                              { value: 'EVENT_REQUEST', label: 'Permintaan Event' },
+                              { value: 'HUMAN_ERROR', label: 'Kesalahan Manusia' }
                             ]}
                             isLocked={lockedFields.category?.isLocked}
                             source={lockedFields.category?.source}

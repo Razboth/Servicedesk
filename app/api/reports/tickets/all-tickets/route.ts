@@ -892,7 +892,8 @@ export async function POST(request: NextRequest) {
             INCIDENT: 'Insiden',
             SERVICE_REQUEST: 'Permintaan Layanan',
             CHANGE_REQUEST: 'Permintaan Perubahan',
-            EVENT_REQUEST: 'Permintaan Event'
+            EVENT_REQUEST: 'Permintaan Event',
+            HUMAN_ERROR: 'Kesalahan Manusia'
           };
           return labels[t.category] || t.category || 'Insiden';
         })(),

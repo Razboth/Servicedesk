@@ -29,7 +29,7 @@ const baseTicketSchema = z.object({
     title: z.string().optional(),
     description: z.string().min(10, 'Description must be at least 10 characters'),
     priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).optional(),
-    category: z.enum(['INCIDENT', 'SERVICE_REQUEST', 'CHANGE_REQUEST', 'EVENT_REQUEST']).optional(),
+    category: z.enum(['INCIDENT', 'SERVICE_REQUEST', 'CHANGE_REQUEST', 'EVENT_REQUEST', 'HUMAN_ERROR']).optional(),
     metadata: z.record(z.any()).optional()
   }),
   attachments: z.array(z.object({

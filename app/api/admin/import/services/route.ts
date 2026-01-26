@@ -22,8 +22,8 @@ async function validateServiceData(data: any): Promise<string[]> {
     errors.push('Priority must be one of: LOW, MEDIUM, HIGH, CRITICAL, EMERGENCY');
   }
   
-  if (data.defaultItilCategory && !['INCIDENT', 'SERVICE_REQUEST', 'CHANGE_REQUEST', 'EVENT_REQUEST'].includes(data.defaultItilCategory)) {
-    errors.push('defaultItilCategory must be one of: INCIDENT, SERVICE_REQUEST, CHANGE_REQUEST, EVENT_REQUEST');
+  if (data.defaultItilCategory && !['INCIDENT', 'SERVICE_REQUEST', 'CHANGE_REQUEST', 'EVENT_REQUEST', 'HUMAN_ERROR'].includes(data.defaultItilCategory)) {
+    errors.push('defaultItilCategory must be one of: INCIDENT, SERVICE_REQUEST, CHANGE_REQUEST, EVENT_REQUEST, HUMAN_ERROR');
   }
   
   if (data.defaultIssueClassification && !['HUMAN_ERROR', 'SYSTEM_ERROR', 'HARDWARE_FAILURE', 'NETWORK_ISSUE', 'SECURITY_INCIDENT', 'DATA_ISSUE', 'PROCESS_GAP', 'EXTERNAL_FACTOR'].includes(data.defaultIssueClassification)) {

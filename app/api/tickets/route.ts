@@ -59,7 +59,7 @@ const createTicketSchema = z.object({
   serviceId: z.string().min(1, 'Service is required'),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL', 'EMERGENCY']).default('MEDIUM'),
   justification: z.string().optional(),
-  category: z.enum(['INCIDENT', 'SERVICE_REQUEST', 'CHANGE_REQUEST', 'EVENT_REQUEST']).default('INCIDENT'),
+  category: z.enum(['INCIDENT', 'SERVICE_REQUEST', 'CHANGE_REQUEST', 'EVENT_REQUEST', 'HUMAN_ERROR']).default('INCIDENT'),
   issueClassification: z.enum([
     'HUMAN_ERROR', 'SYSTEM_ERROR', 'HARDWARE_FAILURE', 'NETWORK_ISSUE',
     'SECURITY_INCIDENT', 'DATA_ISSUE', 'PROCESS_GAP', 'EXTERNAL_FACTOR'

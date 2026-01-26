@@ -1467,6 +1467,7 @@ enum TicketCategory {
   SERVICE_REQUEST
   CHANGE_REQUEST
   EVENT_REQUEST
+  HUMAN_ERROR
 }
 
 enum TicketStatus {

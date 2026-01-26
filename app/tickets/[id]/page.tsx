@@ -212,6 +212,8 @@ const getCategoryBadgeVariant = (category: string): "default" | "secondary" | "d
       return 'default-soft';
     case 'EVENT_REQUEST':
       return 'success-soft';
+    case 'HUMAN_ERROR':
+      return 'destructive-soft';
     default:
       return 'secondary';
   }
@@ -221,7 +223,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   INCIDENT: 'Insiden',
   SERVICE_REQUEST: 'Permintaan Layanan',
   CHANGE_REQUEST: 'Permintaan Perubahan',
-  EVENT_REQUEST: 'Permintaan Event'
+  EVENT_REQUEST: 'Permintaan Event',
+  HUMAN_ERROR: 'Kesalahan Manusia'
 };
 
 export default function TicketDetailPage() {
@@ -1338,6 +1341,7 @@ export default function TicketDetailPage() {
                           <SelectItem value="SERVICE_REQUEST">Permintaan Layanan</SelectItem>
                           <SelectItem value="CHANGE_REQUEST">Permintaan Perubahan</SelectItem>
                           <SelectItem value="EVENT_REQUEST">Permintaan Event</SelectItem>
+                          <SelectItem value="HUMAN_ERROR">Kesalahan Manusia</SelectItem>
                         </SelectContent>
                       </Select>
                     ) : (

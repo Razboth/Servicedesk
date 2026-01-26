@@ -70,7 +70,7 @@ export interface OmnichannelTicketRequest {
     title?: string; // Optional, can be auto-generated
     description: string;
     priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-    category?: 'INCIDENT' | 'SERVICE_REQUEST' | 'CHANGE_REQUEST' | 'EVENT_REQUEST';
+    category?: 'INCIDENT' | 'SERVICE_REQUEST' | 'CHANGE_REQUEST' | 'EVENT_REQUEST' | 'HUMAN_ERROR';
 
     // Service-specific metadata
     metadata?: {
@@ -190,7 +190,7 @@ export interface ServiceMapping {
   omnichannelType: OmnichannelServiceType;
   internalServiceId: string;
   defaultPriority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-  defaultCategory: 'INCIDENT' | 'SERVICE_REQUEST' | 'CHANGE_REQUEST' | 'EVENT_REQUEST';
+  defaultCategory: 'INCIDENT' | 'SERVICE_REQUEST' | 'CHANGE_REQUEST' | 'EVENT_REQUEST' | 'HUMAN_ERROR';
   defaultIssueClassification?: string;
   requiresApproval: boolean;
   autoAssignToGroup?: string;
