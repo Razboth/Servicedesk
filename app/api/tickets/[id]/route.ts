@@ -360,7 +360,7 @@ export async function PATCH(
           );
         }
       }
-    } else if (session.user.role === 'MANAGER') {
+    } else if (session.user.role === 'MANAGER' || session.user.role === 'MANAGER_IT') {
       // Managers can reclassify any ticket, and update basic fields of tickets they created
       canUpdate = true;
       if (existingTicket.createdById === session.user.id) {

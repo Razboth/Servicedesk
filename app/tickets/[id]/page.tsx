@@ -1116,8 +1116,8 @@ export default function TicketDetailPage() {
     if (['SUPER_ADMIN', 'ADMIN'].includes(session.user.role)) return true;
     // Any technician or security analyst can reclassify
     if (['TECHNICIAN', 'SECURITY_ANALYST'].includes(session.user.role)) return true;
-    // Manager can reclassify
-    if (session.user.role === 'MANAGER') return true;
+    // Manager and Manager IT can reclassify
+    if (['MANAGER', 'MANAGER_IT'].includes(session.user.role)) return true;
     return false;
   };
 
