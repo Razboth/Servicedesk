@@ -20,7 +20,7 @@ const createServiceSchema = z.object({
   requiresApproval: z.boolean().default(true),
   isConfidential: z.boolean().default(false),
   defaultTitle: z.string().optional(),
-  defaultItilCategory: z.enum(['INCIDENT', 'SERVICE_REQUEST', 'CHANGE_REQUEST', 'EVENT_REQUEST', 'HUMAN_ERROR']).optional(),
+  defaultItilCategory: z.enum(['INCIDENT', 'SERVICE_REQUEST', 'CHANGE_REQUEST', 'EVENT_REQUEST']).optional(),
   defaultIssueClassification: z.enum([
     'HUMAN_ERROR',
     'SYSTEM_ERROR',

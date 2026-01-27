@@ -134,7 +134,7 @@ interface NewService {
   requiresApproval: boolean;
   isConfidential: boolean;
   defaultTitle: string;
-  defaultItilCategory: 'INCIDENT' | 'SERVICE_REQUEST' | 'CHANGE_REQUEST' | 'EVENT_REQUEST' | 'HUMAN_ERROR';
+  defaultItilCategory: 'INCIDENT' | 'SERVICE_REQUEST' | 'CHANGE_REQUEST' | 'EVENT_REQUEST';
   defaultIssueClassification: string;
 }
 
@@ -179,8 +179,7 @@ const itilCategories = [
   { value: 'INCIDENT', label: 'Insiden' },
   { value: 'SERVICE_REQUEST', label: 'Permintaan Layanan' },
   { value: 'CHANGE_REQUEST', label: 'Permintaan Perubahan' },
-  { value: 'EVENT_REQUEST', label: 'Permintaan Event' },
-  { value: 'HUMAN_ERROR', label: 'Kesalahan Manusia' }
+  { value: 'EVENT_REQUEST', label: 'Permintaan Event' }
 ];
 
 const issueClassifications = [

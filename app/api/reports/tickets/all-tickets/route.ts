@@ -487,6 +487,7 @@ export async function GET(request: NextRequest) {
         status: ticket.status,
         priority: ticket.priority,
         type: ticket.category || 'INCIDENT',
+        issueClassification: ticket.issueClassification || null,
         service: ticket.service?.name || 'N/A',
         serviceCategory: ticket.service?.tier1Category?.name || '-',
         serviceSubcategory: ticket.service?.tier2Subcategory?.name || '-',
@@ -892,10 +893,22 @@ export async function POST(request: NextRequest) {
             INCIDENT: 'Insiden',
             SERVICE_REQUEST: 'Permintaan Layanan',
             CHANGE_REQUEST: 'Permintaan Perubahan',
-            EVENT_REQUEST: 'Permintaan Event',
-            HUMAN_ERROR: 'Kesalahan Manusia'
+            EVENT_REQUEST: 'Permintaan Event'
           };
           return labels[t.category] || t.category || 'Insiden';
+        })(),
+        'Klasifikasi Masalah': (() => {
+          const labels: Record<string, string> = {
+            HUMAN_ERROR: 'Human Error',
+            SYSTEM_ERROR: 'System Error',
+            HARDWARE_FAILURE: 'Hardware Failure',
+            NETWORK_ISSUE: 'Network Issue',
+            SECURITY_INCIDENT: 'Security Incident',
+            DATA_ISSUE: 'Data Issue',
+            PROCESS_GAP: 'Process Gap',
+            EXTERNAL_FACTOR: 'External Factor'
+          };
+          return t.issueClassification ? (labels[t.issueClassification] || t.issueClassification) : '-';
         })(),
         'Service': t.service?.name || 'N/A',
         'Service Category': t.service?.tier1Category?.name || '-',

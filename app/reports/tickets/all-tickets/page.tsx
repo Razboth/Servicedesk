@@ -40,6 +40,7 @@ interface Ticket {
   status: string
   priority: string
   type: string
+  issueClassification: string | null
   service: string
   serviceCategory: string
   serviceSubcategory: string
@@ -99,6 +100,7 @@ const COLUMN_DEFS = [
   { key: 'status', label: 'Status', default: true },
   { key: 'priority', label: 'Prioritas', default: true },
   { key: 'type', label: 'Tipe', default: true },
+  { key: 'issueClassification', label: 'Klasifikasi', default: false },
   { key: 'serviceCategory', label: 'Kategori', default: true },
   { key: 'service', label: 'Layanan', default: true },
   { key: 'branch', label: 'Cabang', default: true },
@@ -474,11 +476,6 @@ export default function AllTicketsReport() {
             className: 'bg-teal-50 border-teal-200 dark:bg-teal-950/30 dark:border-teal-800',
             textClassName: 'text-teal-700 dark:text-teal-400',
             label: 'Permintaan Event'
-          },
-          HUMAN_ERROR: {
-            className: 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800',
-            textClassName: 'text-red-700 dark:text-red-400',
-            label: 'Kesalahan Manusia'
           }
         }
         const tc = typeConfig[ticket.type] || {
@@ -492,6 +489,64 @@ export default function AllTicketsReport() {
             className={`${tc.className} ${tc.textClassName} inline-flex items-center px-2 py-0.5 font-medium shadow-sm`}
           >
             <span className="text-xs font-semibold">{tc.label}</span>
+          </Badge>
+        )
+      }
+      case 'issueClassification': {
+        if (!ticket.issueClassification) return <span className="text-muted-foreground">-</span>
+        const classConfig: Record<string, { className: string; textClassName: string; label: string }> = {
+          HUMAN_ERROR: {
+            className: 'bg-orange-50 border-orange-200 dark:bg-orange-950/30 dark:border-orange-800',
+            textClassName: 'text-orange-700 dark:text-orange-400',
+            label: 'Human Error'
+          },
+          SYSTEM_ERROR: {
+            className: 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800',
+            textClassName: 'text-red-700 dark:text-red-400',
+            label: 'System Error'
+          },
+          HARDWARE_FAILURE: {
+            className: 'bg-rose-50 border-rose-200 dark:bg-rose-950/30 dark:border-rose-800',
+            textClassName: 'text-rose-700 dark:text-rose-400',
+            label: 'Hardware Failure'
+          },
+          NETWORK_ISSUE: {
+            className: 'bg-cyan-50 border-cyan-200 dark:bg-cyan-950/30 dark:border-cyan-800',
+            textClassName: 'text-cyan-700 dark:text-cyan-400',
+            label: 'Network Issue'
+          },
+          SECURITY_INCIDENT: {
+            className: 'bg-red-100 border-red-300 dark:bg-red-950/50 dark:border-red-700',
+            textClassName: 'text-red-800 dark:text-red-300',
+            label: 'Security Incident'
+          },
+          DATA_ISSUE: {
+            className: 'bg-yellow-50 border-yellow-200 dark:bg-yellow-950/30 dark:border-yellow-800',
+            textClassName: 'text-yellow-700 dark:text-yellow-400',
+            label: 'Data Issue'
+          },
+          PROCESS_GAP: {
+            className: 'bg-slate-50 border-slate-200 dark:bg-slate-900/30 dark:border-slate-800',
+            textClassName: 'text-slate-700 dark:text-slate-400',
+            label: 'Process Gap'
+          },
+          EXTERNAL_FACTOR: {
+            className: 'bg-gray-50 border-gray-200 dark:bg-gray-900/30 dark:border-gray-800',
+            textClassName: 'text-gray-600 dark:text-gray-400',
+            label: 'External Factor'
+          }
+        }
+        const cc = classConfig[ticket.issueClassification] || {
+          className: 'bg-slate-50 border-slate-200 dark:bg-slate-900/30 dark:border-slate-800',
+          textClassName: 'text-slate-600 dark:text-slate-400',
+          label: ticket.issueClassification
+        }
+        return (
+          <Badge
+            variant="outline"
+            className={`${cc.className} ${cc.textClassName} inline-flex items-center px-2 py-0.5 font-medium shadow-sm`}
+          >
+            <span className="text-xs font-semibold">{cc.label}</span>
           </Badge>
         )
       }

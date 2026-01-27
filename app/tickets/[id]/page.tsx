@@ -116,6 +116,7 @@ interface Ticket {
   status: string;
   priority: string;
   category?: string;
+  issueClassification?: string;
   createdAt: string;
   updatedAt: string;
   resolvedAt?: string;
@@ -212,8 +213,6 @@ const getCategoryBadgeVariant = (category: string): "default" | "secondary" | "d
       return 'default-soft';
     case 'EVENT_REQUEST':
       return 'success-soft';
-    case 'HUMAN_ERROR':
-      return 'destructive-soft';
     default:
       return 'secondary';
   }
@@ -223,8 +222,41 @@ const CATEGORY_LABELS: Record<string, string> = {
   INCIDENT: 'Insiden',
   SERVICE_REQUEST: 'Permintaan Layanan',
   CHANGE_REQUEST: 'Permintaan Perubahan',
-  EVENT_REQUEST: 'Permintaan Event',
-  HUMAN_ERROR: 'Kesalahan Manusia'
+  EVENT_REQUEST: 'Permintaan Event'
+};
+
+const CLASSIFICATION_LABELS: Record<string, string> = {
+  HUMAN_ERROR: 'Human Error',
+  SYSTEM_ERROR: 'System Error',
+  HARDWARE_FAILURE: 'Hardware Failure',
+  NETWORK_ISSUE: 'Network Issue',
+  SECURITY_INCIDENT: 'Security Incident',
+  DATA_ISSUE: 'Data Issue',
+  PROCESS_GAP: 'Process Gap',
+  EXTERNAL_FACTOR: 'External Factor'
+};
+
+const getClassificationBadgeVariant = (classification: string): "default" | "secondary" | "destructive" | "outline" | "warning" | "success" | "info" | "warning-soft" | "success-soft" | "info-soft" | "default-soft" | "destructive-soft" => {
+  switch (classification) {
+    case 'HUMAN_ERROR':
+      return 'warning-soft';
+    case 'SYSTEM_ERROR':
+      return 'destructive-soft';
+    case 'HARDWARE_FAILURE':
+      return 'destructive-soft';
+    case 'NETWORK_ISSUE':
+      return 'info-soft';
+    case 'SECURITY_INCIDENT':
+      return 'destructive';
+    case 'DATA_ISSUE':
+      return 'warning-soft';
+    case 'PROCESS_GAP':
+      return 'default-soft';
+    case 'EXTERNAL_FACTOR':
+      return 'secondary';
+    default:
+      return 'secondary';
+  }
 };
 
 export default function TicketDetailPage() {
@@ -251,6 +283,7 @@ export default function TicketDetailPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [isUpdatingCategory, setIsUpdatingCategory] = useState(false);
+  const [isUpdatingClassification, setIsUpdatingClassification] = useState(false);
   const [showResolveModal, setShowResolveModal] = useState(false);
   const [resolutionComment, setResolutionComment] = useState('');
   const [isSubmittingResolution, setIsSubmittingResolution] = useState(false);
@@ -1111,6 +1144,26 @@ export default function TicketDetailPage() {
     }
   };
 
+  const handleIssueClassificationChange = async (newClassification: string) => {
+    if (!ticket || newClassification === ticket.issueClassification) return;
+    setIsUpdatingClassification(true);
+    try {
+      const response = await fetch(`/api/tickets/${ticket.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ issueClassification: newClassification })
+      });
+      if (!response.ok) throw new Error('Failed to update issue classification');
+      const updatedTicket = await response.json();
+      setTicket(prev => prev ? { ...prev, issueClassification: updatedTicket.issueClassification, comments: updatedTicket.comments || prev.comments } : prev);
+      await fetchTicket();
+    } catch (err) {
+      console.error('Error updating issue classification:', err);
+    } finally {
+      setIsUpdatingClassification(false);
+    }
+  };
+
   const canClaimTicket = () => {
     if (!session?.user?.role || !ticket) return false;
 
@@ -1341,12 +1394,40 @@ export default function TicketDetailPage() {
                           <SelectItem value="SERVICE_REQUEST">Permintaan Layanan</SelectItem>
                           <SelectItem value="CHANGE_REQUEST">Permintaan Perubahan</SelectItem>
                           <SelectItem value="EVENT_REQUEST">Permintaan Event</SelectItem>
-                          <SelectItem value="HUMAN_ERROR">Kesalahan Manusia</SelectItem>
                         </SelectContent>
                       </Select>
                     ) : (
                       <Badge variant={getCategoryBadgeVariant(ticket.category)}>
                         {CATEGORY_LABELS[ticket.category] || ticket.category}
+                      </Badge>
+                    )
+                  )}
+                  {ticket.issueClassification && (
+                    canReclassifyTicket() ? (
+                      <Select
+                        value={ticket.issueClassification}
+                        onValueChange={handleIssueClassificationChange}
+                        disabled={isUpdatingClassification}
+                      >
+                        <SelectTrigger className="h-7 w-auto min-w-0 gap-1 border-0 bg-transparent p-0 focus:ring-0 [&>svg]:h-3 [&>svg]:w-3">
+                          <Badge variant={getClassificationBadgeVariant(ticket.issueClassification)}>
+                            {CLASSIFICATION_LABELS[ticket.issueClassification] || ticket.issueClassification}
+                          </Badge>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="HUMAN_ERROR">Human Error</SelectItem>
+                          <SelectItem value="SYSTEM_ERROR">System Error</SelectItem>
+                          <SelectItem value="HARDWARE_FAILURE">Hardware Failure</SelectItem>
+                          <SelectItem value="NETWORK_ISSUE">Network Issue</SelectItem>
+                          <SelectItem value="SECURITY_INCIDENT">Security Incident</SelectItem>
+                          <SelectItem value="DATA_ISSUE">Data Issue</SelectItem>
+                          <SelectItem value="PROCESS_GAP">Process Gap</SelectItem>
+                          <SelectItem value="EXTERNAL_FACTOR">External Factor</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Badge variant={getClassificationBadgeVariant(ticket.issueClassification)}>
+                        {CLASSIFICATION_LABELS[ticket.issueClassification] || ticket.issueClassification}
                       </Badge>
                     )
                   )}
@@ -2434,6 +2515,23 @@ export default function TicketDetailPage() {
                         )}
                       </div>
                     </div>
+
+                    {/* Issue Classification */}
+                    {ticket.issueClassification && (
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-[hsl(var(--warning)/0.1)] rounded-lg">
+                          <Shield className="h-4 w-4 text-[hsl(var(--warning))]" />
+                        </div>
+                        <div className="flex-1">
+                          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Klasifikasi Masalah</span>
+                          <div className="mt-1">
+                            <Badge variant={getClassificationBadgeVariant(ticket.issueClassification)}>
+                              {CLASSIFICATION_LABELS[ticket.issueClassification] || ticket.issueClassification}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Branch */}
                     {ticket.createdBy.branch && (

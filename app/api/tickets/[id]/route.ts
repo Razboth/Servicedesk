@@ -18,8 +18,8 @@ const updateTicketSchema = z.object({
   justification: z.string().optional(),
   status: z.enum(['OPEN', 'PENDING', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'IN_PROGRESS', 'PENDING_VENDOR', 'RESOLVED', 'CLOSED', 'CANCELLED']).optional(),
   assignedToId: z.string().nullable().optional(),
-  category: z.enum(['INCIDENT', 'SERVICE_REQUEST', 'CHANGE_REQUEST', 'EVENT_REQUEST', 'HUMAN_ERROR']).optional(),
-  issueClassification: z.enum(['INCIDENT', 'SERVICE_REQUEST', 'CHANGE_REQUEST', 'PROBLEM']).optional(),
+  category: z.enum(['INCIDENT', 'SERVICE_REQUEST', 'CHANGE_REQUEST', 'EVENT_REQUEST']).optional(),
+  issueClassification: z.enum(['HUMAN_ERROR', 'SYSTEM_ERROR', 'HARDWARE_FAILURE', 'NETWORK_ISSUE', 'SECURITY_INCIDENT', 'DATA_ISSUE', 'PROCESS_GAP', 'EXTERNAL_FACTOR']).optional(),
   rootCause: z.string().optional(),
   resolutionNotes: z.string().optional(),
   estimatedHours: z.number().optional(),
@@ -509,7 +509,6 @@ export async function PATCH(
           SERVICE_REQUEST: 'Permintaan Layanan',
           CHANGE_REQUEST: 'Permintaan Perubahan',
           EVENT_REQUEST: 'Permintaan Event',
-          HUMAN_ERROR: 'Kesalahan Manusia'
         };
         const oldLabel = categoryLabels[changes.category.old] || changes.category.old;
         const newLabel = categoryLabels[changes.category.new] || changes.category.new;
@@ -1092,7 +1091,6 @@ export async function PUT(
           SERVICE_REQUEST: 'Permintaan Layanan',
           CHANGE_REQUEST: 'Permintaan Perubahan',
           EVENT_REQUEST: 'Permintaan Event',
-          HUMAN_ERROR: 'Kesalahan Manusia'
         };
         const oldLabel = categoryLabels[existingTicket.category] || existingTicket.category;
         const newLabel = categoryLabels[validatedData.category] || validatedData.category;

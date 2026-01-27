@@ -2386,8 +2386,7 @@ export function TicketWizard({ onClose, onSuccess }: TicketWizardProps) {
                               { value: 'INCIDENT', label: 'Insiden' },
                               { value: 'SERVICE_REQUEST', label: 'Permintaan Layanan' },
                               { value: 'CHANGE_REQUEST', label: 'Permintaan Perubahan' },
-                              { value: 'EVENT_REQUEST', label: 'Permintaan Event' },
-                              { value: 'HUMAN_ERROR', label: 'Kesalahan Manusia' }
+                              { value: 'EVENT_REQUEST', label: 'Permintaan Event' }
                             ]}
                             isLocked={lockedFields.category?.isLocked}
                             source={lockedFields.category?.source}
