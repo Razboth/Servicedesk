@@ -264,23 +264,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Generate ticket number - use new simplified sequential format
-    const currentYear = new Date().getFullYear();
-    const yearStart = new Date(currentYear, 0, 1);
-    const yearEnd = new Date(currentYear + 1, 0, 1);
-
-    const yearTicketCount = await prisma.ticket.count({
-      where: {
-        createdAt: {
-          gte: yearStart,
-          lt: yearEnd
-        }
-      }
-    });
-
-    // New simplified ticket numbering - just sequential numbers
-    const ticketNumber = String(yearTicketCount + 1);
-
     // Process field values - we need to create or find ServiceField entries
     const processedFieldValues = [];
     
@@ -354,44 +337,54 @@ export async function POST(request: NextRequest) {
       )
     };
 
-    // Create the ticket
-    const ticket = await prisma.ticket.create({
-      data: {
-        ticketNumber,
-        title: parsedData.title,
-        description: parsedData.description,
-        category: 'INCIDENT',
-        serviceId: socService.id,
-        priority: parsedData.severity === 'Critical' ? 'CRITICAL' : 
-                 parsedData.severity === 'High' ? 'HIGH' :
-                 parsedData.severity === 'Medium' ? 'MEDIUM' : 'LOW',
-        status: 'OPEN',
-        createdById: userId,
-        branchId: userBranchId,
-        supportGroupId: socService.supportGroupId,
-        isConfidential: true,
-        issueClassification: 'SECURITY_INCIDENT',
-        securityClassification: parsedData.securityClassification,
-        securityFindings: securityFindings,
-        fieldValues: processedFieldValues.length > 0 ? {
-          create: processedFieldValues
-        } : undefined
-      },
-      include: {
-        service: true,
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
+    // Create the ticket inside a transaction with proper ticket number generation
+    const ticket = await prisma.$transaction(async (tx) => {
+      // Generate ticket number - get max ticket number and increment
+      const maxResult = await tx.$queryRaw<[{ maxNum: bigint | null }]>`
+        SELECT MAX(CAST(NULLIF(REGEXP_REPLACE("ticketNumber", '[^0-9]', '', 'g'), '') AS BIGINT)) as "maxNum"
+        FROM "tickets"
+      `;
+      const maxTicketNumber = maxResult[0]?.maxNum ? Number(maxResult[0].maxNum) : 0;
+      const ticketNumber = String(maxTicketNumber + 1);
+
+      return tx.ticket.create({
+        data: {
+          ticketNumber,
+          title: parsedData.title,
+          description: parsedData.description,
+          category: 'INCIDENT',
+          serviceId: socService.id,
+          priority: parsedData.severity === 'Critical' ? 'CRITICAL' :
+                   parsedData.severity === 'High' ? 'HIGH' :
+                   parsedData.severity === 'Medium' ? 'MEDIUM' : 'LOW',
+          status: 'OPEN',
+          createdById: userId,
+          branchId: userBranchId,
+          supportGroupId: socService.supportGroupId,
+          isConfidential: true,
+          issueClassification: 'SECURITY_INCIDENT',
+          securityClassification: parsedData.securityClassification,
+          securityFindings: securityFindings,
+          fieldValues: processedFieldValues.length > 0 ? {
+            create: processedFieldValues
+          } : undefined
         },
-        fieldValues: {
-          include: {
-            field: true
+        include: {
+          service: true,
+          createdBy: {
+            select: {
+              id: true,
+              name: true,
+              email: true
+            }
+          },
+          fieldValues: {
+            include: {
+              field: true
+            }
           }
         }
-      }
+      });
     });
 
     // Leave ticket unassigned - creator can assign it themselves or it stays unassigned

@@ -268,22 +268,13 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        // Generate ticket number using standard format
-        const currentYear = new Date().getFullYear();
-        const yearStart = new Date(currentYear, 0, 1);
-        const yearEnd = new Date(currentYear + 1, 0, 1);
-        
-        const yearTicketCount = await prisma.ticket.count({
-          where: {
-            createdAt: {
-              gte: yearStart,
-              lt: yearEnd
-            }
-          }
-        });
-        
-        // New simplified ticket numbering - just sequential numbers
-        const ticketNumber = String(yearTicketCount + 1);
+        // Generate ticket number - get max ticket number and increment
+        const maxResult = await prisma.$queryRaw<[{ maxNum: bigint | null }]>`
+          SELECT MAX(CAST(NULLIF(REGEXP_REPLACE("ticketNumber", '[^0-9]', '', 'g'), '') AS BIGINT)) as "maxNum"
+          FROM "tickets"
+        `;
+        const maxTicketNumber = maxResult[0]?.maxNum ? Number(maxResult[0].maxNum) : 0;
+        const ticketNumber = String(maxTicketNumber + 1);
 
         // Determine priority based on severity (use service default if available)
         const priority = validatedData.severity === 'CRITICAL' ? 'CRITICAL' : 

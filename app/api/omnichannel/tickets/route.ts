@@ -110,22 +110,13 @@ export async function POST(request: NextRequest) {
       branch?.id || user.branchId!
     );
 
-    // Generate ticket number (same as main API - just sequential numbers)
-    const currentYear = new Date().getFullYear();
-    const yearStart = new Date(currentYear, 0, 1);
-    const yearEnd = new Date(currentYear + 1, 0, 1);
-
-    const yearTicketCount = await prisma.ticket.count({
-      where: {
-        createdAt: {
-          gte: yearStart,
-          lt: yearEnd
-        }
-      }
-    });
-
-    // Use the same simple sequential numbering as the main ticket API
-    const ticketNumber = String(yearTicketCount + 1);
+    // Generate ticket number - get max ticket number and increment
+    const maxResult = await prisma.$queryRaw<[{ maxNum: bigint | null }]>`
+      SELECT MAX(CAST(NULLIF(REGEXP_REPLACE("ticketNumber", '[^0-9]', '', 'g'), '') AS BIGINT)) as "maxNum"
+      FROM "tickets"
+    `;
+    const maxTicketNumber = maxResult[0]?.maxNum ? Number(maxResult[0].maxNum) : 0;
+    const ticketNumber = String(maxTicketNumber + 1);
 
     // Create the ticket
     const ticket = await prisma.ticket.create({
