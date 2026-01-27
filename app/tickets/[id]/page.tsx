@@ -1130,10 +1130,15 @@ export default function TicketDetailPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ category: newCategory })
       });
-      if (!response.ok) throw new Error('Failed to update category');
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        const msg = errData.error || `HTTP ${response.status}`;
+        alert(`Gagal mengubah kategori: ${msg}`);
+        throw new Error(msg);
+      }
       const updatedTicket = await response.json();
       setTicket(prev => prev ? { ...prev, category: updatedTicket.category, comments: updatedTicket.comments || prev.comments } : prev);
-      await fetchTicket(); // Refresh to get the new comment
+      await fetchTicket();
     } catch (err) {
       console.error('Error updating category:', err);
     } finally {
@@ -1150,7 +1155,12 @@ export default function TicketDetailPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ issueClassification: newClassification })
       });
-      if (!response.ok) throw new Error('Failed to update issue classification');
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        const msg = errData.error || `HTTP ${response.status}`;
+        alert(`Gagal mengubah klasifikasi: ${msg}`);
+        throw new Error(msg);
+      }
       const updatedTicket = await response.json();
       setTicket(prev => prev ? { ...prev, issueClassification: updatedTicket.issueClassification, comments: updatedTicket.comments || prev.comments } : prev);
       await fetchTicket();
