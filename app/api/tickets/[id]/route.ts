@@ -308,7 +308,7 @@ export async function PATCH(
     const isTicketNumber = /^[A-Z]+-\d{4}-\d+$/.test(id);
 
     // Check if ticket exists and user has permission
-    const existingTicket = await prisma.ticket.findUnique({
+    const existingTicket: any = await prisma.ticket.findUnique({
       where: isTicketNumber ? { ticketNumber: id } : { id },
       select: {
         id: true,
@@ -317,9 +317,6 @@ export async function PATCH(
         status: true,
         category: true,
         sociomileTicketId: true,
-        slaStartAt: true,
-        slaPausedAt: true,
-        slaPausedTotal: true,
         service: {
           select: {
             name: true
@@ -330,6 +327,23 @@ export async function PATCH(
 
     if (!existingTicket) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
+    }
+
+    // Fetch SLA fields only when status change is requested (avoids schema mismatch on older DBs)
+    if (validatedData.status) {
+      try {
+        const slaData = await prisma.ticket.findUnique({
+          where: { id: existingTicket.id },
+          select: { slaStartAt: true, slaPausedAt: true, slaPausedTotal: true }
+        });
+        if (slaData) {
+          existingTicket.slaStartAt = slaData.slaStartAt;
+          existingTicket.slaPausedAt = slaData.slaPausedAt;
+          existingTicket.slaPausedTotal = slaData.slaPausedTotal;
+        }
+      } catch {
+        // SLA fields may not exist yet - continue without them
+      }
     }
 
     // Check permissions for updates based on role
@@ -800,7 +814,7 @@ export async function PUT(
     const isTicketNumber = /^[A-Z]+-\d{4}-\d+$/.test(id);
 
     // Check if ticket exists and user has permission
-    const existingTicket = await prisma.ticket.findUnique({
+    const existingTicket: any = await prisma.ticket.findUnique({
       where: isTicketNumber ? { ticketNumber: id } : { id },
       select: {
         id: true,
@@ -809,9 +823,6 @@ export async function PUT(
         status: true,
         category: true,
         sociomileTicketId: true,
-        slaStartAt: true,
-        slaPausedAt: true,
-        slaPausedTotal: true,
         service: {
           select: {
             name: true
@@ -822,6 +833,23 @@ export async function PUT(
 
     if (!existingTicket) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
+    }
+
+    // Fetch SLA fields only when status change is requested
+    if (validatedData.status) {
+      try {
+        const slaData = await prisma.ticket.findUnique({
+          where: { id: existingTicket.id },
+          select: { slaStartAt: true, slaPausedAt: true, slaPausedTotal: true }
+        });
+        if (slaData) {
+          existingTicket.slaStartAt = slaData.slaStartAt;
+          existingTicket.slaPausedAt = slaData.slaPausedAt;
+          existingTicket.slaPausedTotal = slaData.slaPausedTotal;
+        }
+      } catch {
+        // SLA fields may not exist yet - continue without them
+      }
     }
 
     // Get user details for additional permission checks
