@@ -1112,15 +1112,12 @@ export default function TicketDetailPage() {
 
   const canReclassifyTicket = () => {
     if (!session?.user?.role || !ticket) return false;
-    // Admin can always reclassify
-    if (session.user.role === 'ADMIN') return true;
-    // Assigned technician or security analyst can reclassify
-    if ((session.user.role === 'TECHNICIAN' || session.user.role === 'SECURITY_ANALYST') &&
-        ticket.assignedTo?.email === session.user.email) {
-      return true;
-    }
-    // Manager IT can reclassify
-    if (session.user.role === 'MANAGER_IT') return true;
+    // Admin and Super Admin can always reclassify
+    if (['SUPER_ADMIN', 'ADMIN'].includes(session.user.role)) return true;
+    // Any technician or security analyst can reclassify
+    if (['TECHNICIAN', 'SECURITY_ANALYST'].includes(session.user.role)) return true;
+    // Manager can reclassify
+    if (session.user.role === 'MANAGER') return true;
     return false;
   };
 

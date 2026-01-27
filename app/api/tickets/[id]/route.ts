@@ -336,29 +336,42 @@ export async function PATCH(
     let canUpdate = false;
     let allowedFields: string[] = [];
 
-    if (session.user.role === 'ADMIN') {
-      // Admin can update everything
+    if (session.user.role === 'SUPER_ADMIN' || session.user.role === 'ADMIN') {
+      // Admin and Super Admin can update everything
       canUpdate = true;
       allowedFields = Object.keys(validatedData);
-    } else if (session.user.role === 'TECHNICIAN' || session.user.role === 'SECURITY_ANALYST' || session.user.role === 'MANAGER_IT') {
-      // Technicians and MANAGER_IT can only update tickets they are assigned to
+    } else if (session.user.role === 'TECHNICIAN' || session.user.role === 'SECURITY_ANALYST') {
+      // Assigned technician can update all fields
       if (existingTicket.assignedToId === session.user.id) {
         canUpdate = true;
         allowedFields = Object.keys(validatedData);
       } else {
-        return NextResponse.json(
-          { error: 'Only the assigned technician can update this ticket' },
-          { status: 403 }
-        );
+        // Any technician can reclassify category and issueClassification
+        const reclassifyFields = ['category', 'issueClassification'];
+        const updateFields = Object.keys(validatedData);
+        const isOnlyReclassify = updateFields.every(f => reclassifyFields.includes(f));
+        if (isOnlyReclassify && updateFields.length > 0) {
+          canUpdate = true;
+          allowedFields = reclassifyFields;
+        } else {
+          return NextResponse.json(
+            { error: 'Only the assigned technician can update this ticket' },
+            { status: 403 }
+          );
+        }
+      }
+    } else if (session.user.role === 'MANAGER') {
+      // Managers can reclassify any ticket, and update basic fields of tickets they created
+      canUpdate = true;
+      if (existingTicket.createdById === session.user.id) {
+        allowedFields = ['title', 'description', 'priority', 'category', 'issueClassification'];
+      } else {
+        allowedFields = ['category', 'issueClassification'];
       }
     } else if (session.user.role === 'USER' && existingTicket.createdById === session.user.id) {
       // Users can only update title and description of their own tickets
       canUpdate = true;
       allowedFields = ['title', 'description'];
-    } else if (session.user.role === 'MANAGER' && existingTicket.createdById === session.user.id) {
-      // Managers can update basic fields of tickets they created
-      canUpdate = true;
-      allowedFields = ['title', 'description', 'priority'];
     }
 
     if (!canUpdate) {
