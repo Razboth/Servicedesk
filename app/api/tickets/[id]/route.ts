@@ -763,7 +763,7 @@ export async function PATCH(
     emitTicketUpdated(id, validatedData, session.user.id);
 
     return NextResponse.json(updatedTicket);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating ticket:', error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -771,8 +771,11 @@ export async function PATCH(
         { status: 400 }
       );
     }
+    // Include actual error message for debugging
+    const errorMessage = error?.message || 'Unknown error';
+    const errorCode = error?.code || '';
     return NextResponse.json(
-      { error: 'Failed to update ticket' },
+      { error: `Failed to update ticket: ${errorCode ? `[${errorCode}] ` : ''}${errorMessage}` },
       { status: 500 }
     );
   }
