@@ -978,9 +978,44 @@ export async function POST(request: NextRequest) {
 
     if (format === 'xlsx') {
       const XLSX = require('xlsx');
-      const worksheet = XLSX.utils.json_to_sheet(exportData);
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Tickets');
+
+      // Add "All Tickets" sheet first
+      const allSheet = XLSX.utils.json_to_sheet(exportData);
+      XLSX.utils.book_append_sheet(workbook, allSheet, 'Semua Tiket');
+
+      // Group tickets by support group and create a sheet for each
+      const groupedData: Record<string, Record<string, any>[]> = {};
+      for (const row of exportData) {
+        const groupName = (row as any)['Support Group'] || 'N/A';
+        if (!groupedData[groupName]) {
+          groupedData[groupName] = [];
+        }
+        groupedData[groupName].push(row);
+      }
+
+      // Sort group names alphabetically, put N/A last
+      const sortedGroups = Object.keys(groupedData).sort((a, b) => {
+        if (a === 'N/A') return 1;
+        if (b === 'N/A') return -1;
+        return a.localeCompare(b);
+      });
+
+      for (const groupName of sortedGroups) {
+        // Excel sheet names max 31 chars, no special chars: \ / ? * [ ]
+        const sheetName = groupName
+          .replace(/[\\/?*[\]]/g, '')
+          .substring(0, 31) || 'Unknown';
+        // Avoid duplicate sheet names
+        let finalName = sheetName;
+        let counter = 1;
+        while (workbook.SheetNames.includes(finalName)) {
+          finalName = `${sheetName.substring(0, 28)}_${counter++}`;
+        }
+        const groupSheet = XLSX.utils.json_to_sheet(groupedData[groupName]);
+        XLSX.utils.book_append_sheet(workbook, groupSheet, finalName);
+      }
+
       const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
 
       return new NextResponse(buffer, {
