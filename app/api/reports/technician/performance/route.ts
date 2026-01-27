@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { calculateBusinessHours } from '@/lib/sla-utils';
 
 // GET /api/reports/technician/performance - Get technician performance data
 export async function GET(request: NextRequest) {
@@ -109,26 +110,22 @@ export async function GET(request: NextRequest) {
     let slaCompliance = 0;
 
     if (slaData.length > 0) {
-      // Calculate average response time (in hours)
+      // Calculate average response time (in business hours)
       const responseTimes = slaData
         .filter(sla => sla.responseTime)
         .map(sla => {
-          const created = sla.ticket.createdAt;
-          const responded = sla.responseTime!;
-          return (responded.getTime() - created.getTime()) / (1000 * 60 * 60);
+          return calculateBusinessHours(sla.ticket.createdAt, sla.responseTime!);
         });
 
       if (responseTimes.length > 0) {
         avgResponseTime = responseTimes.reduce((sum, time) => sum + time, 0) / responseTimes.length;
       }
 
-      // Calculate average resolution time (in hours)
+      // Calculate average resolution time (in business hours)
       const resolutionTimes = slaData
         .filter(sla => sla.resolutionTime)
         .map(sla => {
-          const created = sla.ticket.createdAt;
-          const resolved = sla.resolutionTime!;
-          return (resolved.getTime() - created.getTime()) / (1000 * 60 * 60);
+          return calculateBusinessHours(sla.ticket.createdAt, sla.resolutionTime!);
         });
 
       if (resolutionTimes.length > 0) {

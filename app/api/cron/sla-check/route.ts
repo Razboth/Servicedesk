@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getEffectiveElapsedHours } from '@/lib/sla-utils';
 
 /**
  * GET /api/cron/sla-check
@@ -63,15 +64,21 @@ export async function GET(request: NextRequest) {
       // Skip paused tickets
       if (ticket.slaPausedAt) continue;
 
-      // Calculate effective time remaining
+      // Calculate effective time remaining (using business hours when configured)
       const slaStart = ticket.slaStartAt ? new Date(ticket.slaStartAt) : new Date(sla.createdAt);
-      const elapsedMs = now.getTime() - slaStart.getTime() - (ticket.slaPausedTotal || 0);
-      const resolutionDeadlineMs = sla.slaTemplate.resolutionHours * 60 * 60 * 1000;
-      const remainingMs = resolutionDeadlineMs - elapsedMs;
-      const percentRemaining = remainingMs / resolutionDeadlineMs;
+      const businessHoursOnly = sla.slaTemplate.businessHoursOnly ?? true;
+      const elapsedHours = getEffectiveElapsedHours(
+        slaStart, now,
+        ticket.slaPausedTotal || 0,
+        ticket.slaPausedAt ? new Date(ticket.slaPausedAt) : null,
+        businessHoursOnly
+      );
+      const resolutionHours = sla.slaTemplate.resolutionHours;
+      const remainingHours = resolutionHours - elapsedHours;
+      const percentRemaining = remainingHours / resolutionHours;
 
       // Check if resolution is breached
-      if (remainingMs <= 0 && !sla.isResolutionBreached) {
+      if (remainingHours <= 0 && !sla.isResolutionBreached) {
         breachedCount++;
 
         // Update breach flag
@@ -106,8 +113,7 @@ export async function GET(request: NextRequest) {
         }
 
         // Check escalation
-        const escalationDeadlineMs = sla.slaTemplate.escalationHours * 60 * 60 * 1000;
-        if (elapsedMs > escalationDeadlineMs && !sla.isEscalated) {
+        if (elapsedHours > sla.slaTemplate.escalationHours && !sla.isEscalated) {
           await prisma.sLATracking.update({
             where: { id: sla.id },
             data: { isEscalated: true }
@@ -133,8 +139,7 @@ export async function GET(request: NextRequest) {
 
       // Check response breach for unresponded tickets
       if (!sla.responseTime) {
-        const responseDeadlineMs = sla.slaTemplate.responseHours * 60 * 60 * 1000;
-        if (elapsedMs > responseDeadlineMs && !sla.isResponseBreached) {
+        if (elapsedHours > sla.slaTemplate.responseHours && !sla.isResponseBreached) {
           await prisma.sLATracking.update({
             where: { id: sla.id },
             data: { isResponseBreached: true }

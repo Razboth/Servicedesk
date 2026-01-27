@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { calculateBusinessHours } from '@/lib/sla-utils';
 
 export async function GET(request: NextRequest) {
   try {
@@ -73,27 +74,27 @@ export async function GET(request: NextRequest) {
         t.createdAt < twentyFourHoursAgo
       );
 
-      // Calculate resolution times
+      // Calculate resolution times (in business hours)
       let avgResolutionHours = 0;
       let avgFirstResponseHours = 0;
       if (resolvedTickets.length > 0) {
-        const totalResolutionTime = resolvedTickets.reduce((sum, ticket) => {
+        const totalResolutionHours = resolvedTickets.reduce((sum, ticket) => {
           if (ticket.resolvedAt) {
-            return sum + (ticket.resolvedAt.getTime() - ticket.createdAt.getTime());
+            return sum + calculateBusinessHours(ticket.createdAt, ticket.resolvedAt);
           }
           return sum;
         }, 0);
-        avgResolutionHours = totalResolutionTime / (resolvedTickets.length * 1000 * 60 * 60);
+        avgResolutionHours = totalResolutionHours / resolvedTickets.length;
 
         const responseTickets = resolvedTickets.filter(t => t.firstResponseAt);
         if (responseTickets.length > 0) {
-          const totalResponseTime = responseTickets.reduce((sum, ticket) => {
+          const totalResponseHours = responseTickets.reduce((sum, ticket) => {
             if (ticket.firstResponseAt) {
-              return sum + (ticket.firstResponseAt.getTime() - ticket.createdAt.getTime());
+              return sum + calculateBusinessHours(ticket.createdAt, ticket.firstResponseAt);
             }
             return sum;
           }, 0);
-          avgFirstResponseHours = totalResponseTime / (responseTickets.length * 1000 * 60 * 60);
+          avgFirstResponseHours = totalResponseHours / responseTickets.length;
         }
       }
 
@@ -104,7 +105,7 @@ export async function GET(request: NextRequest) {
 
       resolvedTickets.forEach(ticket => {
         if (ticket.resolvedAt) {
-          const resolutionHours = (ticket.resolvedAt.getTime() - ticket.createdAt.getTime()) / (1000 * 60 * 60);
+          const resolutionHours = calculateBusinessHours(ticket.createdAt, ticket.resolvedAt);
           const target = slaTargets[ticket.priority as keyof typeof slaTargets] || 24;
           totalSlaTickets++;
           if (resolutionHours <= target) {

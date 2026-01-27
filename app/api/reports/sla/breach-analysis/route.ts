@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { getEffectiveElapsedHours } from '@/lib/sla-utils';
 
 export async function GET(request: NextRequest) {
   try {
@@ -125,13 +126,9 @@ export async function GET(request: NextRequest) {
       const resolvedAt = ticket.resolvedAt ? new Date(ticket.resolvedAt) : null;
       const assignedAt = (ticket as any).assignedAt ? new Date((ticket as any).assignedAt) : null;
 
-      // Helper to get effective elapsed hours accounting for pause time
+      // Helper to get effective elapsed business hours accounting for pause time
       const getElapsed = (endTime: Date): number => {
-        let elapsedMs = endTime.getTime() - slaStart.getTime() - slaPausedTotal;
-        if (slaPausedAt && endTime >= slaPausedAt) {
-          elapsedMs -= (endTime.getTime() - slaPausedAt.getTime());
-        }
-        return Math.max(0, elapsedMs / (1000 * 60 * 60));
+        return getEffectiveElapsedHours(slaStart, endTime, slaPausedTotal, slaPausedAt, true);
       };
 
       // Calculate response time

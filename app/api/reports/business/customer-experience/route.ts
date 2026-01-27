@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { calculateBusinessHours } from '@/lib/sla-utils';
 
 // GET /api/reports/business/customer-experience - Get customer experience analytics
 export async function GET(request: NextRequest) {
@@ -80,7 +81,7 @@ export async function GET(request: NextRequest) {
       );
       
       const responseTime = firstTechnicianComment
-        ? (new Date(firstTechnicianComment.createdAt).getTime() - new Date(ticket.createdAt).getTime()) / (1000 * 60) // minutes
+        ? calculateBusinessHours(new Date(ticket.createdAt), new Date(firstTechnicianComment.createdAt)) * 60 // business minutes
         : null;
       
       return {
@@ -112,7 +113,7 @@ export async function GET(request: NextRequest) {
     const satisfactionIndicators = {
       quickResolutions: tickets.filter(t => {
         if (!t.resolvedAt) return false;
-        const resolutionTime = (new Date(t.resolvedAt).getTime() - new Date(t.createdAt).getTime()) / (1000 * 60 * 60);
+        const resolutionTime = calculateBusinessHours(new Date(t.createdAt), new Date(t.resolvedAt));
         const target = ['HIGH', 'CRITICAL', 'EMERGENCY'].includes(t.priority) ? 4 : 24;
         return resolutionTime <= target;
       }).length,
@@ -160,7 +161,7 @@ export async function GET(request: NextRequest) {
         acc[category].services[serviceName].resolved++;
         
         if (ticket.resolvedAt) {
-          const resTime = (new Date(ticket.resolvedAt).getTime() - new Date(ticket.createdAt).getTime()) / (1000 * 60 * 60);
+          const resTime = calculateBusinessHours(new Date(ticket.createdAt), new Date(ticket.resolvedAt));
           acc[category].resolutionTimes.push(resTime);
         }
       }
@@ -216,7 +217,7 @@ export async function GET(request: NextRequest) {
       if (['RESOLVED', 'CLOSED'].includes(ticket.status)) {
         acc[customerEmail].resolvedTickets++;
         if (ticket.resolvedAt) {
-          const resTime = (new Date(ticket.resolvedAt).getTime() - new Date(ticket.createdAt).getTime()) / (1000 * 60 * 60);
+          const resTime = calculateBusinessHours(new Date(ticket.createdAt), new Date(ticket.resolvedAt));
           acc[customerEmail].resolutionTimes.push(resTime);
         }
       }

@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { sendTicketNotification } from '@/lib/services/email.service';
+import { addBusinessHours } from '@/lib/sla-utils';
 
 // Validation schema for bulk approval actions
 const bulkApprovalSchema = z.object({
@@ -242,13 +243,18 @@ export async function POST(request: NextRequest) {
               });
             }
 
+            const calcDeadline = (hours: number) =>
+              slaTemplate.businessHoursOnly
+                ? addBusinessHours(now, hours)
+                : new Date(now.getTime() + hours * 3600000);
+
             await prisma.sLATracking.create({
               data: {
                 ticketId: ticket.id,
                 slaTemplateId: slaTemplate.id,
-                responseDeadline: new Date(now.getTime() + (slaTemplate.responseHours * 60 * 60 * 1000)),
-                resolutionDeadline: new Date(now.getTime() + (slaTemplate.resolutionHours * 60 * 60 * 1000)),
-                escalationDeadline: new Date(now.getTime() + (slaTemplate.escalationHours * 60 * 60 * 1000)),
+                responseDeadline: calcDeadline(slaTemplate.responseHours),
+                resolutionDeadline: calcDeadline(slaTemplate.resolutionHours),
+                escalationDeadline: calcDeadline(slaTemplate.escalationHours),
                 isResponseBreached: false,
                 isResolutionBreached: false
               }

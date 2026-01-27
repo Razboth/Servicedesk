@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { calculateBusinessHours } from '@/lib/sla-utils';
 
 // GET /api/reports/business/operational-excellence - Get operational excellence metrics
 export async function GET(request: NextRequest) {
@@ -97,9 +98,7 @@ export async function GET(request: NextRequest) {
     const resolutionTimes = resolvedTickets
       .filter(t => t.resolvedAt)
       .map(t => {
-        const created = new Date(t.createdAt).getTime();
-        const resolved = new Date(t.resolvedAt!).getTime();
-        return (resolved - created) / (1000 * 60 * 60); // hours
+        return calculateBusinessHours(new Date(t.createdAt), new Date(t.resolvedAt!));
       });
     
     const avgResolutionTime = resolutionTimes.length > 0
@@ -109,7 +108,7 @@ export async function GET(request: NextRequest) {
     // SLA compliance (assuming 24h for normal, 4h for urgent)
     const slaCompliant = resolvedTickets.filter(t => {
       if (!t.resolvedAt) return false;
-      const hours = (new Date(t.resolvedAt).getTime() - new Date(t.createdAt).getTime()) / (1000 * 60 * 60);
+      const hours = calculateBusinessHours(new Date(t.createdAt), new Date(t.resolvedAt));
       const slaTarget = ['HIGH', 'CRITICAL', 'EMERGENCY'].includes(t.priority) ? 4 : 24;
       return hours <= slaTarget;
     }).length;
@@ -151,7 +150,7 @@ export async function GET(request: NextRequest) {
       if (['RESOLVED', 'CLOSED'].includes(ticket.status)) {
         acc[category].resolved++;
         if (ticket.resolvedAt) {
-          const resTime = (new Date(ticket.resolvedAt).getTime() - new Date(ticket.createdAt).getTime()) / (1000 * 60 * 60);
+          const resTime = calculateBusinessHours(new Date(ticket.createdAt), new Date(ticket.resolvedAt));
           acc[category].totalResolutionTime += resTime;
           acc[category].resolvedCount++;
         }
@@ -185,7 +184,7 @@ export async function GET(request: NextRequest) {
       if (['RESOLVED', 'CLOSED'].includes(ticket.status)) {
         acc[branchName].resolved++;
         if (ticket.resolvedAt) {
-          const resTime = (new Date(ticket.resolvedAt).getTime() - new Date(ticket.createdAt).getTime()) / (1000 * 60 * 60);
+          const resTime = calculateBusinessHours(new Date(ticket.createdAt), new Date(ticket.resolvedAt));
           acc[branchName].resolutionTimes.push(resTime);
         }
       }

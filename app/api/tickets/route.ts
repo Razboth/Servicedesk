@@ -25,6 +25,7 @@ import {
   handleUnknownError,
   ErrorCode
 } from '@/lib/errors/api-error-response';
+import { addBusinessHours } from '@/lib/sla-utils';
 
 // Helper function to determine sort order
 function getSortOrder(sortBy: string, sortOrder: string) {
@@ -1584,13 +1585,18 @@ export async function POST(request: NextRequest) {
         }
 
         const slaStart = new Date(ticket.slaStartAt);
+        const calcDeadline = (hours: number) =>
+          slaTemplate.businessHoursOnly
+            ? addBusinessHours(slaStart, hours)
+            : new Date(slaStart.getTime() + hours * 3600000);
+
         await prisma.sLATracking.create({
           data: {
             ticketId: ticket.id,
             slaTemplateId: slaTemplate.id,
-            responseDeadline: new Date(slaStart.getTime() + (slaTemplate.responseHours * 60 * 60 * 1000)),
-            resolutionDeadline: new Date(slaStart.getTime() + (slaTemplate.resolutionHours * 60 * 60 * 1000)),
-            escalationDeadline: new Date(slaStart.getTime() + (slaTemplate.escalationHours * 60 * 60 * 1000)),
+            responseDeadline: calcDeadline(slaTemplate.responseHours),
+            resolutionDeadline: calcDeadline(slaTemplate.resolutionHours),
+            escalationDeadline: calcDeadline(slaTemplate.escalationHours),
             isResponseBreached: false,
             isResolutionBreached: false
           }

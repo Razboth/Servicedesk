@@ -1,16 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-
-// Helper: calculate elapsed hours with pause awareness
-function calcElapsedHours(start: Date, end: Date, pausedTotalMs: number, pausedAt: Date | null): number {
-  let elapsedMs = end.getTime() - start.getTime() - pausedTotalMs;
-  // If currently paused, subtract ongoing pause duration
-  if (pausedAt) {
-    elapsedMs -= (new Date().getTime() - pausedAt.getTime());
-  }
-  return Math.max(0, elapsedMs / (1000 * 60 * 60));
-}
+import { getEffectiveElapsedHours } from '@/lib/sla-utils';
 
 // GET /api/reports/admin/sla-performance
 export async function GET(request: NextRequest) {
@@ -73,12 +64,12 @@ export async function GET(request: NextRequest) {
       return sla.ticket?.slaStartAt ? new Date(sla.ticket.slaStartAt) : new Date(sla.createdAt);
     };
 
-    // Helper: get pause-aware elapsed hours
+    // Helper: get pause-aware elapsed business hours
     const getElapsedHours = (sla: any, endTime: Date): number => {
       const start = getSlaStart(sla);
       const pausedTotal = sla.ticket?.slaPausedTotal || 0;
       const pausedAt = sla.ticket?.slaPausedAt ? new Date(sla.ticket.slaPausedAt) : null;
-      return calcElapsedHours(start, endTime, pausedTotal, pausedAt);
+      return getEffectiveElapsedHours(start, endTime, pausedTotal, pausedAt, true);
     };
 
     // --- Summary Calculations ---

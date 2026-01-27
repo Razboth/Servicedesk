@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { getEffectiveElapsedHours } from '@/lib/sla-utils';
 
-// Helper: calculate pause-aware elapsed time
-function calcElapsed(start: Date, end: Date, pausedTotalMs: number, pausedAt: Date | null): number {
-  let ms = end.getTime() - start.getTime() - pausedTotalMs;
-  if (pausedAt) {
-    ms -= (new Date().getTime() - pausedAt.getTime());
-  }
-  return Math.max(0, ms);
+// Helper: calculate pause-aware elapsed business hours
+function calcElapsedHours(start: Date, end: Date, pausedTotalMs: number, pausedAt: Date | null): number {
+  return getEffectiveElapsedHours(start, end, pausedTotalMs, pausedAt, true);
 }
 
 export async function GET(request: NextRequest) {
@@ -63,8 +60,8 @@ export async function GET(request: NextRequest) {
       id: string; name: string; branch: string; supportGroups: Set<string>;
       totalTickets: number; resolvedTickets: number;
       responseBreaches: number; resolutionBreaches: number;
-      totalResponseMs: number; responseCount: number;
-      totalResolutionMs: number; resolutionCount: number;
+      totalResponseHours: number; responseCount: number;
+      totalResolutionHours: number; resolutionCount: number;
     }>();
 
     // Breach time tracking for hourly/daily analysis
@@ -96,8 +93,8 @@ export async function GET(request: NextRequest) {
       let responseBreaches = 0;
       let resolutionBreaches = 0;
       let bothBreaches = 0;
-      let totalResponseMs = 0;
-      let totalResolutionMs = 0;
+      let totalResponseHours = 0;
+      let totalResolutionHours = 0;
       let ticketsWithResponse = 0;
       let ticketsWithResolution = 0;
 
@@ -120,9 +117,9 @@ export async function GET(request: NextRequest) {
               resolvedTickets: 0,
               responseBreaches: 0,
               resolutionBreaches: 0,
-              totalResponseMs: 0,
+              totalResponseHours: 0,
               responseCount: 0,
-              totalResolutionMs: 0,
+              totalResolutionHours: 0,
               resolutionCount: 0,
             });
           }
@@ -135,16 +132,16 @@ export async function GET(request: NextRequest) {
             if (sla.isResolutionBreached) td.resolutionBreaches++;
             if (sla.resolutionTime) {
               td.resolvedTickets++;
-              td.totalResolutionMs += calcElapsed(new Date(slaStart), sla.resolutionTime, pausedTotal, pausedAt);
+              td.totalResolutionHours += calcElapsedHours(new Date(slaStart), sla.resolutionTime, pausedTotal, pausedAt);
               td.resolutionCount++;
             }
             if (sla.responseTime) {
-              td.totalResponseMs += calcElapsed(new Date(slaStart), sla.responseTime, pausedTotal, pausedAt);
+              td.totalResponseHours += calcElapsedHours(new Date(slaStart), sla.responseTime, pausedTotal, pausedAt);
               td.responseCount++;
             }
           } else if (ticket.resolvedAt) {
             td.resolvedTickets++;
-            td.totalResolutionMs += calcElapsed(new Date(slaStart), new Date(ticket.resolvedAt), pausedTotal, pausedAt);
+            td.totalResolutionHours += calcElapsedHours(new Date(slaStart), new Date(ticket.resolvedAt), pausedTotal, pausedAt);
             td.resolutionCount++;
           }
         }
@@ -165,20 +162,20 @@ export async function GET(request: NextRequest) {
           }
 
           if (sla.responseTime) {
-            totalResponseMs += calcElapsed(new Date(slaStart), sla.responseTime, pausedTotal, pausedAt);
+            totalResponseHours += calcElapsedHours(new Date(slaStart), sla.responseTime, pausedTotal, pausedAt);
             ticketsWithResponse++;
           }
           if (sla.resolutionTime) {
-            totalResolutionMs += calcElapsed(new Date(slaStart), sla.resolutionTime, pausedTotal, pausedAt);
+            totalResolutionHours += calcElapsedHours(new Date(slaStart), sla.resolutionTime, pausedTotal, pausedAt);
             ticketsWithResolution++;
           }
         } else {
           // Fallback: calculate from ticket timestamps
           if (ticket.resolvedAt) {
-            const resMs = calcElapsed(new Date(slaStart), new Date(ticket.resolvedAt), pausedTotal, pausedAt);
-            totalResolutionMs += resMs;
+            const resHours = calcElapsedHours(new Date(slaStart), new Date(ticket.resolvedAt), pausedTotal, pausedAt);
+            totalResolutionHours += resHours;
             ticketsWithResolution++;
-            if (service.slaResolutionTime && (resMs / (1000 * 60 * 60)) > service.slaResolutionTime) {
+            if (service.slaResolutionTime && resHours > service.slaResolutionTime) {
               resolutionBreaches++;
               const created = new Date(ticket.createdAt);
               breachByHour[created.getHours()]++;
@@ -191,8 +188,8 @@ export async function GET(request: NextRequest) {
       const responseCompliance = totalTickets > 0 ? ((totalTickets - responseBreaches) / totalTickets) * 100 : 100;
       const resolutionCompliance = totalTickets > 0 ? ((totalTickets - resolutionBreaches) / totalTickets) * 100 : 100;
       const overallCompliance = (responseCompliance + resolutionCompliance) / 2;
-      const avgResponseTime = ticketsWithResponse > 0 ? totalResponseMs / ticketsWithResponse / (1000 * 60) : 0; // minutes
-      const avgResolutionTime = ticketsWithResolution > 0 ? totalResolutionMs / ticketsWithResolution / (1000 * 60 * 60) : 0; // hours
+      const avgResponseTime = ticketsWithResponse > 0 ? (totalResponseHours / ticketsWithResponse) * 60 : 0; // minutes
+      const avgResolutionTime = ticketsWithResolution > 0 ? totalResolutionHours / ticketsWithResolution : 0; // hours
 
       return {
         id: service.id,
@@ -287,8 +284,8 @@ export async function GET(request: NextRequest) {
         responseBreaches: t.responseBreaches,
         resolutionBreaches: t.resolutionBreaches,
         slaCompliance: t.totalTickets > 0 ? Math.round((Math.max(0, compliant) / t.totalTickets) * 100) : 100,
-        avgResponseMinutes: t.responseCount > 0 ? Math.round((t.totalResponseMs / t.responseCount / (1000 * 60)) * 10) / 10 : 0,
-        avgResolutionHours: t.resolutionCount > 0 ? Math.round((t.totalResolutionMs / t.resolutionCount / (1000 * 60 * 60)) * 10) / 10 : 0,
+        avgResponseMinutes: t.responseCount > 0 ? Math.round((t.totalResponseHours / t.responseCount * 60) * 10) / 10 : 0,
+        avgResolutionHours: t.resolutionCount > 0 ? Math.round((t.totalResolutionHours / t.resolutionCount) * 10) / 10 : 0,
       };
     }).sort((a, b) => b.slaCompliance - a.slaCompliance);
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { calculateBusinessHours } from '@/lib/sla-utils';
 
 export async function GET(request: NextRequest) {
   try {
@@ -476,7 +477,7 @@ export async function GET(request: NextRequest) {
       // Calculate resolution time from SLA start (approval date or creation date for non-approval tickets)
       const slaStart = (ticket as any).slaStartAt ? new Date((ticket as any).slaStartAt) : new Date(ticket.createdAt);
       const resolutionTime = ticket.resolvedAt
-        ? Math.round((new Date(ticket.resolvedAt).getTime() - slaStart.getTime()) / (1000 * 60 * 60))
+        ? Math.round(calculateBusinessHours(slaStart, new Date(ticket.resolvedAt)))
         : null;
 
       return {
@@ -879,7 +880,7 @@ export async function POST(request: NextRequest) {
       // Calculate resolution time from SLA start (approval date or creation date for non-approval tickets)
       const slaStart = (t as any).slaStartAt ? new Date((t as any).slaStartAt) : new Date(t.createdAt);
       const resolutionTimeHrs = t.resolvedAt
-        ? Math.round((new Date(t.resolvedAt).getTime() - slaStart.getTime()) / (1000 * 60 * 60))
+        ? Math.round(calculateBusinessHours(slaStart, new Date(t.resolvedAt)))
         : '';
 
       return {
