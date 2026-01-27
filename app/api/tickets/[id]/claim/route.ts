@@ -257,12 +257,17 @@ export async function DELETE(
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
+    // Only technicians, security analysts, managers, and admins can release tickets
+    if (!session.user.role || !['TECHNICIAN', 'ADMIN', 'SUPER_ADMIN', 'SECURITY_ANALYST', 'MANAGER_IT'].includes(session.user.role)) {
+      return NextResponse.json({ error: 'You do not have permission to release tickets' }, { status: 403 });
+    }
+
     // Check if the current user is the one who claimed it
     if (existingTicket.assignedToId !== session.user.id) {
       // Allow admins to unclaim any ticket
-      if (session.user.role !== 'ADMIN') {
-        return NextResponse.json({ 
-          error: 'You can only unclaim tickets that you have claimed' 
+      if (!['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
+        return NextResponse.json({
+          error: 'You can only unclaim tickets that you have claimed'
         }, { status: 403 });
       }
     }
