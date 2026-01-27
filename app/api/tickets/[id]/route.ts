@@ -406,6 +406,11 @@ export async function PATCH(
       updateData.resolvedAt = new Date();
     }
 
+    // Set closed timestamp when status changes to CLOSED
+    if (validatedData.status === 'CLOSED' && existingTicket.status !== 'CLOSED') {
+      updateData.closedAt = new Date();
+    }
+
     // Clear closedAt timestamp when reopening a closed ticket
     if (existingTicket.status === 'CLOSED' && validatedData.status && validatedData.status !== 'CLOSED') {
       updateData.closedAt = null;
