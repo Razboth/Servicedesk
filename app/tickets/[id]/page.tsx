@@ -1222,6 +1222,9 @@ export default function TicketDetailPage() {
   const canReleaseTicket = () => {
     if (!session?.user?.role || !ticket) return false;
 
+    // Cannot release tickets in final statuses
+    if (['CLOSED', 'CANCELLED'].includes(ticket.status)) return false;
+
     // Transaction Claims Support group members cannot release tickets
     if (session.user.role === 'TECHNICIAN' && userSupportGroup?.code === 'TRANSACTION_CLAIMS_SUPPORT') {
       return false;
