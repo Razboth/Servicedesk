@@ -34,6 +34,7 @@ interface TicketData {
   status: string;
   priority: string;
   createdAt: string;
+  claimedAt: string | null;
   resolvedAt: string | null;
   closedAt: string | null;
   branch: { name: string; code: string } | null;
@@ -175,6 +176,17 @@ export async function GET(request: NextRequest) {
         assignedTo: { select: { name: true } },
         service: { select: { name: true } },
         branch: { select: { name: true, code: true } },
+        comments: {
+          where: {
+            OR: [
+              { content: { contains: 'Ticket claimed by', mode: 'insensitive' } },
+              { content: { contains: 'Ticket assigned to', mode: 'insensitive' } }
+            ]
+          },
+          select: { createdAt: true },
+          orderBy: { createdAt: 'asc' as const },
+          take: 1
+        },
         fieldValues: {
           include: {
             field: { select: { id: true, name: true, label: true, type: true } }
@@ -511,6 +523,7 @@ export async function GET(request: NextRequest) {
         status: ticket.status,
         priority: ticket.priority,
         createdAt: ticket.createdAt.toISOString(),
+        claimedAt: ticket.comments[0]?.createdAt?.toISOString() || null,
         resolvedAt: ticket.resolvedAt?.toISOString() || null,
         closedAt: ticket.closedAt?.toISOString() || null,
         branch: ticket.branch ? {

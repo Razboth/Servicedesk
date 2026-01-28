@@ -42,6 +42,7 @@ interface TicketData {
   status: string
   priority: string
   createdAt: string
+  claimedAt: string | null
   resolvedAt: string | null
   closedAt: string | null
   branch: { name: string; code: string } | null
@@ -328,6 +329,7 @@ export default function ATMTechnicalIssuesReport() {
           'Branch': t.branch?.name || '-',
           'Assigned To': t.assignedTo?.name || 'Unassigned',
           'Created': format(new Date(t.createdAt), 'yyyy-MM-dd HH:mm'),
+          'Claimed': t.claimedAt ? format(new Date(t.claimedAt), 'yyyy-MM-dd HH:mm') : '-',
           'Resolved': t.resolvedAt ? format(new Date(t.resolvedAt), 'yyyy-MM-dd HH:mm') : '-',
           'Closed': t.closedAt ? format(new Date(t.closedAt), 'yyyy-MM-dd HH:mm') : '-'
         }
@@ -892,6 +894,7 @@ export default function ATMTechnicalIssuesReport() {
                     <TableHead>Branch</TableHead>
                     <TableHead>Assigned To</TableHead>
                     <TableHead>Created</TableHead>
+                    <TableHead>Claimed</TableHead>
                     {data.customFieldDefinitions.map(field => (
                       <TableHead key={field.id} className="whitespace-nowrap">
                         {field.label}
@@ -948,6 +951,11 @@ export default function ATMTechnicalIssuesReport() {
                         <TableCell className="whitespace-nowrap text-sm">
                           {format(new Date(ticket.createdAt), 'MMM dd, yyyy')}
                         </TableCell>
+                        <TableCell className="whitespace-nowrap text-sm">
+                          {ticket.claimedAt ? format(new Date(ticket.claimedAt), 'MMM dd, yyyy HH:mm') : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
                         {data.customFieldDefinitions.map(field => (
                           <TableCell key={field.id} className="whitespace-nowrap">
                             {ticket.customFields[field.name] || '-'}
@@ -958,7 +966,7 @@ export default function ATMTechnicalIssuesReport() {
                   ) : (
                     <TableRow>
                       <TableCell
-                        colSpan={7 + data.customFieldDefinitions.length}
+                        colSpan={8 + data.customFieldDefinitions.length}
                         className="text-center py-8 text-muted-foreground"
                       >
                         No tickets found for this period
