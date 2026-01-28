@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { calculateBusinessHours } from '@/lib/sla-utils';
 
 // GET /api/reports/dashboard - Get comprehensive reports dashboard statistics
 export async function GET(request: NextRequest) {
@@ -184,8 +185,8 @@ export async function GET(request: NextRequest) {
 
       resolvedTicketsWithTime.forEach(ticket => {
         if (ticket.resolvedAt) {
-          // Resolution time
-          const resolutionHours = (ticket.resolvedAt.getTime() - ticket.createdAt.getTime()) / (1000 * 60 * 60);
+          // Resolution time (business hours)
+          const resolutionHours = calculateBusinessHours(ticket.createdAt, ticket.resolvedAt);
           totalResolutionHours += resolutionHours;
 
           // Track by priority
@@ -227,7 +228,7 @@ export async function GET(request: NextRequest) {
 
     resolvedTicketsWithTime.forEach(ticket => {
       if (ticket.resolvedAt) {
-        const resolutionHours = (ticket.resolvedAt.getTime() - ticket.createdAt.getTime()) / (1000 * 60 * 60);
+        const resolutionHours = calculateBusinessHours(ticket.createdAt, ticket.resolvedAt);
         const target = slaTargets[ticket.priority as keyof typeof slaTargets] || 24;
         
         totalSlaTickets++;
@@ -239,34 +240,35 @@ export async function GET(request: NextRequest) {
 
     const overallSlaCompliance = totalSlaTickets > 0 ? (slaCompliantCount / totalSlaTickets) * 100 : 0;
 
-    // Get ticket trend data (last 30 days)
-    const trendData = await prisma.ticket.groupBy({
-      by: ['createdAt'],
-      where: {
-        ...ticketStatsWhere,
-        createdAt: {
-          gte: thirtyDaysAgo
-        }
-      },
-      _count: {
-        id: true
-      }
-    });
+    // Get ticket trend data (last 30 days) - grouped by date in SQL for performance
+    const trendQuery = branchId && isBranchRole
+      ? prisma.$queryRaw<{ date: Date; count: bigint }[]>`
+          SELECT DATE("createdAt") as date, COUNT(*)::int as count
+          FROM "tickets"
+          WHERE "createdAt" >= ${thirtyDaysAgo} AND "branchId" = ${branchId}
+          GROUP BY DATE("createdAt")
+          ORDER BY date`
+      : prisma.$queryRaw<{ date: Date; count: bigint }[]>`
+          SELECT DATE("createdAt") as date, COUNT(*)::int as count
+          FROM "tickets"
+          WHERE "createdAt" >= ${thirtyDaysAgo}
+          GROUP BY DATE("createdAt")
+          ORDER BY date`;
+
+    const trendData = await trendQuery;
+    const trendMap = new Map<string, number>();
+    for (const row of trendData) {
+      const dateStr = new Date(row.date).toISOString().split('T')[0];
+      trendMap.set(dateStr, Number(row.count));
+    }
 
     // Format trend data by day
     const dailyTicketTrend = Array.from({ length: 30 }, (_, i) => {
       const date = new Date(now.getTime() - (29 - i) * 24 * 60 * 60 * 1000);
-      const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-      const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
-      
-      const count = trendData.filter(item => {
-        const itemDate = new Date(item.createdAt);
-        return itemDate >= dayStart && itemDate < dayEnd;
-      }).reduce((sum, item) => sum + item._count.id, 0);
-
+      const dateStr = new Date(date.getFullYear(), date.getMonth(), date.getDate()).toISOString().split('T')[0];
       return {
-        date: dayStart.toISOString().split('T')[0],
-        count
+        date: dateStr,
+        count: trendMap.get(dateStr) || 0
       };
     });
 
@@ -283,12 +285,16 @@ export async function GET(request: NextRequest) {
           id: true,
           name: true,
           assignedTickets: {
+            where: {
+              createdAt: { gte: thirtyDaysAgo }
+            },
             select: {
               id: true,
               status: true,
               createdAt: true,
               resolvedAt: true
-            }
+            },
+            take: 200
           }
         }
       });
@@ -296,12 +302,12 @@ export async function GET(request: NextRequest) {
       technicianStats = techStats.map(tech => {
         const tickets = tech.assignedTickets;
         const resolved = tickets.filter(t => ['RESOLVED', 'CLOSED'].includes(t.status));
-        
+
         let avgResolution = 0;
         if (resolved.length > 0) {
           const totalHours = resolved.reduce((sum, ticket) => {
             if (ticket.resolvedAt) {
-              return sum + (ticket.resolvedAt.getTime() - ticket.createdAt.getTime()) / (1000 * 60 * 60);
+              return sum + calculateBusinessHours(ticket.createdAt, ticket.resolvedAt);
             }
             return sum;
           }, 0);
