@@ -39,13 +39,14 @@ export async function GET(request: NextRequest) {
     const ATM_SERVICES_CATEGORY_ID = 'cmekrqi3t001ghlusklheksqz';
     let skipCategoryFilter = false;
 
+    // Fetch user with support group ONCE (used for role checks and ATM exclusion)
+    const userWithGroup = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      include: { supportGroup: true, branch: true }
+    });
+
     // Role-based filtering - use AND to ensure search is scoped within user access
     if (session.user.role === 'USER') {
-      // Get user's support group for special access checks
-      const userWithGroup = await prisma.user.findUnique({
-        where: { id: session.user.id },
-        include: { supportGroup: true }
-      });
 
       // Check if this is a Call Center user
       const isCallCenterUser = userWithGroup?.supportGroup?.code === 'CALL_CENTER';
@@ -71,12 +72,6 @@ export async function GET(request: NextRequest) {
         whereClause.createdById = session.user.id;
       }
     } else if (session.user.role === 'TECHNICIAN' || session.user.role === 'SECURITY_ANALYST') {
-      // Get user's support group for special access checks
-      const userWithGroup = await prisma.user.findUnique({
-        where: { id: session.user.id },
-        include: { supportGroup: true }
-      });
-
       // Check if this is a Call Center technician
       const isCallCenterTech = userWithGroup?.supportGroup?.code === 'CALL_CENTER';
 
@@ -144,13 +139,9 @@ export async function GET(request: NextRequest) {
       }
     } else if (session.user.role === 'MANAGER') {
       // Managers see tickets from their branch
-      const manager = await prisma.user.findUnique({
-        where: { id: session.user.id }
-      });
-
-      if (manager?.branchId) {
+      if (userWithGroup?.branchId) {
         whereClause.createdBy = {
-          branchId: manager.branchId
+          branchId: userWithGroup.branchId
         };
       }
     }
@@ -241,17 +232,9 @@ export async function GET(request: NextRequest) {
     }
 
     // IMPORTANT: Exclude ATM Claim tickets (they should only be accessed through /branch/atm-claims)
-    // This prevents users from accessing ATM claims through the wrong detail page
     // Exception: Transaction Claims Support and Call Center users CAN see ATM Claims
-
-    // Get user's support group for ATM Claim exclusion check
-    const userForATMCheck = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      include: { supportGroup: true }
-    });
-
-    const isTransactionClaimsSupportUser = userForATMCheck?.supportGroup?.code === 'TRANSACTION_CLAIMS_SUPPORT';
-    const isCallCenterUserForATM = userForATMCheck?.supportGroup?.code === 'CALL_CENTER';
+    const isTransactionClaimsSupportUser = userWithGroup?.supportGroup?.code === 'TRANSACTION_CLAIMS_SUPPORT';
+    const isCallCenterUserForATM = userWithGroup?.supportGroup?.code === 'CALL_CENTER';
 
     // Exclude ATM Claims for everyone except Transaction Claims Support and Call Center
     if (!isTransactionClaimsSupportUser && !isCallCenterUserForATM) {
@@ -389,19 +372,21 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // Calculate statistics
+    // Calculate statistics in parallel
+    const [openCount, inProgressCount, resolvedCount, closedCount, pendingCount] = await Promise.all([
+      prisma.ticket.count({ where: { ...whereClause, status: 'OPEN' } }),
+      prisma.ticket.count({ where: { ...whereClause, status: 'IN_PROGRESS' } }),
+      prisma.ticket.count({ where: { ...whereClause, status: 'RESOLVED' } }),
+      prisma.ticket.count({ where: { ...whereClause, status: 'CLOSED' } }),
+      prisma.ticket.count({ where: { ...whereClause, status: { in: ['PENDING', 'PENDING_APPROVAL', 'PENDING_VENDOR'] } } })
+    ]);
     const stats = {
       total: totalCount,
-      open: await prisma.ticket.count({ where: { ...whereClause, status: 'OPEN' } }),
-      inProgress: await prisma.ticket.count({ where: { ...whereClause, status: 'IN_PROGRESS' } }),
-      resolved: await prisma.ticket.count({ where: { ...whereClause, status: 'RESOLVED' } }),
-      closed: await prisma.ticket.count({ where: { ...whereClause, status: 'CLOSED' } }),
-      pending: await prisma.ticket.count({ 
-        where: { 
-          ...whereClause, 
-          status: { in: ['PENDING', 'PENDING_APPROVAL', 'PENDING_VENDOR'] } 
-        } 
-      })
+      open: openCount,
+      inProgress: inProgressCount,
+      resolved: resolvedCount,
+      closed: closedCount,
+      pending: pendingCount
     };
 
     // Get unique values for filters including 3-tier categories
@@ -558,13 +543,14 @@ export async function POST(request: NextRequest) {
     const ATM_SERVICES_CATEGORY_ID = 'cmekrqi3t001ghlusklheksqz';
     let skipCategoryFilter = false;
 
+    // Fetch user with support group ONCE (used for role checks and ATM exclusion)
+    const userWithGroup = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      include: { supportGroup: true }
+    });
+
     // Role-based filtering - use AND to ensure search is scoped within user access
     if (session.user.role === 'USER') {
-      // Get user's support group for special access checks
-      const userWithGroup = await prisma.user.findUnique({
-        where: { id: session.user.id },
-        include: { supportGroup: true }
-      });
 
       // Check if this is a Call Center user
       const isCallCenterUser = userWithGroup?.supportGroup?.code === 'CALL_CENTER';
@@ -590,59 +576,34 @@ export async function POST(request: NextRequest) {
         whereClause.createdById = session.user.id;
       }
     } else if (session.user.role === 'TECHNICIAN' || session.user.role === 'SECURITY_ANALYST') {
-      // Get user's support group for special access checks
-      const userWithGroup = await prisma.user.findUnique({
-        where: { id: session.user.id },
-        include: { supportGroup: true }
-      });
-
-      // Check if this is a Call Center technician
       const isCallCenterTech = userWithGroup?.supportGroup?.code === 'CALL_CENTER';
-
-      // Check if this is a Transaction Claims Support technician
       const isTransactionClaimsSupport = userWithGroup?.supportGroup?.code === 'TRANSACTION_CLAIMS_SUPPORT';
 
       if (isCallCenterTech) {
-        // Call Center technicians can see:
-        // 1. Their own created tickets (all types)
-        // 2. ALL tickets in Transaction Claims category
         whereClause.OR = [
-          // Their own tickets
           { createdById: session.user.id },
-          // All tickets in Transaction Claims category
           { categoryId: TRANSACTION_CLAIMS_CATEGORY_ID },
-          // Also check service's tier1CategoryId
           { service: { tier1CategoryId: TRANSACTION_CLAIMS_CATEGORY_ID } }
         ];
-        // Skip category filter if filtering by Transaction Claims
         if (filters.tier1CategoryId === TRANSACTION_CLAIMS_CATEGORY_ID) {
           skipCategoryFilter = true;
         }
       } else if (isTransactionClaimsSupport) {
-        // Transaction Claims Support group can see ALL transaction-related claims and disputes
-        // Including ATM Claims
         whereClause.OR = [
-          // All tickets in Transaction Claims category
           { categoryId: TRANSACTION_CLAIMS_CATEGORY_ID },
-          // Also check service's tier1CategoryId
           { service: { tier1CategoryId: TRANSACTION_CLAIMS_CATEGORY_ID } },
-          // Include ATM Services category
           { categoryId: ATM_SERVICES_CATEGORY_ID },
           { service: { tier1CategoryId: ATM_SERVICES_CATEGORY_ID } }
         ];
-        // Skip category filter if filtering by their authorized categories
         if (filters.tier1CategoryId === TRANSACTION_CLAIMS_CATEGORY_ID || filters.tier1CategoryId === ATM_SERVICES_CATEGORY_ID) {
           skipCategoryFilter = true;
         }
       } else {
-        // Check if this is an IT Helpdesk technician - they have no support group restrictions on reports
         const isITHelpdeskTech = userWithGroup?.supportGroup?.code === 'IT_HELPDESK';
 
         if (isITHelpdeskTech) {
-          // IT Helpdesk technicians can see ALL tickets on the reports page (no support group restrictions)
-          // No additional filtering needed - they have full visibility for reporting purposes
+          // IT Helpdesk technicians can see ALL tickets
         } else {
-          // Regular technicians see tickets they created, are assigned to, or in their support group
           const technicianScope = {
             OR: [
               { createdById: session.user.id },
@@ -663,13 +624,9 @@ export async function POST(request: NextRequest) {
       }
     }
     else if (session.user.role === 'MANAGER') {
-      const manager = await prisma.user.findUnique({
-        where: { id: session.user.id }
-      });
-
-      if (manager?.branchId) {
+      if (userWithGroup?.branchId) {
         whereClause.createdBy = {
-          branchId: manager.branchId
+          branchId: userWithGroup.branchId
         };
       }
     }
@@ -748,18 +705,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // IMPORTANT: Exclude ATM Claim tickets (they should only be accessed through /branch/atm-claims)
-    // This prevents users from accessing ATM claims through the wrong detail page
-    // Exception: Transaction Claims Support and Call Center users CAN see ATM Claims
-
-    // Get user's support group for ATM Claim exclusion check (reuse from earlier if already fetched)
-    const userForATMCheckExport = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      include: { supportGroup: true }
-    });
-
-    const isTransactionClaimsSupportUserExport = userForATMCheckExport?.supportGroup?.code === 'TRANSACTION_CLAIMS_SUPPORT';
-    const isCallCenterUserForATMExport = userForATMCheckExport?.supportGroup?.code === 'CALL_CENTER';
+    // Exclude ATM Claim tickets - Exception: Transaction Claims Support and Call Center users
+    const isTransactionClaimsSupportUserExport = userWithGroup?.supportGroup?.code === 'TRANSACTION_CLAIMS_SUPPORT';
+    const isCallCenterUserForATMExport = userWithGroup?.supportGroup?.code === 'CALL_CENTER';
 
     // Exclude ATM Claims for everyone except Transaction Claims Support and Call Center
     if (!isTransactionClaimsSupportUserExport && !isCallCenterUserForATMExport) {
@@ -789,6 +737,7 @@ export async function POST(request: NextRequest) {
 
     const tickets = await prisma.ticket.findMany({
       where: whereClause,
+      take: 10000, // Safety limit to prevent server hang on large exports
       include: {
         createdBy: {
           select: {

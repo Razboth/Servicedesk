@@ -18,15 +18,29 @@ const DEFAULT_CONFIG: BusinessHoursConfig = {
   timezone: 'Asia/Makassar'
 };
 
+/** Cached Intl.DateTimeFormat instances per timezone for performance */
+const formatterCache = new Map<string, Intl.DateTimeFormat>();
+
+function getFormatter(timezone: string): Intl.DateTimeFormat {
+  let fmt = formatterCache.get(timezone);
+  if (!fmt) {
+    fmt = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      hour: 'numeric',
+      minute: 'numeric',
+      weekday: 'short',
+      hour12: false
+    });
+    formatterCache.set(timezone, fmt);
+  }
+  return fmt;
+}
+
+const DAY_MAP: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+
 /** Convert a Date to the configured timezone and return hour/day components */
 function getLocalComponents(date: Date, timezone: string): { hour: number; minute: number; dayOfWeek: number } {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: timezone,
-    hour: 'numeric',
-    minute: 'numeric',
-    weekday: 'short',
-    hour12: false
-  }).formatToParts(date);
+  const parts = getFormatter(timezone).formatToParts(date);
 
   let hour = 0;
   let minute = 0;
@@ -37,9 +51,10 @@ function getLocalComponents(date: Date, timezone: string): { hour: number; minut
     if (part.type === 'weekday') dayStr = part.value;
   }
 
-  // Map weekday string to JS day number (0=Sun, 1=Mon, etc.)
-  const dayMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
-  const dayOfWeek = dayMap[dayStr] ?? 0;
+  // hour12:false can return 24 for midnight in some implementations
+  if (hour === 24) hour = 0;
+
+  const dayOfWeek = DAY_MAP[dayStr] ?? 0;
 
   return { hour, minute, dayOfWeek };
 }
@@ -59,6 +74,7 @@ export function isBusinessHours(
 /**
  * Calculate business hours between two dates.
  * Returns hours as a floating-point number.
+ * Business hours: 08:00-17:00 WITA, Mon-Fri by default.
  */
 export function calculateBusinessHours(
   start: Date,
@@ -68,43 +84,41 @@ export function calculateBusinessHours(
   if (end <= start) return 0;
 
   const businessDayMs = (config.endHour - config.startHour) * 60 * 60 * 1000;
+  // Hours from end-of-business to next day's start-of-business (overnight gap)
+  const overnightHours = 24 - (config.endHour - config.startHour);
   let totalMs = 0;
 
-  // Walk day-by-day from start to end
   const current = new Date(start);
+  let iterations = 0;
+  const MAX_ITERATIONS = 800; // Safety: ~2+ years of days
 
-  while (current < end) {
+  while (current < end && iterations++ < MAX_ITERATIONS) {
     const { hour, minute, dayOfWeek } = getLocalComponents(current, config.timezone);
     const isWorkDay = config.workDays.includes(dayOfWeek);
+    const currentMs = current.getTime();
 
     if (isWorkDay) {
-      // Calculate how much of this business day falls in [current, end]
-      const currentMs = current.getTime();
-
-      // Start of business today (in UTC, approximated from local offset)
-      const dayStart = new Date(current);
-      // Move to start of business day
+      // Calculate today's business window in UTC ms
       const hourDiffToStart = config.startHour - hour;
-      const minuteDiff = -minute;
-      const businessStartMs = currentMs + (hourDiffToStart * 60 * 60 * 1000) + (minuteDiff * 60 * 1000);
+      const businessStartMs = currentMs + hourDiffToStart * 3600000 - minute * 60000;
       const businessEndMs = businessStartMs + businessDayMs;
 
-      const businessStart = new Date(Math.max(businessStartMs, currentMs));
-      const businessEnd = new Date(Math.min(businessEndMs, end.getTime()));
+      // Clamp business window to [current, end]
+      const rangeStart = Math.max(businessStartMs, currentMs);
+      const rangeEnd = Math.min(businessEndMs, end.getTime());
 
-      if (businessEnd > businessStart) {
-        totalMs += businessEnd.getTime() - businessStart.getTime();
+      if (rangeEnd > rangeStart) {
+        totalMs += rangeEnd - rangeStart;
       }
 
-      // Move to next day start
-      current.setTime(businessEndMs);
+      // Advance to NEXT day's business start (today 17:00 + overnight gap = tomorrow 08:00)
+      current.setTime(businessEndMs + overnightHours * 3600000);
     } else {
-      // Skip to next day (advance ~24 hours, adjusted to start of business)
-      current.setTime(current.getTime() + 24 * 60 * 60 * 1000);
-      // Snap to beginning of the day
+      // Non-work day: advance 24 hours then snap to business start
+      current.setTime(currentMs + 24 * 3600000);
       const { hour: newHour, minute: newMin } = getLocalComponents(current, config.timezone);
-      const rewindMs = (newHour * 60 + newMin) * 60 * 1000;
-      current.setTime(current.getTime() - rewindMs + config.startHour * 60 * 60 * 1000);
+      const snapMs = (newHour - config.startHour) * 3600000 + newMin * 60000;
+      current.setTime(current.getTime() - snapMs);
     }
   }
 
@@ -122,44 +136,41 @@ export function addBusinessHours(
   if (hours <= 0) return new Date(start);
 
   let remainingMs = hours * 60 * 60 * 1000;
-  const businessDayMs = (config.endHour - config.startHour) * 60 * 60 * 1000;
   const current = new Date(start);
+  let iterations = 0;
+  const MAX_ITERATIONS = 800;
 
-  while (remainingMs > 0) {
+  while (remainingMs > 0 && iterations++ < MAX_ITERATIONS) {
     const { hour, minute, dayOfWeek } = getLocalComponents(current, config.timezone);
     const isWorkDay = config.workDays.includes(dayOfWeek);
 
     if (isWorkDay && hour >= config.startHour && hour < config.endHour) {
-      // We're in business hours - calculate remaining time today
-      const minutesUntilEnd = (config.endHour - hour) * 60 - minute;
-      const msUntilEnd = minutesUntilEnd * 60 * 1000;
+      // In business hours - calculate remaining time today
+      const msUntilEnd = ((config.endHour - hour) * 60 - minute) * 60 * 1000;
 
       if (remainingMs <= msUntilEnd) {
-        // Deadline falls within today
         current.setTime(current.getTime() + remainingMs);
         remainingMs = 0;
       } else {
-        // Use rest of today and continue
         current.setTime(current.getTime() + msUntilEnd);
         remainingMs -= msUntilEnd;
       }
     } else {
       // Outside business hours - advance to next business day start
       if (isWorkDay && hour >= config.endHour) {
-        // After hours today, skip to next day
-        current.setTime(current.getTime() + 24 * 60 * 60 * 1000);
+        current.setTime(current.getTime() + 24 * 3600000);
       } else if (!isWorkDay) {
-        current.setTime(current.getTime() + 24 * 60 * 60 * 1000);
+        current.setTime(current.getTime() + 24 * 3600000);
       }
+      // else: before business hours on a workday - just snap forward
+
       // Snap to start of business
       const { hour: newHour, minute: newMin, dayOfWeek: newDay } = getLocalComponents(current, config.timezone);
       if (!config.workDays.includes(newDay)) {
-        continue; // Keep advancing
+        continue; // Keep advancing through non-work days
       }
-      const snapMs = ((newHour - config.startHour) * 60 + newMin) * 60 * 1000;
-      if (snapMs > 0) {
-        current.setTime(current.getTime() - snapMs);
-      } else if (snapMs < 0) {
+      const snapMs = (newHour - config.startHour) * 3600000 + newMin * 60000;
+      if (snapMs !== 0) {
         current.setTime(current.getTime() - snapMs);
       }
     }
