@@ -409,6 +409,16 @@ const standardReports: Report[] = [
     roles: ['USER', 'TECHNICIAN', 'MANAGER', 'ADMIN'],
     badge: 'Operasional',
     lastRun: 'Live'
+  },
+  {
+    title: 'Pembukaan Operasional Hari Libur',
+    description: 'Rekap permintaan pembukaan operasional cabang pada hari libur',
+    href: '/reports/holiday-branch-operation',
+    icon: Calendar,
+    type: 'standard',
+    roles: ['USER', 'TECHNICIAN', 'MANAGER', 'ADMIN'],
+    badge: 'Operasional',
+    lastRun: 'Live'
   }
 ]
 
