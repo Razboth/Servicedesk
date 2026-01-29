@@ -102,6 +102,9 @@ model User {
   // Shift management
   shiftProfile           StaffShiftProfile?
 
+  // Import tracking
+  importLogs             ImportLog[]            @relation("ImportLogCreatedBy")
+
   branch                 Branch?                @relation(fields: [branchId], references: [id])
   supportGroup           SupportGroup?          @relation(fields: [supportGroupId], references: [id])
 
@@ -3113,4 +3116,49 @@ enum IssuePriority {
   MEDIUM
   HIGH
   CRITICAL
+}
+
+// Import/Export tracking
+enum ImportMode {
+  ADD_ONLY         // Only create new records, skip existing
+  UPDATE_ONLY      // Only update existing records, skip new
+  REPLACE_ALL      // Clear existing data, import fresh
+  CREATE_OR_UPDATE // Create new and update existing (default)
+}
+
+enum ImportStatus {
+  PENDING
+  PREVIEWING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  ROLLED_BACK
+}
+
+model ImportLog {
+  id             String       @id @default(cuid())
+  entityType     String       // 'ATM', 'BRANCH', 'USER', 'SERVICE', etc.
+  importMode     ImportMode   @default(CREATE_OR_UPDATE)
+  fileName       String
+  fileSize       Int
+  totalRows      Int
+  processedRows  Int          @default(0)
+  createdRows    Int          @default(0)
+  updatedRows    Int          @default(0)
+  skippedRows    Int          @default(0)
+  errorRows      Int          @default(0)
+  status         ImportStatus @default(PENDING)
+  errors         Json?        // Array of error messages
+  startedAt      DateTime?
+  completedAt    DateTime?
+  createdById    String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  createdBy      User         @relation("ImportLogCreatedBy", fields: [createdById], references: [id])
+
+  @@index([entityType, status])
+  @@index([createdById])
+  @@index([createdAt])
+  @@map("import_logs")
 }

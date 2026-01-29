@@ -1,27 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { ImportMode } from '@prisma/client';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 
 const ALLOWED_ROLES = ['ADMIN', 'MANAGER'];
 
+// Valid values for NetworkMedia enum
+const VALID_NETWORK_MEDIA = ['VSAT', 'M2M', 'FO'];
+
 // Validation for branch data
 function validateBranchData(data: any): string[] {
   const errors: string[] = [];
-  
+
   if (!data.name || data.name.trim() === '') {
     errors.push('Name is required');
   }
-  
+
   if (!data.code || data.code.trim() === '') {
     errors.push('Code is required');
   }
-  
-  if (data.networkMedia && !['VSAT', 'M2M', 'FO'].includes(data.networkMedia)) {
-    errors.push('networkMedia must be one of: VSAT, M2M, FO');
+
+  if (data.networkMedia && !VALID_NETWORK_MEDIA.includes(data.networkMedia.toUpperCase())) {
+    errors.push(`networkMedia must be one of: ${VALID_NETWORK_MEDIA.join(', ')}`);
   }
-  
+
+  // Validate coordinates if provided
+  if (data.latitude && (isNaN(parseFloat(data.latitude)) || parseFloat(data.latitude) < -90 || parseFloat(data.latitude) > 90)) {
+    errors.push('Latitude must be a valid number between -90 and 90');
+  }
+
+  if (data.longitude && (isNaN(parseFloat(data.longitude)) || parseFloat(data.longitude) < -180 || parseFloat(data.longitude) > 180)) {
+    errors.push('Longitude must be a valid number between -180 and 180');
+  }
+
   return errors;
 }
 
@@ -35,14 +48,22 @@ export async function POST(request: NextRequest) {
 
     const formData = await request.formData();
     const file = formData.get('file') as File;
-    
+    const importModeStr = formData.get('importMode') as string || 'CREATE_OR_UPDATE';
+
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
+    // Validate import mode
+    const validModes = ['ADD_ONLY', 'UPDATE_ONLY', 'REPLACE_ALL', 'CREATE_OR_UPDATE'];
+    if (!validModes.includes(importModeStr)) {
+      return NextResponse.json({ error: `Invalid import mode. Must be one of: ${validModes.join(', ')}` }, { status: 400 });
+    }
+    const importMode = importModeStr as ImportMode;
+
     const buffer = await file.arrayBuffer();
     let data: any[] = [];
-    
+
     // Parse based on file type
     if (file.name.endsWith('.csv')) {
       const text = new TextDecoder().decode(buffer);
@@ -57,68 +78,152 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unsupported file format' }, { status: 400 });
     }
 
+    // Filter out empty rows
+    data = data.filter(row => row.code && row.code.toString().trim() !== '');
+
+    // Create import log
+    const importLog = await prisma.importLog.create({
+      data: {
+        entityType: 'BRANCH',
+        importMode,
+        fileName: file.name,
+        fileSize: file.size,
+        totalRows: data.length,
+        status: 'IN_PROGRESS',
+        startedAt: new Date(),
+        createdById: session.user.id
+      }
+    });
+
     const results = {
       processed: 0,
       created: 0,
       updated: 0,
+      skipped: 0,
       errors: [] as string[]
     };
 
-    // Process each row
-    for (let i = 0; i < data.length; i++) {
-      const row = data[i];
-      results.processed++;
-      
-      try {
-        // Validate row data
-        const validationErrors = validateBranchData(row);
-        if (validationErrors.length > 0) {
-          results.errors.push(`Row ${i + 1}: ${validationErrors.join(', ')}`);
-          continue;
-        }
-
-        // Convert string booleans to actual booleans
-        const branchData = {
-          name: row.name?.trim(),
-          code: row.code?.trim(),
-          address: row.address?.trim() || null,
-          city: row.city?.trim() || null,
-          province: row.province?.trim() || null,
-          ipAddress: row.ipAddress?.trim() || null,
-          backupIpAddress: row.backupIpAddress?.trim() || null,
-          monitoringEnabled: row.monitoringEnabled === 'true',
-          networkMedia: row.networkMedia?.trim() || null,
-          networkVendor: row.networkVendor?.trim() || null,
-          isActive: row.isActive === 'false' ? false : true
-        };
-
-        // Check if branch exists by code
-        const existingBranch = await prisma.branch.findFirst({
-          where: { code: branchData.code }
-        });
-
-        if (existingBranch) {
-          // Update existing branch
-          await prisma.branch.update({
-            where: { id: existingBranch.id },
-            data: branchData
-          });
-          results.updated++;
-        } else {
-          // Create new branch
-          await prisma.branch.create({
-            data: branchData
-          });
-          results.created++;
-        }
-      } catch (error) {
-        results.errors.push(`Row ${i + 1}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    try {
+      // Handle REPLACE_ALL mode - delete all branches first
+      if (importMode === 'REPLACE_ALL') {
+        const deleteCount = await prisma.branch.count();
+        await prisma.branch.deleteMany({});
+        results.errors.push(`Cleared ${deleteCount} existing branches before import`);
       }
+
+      // Process each row
+      for (let i = 0; i < data.length; i++) {
+        const row = data[i];
+        results.processed++;
+
+        try {
+          // Validate row data
+          const validationErrors = validateBranchData(row);
+          if (validationErrors.length > 0) {
+            results.errors.push(`Row ${i + 1}: ${validationErrors.join(', ')}`);
+            continue;
+          }
+
+          // Parse network media
+          let networkMedia: 'VSAT' | 'M2M' | 'FO' | null = null;
+          if (row.networkMedia) {
+            const mediaUpper = row.networkMedia.toString().toUpperCase();
+            if (VALID_NETWORK_MEDIA.includes(mediaUpper)) {
+              networkMedia = mediaUpper as 'VSAT' | 'M2M' | 'FO';
+            }
+          }
+
+          // Convert string booleans to actual booleans
+          const branchData = {
+            name: row.name?.toString().trim(),
+            code: row.code?.toString().trim(),
+            address: row.address?.toString().trim() || null,
+            city: row.city?.toString().trim() || null,
+            province: row.province?.toString().trim() || null,
+            ipAddress: row.ipAddress?.toString().trim() || null,
+            backupIpAddress: row.backupIpAddress?.toString().trim() || null,
+            latitude: row.latitude ? parseFloat(row.latitude) : null,
+            longitude: row.longitude ? parseFloat(row.longitude) : null,
+            monitoringEnabled: row.monitoringEnabled === 'true' || row.monitoringEnabled === true,
+            networkMedia,
+            networkVendor: row.networkVendor?.toString().trim() || null,
+            isActive: row.isActive === 'false' || row.isActive === false ? false : true
+          };
+
+          // Check if branch exists by code
+          const existingBranch = await prisma.branch.findFirst({
+            where: { code: branchData.code }
+          });
+
+          if (existingBranch) {
+            // Handle based on import mode
+            if (importMode === 'ADD_ONLY') {
+              results.skipped++;
+              continue;
+            }
+
+            // Update existing branch
+            await prisma.branch.update({
+              where: { id: existingBranch.id },
+              data: branchData
+            });
+            results.updated++;
+          } else {
+            // Handle based on import mode
+            if (importMode === 'UPDATE_ONLY') {
+              results.skipped++;
+              continue;
+            }
+
+            // Create new branch
+            await prisma.branch.create({
+              data: branchData
+            });
+            results.created++;
+          }
+        } catch (error) {
+          results.errors.push(`Row ${i + 1}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      }
+
+      // Update import log with success
+      await prisma.importLog.update({
+        where: { id: importLog.id },
+        data: {
+          status: 'COMPLETED',
+          processedRows: results.processed,
+          createdRows: results.created,
+          updatedRows: results.updated,
+          skippedRows: results.skipped,
+          errorRows: results.errors.length,
+          errors: results.errors.length > 0 ? results.errors : null,
+          completedAt: new Date()
+        }
+      });
+
+    } catch (error) {
+      // Update import log with failure
+      await prisma.importLog.update({
+        where: { id: importLog.id },
+        data: {
+          status: 'FAILED',
+          processedRows: results.processed,
+          createdRows: results.created,
+          updatedRows: results.updated,
+          skippedRows: results.skipped,
+          errorRows: results.errors.length + 1,
+          errors: [...results.errors, error instanceof Error ? error.message : 'Unknown error'],
+          completedAt: new Date()
+        }
+      });
+      throw error;
     }
 
     return NextResponse.json({
       success: true,
-      message: `Import completed. ${results.created} created, ${results.updated} updated.`,
+      message: `Import completed. ${results.created} created, ${results.updated} updated, ${results.skipped} skipped.`,
+      importLogId: importLog.id,
+      importMode,
       results
     });
 
@@ -141,37 +246,41 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const isExport = searchParams.get('export') === 'true';
-    
+
     if (!isExport) {
       return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
     }
-    
+
     const format = searchParams.get('format') || 'csv';
 
     const branches = await prisma.branch.findMany({
-      select: {
-        name: true,
-        code: true,
-        address: true,
-        city: true,
-        province: true,
-        ipAddress: true,
-        backupIpAddress: true,
-        monitoringEnabled: true,
-        networkMedia: true,
-        networkVendor: true,
-        isActive: true
-      },
-      orderBy: { name: 'asc' }
+      orderBy: { code: 'asc' }
     });
 
+    // Transform data for export including all fields
+    const exportData = branches.map(branch => ({
+      code: branch.code,
+      name: branch.name,
+      address: branch.address || '',
+      city: branch.city || '',
+      province: branch.province || '',
+      ipAddress: branch.ipAddress || '',
+      backupIpAddress: branch.backupIpAddress || '',
+      latitude: branch.latitude || '',
+      longitude: branch.longitude || '',
+      monitoringEnabled: branch.monitoringEnabled,
+      networkMedia: branch.networkMedia || '',
+      networkVendor: branch.networkVendor || '',
+      isActive: branch.isActive
+    }));
+
     if (format === 'excel') {
-      const worksheet = XLSX.utils.json_to_sheet(branches);
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Branches');
-      
+
       const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
-      
+
       return new NextResponse(buffer, {
         headers: {
           'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -179,8 +288,8 @@ export async function GET(request: NextRequest) {
         }
       });
     } else {
-      const csv = Papa.unparse(branches, { delimiter: ';' });
-      
+      const csv = Papa.unparse(exportData, { delimiter: ';' });
+
       return new NextResponse(csv, {
         headers: {
           'Content-Type': 'text/csv',
