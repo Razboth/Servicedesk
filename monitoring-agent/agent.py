@@ -231,7 +231,9 @@ class MonitoringAgent:
 
                 # Show all entities with their IPs
                 for entity in self.entities:
-                    logger.info(f"  [{entity.get('type')}] {entity.get('name', 'Unknown')} - IP: {entity.get('ip_address', 'N/A')}")
+                    backup = entity.get('backup_ip_address')
+                    backup_str = f" (backup: {backup})" if backup else ""
+                    logger.info(f"  [{entity.get('type')}] {entity.get('name', 'Unknown')} - IP: {entity.get('ip_address', 'N/A')}{backup_str}")
 
                 return True
             else:
@@ -243,21 +245,44 @@ class MonitoringAgent:
             return False
 
     def ping_entity(self, entity: Dict) -> Dict:
-        """Ping a single entity and return result"""
-        ip_address = entity.get('ip_address')
-        if not ip_address:
+        """Ping a single entity and return result. Tries backup IP if primary fails."""
+        primary_ip = entity.get('ip_address')
+        backup_ip = entity.get('backup_ip_address')
+
+        if not primary_ip:
             return None
 
+        # Try primary IP first
         result = ping_host(
-            ip_address,
+            primary_ip,
             count=self.config.ping_count,
             timeout_ms=self.config.ping_timeout
         )
 
+        used_ip = primary_ip
+        used_backup = False
+
+        # If primary failed and backup exists, try backup IP
+        if result.status in ['OFFLINE', 'TIMEOUT', 'ERROR'] and backup_ip:
+            logger.info(f"  Primary IP failed for {entity.get('name')}, trying backup IP: {backup_ip}")
+            backup_result = ping_host(
+                backup_ip,
+                count=self.config.ping_count,
+                timeout_ms=self.config.ping_timeout
+            )
+            # Use backup result if it's better
+            if backup_result.status in ['ONLINE', 'SLOW'] or backup_result.packet_loss < result.packet_loss:
+                result = backup_result
+                used_ip = backup_ip
+                used_backup = True
+
         return {
             'entity_type': entity.get('type'),
             'entity_id': entity.get('id'),
-            'ip_address': ip_address,
+            'ip_address': used_ip,
+            'primary_ip': primary_ip,
+            'backup_ip': backup_ip,
+            'used_backup': used_backup,
             'status': result.status,
             'response_time_ms': result.response_time_ms,
             'packet_loss': result.packet_loss,
@@ -287,7 +312,8 @@ class MonitoringAgent:
                         rtt = result.get('response_time_ms')
                         rtt_str = f"{rtt:.1f}ms" if rtt else "N/A"
                         loss = result.get('packet_loss', 100)
-                        logger.info(f"  {status_icon} [{result['entity_type']}] {entity.get('name', entity.get('id'))} ({result['ip_address']}): {result['status']} - RTT: {rtt_str}, Loss: {loss}%")
+                        backup_indicator = " [BACKUP]" if result.get('used_backup') else ""
+                        logger.info(f"  {status_icon} [{result['entity_type']}] {entity.get('name', entity.get('id'))} ({result['ip_address']}){backup_indicator}: {result['status']} - RTT: {rtt_str}, Loss: {loss}%")
                 except Exception as e:
                     logger.error(f"Error pinging {entity.get('name', entity.get('id'))}: {e}")
 
