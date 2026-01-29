@@ -1,11 +1,19 @@
 /**
  * Network Monitoring Service
  * Performs scheduled network health checks for branches and ATMs
+ *
+ * Features:
+ * - State machine with hysteresis to prevent alert storms
+ * - Parent-child correlation (branch down = suppress ATM alerts)
+ * - Incident deduplication within time window
+ * - Maintenance window support
  */
 
 import { prisma } from '@/lib/prisma';
 import { pingHost } from '@/lib/network-monitoring';
 import { NetworkStatus, NetworkMedia } from '@prisma/client';
+import { updateDeviceState } from './device-state-machine';
+import { createOrUpdateIncident, resolveIncident } from './incident-correlation';
 
 interface MonitoringConfig {
   branchInterval: number; // milliseconds
@@ -167,11 +175,12 @@ class NetworkMonitor {
 
   /**
    * Check individual branch network
+   * Uses state machine with hysteresis to prevent alert storms
    */
   private async checkBranchNetwork(branch: any): Promise<void> {
     try {
       const pingResult = await pingHost(branch.ipAddress, branch.networkMedia as NetworkMedia);
-      
+
       // Determine status based on ping result
       let status: NetworkStatus = 'OFFLINE';
       if (pingResult.success) {
@@ -197,7 +206,7 @@ class NetworkMonitor {
       // Calculate uptime/downtime
       let uptimeSeconds = previousLog?.uptimeSeconds || 0;
       let downtimeSeconds = previousLog?.downtimeSeconds || 0;
-      const timeSinceLastCheck = previousLog 
+      const timeSinceLastCheck = previousLog
         ? Math.floor((Date.now() - previousLog.checkedAt.getTime()) / 1000)
         : 0;
 
@@ -207,7 +216,7 @@ class NetworkMonitor {
         downtimeSeconds += timeSinceLastCheck;
       }
 
-      // Update or create log
+      // Update or create log (basic fields)
       await prisma.networkMonitoringLog.upsert({
         where: {
           entityType_entityId: {
@@ -239,17 +248,38 @@ class NetworkMonitor {
           downtimeSeconds,
           previousStatus: previousLog?.status || null,
           statusChangedAt: status !== previousLog?.status ? new Date() : previousLog?.statusChangedAt || null,
-          downSince: status === 'OFFLINE' && previousLog?.status !== 'OFFLINE' ? new Date() : 
+          downSince: status === 'OFFLINE' && previousLog?.status !== 'OFFLINE' ? new Date() :
                     status !== 'OFFLINE' ? null : previousLog?.downSince || null
         }
       });
 
-      // Create incident if status changed to OFFLINE
-      if (status === 'OFFLINE' && previousLog?.status !== 'OFFLINE') {
-        await this.createNetworkIncident('BRANCH', branch.id, branch.name);
+      // Process state machine with hysteresis
+      const stateResult = await updateDeviceState('BRANCH', branch.id, status);
+
+      // Only create incident when state machine says so (after consecutive failures)
+      if (stateResult.shouldCreateIncident) {
+        const incidentResult = await createOrUpdateIncident({
+          entityType: 'BRANCH',
+          entityId: branch.id,
+          entityName: branch.name
+        });
+        if (incidentResult.created) {
+          console.log(`🚨 Incident created for branch ${branch.name} (state: ${stateResult.newState})`);
+        } else if (incidentResult.suppressed) {
+          console.log(`⏸️  Alert suppressed for ${branch.name}: ${incidentResult.reason}`);
+        } else {
+          console.log(`🔄 Incident deduplicated for ${branch.name}`);
+        }
       }
 
-      console.log(`✓ ${branch.name}: ${status} (${pingResult.responseTimeMs || 0}ms)`);
+      // Resolve incident when state machine confirms recovery
+      if (stateResult.shouldResolveIncident) {
+        await resolveIncident('BRANCH', branch.id);
+        console.log(`✅ Incident resolved for branch ${branch.name} (confirmed recovery)`);
+      }
+
+      const stateIndicator = stateResult.stateChanged ? ` [${stateResult.newState}]` : '';
+      console.log(`✓ ${branch.name}: ${status} (${pingResult.responseTimeMs || 0}ms)${stateIndicator}`);
     } catch (error) {
       console.error(`✗ Error checking branch ${branch.name}:`, error);
     }
@@ -257,11 +287,12 @@ class NetworkMonitor {
 
   /**
    * Check individual ATM network
+   * Uses state machine with hysteresis and parent-child correlation
    */
   private async checkATMNetwork(atm: any): Promise<void> {
     try {
       const pingResult = await pingHost(atm.ipAddress, atm.networkMedia as NetworkMedia);
-      
+
       // Determine status
       let status: NetworkStatus = 'OFFLINE';
       if (pingResult.success) {
@@ -287,7 +318,7 @@ class NetworkMonitor {
       // Calculate uptime/downtime
       let uptimeSeconds = previousLog?.uptimeSeconds || 0;
       let downtimeSeconds = previousLog?.downtimeSeconds || 0;
-      const timeSinceLastCheck = previousLog 
+      const timeSinceLastCheck = previousLog
         ? Math.floor((Date.now() - previousLog.checkedAt.getTime()) / 1000)
         : 0;
 
@@ -297,7 +328,7 @@ class NetworkMonitor {
         downtimeSeconds += timeSinceLastCheck;
       }
 
-      // Update or create log
+      // Update or create log (basic fields)
       await prisma.networkMonitoringLog.upsert({
         where: {
           entityType_entityId: {
@@ -329,41 +360,41 @@ class NetworkMonitor {
           downtimeSeconds,
           previousStatus: previousLog?.status || null,
           statusChangedAt: status !== previousLog?.status ? new Date() : previousLog?.statusChangedAt || null,
-          downSince: status === 'OFFLINE' && previousLog?.status !== 'OFFLINE' ? new Date() : 
+          downSince: status === 'OFFLINE' && previousLog?.status !== 'OFFLINE' ? new Date() :
                     status !== 'OFFLINE' ? null : previousLog?.downSince || null
         }
       });
 
-      // Create incident if status changed to OFFLINE
-      if (status === 'OFFLINE' && previousLog?.status !== 'OFFLINE') {
-        await this.createNetworkIncident('ATM', atm.id, atm.name);
+      // Process state machine with hysteresis
+      const stateResult = await updateDeviceState('ATM', atm.id, status);
+
+      // Only create incident when state machine says so
+      // Parent-child correlation is handled inside createOrUpdateIncident
+      if (stateResult.shouldCreateIncident) {
+        const incidentResult = await createOrUpdateIncident({
+          entityType: 'ATM',
+          entityId: atm.id,
+          entityName: atm.name
+        });
+        if (incidentResult.created) {
+          console.log(`🚨 Incident created for ATM ${atm.name} (state: ${stateResult.newState})`);
+        } else if (incidentResult.suppressed) {
+          console.log(`⏸️  Alert suppressed for ATM ${atm.name}: ${incidentResult.reason}`);
+        } else {
+          console.log(`🔄 Incident deduplicated for ATM ${atm.name}`);
+        }
       }
 
-      console.log(`✓ ${atm.name}: ${status} (${pingResult.responseTimeMs || 0}ms)`);
+      // Resolve incident when state machine confirms recovery
+      if (stateResult.shouldResolveIncident) {
+        await resolveIncident('ATM', atm.id);
+        console.log(`✅ Incident resolved for ATM ${atm.name} (confirmed recovery)`);
+      }
+
+      const stateIndicator = stateResult.stateChanged ? ` [${stateResult.newState}]` : '';
+      console.log(`✓ ${atm.name}: ${status} (${pingResult.responseTimeMs || 0}ms)${stateIndicator}`);
     } catch (error) {
       console.error(`✗ Error checking ATM ${atm.name}:`, error);
-    }
-  }
-
-  /**
-   * Create network incident
-   */
-  private async createNetworkIncident(entityType: string, entityId: string, entityName: string): Promise<void> {
-    try {
-      await prisma.networkIncident.create({
-        data: {
-          branchId: entityType === 'BRANCH' ? entityId : undefined,
-          atmId: entityType === 'ATM' ? entityId : undefined,
-          type: 'COMMUNICATION_OFFLINE',
-          severity: 'HIGH',
-          description: `Network connectivity lost for ${entityType.toLowerCase()} ${entityName}`,
-          status: 'OPEN',
-          detectedAt: new Date()
-        }
-      });
-      console.log(`🚨 Network incident created for ${entityName}`);
-    } catch (error) {
-      console.error('Failed to create network incident:', error);
     }
   }
 }

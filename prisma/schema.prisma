@@ -888,20 +888,25 @@ model TicketTask {
 }
 
 model NetworkMonitoringLog {
-  id              String         @id @default(cuid())
-  entityType      String
-  entityId        String
-  ipAddress       String
-  status          NetworkStatus
-  responseTimeMs  Int?
-  packetLoss      Float?
-  errorMessage    String?
-  checkedAt       DateTime       @default(now())
-  previousStatus  NetworkStatus?
-  statusChangedAt DateTime?
-  downSince       DateTime?
-  uptimeSeconds   Int?
-  downtimeSeconds Int?
+  id                   String         @id @default(cuid())
+  entityType           String
+  entityId             String
+  ipAddress            String
+  status               NetworkStatus
+  responseTimeMs       Int?
+  packetLoss           Float?
+  errorMessage         String?
+  checkedAt            DateTime       @default(now())
+  previousStatus       NetworkStatus?
+  statusChangedAt      DateTime?
+  downSince            DateTime?
+  uptimeSeconds        Int?
+  downtimeSeconds      Int?
+  // State machine fields for hysteresis
+  deviceState          DeviceState    @default(UP)
+  consecutiveFailures  Int            @default(0)
+  consecutiveSuccesses Int            @default(0)
+  lastStateChange      DateTime?
 
   @@unique([entityType, entityId])
   @@map("network_monitoring_logs")
@@ -942,11 +947,32 @@ model NetworkIncident {
   updatedAt           DateTime            @updatedAt
   externalReferenceId String?
   metrics             Json?
+  // Deduplication fields
+  occurrenceCount     Int                 @default(1)
+  lastOccurrence      DateTime?
   atm                 ATM?                @relation(fields: [atmId], references: [id], onDelete: Cascade)
   branch              Branch?             @relation(fields: [branchId], references: [id])
   ticket              Ticket?             @relation(fields: [ticketId], references: [id])
 
   @@map("network_incidents")
+}
+
+model MaintenanceWindow {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  entityType  String?   // 'BRANCH', 'ATM', or null for global
+  entityId    String?   // Specific entity, or null for type-wide
+  startTime   DateTime
+  endTime     DateTime
+  isActive    Boolean   @default(true)
+  createdById String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([startTime, endTime])
+  @@index([entityType, entityId])
+  @@map("maintenance_windows")
 }
 
 model Notification {
@@ -1576,6 +1602,13 @@ enum NetworkStatus {
   SLOW
   TIMEOUT
   ERROR
+}
+
+enum DeviceState {
+  UP
+  DEGRADED
+  DOWN
+  RECOVERING
 }
 
 enum NetworkIncidentType {
