@@ -356,30 +356,29 @@ export default function ImportPage() {
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-6 space-y-6">
       {/* Header Card */}
-      <Card className="border-none bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 text-white overflow-hidden">
-        <CardHeader className="pb-4">
+      <Card className="shadow-sm bg-gradient-to-r from-primary/5 via-primary/3 to-transparent">
+        <CardContent className="pt-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
-                <Upload className="h-8 w-8" />
+              <div className="p-3 rounded-lg bg-primary/10">
+                <Upload className="h-8 w-8 text-primary" />
               </div>
               <div>
-                <CardTitle className="text-2xl font-bold text-white">Import / Export Center</CardTitle>
-                <CardDescription className="text-blue-100 mt-1">
+                <h1 className="text-2xl font-bold">Import / Export Center</h1>
+                <p className="text-muted-foreground mt-1">
                   Bulk import and export data for branches, users, ATMs, services, and more
-                </CardDescription>
+                </p>
               </div>
             </div>
             <Button
-              variant="secondary"
-              className="bg-white/20 hover:bg-white/30 text-white border-0"
+              variant="outline"
               onClick={() => setShowHistory(!showHistory)}
             >
               <History className="h-4 w-4 mr-2" />
               {showHistory ? 'Hide History' : 'View History'}
             </Button>
           </div>
-        </CardHeader>
+        </CardContent>
       </Card>
 
       {/* Import History Panel */}
