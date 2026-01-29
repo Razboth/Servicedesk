@@ -19,14 +19,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle, 
-  CardDescription 
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription
 } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import {
   Select,
@@ -47,7 +46,12 @@ import {
   Network,
   Wifi,
   Globe,
-  MapPin
+  MapPin,
+  Save,
+  Loader2,
+  FileText,
+  CheckCircle,
+  XCircle
 } from 'lucide-react';
 
 const formSchema = z.object({
@@ -104,11 +108,19 @@ interface Branch {
   }>;
 }
 
+// Tab configuration
+const tabs = [
+  { id: 'details', label: 'Branch Details', icon: Building2 },
+  { id: 'network', label: 'Network Settings', icon: Network },
+  { id: 'users', label: 'Users', icon: Users },
+  { id: 'atms', label: 'ATMs', icon: CreditCard },
+];
+
 export default function EditBranchPage() {
   const router = useRouter();
   const params = useParams();
   const branchId = params.id as string;
-  
+
   const [loading, setLoading] = useState(false);
   const [branch, setBranch] = useState<Branch | null>(null);
   const [activeTab, setActiveTab] = useState('details');
@@ -143,7 +155,7 @@ export default function EditBranchPage() {
 
       const data = await response.json();
       setBranch(data);
-      
+
       // Update form with branch data
       form.reset({
         name: data.name,
@@ -192,101 +204,185 @@ export default function EditBranchPage() {
     }
   };
 
+  // Get badge count for tabs
+  const getTabBadge = (tabId: string) => {
+    if (!branch) return null;
+    switch (tabId) {
+      case 'users':
+        return branch._count.users;
+      case 'atms':
+        return branch._count.atms;
+      default:
+        return null;
+    }
+  };
+
   if (!branch) {
     return (
       <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-8">
-        <div className="text-center">Loading branch details...</div>
+        <div className="flex items-center justify-center gap-2 text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          Loading branch details...
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-8 max-w-5xl">
-      <div className="mb-6">
-        <Link href="/admin/branches">
-          <Button variant="ghost" size="sm" className="mb-4">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Branches
-          </Button>
-        </Link>
-        
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2">
-              <Building2 className="h-8 w-8" />
-              Edit Branch
-            </h1>
-            <p className="text-gray-600 mt-1">Update branch information and manage users</p>
+    <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-8 max-w-6xl">
+      {/* Back Button */}
+      <Link href="/admin/branches">
+        <Button variant="ghost" size="sm" className="mb-4">
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Branches
+        </Button>
+      </Link>
+
+      {/* Header Card */}
+      <Card className="mb-6 shadow-sm bg-gradient-to-r from-primary/5 via-primary/3 to-transparent">
+        <CardContent className="pt-6">
+          <div className="flex items-start justify-between">
+            <div className="flex items-start gap-4">
+              <div className="p-3 rounded-lg bg-primary/10">
+                <Building2 className="h-8 w-8 text-primary" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold">{branch.name}</h1>
+                <div className="flex items-center gap-3 mt-1 text-muted-foreground">
+                  <Badge variant="outline" className="font-mono">
+                    {branch.code}
+                  </Badge>
+                  {branch.city && (
+                    <span className="flex items-center gap-1 text-sm">
+                      <MapPin className="h-3.5 w-3.5" />
+                      {branch.city}{branch.province ? `, ${branch.province}` : ''}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {branch.monitoringEnabled && (
+                <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-200">
+                  <Wifi className="h-3 w-3 mr-1" />
+                  Monitoring
+                </Badge>
+              )}
+              <Badge
+                variant={branch.isActive ? 'default' : 'secondary'}
+                className={branch.isActive ? 'bg-green-500/10 text-green-600 border-green-200' : ''}
+              >
+                {branch.isActive ? (
+                  <><CheckCircle className="h-3 w-3 mr-1" /> Active</>
+                ) : (
+                  <><XCircle className="h-3 w-3 mr-1" /> Inactive</>
+                )}
+              </Badge>
+            </div>
           </div>
-          <Badge variant={branch.isActive ? 'success' : 'secondary'} className="text-lg px-4 py-2">
-            {branch.isActive ? 'Active' : 'Inactive'}
-          </Badge>
-        </div>
+        </CardContent>
+      </Card>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <Card className="shadow-sm hover:shadow-md transition-shadow border-l-4 border-l-blue-500">
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Total Users</p>
+                <p className="text-3xl font-bold">{branch._count.users}</p>
+              </div>
+              <div className="p-3 rounded-full bg-blue-500/10">
+                <Users className="h-6 w-6 text-blue-500" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm hover:shadow-md transition-shadow border-l-4 border-l-orange-500">
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Total Tickets</p>
+                <p className="text-3xl font-bold">{branch._count.tickets}</p>
+              </div>
+              <div className="p-3 rounded-full bg-orange-500/10">
+                <Ticket className="h-6 w-6 text-orange-500" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm hover:shadow-md transition-shadow border-l-4 border-l-green-500">
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Total ATMs</p>
+                <p className="text-3xl font-bold">{branch._count.atms}</p>
+              </div>
+              <div className="p-3 rounded-full bg-green-500/10">
+                <CreditCard className="h-6 w-6 text-green-500" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Total Users
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{branch._count.users}</p>
-          </CardContent>
-        </Card>
+      {/* Underline Tab Navigation */}
+      <div className="border-b mb-6">
+        <nav className="flex gap-6 overflow-x-auto" aria-label="Tabs">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const badge = getTabBadge(tab.id);
+            const isActive = activeTab === tab.id;
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Ticket className="h-5 w-5" />
-              Total Tickets
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{branch._count.tickets}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <CreditCard className="h-5 w-5" />
-              Total ATMs
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{branch._count.atms}</p>
-          </CardContent>
-        </Card>
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`
+                  flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors
+                  ${isActive
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+                  }
+                `}
+              >
+                <Icon className="h-4 w-4" />
+                {tab.label}
+                {badge !== null && badge > 0 && (
+                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                    {badge}
+                  </Badge>
+                )}
+              </button>
+            );
+          })}
+        </nav>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-4">
-          <TabsTrigger value="details">Branch Details</TabsTrigger>
-          <TabsTrigger value="network">Network Settings</TabsTrigger>
-          <TabsTrigger value="users">Users ({branch._count.users})</TabsTrigger>
-          <TabsTrigger value="atms">ATMs ({branch._count.atms})</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="details">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Branch Information</CardTitle>
-                  <CardDescription>
-                    Update the branch details
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
+      {/* Tab Content */}
+      {activeTab === 'details' && (
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <Card className="shadow-sm">
+              <CardHeader className="border-b bg-muted/30">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Building2 className="h-5 w-5" />
+                  Branch Information
+                </CardTitle>
+                <CardDescription>
+                  Basic identification details for this branch
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-6 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Branch Name</FormLabel>
+                        <FormLabel>Branch Name <span className="text-destructive">*</span></FormLabel>
                         <FormControl>
                           <Input {...field} />
                         </FormControl>
@@ -302,7 +398,7 @@ export default function EditBranchPage() {
                       <FormItem>
                         <FormLabel>Branch Code</FormLabel>
                         <FormControl>
-                          <Input {...field} disabled />
+                          <Input {...field} disabled className="font-mono bg-muted" />
                         </FormControl>
                         <FormDescription>
                           Branch code cannot be changed
@@ -311,17 +407,267 @@ export default function EditBranchPage() {
                       </FormItem>
                     )}
                   />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Address</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          className="resize-none"
+                          rows={3}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="city"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>City</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
                   <FormField
                     control={form.control}
-                    name="address"
+                    name="province"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Address</FormLabel>
+                        <FormLabel>Province</FormLabel>
                         <FormControl>
-                          <Textarea 
-                            className="resize-none"
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="isActive"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 bg-muted/30">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base font-medium">Active Status</FormLabel>
+                        <FormDescription>
+                          Deactivating will prevent new operations for this branch
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
+
+            {/* Form Actions */}
+            <div className="flex justify-end gap-3 pt-4 border-t">
+              <Link href="/admin/branches">
+                <Button type="button" variant="outline">
+                  Cancel
+                </Button>
+              </Link>
+              <Button type="submit" disabled={loading} className="min-w-[140px]">
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save Changes
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      )}
+
+      {activeTab === 'network' && (
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <Card className="shadow-sm">
+              <CardHeader className="border-b bg-muted/30">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Network className="h-5 w-5" />
+                  Network Configuration
+                </CardTitle>
+                <CardDescription>
+                  Configure network monitoring and connectivity settings
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-6 space-y-6">
+                <FormField
+                  control={form.control}
+                  name="monitoringEnabled"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 bg-blue-500/5 border-blue-200">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base font-medium flex items-center gap-2">
+                          <Wifi className="h-4 w-4 text-blue-500" />
+                          Network Monitoring
+                        </FormLabel>
+                        <FormDescription>
+                          Enable real-time network monitoring for this branch
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="ipAddress"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2">
+                          <Globe className="h-4 w-4" />
+                          Primary IP Address
+                        </FormLabel>
+                        <FormControl>
+                          <Input
                             {...field}
+                            placeholder="e.g., 192.168.1.1"
+                            className="font-mono"
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Main IP address for network monitoring
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="backupIpAddress"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Backup IP Address</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder="e.g., 192.168.1.2"
+                            className="font-mono"
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Fallback IP address if primary fails
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="networkMedia"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Network Media Type</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value || undefined}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select network media" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="VSAT">VSAT (Satellite)</SelectItem>
+                            <SelectItem value="M2M">M2M (Mobile)</SelectItem>
+                            <SelectItem value="FO">Fiber Optic (FO)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          Type of network connection
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="networkVendor"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Network Vendor</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder="e.g., Telkom, Indosat"
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Network service provider
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-sm">
+              <CardHeader className="border-b bg-muted/30">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <MapPin className="h-5 w-5" />
+                  Geographic Location
+                </CardTitle>
+                <CardDescription>
+                  Coordinates for map display and location services
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-6 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="latitude"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Latitude</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder="e.g., 1.4748"
+                            type="number"
+                            step="any"
+                            className="font-mono"
                           />
                         </FormControl>
                         <FormMessage />
@@ -329,383 +675,232 @@ export default function EditBranchPage() {
                     )}
                   />
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="city"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>City</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="province"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Province</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
                   <FormField
                     control={form.control}
-                    name="isActive"
+                    name="longitude"
                     render={({ field }) => (
-                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                        <div className="space-y-0.5">
-                          <FormLabel className="text-base">Active Status</FormLabel>
-                          <FormDescription>
-                            Deactivating will prevent new operations for this branch
-                          </FormDescription>
-                        </div>
+                      <FormItem>
+                        <FormLabel>Longitude</FormLabel>
                         <FormControl>
-                          <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
+                          <Input
+                            {...field}
+                            placeholder="e.g., 124.8421"
+                            type="number"
+                            step="any"
+                            className="font-mono"
                           />
                         </FormControl>
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
-                </CardContent>
-              </Card>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Coordinates are used to display the branch on the network monitoring map at{' '}
+                  <Link href="/monitoring/branches" className="text-primary hover:underline">
+                    /monitoring/branches
+                  </Link>
+                </p>
+              </CardContent>
+            </Card>
 
-              <div className="flex justify-end gap-4">
-                <Link href="/admin/branches">
-                  <Button type="button" variant="outline">
-                    Cancel
-                  </Button>
-                </Link>
-                <Button type="submit" disabled={loading}>
-                  {loading ? 'Updating...' : 'Update Branch'}
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </TabsContent>
-
-        <TabsContent value="network">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Network className="h-5 w-5" />
-                    Network Configuration
+            {/* Current Monitoring Status */}
+            {branch.monitoringEnabled && (
+              <Card className="shadow-sm border-blue-200 bg-blue-500/5">
+                <CardHeader className="border-b border-blue-200 bg-blue-500/10">
+                  <CardTitle className="flex items-center gap-2 text-lg text-blue-700">
+                    <Wifi className="h-5 w-5" />
+                    Current Monitoring Configuration
                   </CardTitle>
-                  <CardDescription>
-                    Configure network monitoring and connectivity settings for this branch
-                  </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="monitoringEnabled"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 bg-muted/50">
-                        <div className="space-y-0.5">
-                          <FormLabel className="text-base flex items-center gap-2">
-                            <Wifi className="h-4 w-4" />
-                            Network Monitoring
-                          </FormLabel>
-                          <FormDescription>
-                            Enable real-time network monitoring for this branch
-                          </FormDescription>
-                        </div>
-                        <FormControl>
-                          <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="ipAddress"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="flex items-center gap-2">
-                            <Globe className="h-4 w-4" />
-                            Primary IP Address
-                          </FormLabel>
-                          <FormControl>
-                            <Input 
-                              {...field} 
-                              placeholder="e.g., 192.168.1.1"
-                            />
-                          </FormControl>
-                          <FormDescription>
-                            Main IP address for network monitoring
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="backupIpAddress"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Backup IP Address</FormLabel>
-                          <FormControl>
-                            <Input 
-                              {...field} 
-                              placeholder="e.g., 192.168.1.2"
-                            />
-                          </FormControl>
-                          <FormDescription>
-                            Fallback IP address if primary fails
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="networkMedia"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Network Media Type</FormLabel>
-                          <Select 
-                            onValueChange={field.onChange} 
-                            value={field.value || undefined}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select network media" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="VSAT">VSAT</SelectItem>
-                              <SelectItem value="M2M">M2M</SelectItem>
-                              <SelectItem value="FO">Fiber Optic (FO)</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormDescription>
-                            Type of network connection
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="networkVendor"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Network Vendor</FormLabel>
-                          <FormControl>
-                            <Input 
-                              {...field} 
-                              placeholder="e.g., Telkom, Indosat"
-                            />
-                          </FormControl>
-                          <FormDescription>
-                            Network service provider
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <div className="pt-4 border-t">
-                    <h4 className="text-sm font-medium mb-4 flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      Geographic Location
-                    </h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="latitude"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Latitude</FormLabel>
-                            <FormControl>
-                              <Input
-                                {...field}
-                                placeholder="e.g., 1.4748"
-                                type="number"
-                                step="any"
-                              />
-                            </FormControl>
-                            <FormDescription>
-                              Branch latitude coordinate for map display
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="longitude"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Longitude</FormLabel>
-                            <FormControl>
-                              <Input
-                                {...field}
-                                placeholder="e.g., 124.8421"
-                                type="number"
-                                step="any"
-                              />
-                            </FormControl>
-                            <FormDescription>
-                              Branch longitude coordinate for map display
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                <CardContent className="pt-6">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground block mb-1">Primary IP</span>
+                      <p className="font-mono font-medium">{branch.ipAddress || 'Not configured'}</p>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-3">
-                      Coordinates are used to display the branch on the network monitoring map at <a href="/monitoring/branches" className="text-blue-600 hover:underline">/monitoring/branches</a>
-                    </p>
-                  </div>
-
-                  {branch.monitoringEnabled && (
-                    <div className="rounded-lg border p-4 bg-muted/30">
-                      <h4 className="text-sm font-medium mb-2">Monitoring Status</h4>
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <span className="text-muted-foreground">Primary IP:</span>
-                          <p className="font-mono">{branch.ipAddress || 'Not configured'}</p>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Backup IP:</span>
-                          <p className="font-mono">{branch.backupIpAddress || 'Not configured'}</p>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Media Type:</span>
-                          <p>{branch.networkMedia || 'Not specified'}</p>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Vendor:</span>
-                          <p>{branch.networkVendor || 'Not specified'}</p>
-                        </div>
-                      </div>
+                    <div>
+                      <span className="text-muted-foreground block mb-1">Backup IP</span>
+                      <p className="font-mono font-medium">{branch.backupIpAddress || 'Not configured'}</p>
                     </div>
-                  )}
+                    <div>
+                      <span className="text-muted-foreground block mb-1">Media Type</span>
+                      <p className="font-medium">{branch.networkMedia || 'Not specified'}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block mb-1">Vendor</span>
+                      <p className="font-medium">{branch.networkVendor || 'Not specified'}</p>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
+            )}
 
-              <div className="flex justify-end gap-4">
-                <Link href="/admin/branches">
-                  <Button type="button" variant="outline">
-                    Cancel
-                  </Button>
-                </Link>
-                <Button type="submit" disabled={loading}>
-                  {loading ? 'Updating...' : 'Update Network Settings'}
+            {/* Form Actions */}
+            <div className="flex justify-end gap-3 pt-4 border-t">
+              <Link href="/admin/branches">
+                <Button type="button" variant="outline">
+                  Cancel
                 </Button>
-              </div>
-            </form>
-          </Form>
-        </TabsContent>
+              </Link>
+              <Button type="submit" disabled={loading} className="min-w-[180px]">
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save Network Settings
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      )}
 
-        <TabsContent value="users">
-          <Card>
-            <CardHeader>
-              <CardTitle>Branch Users</CardTitle>
-              <CardDescription>
-                Recent users assigned to this branch
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {branch.users.length === 0 ? (
-                <p className="text-center py-8 text-gray-500">No users assigned to this branch</p>
-              ) : (
-                <div className="space-y-4">
-                  {branch.users.map((user) => (
-                    <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center">
-                          <User className="h-5 w-5 text-gray-600" />
-                        </div>
-                        <div>
-                          <p className="font-medium">{user.name}</p>
-                          <p className="text-sm text-gray-500 flex items-center gap-1">
-                            <Mail className="h-3 w-3" />
+      {activeTab === 'users' && (
+        <Card className="shadow-sm">
+          <CardHeader className="border-b bg-muted/30">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Users className="h-5 w-5" />
+              Branch Users
+            </CardTitle>
+            <CardDescription>
+              Users assigned to this branch
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6">
+            {branch.users.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                <Users className="h-12 w-12 mb-4 opacity-30" />
+                <p className="text-lg font-medium">No users assigned</p>
+                <p className="text-sm">No users have been assigned to this branch yet</p>
+              </div>
+            ) : (
+              <div className="border rounded-lg overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="text-left p-3 font-semibold">User</th>
+                      <th className="text-left p-3 font-semibold">Email</th>
+                      <th className="text-left p-3 font-semibold">Role</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {branch.users.map((user) => (
+                      <tr key={user.id} className="hover:bg-muted/30 transition-colors">
+                        <td className="p-3">
+                          <div className="flex items-center gap-3">
+                            <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
+                              <User className="h-4 w-4 text-primary" />
+                            </div>
+                            <span className="font-medium">{user.name}</span>
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          <span className="flex items-center gap-1 text-muted-foreground">
+                            <Mail className="h-3.5 w-3.5" />
                             {user.email}
-                          </p>
-                        </div>
-                      </div>
-                      <Badge>{user.role}</Badge>
-                    </div>
-                  ))}
-                </div>
-              )}
-              
-              <div className="mt-4 text-center">
-                <Link href={`/admin/branches/${branchId}/users`}>
-                  <Button variant="outline">View All Users</Button>
-                </Link>
+                          </span>
+                        </td>
+                        <td className="p-3">
+                          <Badge variant="outline">{user.role}</Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+            )}
 
-        <TabsContent value="atms">
-          <Card>
-            <CardHeader>
-              <CardTitle>Branch ATMs</CardTitle>
-              <CardDescription>
-                ATMs assigned to this branch
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {branch.atms.length === 0 ? (
-                <p className="text-center py-8 text-gray-500">No ATMs assigned to this branch</p>
-              ) : (
-                <div className="space-y-4">
-                  {branch.atms.map((atm) => (
-                    <div key={atm.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center">
-                          <CreditCard className="h-5 w-5 text-gray-600" />
-                        </div>
-                        <div>
-                          <p className="font-medium">{atm.name}</p>
-                          <p className="text-sm text-gray-500">Code: {atm.code}</p>
-                        </div>
-                      </div>
-                      <p className="text-sm text-gray-600">{atm.location}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-              
-              <div className="mt-4 text-center">
-                <Link href={`/admin/atms?branch=${branchId}`}>
-                  <Button variant="outline">View All ATMs</Button>
-                </Link>
+            <div className="mt-6 flex justify-center">
+              <Link href={`/admin/users?branchId=${branchId}`}>
+                <Button variant="outline">
+                  <Users className="h-4 w-4 mr-2" />
+                  View All Users
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {activeTab === 'atms' && (
+        <Card className="shadow-sm">
+          <CardHeader className="border-b bg-muted/30">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <CreditCard className="h-5 w-5" />
+              Branch ATMs
+            </CardTitle>
+            <CardDescription>
+              ATMs assigned to this branch
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6">
+            {branch.atms.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                <CreditCard className="h-12 w-12 mb-4 opacity-30" />
+                <p className="text-lg font-medium">No ATMs assigned</p>
+                <p className="text-sm">No ATMs have been assigned to this branch yet</p>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            ) : (
+              <div className="border rounded-lg overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="text-left p-3 font-semibold">ATM</th>
+                      <th className="text-left p-3 font-semibold">Code</th>
+                      <th className="text-left p-3 font-semibold">Location</th>
+                      <th className="text-right p-3 font-semibold">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {branch.atms.map((atm) => (
+                      <tr key={atm.id} className="hover:bg-muted/30 transition-colors">
+                        <td className="p-3">
+                          <div className="flex items-center gap-3">
+                            <div className="h-9 w-9 rounded-full bg-green-500/10 flex items-center justify-center">
+                              <CreditCard className="h-4 w-4 text-green-600" />
+                            </div>
+                            <span className="font-medium">{atm.name}</span>
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          <Badge variant="outline" className="font-mono">
+                            {atm.code}
+                          </Badge>
+                        </td>
+                        <td className="p-3 text-muted-foreground">
+                          {atm.location || '-'}
+                        </td>
+                        <td className="p-3 text-right">
+                          <Link href={`/admin/atms/${atm.id}`}>
+                            <Button variant="ghost" size="sm">
+                              View
+                            </Button>
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <div className="mt-6 flex justify-center">
+              <Link href={`/admin/atms?branchId=${branchId}`}>
+                <Button variant="outline">
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  View All ATMs
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
