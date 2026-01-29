@@ -214,6 +214,7 @@ class MonitoringAgent:
         """Fetch list of entities to monitor from Helpdesk API"""
         try:
             url = f"{self.config.helpdesk_url}/api/monitoring/agent/entities"
+            logger.info(f"Fetching entities from: {url}")
             response = self.session.get(url, timeout=30)
 
             if response.status_code == 200:
@@ -221,6 +222,17 @@ class MonitoringAgent:
                 self.entities = data.get('entities', [])
                 self.last_entity_refresh = time.time()
                 logger.info(f"Fetched {len(self.entities)} entities to monitor")
+
+                # Log entity details
+                branches = [e for e in self.entities if e.get('type') == 'BRANCH']
+                atms = [e for e in self.entities if e.get('type') == 'ATM']
+                logger.info(f"  - Branches: {len(branches)}")
+                logger.info(f"  - ATMs: {len(atms)}")
+
+                # Show all entities with their IPs
+                for entity in self.entities:
+                    logger.info(f"  [{entity.get('type')}] {entity.get('name', 'Unknown')} - IP: {entity.get('ip_address', 'N/A')}")
+
                 return True
             else:
                 logger.error(f"Failed to fetch entities: {response.status_code} - {response.text}")
@@ -272,7 +284,10 @@ class MonitoringAgent:
                     if result:
                         results.append(result)
                         status_icon = '✓' if result['status'] in ['ONLINE', 'SLOW'] else '✗'
-                        logger.debug(f"{status_icon} {entity.get('name', entity.get('id'))}: {result['status']} ({result.get('response_time_ms', 0):.0f}ms)")
+                        rtt = result.get('response_time_ms')
+                        rtt_str = f"{rtt:.1f}ms" if rtt else "N/A"
+                        loss = result.get('packet_loss', 100)
+                        logger.info(f"  {status_icon} [{result['entity_type']}] {entity.get('name', entity.get('id'))} ({result['ip_address']}): {result['status']} - RTT: {rtt_str}, Loss: {loss}%")
                 except Exception as e:
                     logger.error(f"Error pinging {entity.get('name', entity.get('id'))}: {e}")
 
@@ -291,16 +306,28 @@ class MonitoringAgent:
                 'results': results
             }
 
+            logger.info(f"Sending {len(results)} results to: {url}")
+            logger.info(f"Payload preview (first 3 results):")
+            for r in results[:3]:
+                logger.info(f"  - {r['entity_type']} {r['entity_id']}: {r['status']} ({r.get('response_time_ms', 'N/A')}ms)")
+            if len(results) > 3:
+                logger.info(f"  ... and {len(results) - 3} more")
+
             response = self.session.post(url, json=payload, timeout=60)
 
+            logger.info(f"API Response: {response.status_code}")
             if response.status_code == 200:
                 data = response.json()
                 processed = data.get('processed', 0)
                 errors = data.get('errors', 0)
-                logger.info(f"Sent {len(results)} results: {processed} processed, {errors} errors")
+                logger.info(f"Results accepted: {processed} processed, {errors} errors")
+                if data.get('error_details'):
+                    for err in data['error_details'][:5]:
+                        logger.warning(f"  Error: {err}")
                 return True
             else:
-                logger.error(f"Failed to send results: {response.status_code} - {response.text}")
+                logger.error(f"Failed to send results: {response.status_code}")
+                logger.error(f"Response body: {response.text[:500]}")
                 return False
 
         except requests.RequestException as e:
