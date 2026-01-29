@@ -19,11 +19,10 @@ export async function GET(request: NextRequest) {
       return createApiErrorResponse('Insufficient permissions. Required: monitoring:read', 403);
     }
 
-    // Fetch branches with monitoring enabled and IP address
+    // Fetch branches with IP address (monitoring enabled OR has IP)
     const branches = await prisma.branch.findMany({
       where: {
         isActive: true,
-        monitoringEnabled: true,
         ipAddress: { not: null }
       },
       select: {
