@@ -8,12 +8,18 @@ const atmSchema = z.object({
   code: z.string().min(1).max(20),
   name: z.string().min(1).max(100),
   branchId: z.string().min(1), // Changed from uuid() to allow CUID format
-  ipAddress: z.string().optional(),
-  location: z.string().optional(),
-  latitude: z.number().optional(),
-  longitude: z.number().optional(),
-  networkMedia: z.enum(['VSAT', 'M2M', 'FO']).optional(),
-  networkVendor: z.string().optional(),
+  ipAddress: z.string().optional().nullable(),
+  location: z.string().optional().nullable(),
+  latitude: z.number().optional().nullable(),
+  longitude: z.number().optional().nullable(),
+  networkMedia: z.enum(['VSAT', 'M2M', 'FO']).optional().nullable(),
+  networkVendor: z.string().optional().nullable(),
+  // New fields
+  atmBrand: z.string().optional().nullable(),
+  atmType: z.string().optional().nullable(),
+  atmCategory: z.enum(['ATM', 'CRM']).optional().default('ATM'),
+  serialNumber: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
   isActive: z.boolean().optional()
 });
 
@@ -39,6 +45,10 @@ export async function GET(request: NextRequest) {
     const sortOrder = searchParams.get('sortOrder') || 'asc';
     const problemsOnly = searchParams.get('problemsOnly') === 'true';
     const includeNetworkStatus = searchParams.get('includeNetworkStatus') === 'true';
+    // New filters
+    const atmBrand = searchParams.get('atmBrand');
+    const atmCategory = searchParams.get('atmCategory'); // 'ATM', 'CRM', or null for all
+    const includeTicketCounts = searchParams.get('includeTicketCounts') === 'true';
 
     const skip = (page - 1) * limit;
 
@@ -92,7 +102,8 @@ export async function GET(request: NextRequest) {
       where.OR = [
         { code: { contains: search, mode: 'insensitive' } },
         { name: { contains: search, mode: 'insensitive' } },
-        { location: { contains: search, mode: 'insensitive' } }
+        { location: { contains: search, mode: 'insensitive' } },
+        { serialNumber: { contains: search, mode: 'insensitive' } }
       ];
     }
 
@@ -100,6 +111,15 @@ export async function GET(request: NextRequest) {
       where.isActive = true;
     } else if (status === 'inactive') {
       where.isActive = false;
+    }
+
+    // New filters for brand and category
+    if (atmBrand) {
+      where.atmBrand = { equals: atmBrand, mode: 'insensitive' };
+    }
+
+    if (atmCategory === 'ATM' || atmCategory === 'CRM') {
+      where.atmCategory = atmCategory;
     }
 
     // Filter by problem ATMs if problemsOnly
@@ -171,13 +191,97 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // If includeTicketCounts, fetch technical issues and claim counts for each ATM
+    let atmsWithCounts = atmsWithStatus;
+    if (includeTicketCounts) {
+      const atmCodes = atms.map(atm => atm.code);
+
+      if (atmCodes.length > 0) {
+        // Get the custom field for atm_code
+        const atmCodeField = await prisma.fieldTemplate.findFirst({
+          where: { name: 'atm_code' }
+        });
+
+        // Get services for technical issues
+        const techIssueServices = await prisma.service.findMany({
+          where: {
+            OR: [
+              { name: { startsWith: 'ATM - Permasalahan Teknis' } },
+              { name: { contains: 'ATM Technical Issue' } }
+            ]
+          },
+          select: { id: true }
+        });
+        const techIssueServiceIds = techIssueServices.map(s => s.id);
+
+        // Count technical issue tickets per ATM code
+        const techIssueCountsMap = new Map<string, number>();
+        const claimCountsMap = new Map<string, number>();
+
+        if (atmCodeField) {
+          // Get all field values with ATM codes
+          const fieldValues = await prisma.ticketFieldValue.findMany({
+            where: {
+              fieldId: atmCodeField.id,
+              value: { in: atmCodes }
+            },
+            include: {
+              ticket: {
+                select: {
+                  id: true,
+                  serviceId: true,
+                  atmClaimVerification: { select: { id: true } }
+                }
+              }
+            }
+          });
+
+          // Count tickets per ATM code
+          fieldValues.forEach(fv => {
+            const atmCode = fv.value;
+            if (!atmCode) return;
+
+            // Count technical issues
+            if (techIssueServiceIds.includes(fv.ticket.serviceId || '')) {
+              techIssueCountsMap.set(atmCode, (techIssueCountsMap.get(atmCode) || 0) + 1);
+            }
+
+            // Count claims (tickets with ATMClaimVerification)
+            if (fv.ticket.atmClaimVerification) {
+              claimCountsMap.set(atmCode, (claimCountsMap.get(atmCode) || 0) + 1);
+            }
+          });
+        }
+
+        atmsWithCounts = atmsWithStatus.map(atm => ({
+          ...atm,
+          _count: {
+            ...atm._count,
+            technicalIssueTickets: techIssueCountsMap.get(atm.code) || 0,
+            claimTickets: claimCountsMap.get(atm.code) || 0
+          }
+        }));
+      }
+    }
+
+    // Get distinct ATM brands for filter dropdown
+    const distinctBrands = await prisma.aTM.findMany({
+      where: { atmBrand: { not: null } },
+      select: { atmBrand: true },
+      distinct: ['atmBrand']
+    });
+    const brands = distinctBrands.map(b => b.atmBrand).filter(Boolean);
+
     return NextResponse.json({
-      atms: atmsWithStatus,
+      atms: atmsWithCounts,
       pagination: {
         page,
         limit,
         total,
         totalPages: Math.ceil(total / limit)
+      },
+      filters: {
+        brands: brands as string[]
       }
     });
   } catch (error) {
@@ -262,6 +366,11 @@ export async function POST(request: NextRequest) {
           branchId: atm.branchId,
           location: atm.location,
           ipAddress: atm.ipAddress,
+          atmBrand: atm.atmBrand,
+          atmType: atm.atmType,
+          atmCategory: atm.atmCategory,
+          serialNumber: atm.serialNumber,
+          notes: atm.notes,
           isActive: atm.isActive
         }
       }

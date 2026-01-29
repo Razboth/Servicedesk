@@ -8,12 +8,18 @@ const updateATMSchema = z.object({
   code: z.string().min(1).max(20).optional(),
   name: z.string().min(1).max(100).optional(),
   branchId: z.string().min(1).optional(), // Changed from uuid() to allow CUID format
-  ipAddress: z.string().optional(),
-  location: z.string().optional(),
-  latitude: z.number().optional(),
-  longitude: z.number().optional(),
-  networkMedia: z.enum(['VSAT', 'M2M', 'FO']).optional(),
-  networkVendor: z.string().optional(),
+  ipAddress: z.string().optional().nullable(),
+  location: z.string().optional().nullable(),
+  latitude: z.number().optional().nullable(),
+  longitude: z.number().optional().nullable(),
+  networkMedia: z.enum(['VSAT', 'M2M', 'FO']).optional().nullable(),
+  networkVendor: z.string().optional().nullable(),
+  // New fields
+  atmBrand: z.string().optional().nullable(),
+  atmType: z.string().optional().nullable(),
+  atmCategory: z.enum(['ATM', 'CRM']).optional(),
+  serialNumber: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
   isActive: z.boolean().optional()
 });
 
@@ -85,7 +91,76 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(atm);
+    // Get latest network status
+    const networkStatus = await prisma.networkMonitoringLog.findFirst({
+      where: {
+        entityType: 'ATM',
+        entityId: id
+      },
+      orderBy: { checkedAt: 'desc' }
+    });
+
+    // Get ticket counts for this ATM
+    const atmCodeField = await prisma.fieldTemplate.findFirst({
+      where: { name: 'atm_code' }
+    });
+
+    let technicalIssueCount = 0;
+    let claimCount = 0;
+
+    if (atmCodeField) {
+      // Get services for technical issues
+      const techIssueServices = await prisma.service.findMany({
+        where: {
+          OR: [
+            { name: { startsWith: 'ATM - Permasalahan Teknis' } },
+            { name: { contains: 'ATM Technical Issue' } }
+          ]
+        },
+        select: { id: true }
+      });
+      const techIssueServiceIds = techIssueServices.map(s => s.id);
+
+      // Count technical issues
+      technicalIssueCount = await prisma.ticketFieldValue.count({
+        where: {
+          fieldId: atmCodeField.id,
+          value: atm.code,
+          ticket: {
+            serviceId: { in: techIssueServiceIds }
+          }
+        }
+      });
+
+      // Count claims
+      claimCount = await prisma.ticketFieldValue.count({
+        where: {
+          fieldId: atmCodeField.id,
+          value: atm.code,
+          ticket: {
+            atmClaimVerification: { isNot: null }
+          }
+        }
+      });
+    }
+
+    return NextResponse.json({
+      ...atm,
+      networkStatus: networkStatus ? {
+        status: networkStatus.status,
+        responseTimeMs: networkStatus.responseTimeMs,
+        packetLoss: networkStatus.packetLoss,
+        errorMessage: networkStatus.errorMessage,
+        checkedAt: networkStatus.checkedAt,
+        statusChangedAt: networkStatus.statusChangedAt,
+        downSince: networkStatus.downSince
+      } : null,
+      _count: {
+        incidents: atm.incidents.length,
+        technicalIssueTickets: technicalIssueCount,
+        claimTickets: claimCount
+      }
+    });
   } catch (error) {
     console.error('Error fetching ATM:', error);
     return NextResponse.json(

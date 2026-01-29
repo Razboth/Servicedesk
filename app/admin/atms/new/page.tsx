@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -22,7 +23,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { ArrowLeft, Save, CreditCard } from 'lucide-react';
+import { ArrowLeft, Save, CreditCard, Server, MapPin, Network, FileText } from 'lucide-react';
 
 interface Branch {
   id: string;
@@ -30,10 +31,15 @@ interface Branch {
   code: string;
 }
 
+// Known ATM brands for autocomplete suggestions
+const KNOWN_ATM_BRANDS = ['Diebold', 'Diebold Nixdorf', 'Hyosung', 'Wincor'];
+
 export default function NewATMPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [branches, setBranches] = useState<Branch[]>([]);
+  const [existingBrands, setExistingBrands] = useState<string[]>([]);
+  const [showBrandSuggestions, setShowBrandSuggestions] = useState(false);
   const [formData, setFormData] = useState({
     code: '',
     name: '',
@@ -42,11 +48,22 @@ export default function NewATMPage() {
     ipAddress: '',
     latitude: '',
     longitude: '',
+    // New hardware fields
+    atmBrand: '',
+    atmType: '',
+    atmCategory: 'ATM' as 'ATM' | 'CRM',
+    serialNumber: '',
+    // New network fields
+    networkMedia: '' as '' | 'VSAT' | 'M2M' | 'FO',
+    networkVendor: '',
+    // Notes
+    notes: '',
     isActive: true,
   });
 
   useEffect(() => {
     fetchBranches();
+    fetchExistingBrands();
   }, []);
 
   const fetchBranches = async () => {
@@ -60,9 +77,31 @@ export default function NewATMPage() {
     }
   };
 
+  const fetchExistingBrands = async () => {
+    try {
+      const response = await fetch('/api/admin/atms?limit=1');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.filters?.brands) {
+          setExistingBrands(data.filters.brands);
+        }
+      }
+    } catch (error) {
+      // Silently fail - will use default brands
+    }
+  };
+
+  // Combine known brands with existing brands from database
+  const allBrands = [...new Set([...KNOWN_ATM_BRANDS, ...existingBrands])].sort();
+
+  // Filter brands based on input
+  const filteredBrands = allBrands.filter(brand =>
+    brand.toLowerCase().includes(formData.atmBrand.toLowerCase())
+  );
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.code || !formData.name || !formData.branchId) {
       toast.error('Please fill in all required fields');
       return;
@@ -74,6 +113,12 @@ export default function NewATMPage() {
         ...formData,
         latitude: formData.latitude ? parseFloat(formData.latitude) : undefined,
         longitude: formData.longitude ? parseFloat(formData.longitude) : undefined,
+        atmBrand: formData.atmBrand || undefined,
+        atmType: formData.atmType || undefined,
+        serialNumber: formData.serialNumber || undefined,
+        networkMedia: formData.networkMedia || undefined,
+        networkVendor: formData.networkVendor || undefined,
+        notes: formData.notes || undefined,
       };
 
       const response = await fetch('/api/admin/atms', {
@@ -100,7 +145,7 @@ export default function NewATMPage() {
   };
 
   return (
-    <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-8 max-w-2xl">
+    <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-8 max-w-4xl">
       <div className="mb-6">
         <Link href="/admin/atms">
           <Button variant="ghost" size="sm" className="mb-4">
@@ -114,12 +159,16 @@ export default function NewATMPage() {
         </h1>
       </div>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Basic Information */}
         <Card>
           <CardHeader>
-            <CardTitle>ATM Information</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              Basic Information
+            </CardTitle>
             <CardDescription>
-              Enter the details for the new ATM
+              Enter the basic identification details for the ATM
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -165,16 +214,113 @@ export default function NewATMPage() {
               </Select>
             </div>
 
-            <div>
-              <Label htmlFor="location">Location</Label>
-              <Input
-                id="location"
-                value={formData.location}
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                placeholder="e.g., Ground floor, near entrance"
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="isActive"
+                checked={formData.isActive}
+                onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
               />
+              <Label htmlFor="isActive">Active</Label>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Hardware Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Server className="h-5 w-5" />
+              Hardware Information
+            </CardTitle>
+            <CardDescription>
+              Specify the ATM hardware details
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="relative">
+                <Label htmlFor="atmBrand">Brand</Label>
+                <Input
+                  id="atmBrand"
+                  value={formData.atmBrand}
+                  onChange={(e) => {
+                    setFormData({ ...formData, atmBrand: e.target.value });
+                    setShowBrandSuggestions(true);
+                  }}
+                  onFocus={() => setShowBrandSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowBrandSuggestions(false), 200)}
+                  placeholder="e.g., Diebold Nixdorf"
+                  autoComplete="off"
+                />
+                {showBrandSuggestions && formData.atmBrand && filteredBrands.length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-40 overflow-y-auto">
+                    {filteredBrands.map((brand) => (
+                      <div
+                        key={brand}
+                        className="px-3 py-2 cursor-pointer hover:bg-accent text-sm"
+                        onMouseDown={() => {
+                          setFormData({ ...formData, atmBrand: brand });
+                          setShowBrandSuggestions(false);
+                        }}
+                      >
+                        {brand}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="atmType">Model/Type</Label>
+                <Input
+                  id="atmType"
+                  value={formData.atmType}
+                  onChange={(e) => setFormData({ ...formData, atmType: e.target.value })}
+                  placeholder="e.g., Pro Cash 2050xe"
+                />
+              </div>
             </div>
 
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="atmCategory">Category *</Label>
+                <Select
+                  value={formData.atmCategory}
+                  onValueChange={(value: 'ATM' | 'CRM') => setFormData({ ...formData, atmCategory: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ATM">ATM (Withdrawal Only)</SelectItem>
+                    <SelectItem value="CRM">CRM (Cash Recycling Machine)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="serialNumber">Serial Number</Label>
+                <Input
+                  id="serialNumber"
+                  value={formData.serialNumber}
+                  onChange={(e) => setFormData({ ...formData, serialNumber: e.target.value })}
+                  placeholder="e.g., SN123456789"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Network Configuration */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Network className="h-5 w-5" />
+              Network Configuration
+            </CardTitle>
+            <CardDescription>
+              Configure network settings for monitoring
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
             <div>
               <Label htmlFor="ipAddress">IP Address</Label>
               <Input
@@ -182,6 +328,58 @@ export default function NewATMPage() {
                 value={formData.ipAddress}
                 onChange={(e) => setFormData({ ...formData, ipAddress: e.target.value })}
                 placeholder="e.g., 192.168.1.100"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="networkMedia">Network Media</Label>
+                <Select
+                  value={formData.networkMedia}
+                  onValueChange={(value: '' | 'VSAT' | 'M2M' | 'FO') => setFormData({ ...formData, networkMedia: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select network type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="VSAT">VSAT (Satellite)</SelectItem>
+                    <SelectItem value="M2M">M2M (Mobile)</SelectItem>
+                    <SelectItem value="FO">FO (Fiber Optic)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="networkVendor">Network Vendor</Label>
+                <Input
+                  id="networkVendor"
+                  value={formData.networkVendor}
+                  onChange={(e) => setFormData({ ...formData, networkVendor: e.target.value })}
+                  placeholder="e.g., Telkom, Indosat"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Location */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MapPin className="h-5 w-5" />
+              Location
+            </CardTitle>
+            <CardDescription>
+              Physical location details
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="location">Location Description</Label>
+              <Input
+                id="location"
+                value={formData.location}
+                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                placeholder="e.g., Ground floor, near main entrance"
               />
             </div>
 
@@ -209,19 +407,33 @@ export default function NewATMPage() {
                 />
               </div>
             </div>
-
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="isActive"
-                checked={formData.isActive}
-                onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
-              />
-              <Label htmlFor="isActive">Active</Label>
-            </div>
           </CardContent>
         </Card>
 
-        <div className="flex justify-end gap-4 mt-6">
+        {/* Notes */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Additional Notes
+            </CardTitle>
+            <CardDescription>
+              Any additional information about this ATM
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Textarea
+              id="notes"
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              placeholder="Enter any additional notes or comments about this ATM..."
+              rows={4}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Submit Buttons */}
+        <div className="flex justify-end gap-4">
           <Link href="/admin/atms">
             <Button variant="outline">Cancel</Button>
           </Link>

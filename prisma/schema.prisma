@@ -580,6 +580,13 @@ model ATM {
   updatedAt        DateTime            @updatedAt
   networkMedia     NetworkMedia?
   networkVendor    String?
+  // New fields for enhanced ATM management
+  atmBrand         String?             // Manufacturer: Diebold, Diebold Nixdorf, Hyosung, Wincor, etc.
+  atmType          String?             // Model/series (e.g., Wincor Pro Cash 2050xe)
+  atmCategory      ATMCategory         @default(ATM)
+  serialNumber     String?             // Hardware serial number
+  notes            String?             // Additional notes
+  // Relations
   incidents        ATMIncident[]
   monitoringLogs   ATMMonitoringLog[]
   branch           Branch              @relation(fields: [branchId], references: [id])
@@ -1469,6 +1476,11 @@ enum NetworkMedia {
   VSAT
   M2M
   FO
+}
+
+enum ATMCategory {
+  ATM // Standard ATM (withdrawal only)
+  CRM // Cash Recycling Machine (deposit + withdrawal)
 }
 
 enum LoginFailureReason {
