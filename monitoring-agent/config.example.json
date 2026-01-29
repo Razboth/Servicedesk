@@ -1,0 +1,13 @@
+{
+  "helpdesk_url": "https://helpdesk.banksulutgo.co.id",
+  "api_key": "YOUR_API_KEY_HERE",
+  "agent_id": "main-branch-monitor",
+  "ping_interval_seconds": 60,
+  "ping_timeout_ms": 3000,
+  "ping_count": 3,
+  "max_concurrent_pings": 20,
+  "entity_refresh_interval_seconds": 3600,
+  "retry_on_failure": true,
+  "retry_delay_seconds": 30,
+  "verify_ssl": true
+}

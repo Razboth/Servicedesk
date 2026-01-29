@@ -1,0 +1,2 @@
+# Network Monitoring Agent Dependencies
+requests>=2.28.0

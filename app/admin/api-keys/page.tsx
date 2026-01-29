@@ -61,6 +61,9 @@ const AVAILABLE_PERMISSIONS = [
   { value: 'soc', label: 'SOC Integration', description: 'Security Operations Center access' },
   { value: 'reports:*', label: 'Reports (All)', description: 'Full access to reports' },
   { value: 'reports:read', label: 'Read Reports', description: 'View and generate reports' },
+  { value: 'monitoring:*', label: 'Monitoring (All)', description: 'Full network monitoring access' },
+  { value: 'monitoring:read', label: 'Read Monitoring', description: 'Fetch entities to monitor' },
+  { value: 'monitoring:write', label: 'Write Monitoring', description: 'Submit ping results' },
 ];
 
 export default function ApiKeysPage() {
