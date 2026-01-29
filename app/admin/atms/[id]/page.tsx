@@ -30,7 +30,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import {
@@ -46,7 +45,13 @@ import {
   Banknote,
   Activity,
   Clock,
-  ExternalLink
+  ExternalLink,
+  MapPin,
+  Network,
+  Server,
+  FileText,
+  TrendingUp,
+  Shield
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 
@@ -328,133 +333,200 @@ export default function ATMDetailPage() {
     );
   }
 
+  const tabs = [
+    { id: 'details', label: 'ATM Details', icon: CreditCard },
+    { id: 'network', label: 'Network & Monitoring', icon: Network },
+    { id: 'tickets', label: 'Technical Issues', icon: Wrench, count: atm._count.technicalIssueTickets },
+    { id: 'claims', label: 'ATM Claims', icon: Banknote, count: atm._count.claimTickets },
+    { id: 'incidents', label: 'Incidents', icon: AlertTriangle, count: atm._count.incidents },
+  ];
+
   return (
-    <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-8 max-w-7xl">
-      {/* Header */}
-      <div className="mb-6">
+    <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-8 max-w-[1600px] mx-auto">
+      {/* Header Section with improved visual hierarchy */}
+      <div className="mb-8">
         <Link href="/admin/atms">
-          <Button variant="ghost" size="sm" className="mb-4">
+          <Button variant="ghost" size="sm" className="mb-4 -ml-2 hover:bg-muted">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to ATMs
           </Button>
         </Link>
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2">
-              <CreditCard className="h-8 w-8" />
-              {atm.name}
-            </h1>
-            <div className="flex items-center gap-3 mt-2 text-muted-foreground">
-              <span className="font-mono">{atm.code}</span>
-              <span>|</span>
-              <span className="flex items-center gap-1">
-                <Building2 className="h-4 w-4" />
-                {atm.branch.name}
-              </span>
-              <span>|</span>
-              <Badge variant={atm.atmCategory === 'CRM' ? 'default' : 'secondary'}>
-                {atm.atmCategory}
+
+        {/* Enhanced Header Card */}
+        <div className="bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border rounded-lg p-6 mb-6">
+          <div className="flex items-start justify-between">
+            <div className="flex items-start gap-4">
+              <div className="h-14 w-14 rounded-lg bg-primary/10 flex items-center justify-center">
+                <CreditCard className="h-7 w-7 text-primary" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight mb-2">
+                  {atm.name}
+                </h1>
+                <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
+                  <span className="font-mono bg-muted px-2 py-1 rounded">{atm.code}</span>
+                  <span className="text-border">|</span>
+                  <span className="flex items-center gap-1.5">
+                    <Building2 className="h-4 w-4" />
+                    <span className="font-medium">{atm.branch.name}</span>
+                    {atm.branch.city && <span className="text-muted-foreground">({atm.branch.city})</span>}
+                  </span>
+                  <span className="text-border">|</span>
+                  <Badge variant={atm.atmCategory === 'CRM' ? 'default' : 'secondary'} className="font-medium">
+                    {atm.atmCategory}
+                  </Badge>
+                </div>
+                {atm.location && (
+                  <div className="flex items-center gap-1.5 mt-2 text-sm text-muted-foreground">
+                    <MapPin className="h-3.5 w-3.5" />
+                    {atm.location}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Badge
+                variant={atm.isActive ? 'success' : 'secondary'}
+                className="h-7 px-3 text-sm font-medium"
+              >
+                {atm.isActive ? 'Active' : 'Inactive'}
               </Badge>
+              {getNetworkStatusBadge()}
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Badge variant={atm.isActive ? 'success' : 'secondary'}>
-              {atm.isActive ? 'Active' : 'Inactive'}
-            </Badge>
-            {getNetworkStatusBadge()}
-          </div>
+        </div>
+
+        {/* Enhanced Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="border-l-4 border-l-orange-500 hover:shadow-md transition-shadow">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground mb-1">Active Incidents</p>
+                  <p className="text-3xl font-bold">{atm._count.incidents}</p>
+                </div>
+                <div className="h-12 w-12 rounded-full bg-orange-100 dark:bg-orange-500/10 flex items-center justify-center">
+                  <AlertTriangle className="h-6 w-6 text-orange-600 dark:text-orange-500" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-l-4 border-l-blue-500 hover:shadow-md transition-shadow">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground mb-1">Technical Issues</p>
+                  <p className="text-3xl font-bold">{atm._count.technicalIssueTickets}</p>
+                </div>
+                <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-500/10 flex items-center justify-center">
+                  <Wrench className="h-6 w-6 text-blue-600 dark:text-blue-500" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-l-4 border-l-green-500 hover:shadow-md transition-shadow">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground mb-1">ATM Claims</p>
+                  <p className="text-3xl font-bold">{atm._count.claimTickets}</p>
+                </div>
+                <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-500/10 flex items-center justify-center">
+                  <Banknote className="h-6 w-6 text-green-600 dark:text-green-500" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-l-4 border-l-purple-500 hover:shadow-md transition-shadow">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground mb-1">Response Time</p>
+                  <p className="text-3xl font-bold">
+                    {atm.networkStatus?.responseTimeMs ? `${atm.networkStatus.responseTimeMs}` : '-'}
+                    {atm.networkStatus?.responseTimeMs && <span className="text-lg text-muted-foreground ml-1">ms</span>}
+                  </p>
+                </div>
+                <div className="h-12 w-12 rounded-full bg-purple-100 dark:bg-purple-500/10 flex items-center justify-center">
+                  <Activity className="h-6 w-6 text-purple-600 dark:text-purple-500" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-orange-500" />
-              <div>
-                <p className="text-2xl font-bold">{atm._count.incidents}</p>
-                <p className="text-sm text-muted-foreground">Active Incidents</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2">
-              <Wrench className="h-5 w-5 text-blue-500" />
-              <div>
-                <p className="text-2xl font-bold">{atm._count.technicalIssueTickets}</p>
-                <p className="text-sm text-muted-foreground">Tech Issues</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2">
-              <Banknote className="h-5 w-5 text-green-500" />
-              <div>
-                <p className="text-2xl font-bold">{atm._count.claimTickets}</p>
-                <p className="text-sm text-muted-foreground">ATM Claims</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2">
-              <Activity className="h-5 w-5 text-purple-500" />
-              <div>
-                <p className="text-2xl font-bold">
-                  {atm.networkStatus?.responseTimeMs ? `${atm.networkStatus.responseTimeMs}ms` : '-'}
-                </p>
-                <p className="text-sm text-muted-foreground">Response Time</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Modern Underline-style Tabs */}
+      <div className="border-b mb-6">
+        <nav className="flex gap-6 overflow-x-auto">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`
+                  flex items-center gap-2 px-1 py-3 border-b-2 transition-all whitespace-nowrap
+                  ${isActive
+                    ? 'border-primary text-primary font-medium'
+                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/50'
+                  }
+                `}
+              >
+                <Icon className="h-4 w-4" />
+                <span>{tab.label}</span>
+                {tab.count !== undefined && (
+                  <Badge
+                    variant={isActive ? 'default' : 'secondary'}
+                    className="h-5 min-w-5 px-1.5 text-xs"
+                  >
+                    {tab.count}
+                  </Badge>
+                )}
+              </button>
+            );
+          })}
+        </nav>
       </div>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-4">
-          <TabsTrigger value="details">ATM Details</TabsTrigger>
-          <TabsTrigger value="network">Network & Monitoring</TabsTrigger>
-          <TabsTrigger value="tickets">
-            Technical Issues ({atm._count.technicalIssueTickets})
-          </TabsTrigger>
-          <TabsTrigger value="claims">
-            ATM Claims ({atm._count.claimTickets})
-          </TabsTrigger>
-          <TabsTrigger value="incidents">
-            Incidents ({atm._count.incidents})
-          </TabsTrigger>
-        </TabsList>
-
+      {/* Tab Content */}
+      <div className="min-h-[400px]">
         {/* Details Tab */}
-        <TabsContent value="details">
+        {activeTab === 'details' && (
           <form onSubmit={handleSubmit}>
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Basic Information */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Basic Information</CardTitle>
+              <Card className="shadow-sm">
+                <CardHeader className="border-b bg-muted/30">
+                  <div className="flex items-center gap-2">
+                    <Server className="h-5 w-5 text-primary" />
+                    <CardTitle>Basic Information</CardTitle>
+                  </div>
+                  <CardDescription>Core ATM identification and status</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="pt-6 space-y-4">
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="code">ATM Code *</Label>
+                    <div className="space-y-2">
+                      <Label htmlFor="code" className="text-sm font-medium">
+                        ATM Code <span className="text-destructive">*</span>
+                      </Label>
                       <Input
                         id="code"
                         value={formData.code}
                         onChange={(e) => setFormData({ ...formData, code: e.target.value })}
                         placeholder="e.g., ATM001"
                         required
+                        className="font-mono"
                       />
                     </div>
-                    <div>
-                      <Label htmlFor="name">ATM Name *</Label>
+                    <div className="space-y-2">
+                      <Label htmlFor="name" className="text-sm font-medium">
+                        ATM Name <span className="text-destructive">*</span>
+                      </Label>
                       <Input
                         id="name"
                         value={formData.name}
@@ -464,8 +536,10 @@ export default function ATMDetailPage() {
                       />
                     </div>
                   </div>
-                  <div>
-                    <Label htmlFor="branch">Branch *</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="branch" className="text-sm font-medium">
+                      Branch <span className="text-destructive">*</span>
+                    </Label>
                     <Select
                       value={formData.branchId}
                       onValueChange={(value) => setFormData({ ...formData, branchId: value })}
@@ -482,8 +556,10 @@ export default function ATMDetailPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div>
-                    <Label htmlFor="location">Location</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="location" className="text-sm font-medium">
+                      Location
+                    </Label>
                     <Input
                       id="location"
                       value={formData.location}
@@ -491,26 +567,32 @@ export default function ATMDetailPage() {
                       placeholder="e.g., Ground floor, near entrance"
                     />
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-3 pt-2">
                     <Switch
                       id="isActive"
                       checked={formData.isActive}
                       onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
                     />
-                    <Label htmlFor="isActive">Active</Label>
+                    <Label htmlFor="isActive" className="cursor-pointer font-medium">
+                      Active Status
+                    </Label>
                   </div>
                 </CardContent>
               </Card>
 
               {/* Hardware Information */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Hardware Information</CardTitle>
+              <Card className="shadow-sm">
+                <CardHeader className="border-b bg-muted/30">
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-5 w-5 text-primary" />
+                    <CardTitle>Hardware Information</CardTitle>
+                  </div>
+                  <CardDescription>ATM hardware specifications</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="pt-6 space-y-4">
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="atmBrand">ATM Brand</Label>
+                    <div className="space-y-2">
+                      <Label htmlFor="atmBrand" className="text-sm font-medium">ATM Brand</Label>
                       <Input
                         id="atmBrand"
                         value={formData.atmBrand}
@@ -525,8 +607,8 @@ export default function ATMDetailPage() {
                         <option value="Wincor" />
                       </datalist>
                     </div>
-                    <div>
-                      <Label htmlFor="atmType">ATM Model/Type</Label>
+                    <div className="space-y-2">
+                      <Label htmlFor="atmType" className="text-sm font-medium">ATM Model/Type</Label>
                       <Input
                         id="atmType"
                         value={formData.atmType}
@@ -536,8 +618,8 @@ export default function ATMDetailPage() {
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="atmCategory">Category</Label>
+                    <div className="space-y-2">
+                      <Label htmlFor="atmCategory" className="text-sm font-medium">Category</Label>
                       <Select
                         value={formData.atmCategory}
                         onValueChange={(value: 'ATM' | 'CRM') => setFormData({ ...formData, atmCategory: value })}
@@ -551,13 +633,14 @@ export default function ATMDetailPage() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div>
-                      <Label htmlFor="serialNumber">Serial Number</Label>
+                    <div className="space-y-2">
+                      <Label htmlFor="serialNumber" className="text-sm font-medium">Serial Number</Label>
                       <Input
                         id="serialNumber"
                         value={formData.serialNumber}
                         onChange={(e) => setFormData({ ...formData, serialNumber: e.target.value })}
                         placeholder="Hardware serial number"
+                        className="font-mono text-sm"
                       />
                     </div>
                   </div>
@@ -565,23 +648,28 @@ export default function ATMDetailPage() {
               </Card>
 
               {/* Network Configuration */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Network Configuration</CardTitle>
+              <Card className="shadow-sm">
+                <CardHeader className="border-b bg-muted/30">
+                  <div className="flex items-center gap-2">
+                    <Network className="h-5 w-5 text-primary" />
+                    <CardTitle>Network Configuration</CardTitle>
+                  </div>
+                  <CardDescription>Network and connectivity settings</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label htmlFor="ipAddress">IP Address</Label>
+                <CardContent className="pt-6 space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="ipAddress" className="text-sm font-medium">IP Address</Label>
                     <Input
                       id="ipAddress"
                       value={formData.ipAddress}
                       onChange={(e) => setFormData({ ...formData, ipAddress: e.target.value })}
                       placeholder="e.g., 192.168.1.100"
+                      className="font-mono"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="networkMedia">Network Media</Label>
+                    <div className="space-y-2">
+                      <Label htmlFor="networkMedia" className="text-sm font-medium">Network Media</Label>
                       <Select
                         value={formData.networkMedia}
                         onValueChange={(value) => setFormData({ ...formData, networkMedia: value })}
@@ -596,8 +684,8 @@ export default function ATMDetailPage() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div>
-                      <Label htmlFor="networkVendor">Network Vendor</Label>
+                    <div className="space-y-2">
+                      <Label htmlFor="networkVendor" className="text-sm font-medium">Network Vendor</Label>
                       <Input
                         id="networkVendor"
                         value={formData.networkVendor}
@@ -607,8 +695,8 @@ export default function ATMDetailPage() {
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="latitude">Latitude</Label>
+                    <div className="space-y-2">
+                      <Label htmlFor="latitude" className="text-sm font-medium">Latitude</Label>
                       <Input
                         id="latitude"
                         type="number"
@@ -616,10 +704,11 @@ export default function ATMDetailPage() {
                         value={formData.latitude}
                         onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
                         placeholder="e.g., -6.200000"
+                        className="font-mono"
                       />
                     </div>
-                    <div>
-                      <Label htmlFor="longitude">Longitude</Label>
+                    <div className="space-y-2">
+                      <Label htmlFor="longitude" className="text-sm font-medium">Longitude</Label>
                       <Input
                         id="longitude"
                         type="number"
@@ -627,6 +716,7 @@ export default function ATMDetailPage() {
                         value={formData.longitude}
                         onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
                         placeholder="e.g., 106.816666"
+                        className="font-mono"
                       />
                     </div>
                   </div>
@@ -634,62 +724,87 @@ export default function ATMDetailPage() {
               </Card>
 
               {/* Notes */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Notes</CardTitle>
+              <Card className="shadow-sm">
+                <CardHeader className="border-b bg-muted/30">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-primary" />
+                    <CardTitle>Additional Notes</CardTitle>
+                  </div>
+                  <CardDescription>Internal notes and comments</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-6">
                   <Textarea
                     id="notes"
                     value={formData.notes}
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    placeholder="Additional notes about this ATM..."
-                    rows={5}
+                    placeholder="Add any additional information about this ATM..."
+                    rows={6}
+                    className="resize-none"
                   />
                 </CardContent>
               </Card>
             </div>
 
-            <div className="flex justify-end gap-4 mt-6">
-              <Button type="submit" disabled={saving}>
-                <Save className="h-4 w-4 mr-2" />
-                {saving ? 'Saving...' : 'Save Changes'}
+            <div className="flex justify-end gap-3 mt-6 pt-6 border-t">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => router.push('/admin/atms')}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={saving} className="min-w-[120px]">
+                {saving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save Changes
+                  </>
+                )}
               </Button>
             </div>
           </form>
-        </TabsContent>
+        )}
 
         {/* Network & Monitoring Tab */}
-        <TabsContent value="network">
-          <div className="grid grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Current Status</CardTitle>
+        {activeTab === 'network' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card className="shadow-sm">
+              <CardHeader className="border-b bg-muted/30">
+                <div className="flex items-center gap-2">
+                  <Activity className="h-5 w-5 text-primary" />
+                  <CardTitle>Current Network Status</CardTitle>
+                </div>
+                <CardDescription>Real-time monitoring data</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pt-6">
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Network Status</span>
+                  <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
+                    <span className="text-sm font-medium text-muted-foreground">Network Status</span>
                     {getNetworkStatusBadge()}
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Response Time</span>
-                    <span className="font-mono">
+                  <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
+                    <span className="text-sm font-medium text-muted-foreground">Response Time</span>
+                    <span className="font-mono font-semibold">
                       {atm.networkStatus?.responseTimeMs ? `${atm.networkStatus.responseTimeMs}ms` : '-'}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Last Checked</span>
-                    <span>
+                  <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
+                    <span className="text-sm font-medium text-muted-foreground">Last Checked</span>
+                    <span className="text-sm">
                       {atm.networkStatus?.checkedAt
                         ? formatDistanceToNow(new Date(atm.networkStatus.checkedAt), { addSuffix: true })
                         : '-'}
                     </span>
                   </div>
                   {atm.networkStatus?.downSince && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">Down Since</span>
-                      <span className="text-red-500">
+                    <div className="flex justify-between items-center p-3 bg-destructive/10 rounded-lg border border-destructive/20">
+                      <span className="text-sm font-medium text-destructive">Down Since</span>
+                      <span className="text-sm font-semibold text-destructive">
                         {format(new Date(atm.networkStatus.downSince), 'PPp')}
                       </span>
                     </div>
@@ -698,234 +813,263 @@ export default function ATMDetailPage() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Monitoring Logs</CardTitle>
+            <Card className="shadow-sm">
+              <CardHeader className="border-b bg-muted/30">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-primary" />
+                  <CardTitle>Recent Monitoring Logs</CardTitle>
+                </div>
+                <CardDescription>Latest network ping results</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pt-6">
                 {atm.monitoringLogs.length > 0 ? (
+                  <div className="rounded-lg border overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/50">
+                          <TableHead className="font-semibold">Status</TableHead>
+                          <TableHead className="font-semibold">Response Time</TableHead>
+                          <TableHead className="font-semibold">Checked At</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {atm.monitoringLogs.map((log) => (
+                          <TableRow key={log.id} className="hover:bg-muted/30">
+                            <TableCell>
+                              <Badge variant={log.status === 'ONLINE' ? 'success' : 'destructive'}>
+                                {log.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="font-mono text-sm">
+                              {log.responseTime ? `${log.responseTime}ms` : '-'}
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {formatDistanceToNow(new Date(log.checkedAt), { addSuffix: true })}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : (
+                  <div className="text-center py-12 border rounded-lg bg-muted/20">
+                    <Clock className="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" />
+                    <p className="text-muted-foreground">No monitoring logs available</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Technical Issues Tab */}
+        {activeTab === 'tickets' && (
+          <Card className="shadow-sm">
+            <CardHeader className="border-b bg-muted/30">
+              <div className="flex items-center gap-2">
+                <Wrench className="h-5 w-5 text-primary" />
+                <CardTitle>Technical Issues</CardTitle>
+              </div>
+              <CardDescription>
+                All technical issue tickets reported for ATM {atm.code}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6">
+              {ticketsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : technicalIssues.length > 0 ? (
+                <div className="rounded-lg border overflow-hidden">
                   <Table>
                     <TableHeader>
-                      <TableRow>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Response Time</TableHead>
-                        <TableHead>Checked At</TableHead>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="font-semibold">Ticket #</TableHead>
+                        <TableHead className="font-semibold">Title</TableHead>
+                        <TableHead className="font-semibold">Error Type</TableHead>
+                        <TableHead className="font-semibold">Status</TableHead>
+                        <TableHead className="font-semibold">Priority</TableHead>
+                        <TableHead className="font-semibold">Created</TableHead>
+                        <TableHead className="font-semibold">Assigned To</TableHead>
+                        <TableHead className="font-semibold text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {atm.monitoringLogs.map((log) => (
-                        <TableRow key={log.id}>
+                      {technicalIssues.map((ticket) => (
+                        <TableRow key={ticket.id} className="hover:bg-muted/30">
+                          <TableCell className="font-mono text-sm font-medium">{ticket.number}</TableCell>
+                          <TableCell className="max-w-[250px] truncate" title={ticket.title}>
+                            {ticket.title}
+                          </TableCell>
                           <TableCell>
-                            <Badge variant={log.status === 'ONLINE' ? 'success' : 'destructive'}>
-                              {log.status}
+                            <Badge variant="outline">{ticket.errorType || '-'}</Badge>
+                          </TableCell>
+                          <TableCell>{getStatusBadge(ticket.status)}</TableCell>
+                          <TableCell>
+                            <Badge variant={ticket.priority === 'URGENT' || ticket.priority === 'HIGH' ? 'destructive' : 'outline'}>
+                              {ticket.priority}
                             </Badge>
                           </TableCell>
-                          <TableCell>{log.responseTime ? `${log.responseTime}ms` : '-'}</TableCell>
-                          <TableCell>
-                            {formatDistanceToNow(new Date(log.checkedAt), { addSuffix: true })}
+                          <TableCell className="text-sm">
+                            {formatDistanceToNow(new Date(ticket.createdAt), { addSuffix: true })}
+                          </TableCell>
+                          <TableCell className="text-sm">{ticket.assignee?.name || '-'}</TableCell>
+                          <TableCell className="text-right">
+                            <Link href={`/tickets/${ticket.id}`}>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <ExternalLink className="h-4 w-4" />
+                              </Button>
+                            </Link>
                           </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
-                ) : (
-                  <p className="text-muted-foreground text-center py-4">No monitoring logs available</p>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        {/* Technical Issues Tab */}
-        <TabsContent value="tickets">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Wrench className="h-5 w-5" />
-                Technical Issues
-              </CardTitle>
-              <CardDescription>
-                Tickets reported for ATM {atm.code}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {ticketsLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin" />
                 </div>
-              ) : technicalIssues.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Ticket #</TableHead>
-                      <TableHead>Title</TableHead>
-                      <TableHead>Error Type</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Priority</TableHead>
-                      <TableHead>Created</TableHead>
-                      <TableHead>Assigned To</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {technicalIssues.map((ticket) => (
-                      <TableRow key={ticket.id}>
-                        <TableCell className="font-mono">{ticket.number}</TableCell>
-                        <TableCell className="max-w-[200px] truncate" title={ticket.title}>
-                          {ticket.title}
-                        </TableCell>
-                        <TableCell>{ticket.errorType || '-'}</TableCell>
-                        <TableCell>{getStatusBadge(ticket.status)}</TableCell>
-                        <TableCell>
-                          <Badge variant={ticket.priority === 'URGENT' || ticket.priority === 'HIGH' ? 'destructive' : 'outline'}>
-                            {ticket.priority}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {formatDistanceToNow(new Date(ticket.createdAt), { addSuffix: true })}
-                        </TableCell>
-                        <TableCell>{ticket.assignee?.name || '-'}</TableCell>
-                        <TableCell>
-                          <Link href={`/tickets/${ticket.id}`}>
-                            <Button variant="ghost" size="sm">
-                              <ExternalLink className="h-4 w-4" />
-                            </Button>
-                          </Link>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
               ) : (
-                <p className="text-muted-foreground text-center py-8">No technical issues found</p>
+                <div className="text-center py-12 border rounded-lg bg-muted/20">
+                  <Wrench className="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" />
+                  <p className="text-muted-foreground">No technical issues found</p>
+                </div>
               )}
             </CardContent>
           </Card>
-        </TabsContent>
+        )}
 
         {/* Claims Tab */}
-        <TabsContent value="claims">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Banknote className="h-5 w-5" />
-                ATM Claims (Selisih ATM)
-              </CardTitle>
+        {activeTab === 'claims' && (
+          <Card className="shadow-sm">
+            <CardHeader className="border-b bg-muted/30">
+              <div className="flex items-center gap-2">
+                <Banknote className="h-5 w-5 text-primary" />
+                <CardTitle>ATM Claims (Selisih ATM)</CardTitle>
+              </div>
               <CardDescription>
                 Cash discrepancy claims for ATM {atm.code}
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
               {ticketsLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin" />
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
               ) : claims.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Ticket #</TableHead>
-                      <TableHead>Customer</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Transaction Date</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Verification</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {claims.map((ticket) => (
-                      <TableRow key={ticket.id}>
-                        <TableCell className="font-mono">{ticket.number}</TableCell>
-                        <TableCell>{ticket.customerName || '-'}</TableCell>
-                        <TableCell>{ticket.transactionAmount || '-'}</TableCell>
-                        <TableCell>{ticket.transactionDate || '-'}</TableCell>
-                        <TableCell>{getStatusBadge(ticket.status)}</TableCell>
-                        <TableCell>
-                          {ticket.verification?.recommendation ? (
-                            <Badge variant={
-                              ticket.verification.recommendation === 'APPROVE' ? 'success' :
-                              ticket.verification.recommendation === 'REJECT' ? 'destructive' : 'warning'
-                            }>
-                              {ticket.verification.recommendation}
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline">Pending</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Link href={`/tickets/${ticket.id}`}>
-                            <Button variant="ghost" size="sm">
-                              <ExternalLink className="h-4 w-4" />
-                            </Button>
-                          </Link>
-                        </TableCell>
+                <div className="rounded-lg border overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="font-semibold">Ticket #</TableHead>
+                        <TableHead className="font-semibold">Customer</TableHead>
+                        <TableHead className="font-semibold">Amount</TableHead>
+                        <TableHead className="font-semibold">Transaction Date</TableHead>
+                        <TableHead className="font-semibold">Status</TableHead>
+                        <TableHead className="font-semibold">Verification</TableHead>
+                        <TableHead className="font-semibold text-right">Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {claims.map((ticket) => (
+                        <TableRow key={ticket.id} className="hover:bg-muted/30">
+                          <TableCell className="font-mono text-sm font-medium">{ticket.number}</TableCell>
+                          <TableCell>{ticket.customerName || '-'}</TableCell>
+                          <TableCell className="font-semibold">{ticket.transactionAmount || '-'}</TableCell>
+                          <TableCell className="text-sm">{ticket.transactionDate || '-'}</TableCell>
+                          <TableCell>{getStatusBadge(ticket.status)}</TableCell>
+                          <TableCell>
+                            {ticket.verification?.recommendation ? (
+                              <Badge variant={
+                                ticket.verification.recommendation === 'APPROVE' ? 'success' :
+                                ticket.verification.recommendation === 'REJECT' ? 'destructive' : 'warning'
+                              }>
+                                {ticket.verification.recommendation}
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline">Pending</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Link href={`/tickets/${ticket.id}`}>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <ExternalLink className="h-4 w-4" />
+                              </Button>
+                            </Link>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               ) : (
-                <p className="text-muted-foreground text-center py-8">No ATM claims found</p>
+                <div className="text-center py-12 border rounded-lg bg-muted/20">
+                  <Banknote className="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" />
+                  <p className="text-muted-foreground">No ATM claims found</p>
+                </div>
               )}
             </CardContent>
           </Card>
-        </TabsContent>
+        )}
 
         {/* Incidents Tab */}
-        <TabsContent value="incidents">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5" />
-                ATM Incidents
-              </CardTitle>
+        {activeTab === 'incidents' && (
+          <Card className="shadow-sm">
+            <CardHeader className="border-b bg-muted/30">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-primary" />
+                <CardTitle>ATM Incidents</CardTitle>
+              </div>
               <CardDescription>
-                Active incidents for ATM {atm.code}
+                Active network and monitoring incidents for ATM {atm.code}
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
               {atm.incidents.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Severity</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Detected At</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {atm.incidents.map((incident) => (
-                      <TableRow key={incident.id}>
-                        <TableCell>
-                          <Badge variant="outline">{incident.type}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={
-                            incident.severity === 'CRITICAL' || incident.severity === 'HIGH'
-                              ? 'destructive'
-                              : incident.severity === 'MEDIUM' ? 'warning' : 'secondary'
-                          }>
-                            {incident.severity}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="max-w-[300px] truncate" title={incident.description}>
-                          {incident.description}
-                        </TableCell>
-                        <TableCell>
-                          {formatDistanceToNow(new Date(incident.createdAt), { addSuffix: true })}
-                        </TableCell>
+                <div className="rounded-lg border overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="font-semibold">Type</TableHead>
+                        <TableHead className="font-semibold">Severity</TableHead>
+                        <TableHead className="font-semibold">Description</TableHead>
+                        <TableHead className="font-semibold">Detected At</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {atm.incidents.map((incident) => (
+                        <TableRow key={incident.id} className="hover:bg-muted/30">
+                          <TableCell>
+                            <Badge variant="outline">{incident.type}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={
+                              incident.severity === 'CRITICAL' || incident.severity === 'HIGH'
+                                ? 'destructive'
+                                : incident.severity === 'MEDIUM' ? 'warning' : 'secondary'
+                            }>
+                              {incident.severity}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="max-w-[400px] truncate" title={incident.description}>
+                            {incident.description}
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {formatDistanceToNow(new Date(incident.createdAt), { addSuffix: true })}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               ) : (
-                <p className="text-muted-foreground text-center py-8">No active incidents</p>
+                <div className="text-center py-12 border rounded-lg bg-muted/20">
+                  <AlertTriangle className="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" />
+                  <p className="text-muted-foreground">No active incidents</p>
+                  <p className="text-sm text-muted-foreground mt-1">All systems are operating normally</p>
+                </div>
               )}
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+        )}
+      </div>
     </div>
   );
 }
