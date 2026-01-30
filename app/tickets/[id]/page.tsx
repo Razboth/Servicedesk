@@ -2757,15 +2757,20 @@ export default function TicketDetailPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="OPEN">Open</SelectItem>
-                    <SelectItem value="PENDING">Pending</SelectItem>
-                    <SelectItem value="PENDING_APPROVAL">Pending Approval</SelectItem>
-                    <SelectItem value="APPROVED">Approved</SelectItem>
-                    <SelectItem value="REJECTED">Rejected</SelectItem>
                     <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+                    <SelectItem value="PENDING">Pending</SelectItem>
                     <SelectItem value="PENDING_VENDOR">Pending Vendor</SelectItem>
                     <SelectItem value="RESOLVED">Resolved</SelectItem>
                     <SelectItem value="CLOSED">Closed</SelectItem>
                     <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                    {/* Approval statuses only for Admin/Manager */}
+                    {(session?.user?.role === 'ADMIN' || session?.user?.role === 'SUPER_ADMIN' || session?.user?.role === 'MANAGER') && (
+                      <>
+                        <SelectItem value="PENDING_APPROVAL">Pending Approval</SelectItem>
+                        <SelectItem value="APPROVED">Approved</SelectItem>
+                        <SelectItem value="REJECTED">Rejected</SelectItem>
+                      </>
+                    )}
                   </SelectContent>
                 </Select>
               </div>

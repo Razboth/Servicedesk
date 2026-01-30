@@ -701,11 +701,8 @@ export default function TechnicianWorkbench() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="OPEN">Open</SelectItem>
-                    <SelectItem value="PENDING">Pending</SelectItem>
-                    <SelectItem value="PENDING_APPROVAL">Pending Approval</SelectItem>
-                    <SelectItem value="APPROVED">Approved</SelectItem>
-                    <SelectItem value="REJECTED">Rejected</SelectItem>
                     <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+                    <SelectItem value="PENDING">Pending</SelectItem>
                     <SelectItem value="PENDING_VENDOR">Pending Vendor</SelectItem>
                     <SelectItem value="RESOLVED">Resolved</SelectItem>
                     <SelectItem value="CLOSED">Closed</SelectItem>
