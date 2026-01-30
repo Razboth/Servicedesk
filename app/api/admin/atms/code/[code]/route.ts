@@ -101,44 +101,94 @@ export async function GET(
 
     // Get ticket counts for this ATM
     const atmCodeField = await prisma.fieldTemplate.findFirst({
-      where: { name: 'atm_code' }
+      where: {
+        OR: [
+          { name: 'atm_code' },
+          { name: 'kode_atm' },
+          { name: 'atmCode' },
+          { label: { contains: 'ATM', mode: 'insensitive' } }
+        ]
+      }
     });
 
     let technicalIssueCount = 0;
     let claimCount = 0;
 
-    if (atmCodeField) {
-      // Get services for technical issues
-      const techIssueServices = await prisma.service.findMany({
-        where: {
-          OR: [
-            { name: { startsWith: 'ATM - Permasalahan Teknis' } },
-            { name: { contains: 'ATM Technical Issue' } }
-          ]
-        },
-        select: { id: true }
-      });
-      const techIssueServiceIds = techIssueServices.map(s => s.id);
+    // Get services for technical issues
+    const techIssueServices = await prisma.service.findMany({
+      where: {
+        OR: [
+          { name: { startsWith: 'ATM - Permasalahan Teknis' } },
+          { name: { contains: 'ATM Technical Issue', mode: 'insensitive' } },
+          { name: { contains: 'Permasalahan Teknis ATM', mode: 'insensitive' } }
+        ]
+      },
+      select: { id: true }
+    });
+    const techIssueServiceIds = techIssueServices.map(s => s.id);
 
-      // Count technical issues
-      technicalIssueCount = await prisma.ticketFieldValue.count({
+    // Get services for claims
+    const claimServices = await prisma.service.findMany({
+      where: {
+        OR: [
+          { name: { contains: 'ATM Claim', mode: 'insensitive' } },
+          { name: { contains: 'ATM Klaim', mode: 'insensitive' } },
+          { name: { contains: 'Selisih ATM', mode: 'insensitive' } },
+          { name: { contains: 'Penarikan Tunai Internal', mode: 'insensitive' } }
+        ]
+      },
+      select: { id: true }
+    });
+    const claimServiceIds = claimServices.map(s => s.id);
+
+    // Build ATM code match condition for field values
+    const atmCodeMatchConditions = atmCodeField ? [
+      { fieldId: atmCodeField.id, value: atm.code },
+      { fieldId: atmCodeField.id, value: { startsWith: atm.code + ' ' } },
+      { fieldId: atmCodeField.id, value: { startsWith: atm.code + '-' } },
+      { fieldId: atmCodeField.id, value: { contains: atm.code } }
+    ] : [];
+
+    // Count technical issues
+    if (techIssueServiceIds.length > 0) {
+      technicalIssueCount = await prisma.ticket.count({
         where: {
-          fieldId: atmCodeField.id,
-          value: atm.code,
-          ticket: {
-            serviceId: { in: techIssueServiceIds }
-          }
+          serviceId: { in: techIssueServiceIds },
+          OR: [
+            ...(atmCodeMatchConditions.length > 0 ? [{
+              fieldValues: { some: { OR: atmCodeMatchConditions } }
+            }] : []),
+            { title: { contains: atm.code } },
+            { description: { contains: atm.code } }
+          ]
         }
       });
+    }
 
-      // Count claims
-      claimCount = await prisma.ticketFieldValue.count({
+    // Count claims
+    if (claimServiceIds.length > 0 || atmCodeMatchConditions.length > 0) {
+      claimCount = await prisma.ticket.count({
         where: {
-          fieldId: atmCodeField.id,
-          value: atm.code,
-          ticket: {
-            atmClaimVerification: { isNot: null }
-          }
+          OR: [
+            // Match by claim service with ATM code
+            ...(claimServiceIds.length > 0 && atmCodeMatchConditions.length > 0 ? [{
+              serviceId: { in: claimServiceIds },
+              fieldValues: { some: { OR: atmCodeMatchConditions } }
+            }] : []),
+            // Match by atmClaimVerification with ATM code
+            ...(atmCodeMatchConditions.length > 0 ? [{
+              atmClaimVerification: { isNot: null },
+              fieldValues: { some: { OR: atmCodeMatchConditions } }
+            }] : []),
+            // Match by claim service with ATM code in title
+            ...(claimServiceIds.length > 0 ? [{
+              serviceId: { in: claimServiceIds },
+              OR: [
+                { title: { contains: atm.code } },
+                { description: { contains: atm.code } }
+              ]
+            }] : [])
+          ].filter(c => Object.keys(c).length > 0)
         }
       });
     }
