@@ -23,8 +23,18 @@ import {
 import { ProgressTracker } from '@/components/ui/progress-tracker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowLeft, Clock, User, MessageSquare, AlertCircle, CheckCircle, CheckCheck, Plus, X, Paperclip, Download, FileText, Eye, Edit, Sparkles, Shield, UserCheck, UserX, Timer, Trash2, Image as ImageIcon, File, MoreVertical, Building2, Briefcase, UserCircle, Calendar, Hash, MapPin, PlayCircle, XCircle, Printer, Send, RefreshCw, ChevronDown } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
 import { RelatedArticles } from '@/components/knowledge/related-articles';
+
+// WITA timezone (GMT+8)
+const WITA_TIMEZONE = 'Asia/Makassar';
+
+// Helper function to format date in WITA timezone
+const formatWITA = (date: string | Date, formatStr: string = 'dd MMM yyyy, HH:mm') => {
+  const zonedDate = toZonedTime(new Date(date), WITA_TIMEZONE);
+  return format(zonedDate, formatStr) + ' WITA';
+};
 import { AttachmentPreview } from '@/components/ui/attachment-preview';
 import { getAvatarById } from '@/components/ui/avatar-presets';
 import { VendorAssignmentDialog } from '@/components/tickets/vendor-assignment-dialog';
@@ -1630,7 +1640,7 @@ export default function TicketDetailPage() {
                               return (
                                 <div className="flex items-center gap-2">
                                   <Clock className="h-4 w-4 text-muted-foreground" />
-                                  <span className="text-foreground">{value ? new Date(value).toLocaleDateString() : '-'}</span>
+                                  <span className="text-foreground">{value ? formatWITA(value, 'dd MMM yyyy') : '-'}</span>
                                 </div>
                               );
 
@@ -1638,7 +1648,7 @@ export default function TicketDetailPage() {
                               return (
                                 <div className="flex items-center gap-2">
                                   <Clock className="h-4 w-4 text-muted-foreground" />
-                                  <span className="text-foreground">{value ? new Date(value).toLocaleString() : '-'}</span>
+                                  <span className="text-foreground">{value ? formatWITA(value) : '-'}</span>
                                 </div>
                               );
 
@@ -1768,7 +1778,7 @@ export default function TicketDetailPage() {
                               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                 <span>{formatFileSize(attachment.size)}</span>
                                 <span>-</span>
-                                <span>{formatDistanceToNow(new Date(attachment.createdAt), { addSuffix: true })}</span>
+                                <span>{formatWITA(attachment.createdAt)}</span>
                               </div>
                             </div>
                           </div>
@@ -1965,7 +1975,7 @@ export default function TicketDetailPage() {
                                   )}
                                 </div>
                                 <span className="text-xs text-muted-foreground">
-                                  {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
+                                  {formatWITA(comment.createdAt)}
                                 </span>
                               </div>
                             </div>
@@ -2674,7 +2684,7 @@ export default function TicketDetailPage() {
                           <div className="flex-1">
                             <span className="text-xs text-muted-foreground">Created</span>
                             <p className="text-xs text-foreground">
-                              {formatDistanceToNow(new Date(ticket.createdAt), { addSuffix: true })}
+                              {formatWITA(ticket.createdAt)}
                             </p>
                           </div>
                         </div>
@@ -2685,7 +2695,7 @@ export default function TicketDetailPage() {
                           <div className="flex-1">
                             <span className="text-xs text-muted-foreground">Last updated</span>
                             <p className="text-xs text-foreground">
-                              {formatDistanceToNow(new Date(ticket.updatedAt), { addSuffix: true })}
+                              {formatWITA(ticket.updatedAt)}
                             </p>
                           </div>
                         </div>
@@ -2697,7 +2707,7 @@ export default function TicketDetailPage() {
                             <div className="flex-1">
                               <span className="text-xs text-muted-foreground">Resolved</span>
                               <p className="text-xs text-foreground">
-                                {formatDistanceToNow(new Date(ticket.resolvedAt), { addSuffix: true })}
+                                {formatWITA(ticket.resolvedAt)}
                               </p>
                             </div>
                           </div>
