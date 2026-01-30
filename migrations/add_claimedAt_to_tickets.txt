@@ -1,6 +1,13 @@
 -- SQL Migration: Add claimedAt column to Ticket table
 -- Date: 2026-01-30
 -- Description: Track when a ticket was claimed by a technician
+--
+-- IMPORTANT: SLA now counts from claimedAt instead of createdAt
+-- This change affects all SLA calculations in the system.
+-- Priority order for SLA start time:
+--   1. claimedAt (when technician claimed the ticket)
+--   2. slaStartAt (explicit SLA start override / approval time)
+--   3. createdAt (fallback to ticket creation time)
 
 -- Add claimedAt column to Ticket table
 ALTER TABLE "Ticket" ADD COLUMN "claimedAt" TIMESTAMP(3);
@@ -17,3 +24,9 @@ ALTER TABLE "Ticket" ADD COLUMN "claimedAt" TIMESTAMP(3);
 -- )
 -- WHERE t."assignedToId" IS NOT NULL
 -- AND t."claimedAt" IS NULL;
+
+-- Alternative: Set claimedAt to assignedAt if available
+-- UPDATE "Ticket"
+-- SET "claimedAt" = "assignedAt"
+-- WHERE "assignedAt" IS NOT NULL
+-- AND "claimedAt" IS NULL;

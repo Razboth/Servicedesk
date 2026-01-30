@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { getEffectiveElapsedHours } from '@/lib/sla-utils';
+import { getEffectiveElapsedHours, getSlaStartTime } from '@/lib/sla-utils';
 
 export async function GET(request: NextRequest) {
   try {
@@ -118,8 +118,12 @@ export async function GET(request: NextRequest) {
       const responseSlaHours = serviceResponseSla || priorityTargets.response;
       const resolutionSlaHours = serviceResolutionSla || priorityTargets.resolution;
 
-      // Calculate actual times - use slaStartAt (approval time) or createdAt
-      const slaStart = ticket.slaStartAt ? new Date(ticket.slaStartAt) : new Date(ticket.createdAt);
+      // Calculate actual times - use claimedAt (when claimed), slaStartAt (approval time), or createdAt
+      const slaStart = getSlaStartTime({
+        claimedAt: (ticket as any).claimedAt,
+        slaStartAt: ticket.slaStartAt,
+        createdAt: ticket.createdAt
+      });
       const slaPausedTotal = (ticket as any).slaPausedTotal || 0;
       const slaPausedAt = (ticket as any).slaPausedAt ? new Date((ticket as any).slaPausedAt) : null;
       const firstResponseAt = (ticket as any).firstResponseAt ? new Date((ticket as any).firstResponseAt) : null;

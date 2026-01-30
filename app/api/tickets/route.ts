@@ -18,6 +18,7 @@ import {
   OmniTicketData
 } from '@/lib/services/omni.service';
 import { logger } from '@/lib/services/logging.service';
+import { getSlaStartTime } from '@/lib/sla-utils';
 import { metrics } from '@/lib/services/metrics.service';
 import {
   createErrorResponse,
@@ -922,8 +923,12 @@ export async function GET(request: NextRequest) {
           return slaStatus === 'within';
         }
 
-        // Use slaStartAt (approval time) or createdAt as SLA start
-        const slaStart = ticket.slaStartAt ? new Date(ticket.slaStartAt) : new Date(ticket.createdAt);
+        // Use claimedAt, slaStartAt (approval time), or createdAt as SLA start
+        const slaStart = getSlaStartTime({
+          claimedAt: (ticket as any).claimedAt,
+          slaStartAt: ticket.slaStartAt,
+          createdAt: ticket.createdAt
+        });
         const effectiveElapsedMs = (now.getTime() - slaStart.getTime()) - ((ticket as any).slaPausedTotal || 0);
         // If currently paused, subtract time since pause started
         const pausedAt = (ticket as any).slaPausedAt;

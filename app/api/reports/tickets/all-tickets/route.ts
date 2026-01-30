@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { calculateBusinessHours } from '@/lib/sla-utils';
+import { calculateBusinessHours, getSlaStartTime } from '@/lib/sla-utils';
 
 export async function GET(request: NextRequest) {
   try {
@@ -457,10 +457,14 @@ export async function GET(request: NextRequest) {
 
     // Format response
     // Note: Removed old category/subcategory/item fields - only using Service 3-tier system
-    // Resolution time is calculated from slaStartAt (approval date) instead of createdAt
+    // Resolution time is calculated from claimedAt/slaStartAt instead of createdAt
     const formattedTickets = tickets.map(ticket => {
-      // Calculate resolution time from SLA start (approval date or creation date for non-approval tickets)
-      const slaStart = (ticket as any).slaStartAt ? new Date((ticket as any).slaStartAt) : new Date(ticket.createdAt);
+      // Calculate resolution time from SLA start (claimed, approval, or creation date)
+      const slaStart = getSlaStartTime({
+        claimedAt: (ticket as any).claimedAt,
+        slaStartAt: (ticket as any).slaStartAt,
+        createdAt: ticket.createdAt
+      });
       const resolutionTime = ticket.resolvedAt
         ? Math.round(calculateBusinessHours(slaStart, new Date(ticket.resolvedAt)))
         : null;
@@ -824,10 +828,14 @@ export async function POST(request: NextRequest) {
 
     // Format data for export
     // Note: Removed old Category/Subcategory/Item columns (F,G,H) - only using Service 3-tier system
-    // Resolution time is calculated from slaStartAt (approval date) instead of createdAt
+    // Resolution time is calculated from claimedAt/slaStartAt instead of createdAt
     const formattedData = tickets.map(t => {
-      // Calculate resolution time from SLA start (approval date or creation date for non-approval tickets)
-      const slaStart = (t as any).slaStartAt ? new Date((t as any).slaStartAt) : new Date(t.createdAt);
+      // Calculate resolution time from SLA start (claimed, approval, or creation date)
+      const slaStart = getSlaStartTime({
+        claimedAt: (t as any).claimedAt,
+        slaStartAt: (t as any).slaStartAt,
+        createdAt: t.createdAt
+      });
       const resolutionTimeHrs = t.resolvedAt
         ? Math.round(calculateBusinessHours(slaStart, new Date(t.resolvedAt)))
         : '';

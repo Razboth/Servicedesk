@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { authenticateApiKey, checkApiPermission, createApiErrorResponse, createApiSuccessResponse } from '@/lib/auth-api'
+import { getSlaStartTime } from '@/lib/sla-utils'
 
 export async function GET(request: NextRequest) {
   try {
@@ -123,9 +124,13 @@ export async function GET(request: NextRequest) {
       return createApiErrorResponse('Ticket not found', 404)
     }
 
-    // Calculate SLA status using slaStartAt (approval time) or createdAt
+    // Calculate SLA status using claimedAt, slaStartAt (approval time), or createdAt
     const now = new Date()
-    const slaStart = ticket.slaStartAt ? new Date(ticket.slaStartAt) : new Date(ticket.createdAt)
+    const slaStart = getSlaStartTime({
+      claimedAt: (ticket as any).claimedAt,
+      slaStartAt: ticket.slaStartAt,
+      createdAt: ticket.createdAt
+    })
     const slaPausedTotal = (ticket as any).slaPausedTotal || 0
     const slaPausedAt = (ticket as any).slaPausedAt ? new Date((ticket as any).slaPausedAt) : null
     let effectiveElapsedMs = now.getTime() - slaStart.getTime() - slaPausedTotal
@@ -293,7 +298,11 @@ export async function POST(request: NextRequest) {
     // Calculate SLA status for each ticket
     const ticketsWithSla = tickets.map(ticket => {
       const now = new Date()
-      const slaStart = (ticket as any).slaStartAt ? new Date((ticket as any).slaStartAt) : new Date(ticket.createdAt)
+      const slaStart = getSlaStartTime({
+        claimedAt: (ticket as any).claimedAt,
+        slaStartAt: (ticket as any).slaStartAt,
+        createdAt: ticket.createdAt
+      })
       const slaPausedTotal = (ticket as any).slaPausedTotal || 0
       const slaPausedAt = (ticket as any).slaPausedAt ? new Date((ticket as any).slaPausedAt) : null
       let effectiveElapsedMs = now.getTime() - slaStart.getTime() - slaPausedTotal

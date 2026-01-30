@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { getEffectiveElapsedHours } from '@/lib/sla-utils';
+import { getEffectiveElapsedHours, getSlaStartTime } from '@/lib/sla-utils';
 
 // GET /api/reports/admin/sla-performance
 export async function GET(request: NextRequest) {
@@ -59,9 +59,13 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Helper: get SLA start time
+    // Helper: get SLA start time (uses claimedAt when available)
     const getSlaStart = (sla: any): Date => {
-      return sla.ticket?.slaStartAt ? new Date(sla.ticket.slaStartAt) : new Date(sla.createdAt);
+      return getSlaStartTime({
+        claimedAt: sla.ticket?.claimedAt,
+        slaStartAt: sla.ticket?.slaStartAt,
+        createdAt: sla.createdAt
+      });
     };
 
     // Helper: get pause-aware elapsed business hours

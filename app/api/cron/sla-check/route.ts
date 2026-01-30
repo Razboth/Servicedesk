@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getEffectiveElapsedHours } from '@/lib/sla-utils';
+import { getEffectiveElapsedHours, getSlaStartTime } from '@/lib/sla-utils';
 
 /**
  * GET /api/cron/sla-check
@@ -65,7 +65,12 @@ export async function GET(request: NextRequest) {
       if (ticket.slaPausedAt) continue;
 
       // Calculate effective time remaining (using business hours when configured)
-      const slaStart = ticket.slaStartAt ? new Date(ticket.slaStartAt) : new Date(sla.createdAt);
+      // SLA starts from claimedAt (when technician claimed) if available, otherwise slaStartAt or createdAt
+      const slaStart = getSlaStartTime({
+        claimedAt: ticket.claimedAt,
+        slaStartAt: ticket.slaStartAt,
+        createdAt: sla.createdAt
+      });
       const businessHoursOnly = sla.slaTemplate.businessHoursOnly ?? true;
       const elapsedHours = getEffectiveElapsedHours(
         slaStart, now,

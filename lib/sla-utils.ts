@@ -235,8 +235,21 @@ export function getEffectiveElapsedHours(
 
 /**
  * Get the SLA start time for a ticket.
- * Uses slaStartAt if available, falls back to createdAt.
+ * Priority order:
+ * 1. claimedAt - when technician claimed the ticket (most accurate for response SLA)
+ * 2. slaStartAt - explicit SLA start override
+ * 3. createdAt - fallback to ticket creation time
  */
-export function getSlaStartTime(ticket: { slaStartAt?: Date | null; createdAt: Date }): Date {
-  return ticket.slaStartAt ? new Date(ticket.slaStartAt) : new Date(ticket.createdAt);
+export function getSlaStartTime(ticket: {
+  claimedAt?: Date | null;
+  slaStartAt?: Date | null;
+  createdAt: Date
+}): Date {
+  if (ticket.claimedAt) {
+    return new Date(ticket.claimedAt);
+  }
+  if (ticket.slaStartAt) {
+    return new Date(ticket.slaStartAt);
+  }
+  return new Date(ticket.createdAt);
 }

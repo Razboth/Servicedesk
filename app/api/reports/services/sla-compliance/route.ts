@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { getEffectiveElapsedHours } from '@/lib/sla-utils';
+import { getEffectiveElapsedHours, getSlaStartTime } from '@/lib/sla-utils';
 
 // Helper: calculate pause-aware elapsed business hours
 function calcElapsedHours(start: Date, end: Date, pausedTotalMs: number, pausedAt: Date | null): number {
@@ -100,7 +100,11 @@ export async function GET(request: NextRequest) {
 
       tickets.forEach(ticket => {
         const sla = ticket.slaTracking[0];
-        const slaStart = ticket.slaStartAt ? new Date(ticket.slaStartAt).getTime() : ticket.createdAt.getTime();
+        const slaStart = getSlaStartTime({
+          claimedAt: (ticket as any).claimedAt,
+          slaStartAt: ticket.slaStartAt,
+          createdAt: ticket.createdAt
+        }).getTime();
         const pausedTotal = ticket.slaPausedTotal || 0;
         const pausedAt = ticket.slaPausedAt ? new Date(ticket.slaPausedAt) : null;
 
