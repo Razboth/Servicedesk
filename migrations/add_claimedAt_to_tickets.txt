@@ -1,0 +1,19 @@
+-- SQL Migration: Add claimedAt column to Ticket table
+-- Date: 2026-01-30
+-- Description: Track when a ticket was claimed by a technician
+
+-- Add claimedAt column to Ticket table
+ALTER TABLE "Ticket" ADD COLUMN "claimedAt" TIMESTAMP(3);
+
+-- Optional: Update existing tickets to set claimedAt based on first IN_PROGRESS status
+-- This sets claimedAt to the earliest activity log entry where status changed to IN_PROGRESS
+-- UPDATE "Ticket" t
+-- SET "claimedAt" = (
+--     SELECT MIN(al."createdAt")
+--     FROM "ActivityLog" al
+--     WHERE al."ticketId" = t.id
+--     AND al."newValue" = 'IN_PROGRESS'
+--     AND al."field" = 'status'
+-- )
+-- WHERE t."assignedToId" IS NOT NULL
+-- AND t."claimedAt" IS NULL;
