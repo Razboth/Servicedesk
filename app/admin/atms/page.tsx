@@ -174,7 +174,7 @@ export default function ATMsPage() {
 
   const handleToggleStatus = async (atm: ATM) => {
     try {
-      const response = await fetch(`/api/admin/atms/${atm.id}`, {
+      const response = await fetch(`/api/admin/atms/code/${atm.code}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -197,7 +197,7 @@ export default function ATMsPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (code: string) => {
     if (!confirm('WARNING: This will permanently delete the ATM from the database. This action cannot be undone. Are you sure?')) {
       return;
     }
@@ -207,7 +207,7 @@ export default function ATMsPage() {
     }
 
     try {
-      const response = await fetch(`/api/admin/atms/${id}`, {
+      const response = await fetch(`/api/admin/atms/code/${code}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -564,7 +564,7 @@ export default function ATMsPage() {
                       )}
                     </TableCell>
                     <TableCell className="text-center">
-                      <Link href={`/admin/atms/${atm.id}?tab=tickets`}>
+                      <Link href={`/admin/atms/${atm.code}?tab=tickets`}>
                         <Badge
                           variant="outline"
                           className="cursor-pointer hover:bg-muted gap-1"
@@ -575,7 +575,7 @@ export default function ATMsPage() {
                       </Link>
                     </TableCell>
                     <TableCell className="text-center">
-                      <Link href={`/admin/atms/${atm.id}?tab=claims`}>
+                      <Link href={`/admin/atms/${atm.code}?tab=claims`}>
                         <Badge
                           variant="outline"
                           className="cursor-pointer hover:bg-muted gap-1"
@@ -592,7 +592,7 @@ export default function ATMsPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
-                        <Link href={`/admin/atms/${atm.id}`}>
+                        <Link href={`/admin/atms/${atm.code}`}>
                           <Button variant="ghost" size="sm" title="View Details">
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -612,7 +612,7 @@ export default function ATMsPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleDelete(atm.id)}
+                          onClick={() => handleDelete(atm.code)}
                           title="Permanently delete ATM"
                           className="text-red-600 hover:text-red-700"
                         >

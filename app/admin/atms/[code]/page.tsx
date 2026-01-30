@@ -50,10 +50,24 @@ import {
   Network,
   Server,
   FileText,
-  TrendingUp,
   Shield
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
+
+// WITA timezone (GMT+8)
+const WITA_TIMEZONE = 'Asia/Makassar';
+
+// Helper function to format date in WITA timezone
+const formatWITA = (date: string | Date, formatStr: string = 'dd MMM yyyy, HH:mm') => {
+  const zonedDate = toZonedTime(new Date(date), WITA_TIMEZONE);
+  return format(zonedDate, formatStr) + ' WITA';
+};
+
+// Helper to get relative time with WITA context
+const formatRelativeWITA = (date: string | Date) => {
+  return formatDistanceToNow(new Date(date), { addSuffix: true });
+};
 
 interface Branch {
   id: string;
@@ -124,7 +138,7 @@ interface Ticket {
 export default function ATMDetailPage() {
   const params = useParams();
   const searchParams = useSearchParams();
-  const id = params.id as string;
+  const atmCode = params.code as string;
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -155,17 +169,17 @@ export default function ATMDetailPage() {
 
   useEffect(() => {
     Promise.all([fetchATM(), fetchBranches()]);
-  }, [id]);
+  }, [atmCode]);
 
   useEffect(() => {
     if (activeTab === 'tickets' || activeTab === 'claims') {
       fetchTickets();
     }
-  }, [activeTab, id]);
+  }, [activeTab, atmCode]);
 
   const fetchATM = async () => {
     try {
-      const response = await fetch(`/api/admin/atms/${id}`);
+      const response = await fetch(`/api/admin/atms/code/${atmCode}`);
       if (!response.ok) throw new Error('Failed to fetch ATM');
 
       const data: ATM = await response.json();
@@ -209,7 +223,7 @@ export default function ATMDetailPage() {
   const fetchTickets = async () => {
     try {
       setTicketsLoading(true);
-      const response = await fetch(`/api/admin/atms/${id}/tickets?type=all`);
+      const response = await fetch(`/api/admin/atms/code/${atmCode}/tickets?type=all`);
       if (!response.ok) throw new Error('Failed to fetch tickets');
       const data = await response.json();
       setTechnicalIssues(data.technicalIssues || []);
@@ -243,7 +257,7 @@ export default function ATMDetailPage() {
         networkVendor: formData.networkVendor || null,
       };
 
-      const response = await fetch(`/api/admin/atms/${id}`, {
+      const response = await fetch(`/api/admin/atms/code/${atmCode}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -258,7 +272,13 @@ export default function ATMDetailPage() {
       }
 
       toast.success('ATM updated successfully');
-      fetchATM();
+
+      // If code changed, redirect to new URL
+      if (formData.code !== atmCode) {
+        router.push(`/admin/atms/${formData.code}`);
+      } else {
+        fetchATM();
+      }
     } catch (error: any) {
       toast.error(error.message || 'Failed to update ATM');
     } finally {
@@ -797,7 +817,7 @@ export default function ATMDetailPage() {
                     <span className="text-sm font-medium text-muted-foreground">Last Checked</span>
                     <span className="text-sm">
                       {atm.networkStatus?.checkedAt
-                        ? formatDistanceToNow(new Date(atm.networkStatus.checkedAt), { addSuffix: true })
+                        ? formatWITA(atm.networkStatus.checkedAt)
                         : '-'}
                     </span>
                   </div>
@@ -805,7 +825,7 @@ export default function ATMDetailPage() {
                     <div className="flex justify-between items-center p-3 bg-destructive/10 rounded-lg border border-destructive/20">
                       <span className="text-sm font-medium text-destructive">Down Since</span>
                       <span className="text-sm font-semibold text-destructive">
-                        {format(new Date(atm.networkStatus.downSince), 'PPp')}
+                        {formatWITA(atm.networkStatus.downSince)}
                       </span>
                     </div>
                   )}
@@ -844,7 +864,7 @@ export default function ATMDetailPage() {
                               {log.responseTime ? `${log.responseTime}ms` : '-'}
                             </TableCell>
                             <TableCell className="text-sm">
-                              {formatDistanceToNow(new Date(log.checkedAt), { addSuffix: true })}
+                              {formatWITA(log.checkedAt, 'dd/MM HH:mm')}
                             </TableCell>
                           </TableRow>
                         ))}
@@ -911,7 +931,7 @@ export default function ATMDetailPage() {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-sm">
-                            {formatDistanceToNow(new Date(ticket.createdAt), { addSuffix: true })}
+                            {formatWITA(ticket.createdAt)}
                           </TableCell>
                           <TableCell className="text-sm">{ticket.assignee?.name || '-'}</TableCell>
                           <TableCell className="text-right">
@@ -1052,7 +1072,7 @@ export default function ATMDetailPage() {
                             {incident.description}
                           </TableCell>
                           <TableCell className="text-sm">
-                            {formatDistanceToNow(new Date(incident.createdAt), { addSuffix: true })}
+                            {formatWITA(incident.createdAt)}
                           </TableCell>
                         </TableRow>
                       ))}
