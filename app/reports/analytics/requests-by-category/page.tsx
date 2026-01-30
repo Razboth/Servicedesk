@@ -335,141 +335,197 @@ export default function RequestsByCategoryReport() {
         </Card>
       </div>
 
-      {/* Category Cards */}
-      <div className="grid grid-cols-3 gap-4">
-        {categoryData.map((category) => (
-          <Card key={category.category}>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Layers className="h-4 w-4" style={{ color: category.color }} />
-                  <span>{category.category}</span>
-                </div>
-                <span className="text-2xl font-bold">{category.totalCount}</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Open/Resolved</span>
-                  <span className="text-sm font-medium">
-                    {category.openCount}/{category.resolvedCount}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Satisfaction</span>
-                  <span className="text-sm font-medium">⭐ {category.avgSatisfaction.toFixed(1)}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Trend</span>
-                  <div className="flex items-center gap-1">
-                    {category.trend > 0 ? (
-                      <TrendingUp className="h-3 w-3 text-green-500" />
-                    ) : (
-                      <TrendingDown className="h-3 w-3 text-red-500" />
-                    )}
-                    <span className={`text-sm font-medium ${category.trend > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {category.trend > 0 ? '+' : ''}{category.trend.toFixed(1)}%
+      {/* Hierarchical View - Category Cards with Subcategories */}
+      {viewType === 'hierarchical' && (
+        <div className="grid grid-cols-3 gap-4">
+          {categoryData.map((category) => (
+            <Card key={category.category}>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Layers className="h-4 w-4" style={{ color: category.color }} />
+                    <span>{category.category}</span>
+                  </div>
+                  <span className="text-2xl font-bold">{category.totalCount}</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Open/Resolved</span>
+                    <span className="text-sm font-medium">
+                      {category.openCount}/{category.resolvedCount}
                     </span>
                   </div>
-                </div>
-                <div className="pt-2 border-t">
-                  <p className="text-xs font-medium mb-2">Top Subcategories:</p>
-                  {category.subcategories.slice(0, 3).map((sub, idx) => (
-                    <div key={idx} className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">{sub.name}</span>
-                      <span>{sub.count}</span>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Satisfaction</span>
+                    <span className="text-sm font-medium">⭐ {category.avgSatisfaction.toFixed(1)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Trend</span>
+                    <div className="flex items-center gap-1">
+                      {category.trend > 0 ? (
+                        <TrendingUp className="h-3 w-3 text-green-500" />
+                      ) : (
+                        <TrendingDown className="h-3 w-3 text-red-500" />
+                      )}
+                      <span className={`text-sm font-medium ${category.trend > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {category.trend > 0 ? '+' : ''}{category.trend.toFixed(1)}%
+                      </span>
                     </div>
-                  ))}
+                  </div>
+                  <div className="pt-2 border-t">
+                    <p className="text-xs font-medium mb-2">All Subcategories:</p>
+                    {category.subcategories.map((sub, idx) => (
+                      <div key={idx} className="flex justify-between text-xs py-1">
+                        <span className="text-muted-foreground">{sub.name}</span>
+                        <div className="text-right">
+                          <span className="font-medium">{sub.count}</span>
+                          <span className="text-muted-foreground ml-2">({sub.avgResolutionTime.toFixed(1)}h avg)</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Flat View - Simple table of all categories */}
+      {viewType === 'flat' && (
+        <Card>
+          <CardHeader>
+            <CardTitle>All Categories Overview</CardTitle>
+            <CardDescription>Flat view of all category metrics</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left p-3 font-medium">Category</th>
+                    <th className="text-center p-3 font-medium">Total</th>
+                    <th className="text-center p-3 font-medium">Open</th>
+                    <th className="text-center p-3 font-medium">Resolved</th>
+                    <th className="text-center p-3 font-medium">Satisfaction</th>
+                    <th className="text-center p-3 font-medium">Trend</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {categoryData.map((category, index) => (
+                    <tr key={category.category} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
+                      <td className="p-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: category.color }} />
+                          <span className="font-medium">{category.category}</span>
+                        </div>
+                      </td>
+                      <td className="text-center p-3 font-bold">{category.totalCount}</td>
+                      <td className="text-center p-3 text-orange-600">{category.openCount}</td>
+                      <td className="text-center p-3 text-green-600">{category.resolvedCount}</td>
+                      <td className="text-center p-3">⭐ {category.avgSatisfaction.toFixed(1)}</td>
+                      <td className="text-center p-3">
+                        <span className={category.trend > 0 ? 'text-green-600' : 'text-red-600'}>
+                          {category.trend > 0 ? '+' : ''}{category.trend.toFixed(1)}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Comparison View - Side by side charts */}
+      {viewType === 'comparison' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 gap-6">
+            {/* Distribution Pie Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Category Distribution</CardTitle>
+                <CardDescription>Percentage breakdown of tickets by category</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={350}>
+                  <PieChart>
+                    <Pie
+                      data={pieData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={(entry) => `${entry.name}: ${((entry.value/totalTickets)*100).toFixed(1)}%`}
+                      outerRadius={120}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {pieData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* Category Comparison Bar Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Category Performance</CardTitle>
+                <CardDescription>Open vs Resolved tickets by category</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={350}>
+                  <BarChart data={categoryData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="category" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="openCount" fill="#fbbf24" name="Open" />
+                    <Bar dataKey="resolvedCount" fill="#10b981" name="Resolved" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Trend Chart */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Category Trends</CardTitle>
+              <CardDescription>Monthly ticket volume by category</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={400}>
+                <AreaChart data={trendData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend />
+                  {Object.keys(trendData[0] || {}).filter(key => key !== 'month').map((key, index) => (
+                    <Area
+                      key={key}
+                      type="monotone"
+                      dataKey={key}
+                      stackId="1"
+                      stroke={COLORS[index % COLORS.length]}
+                      fill={COLORS[index % COLORS.length]}
+                      fillOpacity={0.6}
+                    />
+                  ))}
+                </AreaChart>
+              </ResponsiveContainer>
             </CardContent>
           </Card>
-        ))}
-      </div>
-
-      {/* Charts */}
-      <div className="grid grid-cols-2 gap-6">
-        {/* Distribution Pie Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Category Distribution</CardTitle>
-            <CardDescription>Percentage breakdown of tickets by category</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={350}>
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={(entry) => `${entry.name}: ${((entry.value/totalTickets)*100).toFixed(1)}%`}
-                  outerRadius={120}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {pieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Category Comparison Bar Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Category Performance</CardTitle>
-            <CardDescription>Open vs Resolved tickets by category</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={350}>
-              <BarChart data={categoryData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="category" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="openCount" fill="#fbbf24" name="Open" />
-                <Bar dataKey="resolvedCount" fill="#10b981" name="Resolved" />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Trend Chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Category Trends</CardTitle>
-          <CardDescription>Monthly ticket volume by category</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={400}>
-            <AreaChart data={trendData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend />
-              {Object.keys(trendData[0] || {}).filter(key => key !== 'month').map((key, index) => (
-                <Area
-                  key={key}
-                  type="monotone"
-                  dataKey={key}
-                  stackId="1"
-                  stroke={COLORS[index % COLORS.length]}
-                  fill={COLORS[index % COLORS.length]}
-                  fillOpacity={0.6}
-                />
-              ))}
-            </AreaChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+        </div>
+      )}
     </div>
   )
 }

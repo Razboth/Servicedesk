@@ -166,13 +166,6 @@ export default function ManagerReportsPage() {
           href: '/reports/analytics/requests-by-status',
           variant: 'default'
         },
-        {
-          title: 'Tren Harian',
-          description: 'Pola pembuatan tiket berdasarkan tanggal',
-          icon: LineChart,
-          href: '/reports/analytics/requests-by-created-date',
-          variant: 'default'
-        }
       ]
     },
     {
@@ -206,13 +199,6 @@ export default function ManagerReportsPage() {
       title: 'Laporan ATM',
       description: 'Monitoring ATM cabang Anda',
       reports: [
-        {
-          title: 'Masalah ATM',
-          description: 'Laporan masalah teknis ATM cabang',
-          icon: CreditCard,
-          href: '/reports/operational/atm-issues',
-          variant: 'warning'
-        },
         {
           title: 'Selisih Transaksi',
           description: 'Laporan klaim selisih transaksi ATM',

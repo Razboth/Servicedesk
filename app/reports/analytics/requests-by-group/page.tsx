@@ -54,10 +54,10 @@ export default function RequestsByGroupReport() {
   const fetchData = async () => {
     setLoading(true)
     try {
-      // Fetch real data from API
-      const response = await fetch('/api/reports/analytics/requests-by-group');
+      // Fetch real data from API with timeRange parameter
+      const response = await fetch(`/api/reports/analytics/requests-by-group?timeRange=${timeRange}`);
       if (!response.ok) throw new Error('Failed to fetch data');
-      
+
       const data = await response.json();
       
       // Transform API data to component format
@@ -87,9 +87,9 @@ export default function RequestsByGroupReport() {
         group: group.name,
         efficiency: Math.min(100, group.resolutionRate),
         quality: Math.min(100, group.slaComplianceRate),
-        speed: Math.max(0, 100 - (group.avgResolutionHours * 5)), // Inverse of resolution time
-        communication: 85 + Math.random() * 15, // Simulated for now
-        technical: Math.min(100, group.resolutionRate + 10)
+        speed: Math.max(0, 100 - (group.avgResolutionHours * 2)), // Inverse of resolution time
+        communication: Math.min(100, (group.slaComplianceRate + group.resolutionRate) / 2), // Based on actual metrics
+        technical: Math.min(100, group.resolutionRate)
       }));
 
       // Use monthly trend from API

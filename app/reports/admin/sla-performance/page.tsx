@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ReportFilters, type ReportFilters as ReportFiltersType } from '@/components/reports/report-filters';
 import { MetricCard } from '@/components/reports/report-charts';
 import { ExportButton, exportUtils } from '@/components/reports/export-button';
@@ -118,6 +119,7 @@ export default function SLAPerformancePage() {
     },
     selectedFilters: {},
   });
+  const [selectedTechnician, setSelectedTechnician] = useState<string>('all');
 
   useEffect(() => {
     if (status === 'loading') return;
@@ -392,73 +394,146 @@ export default function SLAPerformancePage() {
 
           {/* ====== TAB 2: TECHNICIAN PERFORMANCE ====== */}
           <TabsContent value="technicians" className="space-y-6">
-            {/* Summary Row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Total Technicians</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{data.technicians.length}</div>
-                  <p className="text-xs text-muted-foreground">With assigned SLA tickets</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Avg SLA Compliance</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {data.technicians.length > 0
-                      ? Math.round(data.technicians.reduce((s, t) => s + t.slaCompliance, 0) / data.technicians.length)
-                      : 0}%
-                  </div>
-                  <p className="text-xs text-muted-foreground">Across all technicians</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Avg Resolution Rate</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {data.technicians.length > 0
-                      ? Math.round(data.technicians.reduce((s, t) => s + t.resolutionRate, 0) / data.technicians.length)
-                      : 0}%
-                  </div>
-                  <p className="text-xs text-muted-foreground">Tickets resolved</p>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Top 10 Technicians BarChart */}
+            {/* Technician Filter */}
             <Card>
-              <CardHeader>
-                <CardTitle>Top 10 Technicians by SLA Compliance</CardTitle>
-                <CardDescription>Technicians ranked by overall SLA compliance rate</CardDescription>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Filter by Technician
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={400}>
-                  <BarChart
-                    data={data.technicians.slice(0, 10)}
-                    layout="vertical"
-                    margin={{ left: 120 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" domain={[0, 100]} />
-                    <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 12 }} />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="slaCompliance" name="SLA Compliance %" fill="#10b981" />
-                    <Bar dataKey="resolutionRate" name="Resolution Rate %" fill="#3b82f6" />
-                  </BarChart>
-                </ResponsiveContainer>
+                <Select value={selectedTechnician} onValueChange={setSelectedTechnician}>
+                  <SelectTrigger className="w-full md:w-[300px]">
+                    <SelectValue placeholder="Select a technician" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Technicians ({data.technicians.length})</SelectItem>
+                    {data.technicians.map((tech) => (
+                      <SelectItem key={tech.id} value={tech.id}>
+                        {tech.name} - {tech.branch} ({tech.slaCompliance}% SLA)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </CardContent>
             </Card>
 
+            {/* Summary Row */}
+            {(() => {
+              const filteredTechs = selectedTechnician === 'all'
+                ? data.technicians
+                : data.technicians.filter(t => t.id === selectedTechnician);
+              const selectedTech = selectedTechnician !== 'all'
+                ? data.technicians.find(t => t.id === selectedTechnician)
+                : null;
+
+              return (
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium">
+                        {selectedTech ? 'Technician' : 'Total Technicians'}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">
+                        {selectedTech ? selectedTech.name : filteredTechs.length}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {selectedTech ? selectedTech.branch : 'With assigned SLA tickets'}
+                      </p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium">
+                        {selectedTech ? 'SLA Compliance' : 'Avg SLA Compliance'}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">
+                        {selectedTech
+                          ? selectedTech.slaCompliance
+                          : filteredTechs.length > 0
+                            ? Math.round(filteredTechs.reduce((s, t) => s + t.slaCompliance, 0) / filteredTechs.length)
+                            : 0}%
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {selectedTech ? `${selectedTech.totalTickets} total tickets` : 'Across all technicians'}
+                      </p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium">
+                        {selectedTech ? 'Resolution Rate' : 'Avg Resolution Rate'}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">
+                        {selectedTech
+                          ? selectedTech.resolutionRate
+                          : filteredTechs.length > 0
+                            ? Math.round(filteredTechs.reduce((s, t) => s + t.resolutionRate, 0) / filteredTechs.length)
+                            : 0}%
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {selectedTech ? `${selectedTech.resolvedTickets} resolved` : 'Tickets resolved'}
+                      </p>
+                    </CardContent>
+                  </Card>
+                  {selectedTech && (
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium">Breaches</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold text-destructive">
+                          {selectedTech.responseBreaches + selectedTech.resolutionBreaches}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {selectedTech.responseBreaches} resp. / {selectedTech.resolutionBreaches} res.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Top 10 Technicians BarChart */}
+            {selectedTechnician === 'all' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Top 10 Technicians by SLA Compliance</CardTitle>
+                  <CardDescription>Technicians ranked by overall SLA compliance rate</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={400}>
+                    <BarChart
+                      data={data.technicians.slice(0, 10)}
+                      layout="vertical"
+                      margin={{ left: 120 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" domain={[0, 100]} />
+                      <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 12 }} />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="slaCompliance" name="SLA Compliance %" fill="#10b981" />
+                      <Bar dataKey="resolutionRate" name="Resolution Rate %" fill="#3b82f6" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Individual Technician Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {data.technicians.map((tech) => (
+              {data.technicians
+                .filter((tech) => selectedTechnician === 'all' || tech.id === selectedTechnician)
+                .map((tech) => (
                 <Card key={tech.id}>
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">

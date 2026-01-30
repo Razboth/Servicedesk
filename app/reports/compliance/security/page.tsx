@@ -127,20 +127,68 @@ export default function SecurityComplianceReport() {
 
   const handleExport = async (format: string) => {
     if (!data) return;
-    
-    const exportData = {
-      reportTitle: 'Security & Compliance Report',
-      dateRange: `${startDate} to ${endDate}`,
-      ...data,
-      generatedAt: new Date().toISOString()
-    };
 
-    if (format === 'xlsx') {
-      console.log('Exporting to Excel:', exportData);
-    } else if (format === 'pdf') {
-      console.log('Exporting to PDF:', exportData);
-    } else if (format === 'csv') {
-      console.log('Exporting to CSV:', exportData);
+    if (format === 'csv') {
+      const rows = [
+        ['Security & Compliance Report'],
+        [`Date Range: ${startDate} to ${endDate}`],
+        [`Generated: ${new Date().toISOString()}`],
+        [''],
+        ['Summary'],
+        ['Metric', 'Value'],
+        ['Total Security Incidents', data.summary.totalSecurityIncidents.toString()],
+        ['Critical Incidents', data.summary.criticalIncidents.toString()],
+        ['Avg Response Time (hours)', data.summary.avgResponseTime.toFixed(1)],
+        ['Compliance Score', `${data.summary.complianceScore.toFixed(1)}%`],
+        ['Security Score', `${data.summary.securityScore.toFixed(1)}%`],
+        ['Risk Level', data.summary.riskLevel],
+        [''],
+        ['Incidents by Type'],
+        ['Type', 'Count'],
+        ...Object.entries(data.incidentAnalysis.byType).map(([type, count]) => [type, count.toString()]),
+        [''],
+        ['Incidents by Severity'],
+        ['Severity', 'Count'],
+        ...Object.entries(data.incidentAnalysis.bySeverity).map(([severity, count]) => [severity, count.toString()]),
+        [''],
+        ['Access Compliance'],
+        ['Metric', 'Value'],
+        ['Total Users', data.accessCompliance.totalUsers.toString()],
+        ['Active Users', data.accessCompliance.activeUsers.toString()],
+        ['Privileged Users', data.accessCompliance.privilegedUsers.toString()],
+        ['Access Violations', data.accessCompliance.accessViolations.toString()],
+        [''],
+        ['Role Compliance'],
+        ['Role', 'Total', 'Compliant', 'Violations', 'Compliance Rate'],
+        ...Object.entries(data.accessCompliance.roleCompliance).map(([role, comp]) => [
+          role, comp.total.toString(), comp.compliant.toString(), comp.violations.toString(),
+          `${((comp.compliant / comp.total) * 100).toFixed(1)}%`
+        ]),
+        [''],
+        ['Change Management'],
+        ['Metric', 'Value'],
+        ['Total Changes', data.changeManagement.totalChanges.toString()],
+        ['Approved Changes', data.changeManagement.approvedChanges.toString()],
+        ['Emergency Changes', data.changeManagement.emergencyChanges.toString()],
+        ['Change Compliance', `${data.changeManagement.changeCompliance.toFixed(1)}%`],
+        [''],
+        ['Top Security Risks'],
+        ['Risk', 'Severity', 'Frequency', 'Impact'],
+        ...data.insights.topSecurityRisks.map(risk => [risk.risk, risk.severity, risk.frequency.toString(), risk.impact])
+      ];
+
+      const csvContent = rows.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `security-compliance-${startDate}-to-${endDate}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } else if (format === 'xlsx' || format === 'pdf') {
+      alert(`${format.toUpperCase()} export coming soon. Please use CSV export for now.`);
     }
   };
 

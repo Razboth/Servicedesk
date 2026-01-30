@@ -91,28 +91,52 @@ export default function UserAnalyticsReport() {
 
   const handleExport = async (format: string) => {
     if (!data) return;
-    
-    const exportData = {
-      reportTitle: 'User Analytics Report',
-      dateRange: `${startDate} to ${endDate}`,
-      summary: data.summary,
-      userMetrics: data.userMetrics,
-      activityMetrics: data.activityMetrics,
-      engagementMetrics: data.engagementMetrics,
-      adoptionMetrics: data.adoptionMetrics,
-      insights: data.insights,
-      generatedAt: new Date().toISOString()
-    };
 
-    if (format === 'xlsx') {
-      // Excel export logic would go here
-      console.log('Exporting to Excel:', exportData);
-    } else if (format === 'pdf') {
-      // PDF export logic would go here  
-      console.log('Exporting to PDF:', exportData);
-    } else if (format === 'csv') {
-      // CSV export logic would go here
-      console.log('Exporting to CSV:', exportData);
+    if (format === 'csv') {
+      // Summary section
+      const summaryRows = [
+        ['User Analytics Report'],
+        [`Date Range: ${startDate} to ${endDate}`],
+        [`Generated: ${new Date().toISOString()}`],
+        [''],
+        ['Summary'],
+        ['Metric', 'Value'],
+        ['Total Users', data.summary.totalUsers.toString()],
+        ['Active Users', data.summary.activeUsers.toString()],
+        ['New Users This Month', data.summary.newUsersThisMonth.toString()],
+        ['System Adoption Rate', `${data.summary.systemAdoptionRate.toFixed(1)}%`],
+        ['Engagement Score', data.summary.engagementScore.toFixed(1)],
+        [''],
+        ['Users by Role'],
+        ['Role', 'Count'],
+        ...Object.entries(data.userMetrics.usersByRole).map(([role, count]) => [role, count.toString()]),
+        [''],
+        ['Users by Branch'],
+        ['Branch', 'Count'],
+        ...Object.entries(data.userMetrics.usersByBranch).map(([branch, count]) => [branch, count.toString()]),
+        [''],
+        ['Top Active Users'],
+        ['Name', 'Email', 'Role', 'Ticket Count'],
+        ...data.insights.topActiveUsers.map(user => [user.name, user.email, user.role, user.ticketCount.toString()]),
+        [''],
+        ['Branch Engagement'],
+        ['Branch', 'User Count', 'Engagement Score'],
+        ...data.insights.branchEngagement.map(branch => [branch.branch, branch.userCount.toString(), branch.engagementScore.toFixed(1)])
+      ];
+
+      const csvContent = summaryRows.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `user-analytics-${startDate}-to-${endDate}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } else if (format === 'xlsx' || format === 'pdf') {
+      // For xlsx and pdf, show alert that only CSV is currently supported
+      alert(`${format.toUpperCase()} export coming soon. Please use CSV export for now.`);
     }
   };
 

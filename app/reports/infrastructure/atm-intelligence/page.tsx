@@ -100,20 +100,65 @@ export default function ATMIntelligenceReport() {
 
   const handleExport = async (format: string) => {
     if (!data) return;
-    
-    const exportData = {
-      reportTitle: 'ATM Intelligence Report',
-      dateRange: `${startDate} to ${endDate}`,
-      ...data,
-      generatedAt: new Date().toISOString()
-    };
 
-    if (format === 'xlsx') {
-      console.log('Exporting to Excel:', exportData);
-    } else if (format === 'pdf') {
-      console.log('Exporting to PDF:', exportData);
-    } else if (format === 'csv') {
-      console.log('Exporting to CSV:', exportData);
+    if (format === 'csv') {
+      const rows = [
+        ['ATM Intelligence Report'],
+        [`Date Range: ${startDate} to ${endDate}`],
+        [`Generated: ${new Date().toISOString()}`],
+        [''],
+        ['Summary'],
+        ['Metric', 'Value'],
+        ['Total ATMs', data.summary.totalAtms.toString()],
+        ['Total Incidents', data.summary.totalIncidents.toString()],
+        ['Open Incidents', data.summary.openIncidents.toString()],
+        ['Critical Incidents', data.summary.criticalIncidents.toString()],
+        ['Avg Resolution (hours)', data.summary.avgResolutionHours.toFixed(1)],
+        ['Health Score', `${data.summary.healthScore.toFixed(1)}%`],
+        [''],
+        ['Incidents by Type'],
+        ['Type', 'Count'],
+        ...Object.entries(data.distributions.byType).map(([type, count]) => [type, count.toString()]),
+        [''],
+        ['Incidents by Priority'],
+        ['Priority', 'Count'],
+        ...Object.entries(data.distributions.byPriority).map(([priority, count]) => [priority, count.toString()]),
+        [''],
+        ['Incidents by Branch'],
+        ['Branch', 'Count'],
+        ...Object.entries(data.distributions.byBranch).map(([branch, count]) => [branch, count.toString()]),
+        [''],
+        ['Regional Performance'],
+        ['Region', 'ATM Count', 'Incidents', 'Avg Resolution (hours)'],
+        ...Object.entries(data.distributions.byRegion).map(([region, stats]) => [
+          region, stats.atmCount.toString(), stats.incidents.toString(), stats.avgResolutionHours.toFixed(1)
+        ]),
+        [''],
+        ['Top Problematic ATMs'],
+        ['Name', 'Branch', 'Region', 'Active', 'Incident Count'],
+        ...data.atmList.sort((a, b) => b.incidentCount - a.incidentCount).slice(0, 20).map(atm => [
+          atm.name, atm.branch, atm.region, atm.isActive ? 'Yes' : 'No', atm.incidentCount.toString()
+        ]),
+        [''],
+        ['Recent Incidents'],
+        ['ID', 'Title', 'Branch', 'Priority', 'Status', 'Created At'],
+        ...data.recentIncidents.slice(0, 50).map(incident => [
+          incident.id, incident.title, incident.branch, incident.priority, incident.status, incident.createdAt
+        ])
+      ];
+
+      const csvContent = rows.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `atm-intelligence-${startDate}-to-${endDate}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } else if (format === 'xlsx' || format === 'pdf') {
+      alert(`${format.toUpperCase()} export coming soon. Please use CSV export for now.`);
     }
   };
 
@@ -290,13 +335,17 @@ export default function ATMIntelligenceReport() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Uptime</CardTitle>
+            <CardTitle className="text-sm font-medium">Resolution Rate</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.summary.healthScore.toFixed(1)}%</div>
+            <div className="text-2xl font-bold">
+              {data.summary.totalIncidents > 0
+                ? ((data.summary.totalIncidents - data.summary.criticalIncidents) / data.summary.totalIncidents * 100).toFixed(1)
+                : 100}%
+            </div>
             <p className="text-xs text-muted-foreground">
-              Health Score
+              Non-critical incidents
             </p>
           </CardContent>
         </Card>
@@ -307,7 +356,7 @@ export default function ATMIntelligenceReport() {
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.summary.healthScore.toFixed(1)}</div>
+            <div className="text-2xl font-bold">{data.summary.healthScore.toFixed(1)}%</div>
             <p className="text-xs text-muted-foreground">
               Overall health index
             </p>

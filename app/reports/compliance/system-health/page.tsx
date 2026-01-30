@@ -137,20 +137,80 @@ export default function SystemHealthReport() {
 
   const handleExport = async (format: string) => {
     if (!data) return;
-    
-    const exportData = {
-      reportTitle: 'System Health & Data Quality Report',
-      dateRange: `${startDate} to ${endDate}`,
-      ...data,
-      generatedAt: new Date().toISOString()
-    };
 
-    if (format === 'xlsx') {
-      console.log('Exporting to Excel:', exportData);
-    } else if (format === 'pdf') {
-      console.log('Exporting to PDF:', exportData);
-    } else if (format === 'csv') {
-      console.log('Exporting to CSV:', exportData);
+    if (format === 'csv') {
+      const rows = [
+        ['System Health & Data Quality Report'],
+        [`Date Range: ${startDate} to ${endDate}`],
+        [`Generated: ${new Date().toISOString()}`],
+        [''],
+        ['Summary'],
+        ['Metric', 'Value'],
+        ['Total System Tickets', data.summary.totalSystemTickets.toString()],
+        ['Critical Issues', data.summary.criticalIssues.toString()],
+        ['System Uptime', `${data.summary.systemUptime.toFixed(2)}%`],
+        ['Data Quality Score', `${data.summary.dataQualityScore.toFixed(1)}%`],
+        ['Performance Score', `${data.summary.performanceScore.toFixed(1)}%`],
+        ['Overall Health Score', `${data.summary.healthScore.toFixed(1)}%`],
+        [''],
+        ['System Performance'],
+        ['Metric', 'Value'],
+        ['Uptime', `${data.systemPerformance.uptime.toFixed(2)}%`],
+        ['Availability', `${data.systemPerformance.availability.toFixed(2)}%`],
+        ['Response Time (ms)', data.systemPerformance.responseTime.toFixed(0)],
+        ['Throughput/sec', data.systemPerformance.throughput.toFixed(0)],
+        ['Error Rate', `${data.systemPerformance.errorRate.toFixed(2)}%`],
+        [''],
+        ['Data Quality Metrics'],
+        ['Metric', 'Score'],
+        ['Completeness', `${data.dataQuality.completeness.toFixed(1)}%`],
+        ['Accuracy', `${data.dataQuality.accuracy.toFixed(1)}%`],
+        ['Consistency', `${data.dataQuality.consistency.toFixed(1)}%`],
+        ['Timeliness', `${data.dataQuality.timeliness.toFixed(1)}%`],
+        ['Validity', `${data.dataQuality.validity.toFixed(1)}%`],
+        [''],
+        ['System Reliability'],
+        ['Metric', 'Value'],
+        ['MTBF (hours)', data.systemReliability.mtbf.toFixed(1)],
+        ['MTTR (hours)', data.systemReliability.mttr.toFixed(1)],
+        ['Availability', `${data.systemReliability.availability.toFixed(2)}%`],
+        ['Reliability Score', data.systemReliability.reliabilityScore.toFixed(1)],
+        [''],
+        ['Database Health'],
+        ['Metric', 'Value'],
+        ['Connection Health', `${data.databaseHealth.connectionHealth.toFixed(1)}%`],
+        ['Query Performance', `${data.databaseHealth.queryPerformance.toFixed(1)}%`],
+        ['Storage Utilization', `${data.databaseHealth.storageUtilization.toFixed(1)}%`],
+        ['Backup Status', `${data.databaseHealth.backupStatus.toFixed(1)}%`],
+        ['Index Health', `${data.databaseHealth.indexHealth.toFixed(1)}%`],
+        [''],
+        ['System Components'],
+        ['Component', 'Status', 'Uptime', 'Performance', 'Incidents', 'Health Score'],
+        ...Object.entries(data.systemComponents).map(([component, status]) => [
+          component, status.status, `${status.uptime.toFixed(1)}%`, `${status.performance.toFixed(1)}%`,
+          status.incidentCount.toString(), status.healthScore.toFixed(1)
+        ]),
+        [''],
+        ['Regional Health'],
+        ['Region', 'Uptime', 'Performance', 'Incidents', 'Data Quality', 'Health Score'],
+        ...Object.entries(data.regionalHealth).map(([region, health]) => [
+          region, `${health.uptime.toFixed(1)}%`, `${health.performance.toFixed(1)}%`,
+          health.incidents.toString(), `${health.dataQuality.toFixed(1)}%`, health.healthScore.toFixed(1)
+        ])
+      ];
+
+      const csvContent = rows.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `system-health-${startDate}-to-${endDate}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } else if (format === 'xlsx' || format === 'pdf') {
+      alert(`${format.toUpperCase()} export coming soon. Please use CSV export for now.`);
     }
   };
 

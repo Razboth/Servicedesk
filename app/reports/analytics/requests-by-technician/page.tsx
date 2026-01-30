@@ -73,60 +73,84 @@ export default function RequestsByTechnicianReport() {
       const result = await response.json()
       
       // Transform API data to match component interface
-      const transformedTechnicianData: TechnicianData[] = result.technicians.map((tech: any, index: number) => ({
-        id: tech.id,
-        name: tech.name,
-        department: tech.supportGroups?.join(', ') || 'General',
-        totalTickets: tech.totalTickets,
-        openTickets: tech.openTickets,
-        inProgressTickets: tech.totalTickets - tech.openTickets - tech.resolvedTickets, // Approximate
-        resolvedTickets: tech.resolvedTickets,
-        closedTickets: tech.resolvedTickets, // Assume resolved = closed for simplicity
-        avgResolutionTime: tech.avgResolutionHours,
-        slaCompliance: tech.slaComplianceRate,
-        customerSatisfaction: Math.min(5.0, 3.0 + (tech.resolutionRate / 50)), // Estimate based on efficiency
-        specializations: tech.supportGroups || ['General'],
-        performance: {
-          efficiency: Math.min(100, tech.resolutionRate),
-          quality: tech.slaComplianceRate,
-          speed: Math.max(0, 100 - (tech.avgResolutionHours / 10)), // Lower hours = higher speed
-          communication: Math.min(100, 70 + (tech.resolutionRate / 5)), // Estimate
-          technical: Math.min(100, 80 + (tech.productivityScore / 2)) // Estimate
-        },
-        trend: tech.recentPerformanceTrend - 50, // Convert 0-100 to -50 to +50
-        rank: index + 1
-      }))
+      const transformedTechnicianData: TechnicianData[] = result.technicians.map((tech: any, index: number) => {
+        // Calculate in-progress from status distribution
+        const statusDist = tech.statusDistribution || {}
+        const inProgress = (statusDist['IN_PROGRESS'] || 0)
+        const closed = (statusDist['CLOSED'] || 0)
 
-      // Create workload data from technician priority distribution
-      const transformedWorkloadData: WorkloadData[] = transformedTechnicianData.map(tech => {
-        const totalTickets = tech.totalTickets
         return {
-          technician: tech.name.split(' ')[0],
-          URGENT: Math.floor(totalTickets * 0.1),
-          HIGH: Math.floor(totalTickets * 0.25),
-          MEDIUM: Math.floor(totalTickets * 0.4),
-          LOW: Math.floor(totalTickets * 0.25)
+          id: tech.id,
+          name: tech.name,
+          department: tech.supportGroup || 'General',
+          avatar: tech.avatar,
+          totalTickets: tech.totalTickets,
+          openTickets: tech.openTickets,
+          inProgressTickets: inProgress,
+          resolvedTickets: tech.resolvedTickets,
+          closedTickets: closed,
+          avgResolutionTime: tech.avgResolutionHours,
+          slaCompliance: tech.slaComplianceRate,
+          customerSatisfaction: tech.resolutionRate >= 80 ? 4.5 : tech.resolutionRate >= 60 ? 4.0 : 3.5,
+          specializations: tech.supportGroup ? [tech.supportGroup] : ['General'],
+          performance: {
+            efficiency: Math.min(100, tech.resolutionRate),
+            quality: tech.slaComplianceRate,
+            speed: Math.max(0, 100 - Math.min(100, tech.avgResolutionHours * 2)),
+            communication: tech.resolutionRate,
+            technical: tech.slaComplianceRate
+          },
+          trend: tech.recentPerformanceTrend - 50,
+          rank: index + 1
         }
       })
 
-      // Create productivity trend from daily workload data
-      const transformedProductivityTrend: ProductivityTrend[] = [
-        { week: 'Week 1' },
-        { week: 'Week 2' },
-        { week: 'Week 3' },
-        { week: 'Week 4' }
-      ]
-
-      // Add technician data to each week
-      transformedTechnicianData.forEach(tech => {
-        const firstName = tech.name.split(' ')[0]
-        transformedProductivityTrend.forEach((week, index) => {
-          // Simulate weekly productivity based on daily workload with some variation
-          const baseProductivity = Math.floor(tech.totalTickets / 4)
-          const variation = Math.floor(Math.random() * 10) - 5 // ±5 variation
-          week[firstName] = Math.max(0, baseProductivity + variation + index * 2)
-        })
+      // Create workload data from actual priority distribution
+      const transformedWorkloadData: WorkloadData[] = result.technicians.map((tech: any) => {
+        const priorityDist = tech.priorityDistribution || {}
+        return {
+          technician: tech.name.split(' ')[0],
+          URGENT: priorityDist['URGENT'] || priorityDist['CRITICAL'] || 0,
+          HIGH: priorityDist['HIGH'] || 0,
+          MEDIUM: priorityDist['MEDIUM'] || 0,
+          LOW: priorityDist['LOW'] || 0
+        }
       })
+
+      // Create productivity trend from actual daily workload data
+      const transformedProductivityTrend: ProductivityTrend[] = []
+
+      // Group daily data into weeks
+      if (result.technicians.length > 0 && result.technicians[0].dailyWorkload) {
+        const dailyData = result.technicians[0].dailyWorkload
+        const weeklyData: { [week: string]: { [tech: string]: number } } = {}
+
+        dailyData.forEach((day: any, idx: number) => {
+          const weekNum = Math.floor(idx / 7) + 1
+          const weekKey = `Week ${weekNum}`
+          if (!weeklyData[weekKey]) weeklyData[weekKey] = {}
+
+          result.technicians.forEach((tech: any) => {
+            const firstName = tech.name.split(' ')[0]
+            const techDaily = tech.dailyWorkload?.[idx]
+            if (!weeklyData[weekKey][firstName]) weeklyData[weekKey][firstName] = 0
+            weeklyData[weekKey][firstName] += techDaily?.resolved || 0
+          })
+        })
+
+        Object.entries(weeklyData).forEach(([week, data]) => {
+          transformedProductivityTrend.push({ week, ...data } as ProductivityTrend)
+        })
+      }
+
+      // Fallback if no daily data
+      if (transformedProductivityTrend.length === 0) {
+        transformedProductivityTrend.push({ week: 'Current' })
+        transformedTechnicianData.forEach(tech => {
+          const firstName = tech.name.split(' ')[0]
+          transformedProductivityTrend[0][firstName] = tech.resolvedTickets
+        })
+      }
       
       setTechnicianData(transformedTechnicianData)
       setWorkloadData(transformedWorkloadData)

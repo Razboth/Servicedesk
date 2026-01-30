@@ -82,17 +82,6 @@ const standardReports: Report[] = [
     lastRun: 'Live'
   },
   {
-    title: 'Daily Operations Report',
-    description: 'Real-time operational snapshot with critical incidents and technician workload',
-    href: '/reports/operations/daily',
-    icon: Activity,
-    type: 'standard',
-    roles: ['TECHNICIAN', 'MANAGER', 'ADMIN'],
-    category: REPORT_CATEGORIES.ESSENTIAL,
-    badge: 'Live',
-    lastRun: 'Live'
-  },
-  {
     title: 'Monthly Summary Report',
     description: 'Monthly ticket statistics with category breakdown, claimed/unclaimed analysis, and duration metrics',
     href: '/reports/monthly',
@@ -258,35 +247,6 @@ const standardReports: Report[] = [
     category: REPORT_CATEGORIES.INFRASTRUCTURE,
     lastRun: 'Live'
   },
-  // Operational Reports
-  {
-    title: 'ATM Issues Summary',
-    description: 'Comprehensive ATM problem tracking with location and priority analysis',
-    href: '/reports/operational/atm-issues',
-    icon: AlertTriangle,
-    type: 'standard',
-    roles: ['TECHNICIAN', 'MANAGER', 'ADMIN'],
-    category: REPORT_CATEGORIES.OPERATIONS
-  },
-  {
-    title: 'Open & On-Hold Tickets 2024',
-    description: 'Monitor and manage tickets requiring immediate attention',
-    href: '/reports/operational/open-onhold-tickets',
-    icon: Clock,
-    type: 'standard',
-    roles: ['TECHNICIAN', 'MANAGER', 'ADMIN'],
-    category: REPORT_CATEGORIES.OPERATIONS,
-    badge: 'Critical'
-  },
-  {
-    title: 'Technical Problem Trends',
-    description: 'System errors, hardware failures, and network issue patterns',
-    href: '/reports/infrastructure/technical-trends',
-    icon: Activity,
-    type: 'standard',
-    roles: ['TECHNICIAN', 'MANAGER', 'ADMIN'],
-    category: REPORT_CATEGORIES.ANALYTICS
-  },
   {
     title: 'Perpanjangan Waktu Operasional',
     description: 'Laporan permintaan perpanjangan waktu operasional cabang dengan detail nomor surat, jam selesai, dan alasan',
@@ -306,25 +266,6 @@ const standardReports: Report[] = [
     roles: ['USER', 'TECHNICIAN', 'MANAGER', 'ADMIN'],
     category: REPORT_CATEGORIES.OPERATIONS,
     lastRun: 'Live'
-  },
-  // Business Intelligence
-  {
-    title: 'Operational Excellence Report',
-    description: 'Resource planning, cost analysis, and strategic planning insights',
-    href: '/reports/business/operational-excellence',
-    icon: BarChart3,
-    type: 'standard',
-    roles: ['MANAGER', 'ADMIN'],
-    category: REPORT_CATEGORIES.BUSINESS
-  },
-  {
-    title: 'Customer Experience Analytics',
-    description: 'Service quality, response time impact, and customer satisfaction',
-    href: '/reports/business/customer-experience',
-    icon: BookOpen,
-    type: 'standard',
-    roles: ['MANAGER', 'ADMIN'],
-    category: REPORT_CATEGORIES.BUSINESS
   },
   // Compliance Reports
   {
@@ -390,24 +331,6 @@ const standardReports: Report[] = [
     type: 'standard',
     roles: ['MANAGER', 'ADMIN'],
     category: REPORT_CATEGORIES.TEAM
-  },
-  {
-    title: 'Requests by Created Date',
-    description: 'Analysis of ticket creation patterns and temporal distribution',
-    href: '/reports/analytics/requests-by-created-date',
-    icon: Calendar,
-    type: 'standard',
-    roles: ['TECHNICIAN', 'MANAGER', 'ADMIN'],
-    category: REPORT_CATEGORIES.ANALYTICS
-  },
-  {
-    title: 'Requests by Department',
-    description: 'Analysis of ticket distribution and performance across departments',
-    href: '/reports/analytics/requests-by-department',
-    icon: Building,
-    type: 'standard',
-    roles: ['MANAGER', 'ADMIN'],
-    category: REPORT_CATEGORIES.ANALYTICS
   },
   // Security Reports
   {
