@@ -4,12 +4,14 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 import { RichTextViewer } from "@/components/ui/rich-text-editor"
 import { getAvatarById } from "@/components/ui/avatar-presets"
-import { 
-  Clock, 
-  User, 
-  Play, 
-  CheckCircle, 
-  XCircle, 
+import { format } from "date-fns"
+import { toZonedTime } from "date-fns-tz"
+import {
+  Clock,
+  User,
+  Play,
+  CheckCircle,
+  XCircle,
   Pause,
   AlertCircle,
   ThumbsUp,
@@ -18,6 +20,19 @@ import {
   CheckCheck,
   MessageSquare
 } from "lucide-react"
+
+// WITA timezone (GMT+8)
+const WITA_TIMEZONE = 'Asia/Makassar'
+
+// Helper function to format date in WITA timezone
+const formatWITA = (date: string | Date, formatStr: string = 'dd MMM yyyy, HH:mm') => {
+  try {
+    const zonedDate = toZonedTime(new Date(date), WITA_TIMEZONE)
+    return format(zonedDate, formatStr) + ' WITA'
+  } catch {
+    return String(date)
+  }
+}
 
 interface ProgressStep {
   id: string
@@ -397,7 +412,7 @@ export const ProgressTracker = React.forwardRef<
                 </h4>
                 {showTimestamps && step.timestamp && (
                   <span className="text-xs text-gray-400">
-                    {step.timestamp}
+                    {formatWITA(step.timestamp)}
                   </span>
                 )}
               </div>
@@ -493,7 +508,7 @@ export const ProgressTracker = React.forwardRef<
                 </div>
                 {showTimestamps && step.timestamp && (
                   <div className="text-xs text-gray-400 mt-0.5">
-                    {step.timestamp}
+                    {formatWITA(step.timestamp)}
                   </div>
                 )}
                 {showUsers && step.user && (

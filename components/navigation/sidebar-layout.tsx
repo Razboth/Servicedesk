@@ -16,7 +16,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
   const shouldShowSidebar = !isAuthPage && !isPublicPage;
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen bg-background">
       {shouldShowSidebar && <Sidebar />}
 
       {/* Mobile hamburger menu button - only show when sidebar should be visible */}
@@ -31,8 +31,8 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
         </Button>
       )}
 
-      <main className={`flex-1 transition-all duration-300 ${
-        shouldShowSidebar ? (isMobile ? 'ml-0' : (isCollapsed ? 'ml-16' : 'ml-64')) : 'ml-0'
+      <main className={`min-h-screen transition-all duration-300 ${
+        shouldShowSidebar ? (isMobile ? 'ml-0' : (isCollapsed ? 'ml-20' : 'ml-64')) : 'ml-0'
       }`}>
         {children}
       </main>
