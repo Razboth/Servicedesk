@@ -1,0 +1,275 @@
+-- ================================================================
+-- Production Database Schema Fix Script
+-- Run this to add missing columns and enums
+-- ================================================================
+
+-- ================================================================
+-- 1. CREATE MISSING ENUMS (with IF NOT EXISTS logic)
+-- ================================================================
+
+-- DeviceState enum
+DO $$ BEGIN
+    CREATE TYPE "DeviceState" AS ENUM ('UP', 'DEGRADED', 'DOWN', 'RECOVERING');
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
+-- ================================================================
+-- 2. FIX network_incidents TABLE
+-- ================================================================
+
+-- Add occurrenceCount column
+DO $$ BEGIN
+    ALTER TABLE "network_incidents" ADD COLUMN "occurrenceCount" INTEGER DEFAULT 1;
+EXCEPTION
+    WHEN duplicate_column THEN NULL;
+END $$;
+
+-- Add lastOccurrence column
+DO $$ BEGIN
+    ALTER TABLE "network_incidents" ADD COLUMN "lastOccurrence" TIMESTAMP(3);
+EXCEPTION
+    WHEN duplicate_column THEN NULL;
+END $$;
+
+-- ================================================================
+-- 3. FIX network_monitoring_logs TABLE
+-- ================================================================
+
+-- Add deviceState column
+DO $$ BEGIN
+    ALTER TABLE "network_monitoring_logs" ADD COLUMN "deviceState" "DeviceState" DEFAULT 'UP';
+EXCEPTION
+    WHEN duplicate_column THEN NULL;
+END $$;
+
+-- Add consecutiveFailures column
+DO $$ BEGIN
+    ALTER TABLE "network_monitoring_logs" ADD COLUMN "consecutiveFailures" INTEGER DEFAULT 0;
+EXCEPTION
+    WHEN duplicate_column THEN NULL;
+END $$;
+
+-- Add consecutiveSuccesses column
+DO $$ BEGIN
+    ALTER TABLE "network_monitoring_logs" ADD COLUMN "consecutiveSuccesses" INTEGER DEFAULT 0;
+EXCEPTION
+    WHEN duplicate_column THEN NULL;
+END $$;
+
+-- Add lastStateChange column
+DO $$ BEGIN
+    ALTER TABLE "network_monitoring_logs" ADD COLUMN "lastStateChange" TIMESTAMP(3);
+EXCEPTION
+    WHEN duplicate_column THEN NULL;
+END $$;
+
+-- ================================================================
+-- 3. VERIFY THE CHANGES
+-- ================================================================
+
+SELECT 'network_monitoring_logs columns:' as info;
+SELECT column_name, data_type, column_default
+FROM information_schema.columns
+WHERE table_name = 'network_monitoring_logs'
+ORDER BY ordinal_position;
+
+SELECT 'DeviceState enum values:' as info;
+SELECT enumlabel FROM pg_enum e
+JOIN pg_type t ON e.enumtypid = t.oid
+WHERE t.typname = 'DeviceState';
+
+-- ================================================================
+-- 4. CHECK FOR OTHER POTENTIALLY MISSING TABLES/COLUMNS
+-- ================================================================
+
+-- Check if profile_change_logs exists (from schema)
+DO $$ BEGIN
+    CREATE TABLE IF NOT EXISTS "profile_change_logs" (
+        "id" TEXT NOT NULL,
+        "userId" TEXT NOT NULL,
+        "changedBy" TEXT NOT NULL,
+        "fieldName" TEXT NOT NULL,
+        "oldValue" TEXT,
+        "newValue" TEXT,
+        "changeReason" TEXT,
+        "ipAddress" TEXT,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "profile_change_logs_pkey" PRIMARY KEY ("id")
+    );
+EXCEPTION
+    WHEN duplicate_table THEN NULL;
+END $$;
+
+-- Check if maintenance_windows exists
+DO $$ BEGIN
+    CREATE TABLE IF NOT EXISTS "maintenance_windows" (
+        "id" TEXT NOT NULL,
+        "entityType" TEXT NOT NULL,
+        "entityId" TEXT NOT NULL,
+        "startTime" TIMESTAMP(3) NOT NULL,
+        "endTime" TIMESTAMP(3) NOT NULL,
+        "reason" TEXT,
+        "createdBy" TEXT NOT NULL,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL,
+        CONSTRAINT "maintenance_windows_pkey" PRIMARY KEY ("id")
+    );
+EXCEPTION
+    WHEN duplicate_table THEN NULL;
+END $$;
+
+-- Check if server_metrics exists
+DO $$ BEGIN
+    CREATE TABLE IF NOT EXISTS "server_metrics" (
+        "id" TEXT NOT NULL,
+        "serverId" TEXT NOT NULL,
+        "serverName" TEXT NOT NULL,
+        "cpuUsage" DOUBLE PRECISION,
+        "memoryUsage" DOUBLE PRECISION,
+        "diskUsage" DOUBLE PRECISION,
+        "networkIn" DOUBLE PRECISION,
+        "networkOut" DOUBLE PRECISION,
+        "processCount" INTEGER,
+        "uptime" INTEGER,
+        "temperature" DOUBLE PRECISION,
+        "collectedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "metadata" JSONB,
+        CONSTRAINT "server_metrics_pkey" PRIMARY KEY ("id")
+    );
+EXCEPTION
+    WHEN duplicate_table THEN NULL;
+END $$;
+
+-- Check if shift_reports exists
+DO $$ BEGIN
+    CREATE TABLE IF NOT EXISTS "shift_reports" (
+        "id" TEXT NOT NULL,
+        "shiftAssignmentId" TEXT NOT NULL,
+        "status" TEXT NOT NULL DEFAULT 'DRAFT',
+        "summary" TEXT,
+        "handoverNotes" TEXT,
+        "receivedById" TEXT,
+        "receivedAt" TIMESTAMP(3),
+        "acknowledgedAt" TIMESTAMP(3),
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL,
+        CONSTRAINT "shift_reports_pkey" PRIMARY KEY ("id")
+    );
+EXCEPTION
+    WHEN duplicate_table THEN NULL;
+END $$;
+
+-- Check if shift_checklist_items exists
+DO $$ BEGIN
+    CREATE TABLE IF NOT EXISTS "shift_checklist_items" (
+        "id" TEXT NOT NULL,
+        "shiftReportId" TEXT NOT NULL,
+        "category" TEXT NOT NULL,
+        "itemName" TEXT NOT NULL,
+        "isCompleted" BOOLEAN NOT NULL DEFAULT false,
+        "notes" TEXT,
+        "completedAt" TIMESTAMP(3),
+        "order" INTEGER NOT NULL DEFAULT 0,
+        CONSTRAINT "shift_checklist_items_pkey" PRIMARY KEY ("id")
+    );
+EXCEPTION
+    WHEN duplicate_table THEN NULL;
+END $$;
+
+-- Check if shift_checklist_templates exists
+DO $$ BEGIN
+    CREATE TABLE IF NOT EXISTS "shift_checklist_templates" (
+        "id" TEXT NOT NULL,
+        "shiftType" TEXT NOT NULL,
+        "category" TEXT NOT NULL,
+        "itemName" TEXT NOT NULL,
+        "description" TEXT,
+        "isRequired" BOOLEAN NOT NULL DEFAULT false,
+        "order" INTEGER NOT NULL DEFAULT 0,
+        "isActive" BOOLEAN NOT NULL DEFAULT true,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL,
+        CONSTRAINT "shift_checklist_templates_pkey" PRIMARY KEY ("id")
+    );
+EXCEPTION
+    WHEN duplicate_table THEN NULL;
+END $$;
+
+-- Check if shift_backup_checklist exists
+DO $$ BEGIN
+    CREATE TABLE IF NOT EXISTS "shift_backup_checklist" (
+        "id" TEXT NOT NULL,
+        "shiftReportId" TEXT NOT NULL,
+        "backupType" TEXT NOT NULL,
+        "isCompleted" BOOLEAN NOT NULL DEFAULT false,
+        "notes" TEXT,
+        "completedAt" TIMESTAMP(3),
+        CONSTRAINT "shift_backup_checklist_pkey" PRIMARY KEY ("id")
+    );
+EXCEPTION
+    WHEN duplicate_table THEN NULL;
+END $$;
+
+-- Check if shift_backup_templates exists
+DO $$ BEGIN
+    CREATE TABLE IF NOT EXISTS "shift_backup_templates" (
+        "id" TEXT NOT NULL,
+        "backupType" TEXT NOT NULL,
+        "description" TEXT,
+        "isRequired" BOOLEAN NOT NULL DEFAULT false,
+        "order" INTEGER NOT NULL DEFAULT 0,
+        "isActive" BOOLEAN NOT NULL DEFAULT true,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL,
+        CONSTRAINT "shift_backup_templates_pkey" PRIMARY KEY ("id")
+    );
+EXCEPTION
+    WHEN duplicate_table THEN NULL;
+END $$;
+
+-- Check if shift_issues exists
+DO $$ BEGIN
+    CREATE TABLE IF NOT EXISTS "shift_issues" (
+        "id" TEXT NOT NULL,
+        "shiftReportId" TEXT NOT NULL,
+        "ticketId" TEXT,
+        "issueType" TEXT NOT NULL,
+        "description" TEXT NOT NULL,
+        "status" TEXT NOT NULL DEFAULT 'OPEN',
+        "priority" TEXT NOT NULL DEFAULT 'MEDIUM',
+        "resolution" TEXT,
+        "resolvedAt" TIMESTAMP(3),
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL,
+        CONSTRAINT "shift_issues_pkey" PRIMARY KEY ("id")
+    );
+EXCEPTION
+    WHEN duplicate_table THEN NULL;
+END $$;
+
+-- Check if import_logs exists
+DO $$ BEGIN
+    CREATE TABLE IF NOT EXISTS "import_logs" (
+        "id" TEXT NOT NULL,
+        "entityType" TEXT NOT NULL,
+        "entityId" TEXT NOT NULL,
+        "action" TEXT NOT NULL,
+        "data" JSONB,
+        "status" TEXT NOT NULL DEFAULT 'SUCCESS',
+        "errorMessage" TEXT,
+        "createdById" TEXT,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "import_logs_pkey" PRIMARY KEY ("id")
+    );
+EXCEPTION
+    WHEN duplicate_table THEN NULL;
+END $$;
+
+-- ================================================================
+-- 5. FINAL SUMMARY
+-- ================================================================
+SELECT '=== SCHEMA FIX COMPLETE ===' as status;
+SELECT 'Tables in database:' as info, COUNT(*) as count
+FROM information_schema.tables
+WHERE table_schema = 'public' AND table_type = 'BASE TABLE';

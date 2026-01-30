@@ -285,3 +285,42 @@ node scripts/generate-complete-branch-mapping.js
 - always commit every changes also rebuild and restart
 - the default theme get from https://tweakcn.com/themes/cmf4zd6yp000004ib53oeciwk
 - Manage Engine Service Desk Plus API Documentation on https://127.0.0.1:8081/SetUpWizard.do?forwardTo=apidoc
+
+## Database Migration Guidelines
+
+**IMPORTANT**: Whenever there are database changes, migrations, or schema adjustments:
+
+1. **Always create a corresponding SQL file** in `scripts/migrations/` directory
+2. **Save the SQL query as a `.txt` file** with a descriptive name and timestamp
+3. **File naming convention**: `YYYYMMDD_description.txt` (e.g., `20260129_add_deviceState_column.txt`)
+4. **Include in the SQL file**:
+   - Comments describing what the migration does
+   - Safe SQL with `IF NOT EXISTS` or exception handling for idempotent execution
+   - Verification queries to confirm the changes
+
+Example SQL file structure:
+```sql
+-- Migration: Add deviceState column to network_monitoring_logs
+-- Date: 2026-01-29
+-- Description: Adds state machine fields for hysteresis in network monitoring
+
+-- Add enum type if not exists
+DO $$ BEGIN
+    CREATE TYPE "DeviceState" AS ENUM ('UP', 'DEGRADED', 'DOWN', 'RECOVERING');
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
+-- Add column if not exists
+DO $$ BEGIN
+    ALTER TABLE "network_monitoring_logs" ADD COLUMN "deviceState" "DeviceState" DEFAULT 'UP';
+EXCEPTION
+    WHEN duplicate_column THEN NULL;
+END $$;
+
+-- Verify
+SELECT column_name, data_type FROM information_schema.columns
+WHERE table_name = 'network_monitoring_logs' AND column_name = 'deviceState';
+```
+
+This ensures production databases can be updated manually if Prisma migrations fail.
