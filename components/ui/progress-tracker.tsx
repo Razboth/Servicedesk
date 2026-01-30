@@ -54,6 +54,7 @@ interface ProgressTrackerProps {
     updatedAt: string
     resolvedAt?: string
     closedAt?: string
+    claimedAt?: string
     approvals?: Array<{
       status: string
       createdAt: string
@@ -124,6 +125,30 @@ const getUserInitials = (name: string): string => {
     .slice(0, 2);
 }
 
+// Helper function to format duration between two dates
+const formatDuration = (startDate: string | Date, endDate: string | Date = new Date()): string => {
+  const start = new Date(startDate)
+  const end = new Date(endDate)
+  const diffMs = end.getTime() - start.getTime()
+
+  if (diffMs < 0) return '0m'
+
+  const minutes = Math.floor(diffMs / (1000 * 60))
+  const hours = Math.floor(minutes / 60)
+  const remainingMinutes = minutes % 60
+
+  if (hours >= 24) {
+    const days = Math.floor(hours / 24)
+    const remainingHours = hours % 24
+    if (remainingHours === 0) return `${days}d`
+    return `${days}d ${remainingHours}h`
+  }
+
+  if (hours === 0) return `${remainingMinutes}m`
+  if (remainingMinutes === 0) return `${hours}h`
+  return `${hours}h ${remainingMinutes}m`
+}
+
 // Helper function to filter technician comments for a specific step
 const getCommentsForStep = (stepId: string, ticketData?: any): Array<{id: string, content: string, user: {name: string, role: string}, createdAt: string}> => {
   if (!ticketData?.comments) return []
@@ -169,14 +194,25 @@ const getDefaultSteps = (currentStatus: string, ticketData?: any): ProgressStep[
   
   // Check if ticket went through approval process
   if (hasApprovals || currentStatus === 'PENDING_APPROVAL') {
+    // Calculate duration for pending approval
+    const pendingDuration = currentStatus === 'PENDING_APPROVAL' && ticketData?.createdAt
+      ? formatDuration(ticketData.createdAt)
+      : latestApproval?.updatedAt && ticketData?.createdAt
+        ? formatDuration(ticketData.createdAt, latestApproval.updatedAt)
+        : undefined
+
     steps.push({
       id: "PENDING_APPROVAL",
       label: "Pending Approval",
       status: currentStatus === 'PENDING_APPROVAL' ? "current" : latestApproval ? "completed" : "pending",
       timestamp: latestApproval?.createdAt,
-      description: currentStatus === 'PENDING_APPROVAL' ? "Waiting for manager approval" : undefined
+      description: currentStatus === 'PENDING_APPROVAL'
+        ? `Waiting for manager approval (${pendingDuration || 'just now'})`
+        : pendingDuration
+          ? `Waited ${pendingDuration} for approval`
+          : undefined
     })
-    
+
     if (latestApproval) {
       if (latestApproval.status === 'APPROVED') {
         steps.push({
@@ -207,33 +243,51 @@ const getDefaultSteps = (currentStatus: string, ticketData?: any): ProgressStep[
   
   // Add standard workflow steps
   if (currentStatus !== 'REJECTED' && currentStatus !== 'CANCELLED') {
+    // Calculate processing duration for In Progress step
+    const inProgressEndTime = ticketData?.closedAt || ticketData?.resolvedAt
+    const processingDuration = ticketData?.claimedAt
+      ? formatDuration(ticketData.claimedAt, inProgressEndTime || new Date())
+      : undefined
+
+    // Determine In Progress status - use claimedAt to persist the state
+    const inProgressStatus = getStepStatus("IN_PROGRESS", currentStatus, steps)
+    const hasBeenClaimed = !!ticketData?.claimedAt || !!ticketData?.assignedTo
+
     steps.push({
       id: "IN_PROGRESS",
       label: "In Progress",
-      status: getStepStatus("IN_PROGRESS", currentStatus, steps),
+      status: hasBeenClaimed && inProgressStatus === "pending" ? "completed" : inProgressStatus,
+      timestamp: ticketData?.claimedAt,
       user: ticketData?.assignedTo,
+      description: ticketData?.claimedAt
+        ? inProgressEndTime
+          ? `Processed in ${processingDuration}`
+          : `Processing for ${processingDuration}`
+        : ticketData?.assignedTo
+          ? `Assigned to ${ticketData.assignedTo.name}`
+          : undefined,
       comments: getCommentsForStep("IN_PROGRESS", ticketData)
     })
-    
+
     steps.push({
       id: "RESOLVED",
       label: "Resolved",
       status: getStepStatus("RESOLVED", currentStatus, steps),
       timestamp: ticketData?.resolvedAt,
       user: ticketData?.assignedTo, // Usually the assigned technician resolves the ticket
-      description: ticketData?.resolvedAt 
+      description: ticketData?.resolvedAt
         ? `Ticket resolved ${ticketData.assignedTo?.name ? `by ${ticketData.assignedTo.name}` : ''}`
         : undefined,
       comments: getCommentsForStep("RESOLVED", ticketData)
     })
-    
+
     steps.push({
       id: "CLOSED",
       label: "Closed",
       status: getStepStatus("CLOSED", currentStatus, steps),
       timestamp: ticketData?.closedAt,
       user: ticketData?.assignedTo, // Usually the assigned technician closes the ticket
-      description: ticketData?.closedAt 
+      description: ticketData?.closedAt
         ? `Ticket closed and marked as complete ${ticketData.assignedTo?.name ? `by ${ticketData.assignedTo.name}` : ''}`
         : undefined,
       comments: getCommentsForStep("CLOSED", ticketData)

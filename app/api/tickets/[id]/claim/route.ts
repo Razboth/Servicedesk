@@ -120,12 +120,14 @@ export async function POST(
 
     // Claim the ticket by assigning it to the current user
     const newStatus = existingTicket.status === 'OPEN' ? 'IN_PROGRESS' : existingTicket.status;
+    const now = new Date();
     const updatedTicket = await prisma.ticket.update({
       where: { id: ticketId },
       data: {
         assignedToId: session.user.id,
         status: newStatus,
-        updatedAt: new Date()
+        claimedAt: now,
+        updatedAt: now
       },
       include: {
         service: {

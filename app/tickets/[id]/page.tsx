@@ -2488,6 +2488,7 @@ export default function TicketDetailPage() {
                       updatedAt: ticket.updatedAt,
                       resolvedAt: ticket.resolvedAt,
                       closedAt: ticket.closedAt,
+                      claimedAt: ticket.claimedAt,
                       approvals: ticket.approvals,
                       createdBy: ticket.createdBy,
                       assignedTo: ticket.assignedTo,
