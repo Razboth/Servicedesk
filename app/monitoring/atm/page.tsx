@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { BranchSelect } from '@/components/ui/branch-select';
 import {
   Dialog,
   DialogContent,
@@ -387,19 +388,14 @@ export default function ATMStatusPage() {
                 />
               </div>
             </div>
-            <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="All Branches" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Branches</SelectItem>
-                {branches.map((branch) => (
-                  <SelectItem key={branch.id} value={branch.id}>
-                    {branch.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <BranchSelect
+              branches={branches}
+              value={selectedBranch}
+              onValueChange={setSelectedBranch}
+              placeholder="All Branches"
+              allOption={true}
+              className="w-[200px]"
+            />
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="All Status" />

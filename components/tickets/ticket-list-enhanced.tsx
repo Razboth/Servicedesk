@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { BranchSelect } from '@/components/ui/branch-select';
 import { Loader2, Search, Plus, Eye, Clock, User, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatRelativeTime, getPriorityColor, getStatusColor } from '@/lib/utils';
@@ -250,19 +251,14 @@ export function TicketListEnhanced({ onCreateTicket, onViewTicket }: TicketListP
 
             {/* Branch Filter - Only visible to admins */}
             {session?.user?.role === 'ADMIN' && branches.length > 0 && (
-              <Select value={branchFilter} onValueChange={handleBranchFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Filter by branch" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All Branches</SelectItem>
-                  {branches.map((branch) => (
-                    <SelectItem key={branch.id} value={branch.id}>
-                      {branch.name} ({branch.code})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <BranchSelect
+                branches={branches}
+                value={branchFilter}
+                onValueChange={handleBranchFilter}
+                placeholder="Filter by branch"
+                allOption={true}
+                allOptionLabel="All Branches"
+              />
             )}
           </div>
         </CardContent>

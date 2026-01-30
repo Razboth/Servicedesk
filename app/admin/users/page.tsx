@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
+import { BranchSelect } from '@/components/ui/branch-select';
 import {
   Table,
   TableBody,
@@ -670,19 +671,15 @@ export default function AdminUsersPage() {
 
                     <div className="space-y-2">
                       <Label htmlFor="create-branch">Branch</Label>
-                      <Select value={formData.branchId || "none"} onValueChange={(value) => setFormData({...formData, branchId: value === "none" ? "" : value})}>
-                        <SelectTrigger className="bg-background">
-                          <SelectValue placeholder="Select branch" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">No Branch</SelectItem>
-                          {branches.map(branch => (
-                            <SelectItem key={branch.id} value={branch.id}>
-                              {branch.name} ({branch.code})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <BranchSelect
+                        branches={branches}
+                        value={formData.branchId || "none"}
+                        onValueChange={(value) => setFormData({...formData, branchId: value === "none" ? "" : value})}
+                        allOption={false}
+                        noneOption={true}
+                        noneOptionLabel="No Branch"
+                        placeholder="Select branch"
+                      />
                     </div>
 
                     <div className="space-y-2">
@@ -814,19 +811,13 @@ export default function AdminUsersPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={branchFilter} onValueChange={setBranchFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Branches" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Branches</SelectItem>
-                  {branches.map((branch) => (
-                    <SelectItem key={branch.id} value={branch.id}>
-                      {branch.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <BranchSelect
+                branches={branches}
+                value={branchFilter}
+                onValueChange={setBranchFilter}
+                allOption={true}
+                allOptionLabel="All Branches"
+              />
               <Select value={supportGroupFilter} onValueChange={setSupportGroupFilter}>
                 <SelectTrigger>
                   <SelectValue placeholder="All Support Groups" />
@@ -1239,19 +1230,15 @@ export default function AdminUsersPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="edit-branch">Branch</Label>
-                  <Select value={formData.branchId || "none"} onValueChange={(value) => setFormData({...formData, branchId: value === "none" ? "" : value})}>
-                    <SelectTrigger className="bg-background">
-                      <SelectValue placeholder="Select branch" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No Branch</SelectItem>
-                      {branches.map(branch => (
-                        <SelectItem key={branch.id} value={branch.id}>
-                          {branch.name} ({branch.code})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <BranchSelect
+                    branches={branches}
+                    value={formData.branchId || "none"}
+                    onValueChange={(value) => setFormData({...formData, branchId: value === "none" ? "" : value})}
+                    allOption={false}
+                    noneOption={true}
+                    noneOptionLabel="No Branch"
+                    placeholder="Select branch"
+                  />
                 </div>
 
                 <div className="space-y-2">

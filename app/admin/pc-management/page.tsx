@@ -23,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { BranchSelect } from '@/components/ui/branch-select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import {
@@ -489,19 +490,14 @@ export default function PCManagementPage() {
                       className="pl-10"
                     />
                   </div>
-                  <Select value={filterBranch || "all"} onValueChange={(value) => setFilterBranch(value === "all" ? "" : value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="All Branches" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Branches</SelectItem>
-                      {branches.map((branch) => (
-                        <SelectItem key={branch.id} value={branch.id}>
-                          {branch.code} - {branch.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <BranchSelect
+                    branches={branches}
+                    value={filterBranch}
+                    onValueChange={(value) => setFilterBranch(value)}
+                    placeholder="All Branches"
+                    allOption={true}
+                    allOptionLabel="All Branches"
+                  />
                   <Select value={filterStatus || "all"} onValueChange={(value) => setFilterStatus(value === "all" ? "" : value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="All Status" />

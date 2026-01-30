@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { BranchSelect } from '@/components/ui/branch-select'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -1045,19 +1046,13 @@ export default function AllTicketsReport() {
                     <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                       Branch
                     </label>
-                    <Select value={branchId} onValueChange={setBranchId}>
-                      <SelectTrigger className="touch-target" aria-label="Filter by branch">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="ALL">All Branches</SelectItem>
-                        {data.filters.branches.map((branch) => (
-                          <SelectItem key={branch.id} value={branch.id}>
-                            {branch.name} ({branch.code})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <BranchSelect
+                      branches={data.filters.branches}
+                      value={branchId === 'ALL' ? 'all' : branchId}
+                      onValueChange={(val) => setBranchId(val === 'all' ? 'ALL' : val)}
+                      allOption={true}
+                      allOptionLabel="All Branches"
+                    />
                   </div>
 
                   <div className="space-y-2">

@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { BranchSelect } from '@/components/ui/branch-select';
 import {
   Dialog,
   DialogContent,
@@ -486,19 +487,15 @@ export default function OfficeManagementPage() {
                 />
               </div>
             </div>
-            <Select value={filterBranch} onValueChange={setFilterBranch}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="All Branches" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Branches</SelectItem>
-                {branches.map(branch => (
-                  <SelectItem key={branch.id} value={branch.id}>
-                    {branch.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <BranchSelect
+              branches={branches}
+              value={filterBranch}
+              onValueChange={setFilterBranch}
+              placeholder="All Branches"
+              allOption={true}
+              allOptionLabel="All Branches"
+              className="w-[200px]"
+            />
             <Select value={filterProductType} onValueChange={setFilterProductType}>
               <SelectTrigger className="w-[150px]">
                 <SelectValue placeholder="All Products" />
@@ -802,22 +799,14 @@ export default function OfficeManagementPage() {
             </div>
             <div>
               <Label>Assign to Branch</Label>
-              <Select 
-                value={formData.assignedToBranch} 
+              <BranchSelect
+                branches={branches}
+                value={formData.assignedToBranch}
                 onValueChange={(value) => setFormData({ ...formData, assignedToBranch: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Branch" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">None</SelectItem>
-                  {branches.map(branch => (
-                    <SelectItem key={branch.id} value={branch.id}>
-                      {branch.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Select Branch"
+                noneOption={true}
+                noneOptionLabel="None"
+              />
             </div>
             <div>
               <Label>Assign to User</Label>
@@ -1056,22 +1045,14 @@ export default function OfficeManagementPage() {
             </div>
             <div>
               <Label>Assign to Branch</Label>
-              <Select 
-                value={formData.assignedToBranch} 
+              <BranchSelect
+                branches={branches}
+                value={formData.assignedToBranch}
                 onValueChange={(value) => setFormData({ ...formData, assignedToBranch: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Branch" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">None</SelectItem>
-                  {branches.map(branch => (
-                    <SelectItem key={branch.id} value={branch.id}>
-                      {branch.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Select Branch"
+                noneOption={true}
+                noneOptionLabel="None"
+              />
             </div>
             <div>
               <Label>Assign to User</Label>

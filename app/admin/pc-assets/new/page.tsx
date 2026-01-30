@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { BranchSelect } from '@/components/ui/branch-select';
 import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft, Save, Plus, Trash2, HardDrive } from 'lucide-react';
 
@@ -314,18 +315,12 @@ export default function NewPCAssetPage() {
 
               <div>
                 <Label htmlFor="branch">Branch *</Label>
-                <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select branch" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {branches.map(branch => (
-                      <SelectItem key={branch.id} value={branch.id}>
-                        {branch.code} - {branch.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <BranchSelect
+                  branches={branches}
+                  value={selectedBranch}
+                  onValueChange={setSelectedBranch}
+                  placeholder="Select branch"
+                />
               </div>
             </CardContent>
           </Card>

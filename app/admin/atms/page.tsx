@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
+import { BranchSelect } from '@/components/ui/branch-select';
 import {
   Table,
   TableBody,
@@ -428,19 +429,13 @@ export default function ATMsPage() {
             </div>
 
             {/* Branch Filter */}
-            <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-              <SelectTrigger>
-                <SelectValue placeholder="All Branches" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Branches</SelectItem>
-                {branches.map((branch) => (
-                  <SelectItem key={branch.id} value={branch.id}>
-                    {branch.code} - {branch.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <BranchSelect
+              branches={branches}
+              value={selectedBranch}
+              onValueChange={setSelectedBranch}
+              allOption={true}
+              allOptionLabel="All Branches"
+            />
 
             {/* Brand Filter */}
             <Select value={atmBrand} onValueChange={setAtmBrand}>

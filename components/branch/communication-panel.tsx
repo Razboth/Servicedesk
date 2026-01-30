@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { BranchSelect } from '@/components/ui/branch-select';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -241,22 +242,14 @@ export default function CommunicationPanel({ ticketId, onUpdate }: Communication
 
               <div>
                 <Label htmlFor="toBranch">To Branch (Optional)</Label>
-                <Select
-                  value={newMessage.toBranchId || 'all'}
-                  onValueChange={(value) => setNewMessage({...newMessage, toBranchId: value === 'all' ? '' : value})}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="All branches" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Branches</SelectItem>
-                    {branches.map(branch => (
-                      <SelectItem key={branch.id} value={branch.id}>
-                        {branch.name} ({branch.code})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <BranchSelect
+                  branches={branches}
+                  value={newMessage.toBranchId}
+                  onValueChange={(value) => setNewMessage({...newMessage, toBranchId: value})}
+                  placeholder="All branches"
+                  allOption={true}
+                  allOptionLabel="All Branches"
+                />
               </div>
             </div>
 
