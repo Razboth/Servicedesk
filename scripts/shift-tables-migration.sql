@@ -236,6 +236,39 @@ CREATE TABLE IF NOT EXISTS "shift_checklist_templates" (
     CONSTRAINT "shift_checklist_templates_pkey" PRIMARY KEY ("id")
 );
 
+-- Add missing columns to shift_checklist_templates if table exists with old schema
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'shift_checklist_templates' AND column_name = 'title') THEN
+        ALTER TABLE shift_checklist_templates ADD COLUMN "title" TEXT NOT NULL DEFAULT '';
+        RAISE NOTICE 'Added column: shift_checklist_templates.title';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'shift_checklist_templates' AND column_name = 'description') THEN
+        ALTER TABLE shift_checklist_templates ADD COLUMN "description" TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'shift_checklist_templates' AND column_name = 'order') THEN
+        ALTER TABLE shift_checklist_templates ADD COLUMN "order" INTEGER NOT NULL DEFAULT 0;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'shift_checklist_templates' AND column_name = 'isRequired') THEN
+        ALTER TABLE shift_checklist_templates ADD COLUMN "isRequired" BOOLEAN NOT NULL DEFAULT true;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'shift_checklist_templates' AND column_name = 'isActive') THEN
+        ALTER TABLE shift_checklist_templates ADD COLUMN "isActive" BOOLEAN NOT NULL DEFAULT true;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'shift_checklist_templates' AND column_name = 'shiftType') THEN
+        ALTER TABLE shift_checklist_templates ADD COLUMN "shiftType" "ShiftType";
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'shift_checklist_templates' AND column_name = 'category') THEN
+        ALTER TABLE shift_checklist_templates ADD COLUMN "category" "ShiftChecklistCategory";
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'shift_checklist_templates' AND column_name = 'createdAt') THEN
+        ALTER TABLE shift_checklist_templates ADD COLUMN "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'shift_checklist_templates' AND column_name = 'updatedAt') THEN
+        ALTER TABLE shift_checklist_templates ADD COLUMN "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+    END IF;
+END $$;
+
 CREATE INDEX IF NOT EXISTS "shift_checklist_templates_shiftType_category_isActive_idx"
     ON shift_checklist_templates ("shiftType", "category", "isActive");
 
