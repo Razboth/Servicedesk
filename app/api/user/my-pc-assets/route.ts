@@ -42,22 +42,6 @@ export async function GET(request: NextRequest) {
             version: true
           }
         },
-        osLicense: {
-          select: {
-            id: true,
-            licenseKey: true,
-            licenseType: true,
-            expiryDate: true
-          }
-        },
-        officeLicense: {
-          select: {
-            id: true,
-            licenseKey: true,
-            licenseType: true,
-            expiryDate: true
-          }
-        },
         serviceLogs: {
           select: {
             id: true,

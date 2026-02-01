@@ -58,7 +58,7 @@ export async function GET(
             type: true
           }
         },
-        osLicense: {
+        osLicenses: {
           select: {
             id: true,
             licenseKey: true,
@@ -66,9 +66,11 @@ export async function GET(
             purchaseDate: true,
             expiryDate: true,
             isActive: true
-          }
+          },
+          take: 1,
+          orderBy: { createdAt: 'desc' }
         },
-        officeLicense: {
+        officeLicenses: {
           select: {
             id: true,
             licenseKey: true,
@@ -76,16 +78,20 @@ export async function GET(
             purchaseDate: true,
             expiryDate: true,
             status: true
-          }
+          },
+          take: 1,
+          orderBy: { createdAt: 'desc' }
         },
-        antivirusLicense: {
+        antivirusLicenses: {
           select: {
             id: true,
             productName: true,
             licenseKey: true,
             expiryDate: true,
             isActive: true
-          }
+          },
+          take: 1,
+          orderBy: { createdAt: 'desc' }
         },
         serviceLogs: {
           select: {
@@ -128,16 +134,16 @@ export async function GET(
                 description: true
               }
             },
-            completedBy: {
+            performedBy: {
               select: {
                 id: true,
                 name: true
               }
             },
-            results: {
+            checklistResults: {
               select: {
                 id: true,
-                status: true,
+                isCompliant: true,
                 notes: true,
                 checklistItem: {
                   select: {
@@ -152,7 +158,7 @@ export async function GET(
             }
           },
           orderBy: {
-            createdAt: 'desc'
+            startedAt: 'desc'
           }
         },
         createdBy: {
