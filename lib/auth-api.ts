@@ -52,9 +52,13 @@ export async function authenticateApiKey(request: NextRequest): Promise<{
         linkedUserId: true
       }
     });
-    
+
     if (!apiKeyRecord) {
-      return { authenticated: false, error: 'Invalid API key' };
+      // Check if it looks like a masked/truncated key
+      if (providedKey.includes('...')) {
+        return { authenticated: false, error: 'Invalid API key - you appear to be using a masked key. Please use the full API key that was shown when you created it.' };
+      }
+      return { authenticated: false, error: 'Invalid API key - key not found' };
     }
     
     // Check if key is active
