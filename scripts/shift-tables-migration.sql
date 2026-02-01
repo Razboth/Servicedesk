@@ -4,10 +4,63 @@
 -- Run with: psql -U postgres -d servicedesk -f shift-tables-migration.sql
 
 -- ============================================
--- SHIFT_REPORTS TABLE - Missing Columns
+-- ENUMS - Create all shift-related enums
 -- ============================================
 
--- Add startedAt column (required by API)
+-- ShiftReportStatus enum
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'ShiftReportStatus') THEN
+        CREATE TYPE "ShiftReportStatus" AS ENUM ('DRAFT', 'IN_PROGRESS', 'COMPLETED');
+        RAISE NOTICE 'Created enum: ShiftReportStatus';
+    END IF;
+END $$;
+
+-- ShiftChecklistCategory enum (matches Prisma: SYSTEM_MONITORING, TICKET_MANAGEMENT, HANDOVER_TASKS)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'ShiftChecklistCategory') THEN
+        CREATE TYPE "ShiftChecklistCategory" AS ENUM (
+            'SYSTEM_MONITORING',
+            'TICKET_MANAGEMENT',
+            'HANDOVER_TASKS'
+        );
+        RAISE NOTICE 'Created enum: ShiftChecklistCategory';
+    END IF;
+END $$;
+
+-- ShiftChecklistStatus enum
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'ShiftChecklistStatus') THEN
+        CREATE TYPE "ShiftChecklistStatus" AS ENUM ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'SKIPPED');
+        RAISE NOTICE 'Created enum: ShiftChecklistStatus';
+    END IF;
+END $$;
+
+-- ShiftIssueStatus enum
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'ShiftIssueStatus') THEN
+        CREATE TYPE "ShiftIssueStatus" AS ENUM ('ONGOING', 'RESOLVED');
+        RAISE NOTICE 'Created enum: ShiftIssueStatus';
+    END IF;
+END $$;
+
+-- IssuePriority enum
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'IssuePriority') THEN
+        CREATE TYPE "IssuePriority" AS ENUM ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL');
+        RAISE NOTICE 'Created enum: IssuePriority';
+    END IF;
+END $$;
+
+-- ============================================
+-- SHIFT_REPORTS TABLE - Add missing columns
+-- ============================================
+
+-- Add startedAt column
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns
@@ -40,6 +93,30 @@ BEGIN
         RAISE NOTICE 'Added column: shift_reports.serverMetricsId';
     ELSE
         RAISE NOTICE 'Column shift_reports.serverMetricsId already exists';
+    END IF;
+END $$;
+
+-- Add summary column
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                   WHERE table_name = 'shift_reports' AND column_name = 'summary') THEN
+        ALTER TABLE shift_reports ADD COLUMN "summary" TEXT;
+        RAISE NOTICE 'Added column: shift_reports.summary';
+    ELSE
+        RAISE NOTICE 'Column shift_reports.summary already exists';
+    END IF;
+END $$;
+
+-- Add handoverNotes column
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                   WHERE table_name = 'shift_reports' AND column_name = 'handoverNotes') THEN
+        ALTER TABLE shift_reports ADD COLUMN "handoverNotes" TEXT;
+        RAISE NOTICE 'Added column: shift_reports.handoverNotes';
+    ELSE
+        RAISE NOTICE 'Column shift_reports.handoverNotes already exists';
     END IF;
 END $$;
 
@@ -79,23 +156,20 @@ BEGIN
     END IF;
 END $$;
 
--- ============================================
--- SHIFT_REPORTS - Add unique constraint on shiftAssignmentId
--- ============================================
+-- Add unique constraint on shiftAssignmentId
 DO $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM pg_constraint
         WHERE conname = 'shift_reports_shiftAssignmentId_key'
     ) THEN
-        -- Check for duplicates first
         IF EXISTS (
             SELECT "shiftAssignmentId", COUNT(*)
             FROM shift_reports
             GROUP BY "shiftAssignmentId"
             HAVING COUNT(*) > 1
         ) THEN
-            RAISE NOTICE 'WARNING: Duplicate shiftAssignmentId values found in shift_reports. Fix before adding unique constraint.';
+            RAISE NOTICE 'WARNING: Duplicate shiftAssignmentId values found. Fix before adding unique constraint.';
         ELSE
             ALTER TABLE shift_reports ADD CONSTRAINT "shift_reports_shiftAssignmentId_key" UNIQUE ("shiftAssignmentId");
             RAISE NOTICE 'Added unique constraint: shift_reports_shiftAssignmentId_key';
@@ -105,73 +179,13 @@ BEGIN
     END IF;
 END $$;
 
--- ============================================
--- SHIFT_REPORTS - Add indexes
--- ============================================
+-- Add indexes for shift_reports
 CREATE INDEX IF NOT EXISTS "shift_reports_shiftAssignmentId_idx" ON shift_reports ("shiftAssignmentId");
 CREATE INDEX IF NOT EXISTS "shift_reports_status_idx" ON shift_reports ("status");
 
 -- ============================================
--- CREATE ShiftReportStatus ENUM if not exists
+-- SHIFT_CHECKLIST_ITEMS TABLE
 -- ============================================
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'ShiftReportStatus') THEN
-        CREATE TYPE "ShiftReportStatus" AS ENUM ('DRAFT', 'IN_PROGRESS', 'COMPLETED', 'SUBMITTED');
-        RAISE NOTICE 'Created enum: ShiftReportStatus';
-    ELSE
-        RAISE NOTICE 'Enum ShiftReportStatus already exists';
-    END IF;
-END $$;
-
--- ============================================
--- TICKETS TABLE - Missing firstResponseAt
--- ============================================
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
-                   WHERE table_name = 'tickets' AND column_name = 'firstResponseAt') THEN
-        ALTER TABLE tickets ADD COLUMN "firstResponseAt" TIMESTAMP;
-        RAISE NOTICE 'Added column: tickets.firstResponseAt';
-    ELSE
-        RAISE NOTICE 'Column tickets.firstResponseAt already exists';
-    END IF;
-END $$;
-
-CREATE INDEX IF NOT EXISTS "tickets_firstResponseAt_idx" ON tickets ("firstResponseAt");
-CREATE INDEX IF NOT EXISTS "tickets_claimedAt_idx" ON tickets ("claimedAt");
-
--- ============================================
--- SHIFT CHECKLIST TABLES - Create if not exists
--- ============================================
-
--- ShiftChecklistCategory enum
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'ShiftChecklistCategory') THEN
-        CREATE TYPE "ShiftChecklistCategory" AS ENUM (
-            'SERVER_HEALTH',
-            'NETWORK_STATUS',
-            'APPLICATION_STATUS',
-            'BACKUP_STATUS',
-            'SECURITY_CHECK',
-            'DOCUMENTATION',
-            'HANDOVER'
-        );
-        RAISE NOTICE 'Created enum: ShiftChecklistCategory';
-    END IF;
-END $$;
-
--- ShiftChecklistStatus enum
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'ShiftChecklistStatus') THEN
-        CREATE TYPE "ShiftChecklistStatus" AS ENUM ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'SKIPPED', 'FAILED');
-        RAISE NOTICE 'Created enum: ShiftChecklistStatus';
-    END IF;
-END $$;
-
--- Create shift_checklist_items table if not exists
 CREATE TABLE IF NOT EXISTS "shift_checklist_items" (
     "id" TEXT NOT NULL,
     "shiftReportId" TEXT NOT NULL,
@@ -184,80 +198,95 @@ CREATE TABLE IF NOT EXISTS "shift_checklist_items" (
     "completedAt" TIMESTAMP,
     "notes" TEXT,
     "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP NOT NULL,
+    "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "shift_checklist_items_pkey" PRIMARY KEY ("id"),
-    CONSTRAINT "shift_checklist_items_shiftReportId_fkey"
-        FOREIGN KEY ("shiftReportId") REFERENCES "shift_reports"("id") ON DELETE CASCADE ON UPDATE CASCADE
+    CONSTRAINT "shift_checklist_items_pkey" PRIMARY KEY ("id")
 );
 
-CREATE INDEX IF NOT EXISTS "shift_checklist_items_shiftReportId_idx" ON shift_checklist_items ("shiftReportId");
-CREATE INDEX IF NOT EXISTS "shift_checklist_items_status_idx" ON shift_checklist_items ("status");
+-- Add foreign key if table was just created
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'shift_checklist_items_shiftReportId_fkey'
+    ) THEN
+        ALTER TABLE "shift_checklist_items" ADD CONSTRAINT "shift_checklist_items_shiftReportId_fkey"
+            FOREIGN KEY ("shiftReportId") REFERENCES "shift_reports"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+        RAISE NOTICE 'Added foreign key: shift_checklist_items_shiftReportId_fkey';
+    END IF;
+END $$;
 
--- Create shift_backup_checklist table if not exists
+CREATE INDEX IF NOT EXISTS "shift_checklist_items_shiftReportId_category_idx" ON shift_checklist_items ("shiftReportId", "category");
+CREATE INDEX IF NOT EXISTS "shift_checklist_items_shiftReportId_order_idx" ON shift_checklist_items ("shiftReportId", "order");
+
+-- ============================================
+-- SHIFT_CHECKLIST_TEMPLATES TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS "shift_checklist_templates" (
+    "id" TEXT NOT NULL,
+    "shiftType" "ShiftType",
+    "category" "ShiftChecklistCategory" NOT NULL,
+    "title" TEXT NOT NULL,
+    "description" TEXT,
+    "order" INTEGER NOT NULL DEFAULT 0,
+    "isRequired" BOOLEAN NOT NULL DEFAULT true,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "shift_checklist_templates_pkey" PRIMARY KEY ("id")
+);
+
+CREATE INDEX IF NOT EXISTS "shift_checklist_templates_shiftType_category_isActive_idx"
+    ON shift_checklist_templates ("shiftType", "category", "isActive");
+
+-- ============================================
+-- SHIFT_BACKUP_CHECKLIST TABLE
+-- ============================================
 CREATE TABLE IF NOT EXISTS "shift_backup_checklist" (
     "id" TEXT NOT NULL,
     "shiftReportId" TEXT NOT NULL,
-    "templateId" TEXT NOT NULL,
     "databaseName" TEXT NOT NULL,
-    "status" "ShiftChecklistStatus" NOT NULL DEFAULT 'PENDING',
-    "fileSize" BIGINT,
-    "filePath" TEXT,
-    "verifiedAt" TIMESTAMP,
-    "verifiedBy" TEXT,
+    "description" TEXT,
+    "isChecked" BOOLEAN NOT NULL DEFAULT false,
+    "checkedAt" TIMESTAMP,
     "notes" TEXT,
+    "order" INTEGER NOT NULL DEFAULT 0,
     "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP NOT NULL,
+    "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "shift_backup_checklist_pkey" PRIMARY KEY ("id"),
-    CONSTRAINT "shift_backup_checklist_shiftReportId_fkey"
-        FOREIGN KEY ("shiftReportId") REFERENCES "shift_reports"("id") ON DELETE CASCADE ON UPDATE CASCADE
+    CONSTRAINT "shift_backup_checklist_pkey" PRIMARY KEY ("id")
 );
+
+-- Add foreign key if table was just created
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'shift_backup_checklist_shiftReportId_fkey'
+    ) THEN
+        ALTER TABLE "shift_backup_checklist" ADD CONSTRAINT "shift_backup_checklist_shiftReportId_fkey"
+            FOREIGN KEY ("shiftReportId") REFERENCES "shift_reports"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+        RAISE NOTICE 'Added foreign key: shift_backup_checklist_shiftReportId_fkey';
+    END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS "shift_backup_checklist_shiftReportId_idx" ON shift_backup_checklist ("shiftReportId");
 
--- Create shift_issues table if not exists
-CREATE TABLE IF NOT EXISTS "shift_issues" (
-    "id" TEXT NOT NULL,
-    "shiftReportId" TEXT NOT NULL,
-    "title" TEXT NOT NULL,
-    "description" TEXT NOT NULL,
-    "severity" TEXT NOT NULL DEFAULT 'MEDIUM',
-    "status" TEXT NOT NULL DEFAULT 'OPEN',
-    "ticketId" TEXT,
-    "resolvedAt" TIMESTAMP,
-    "resolution" TEXT,
-    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP NOT NULL,
-
-    CONSTRAINT "shift_issues_pkey" PRIMARY KEY ("id"),
-    CONSTRAINT "shift_issues_shiftReportId_fkey"
-        FOREIGN KEY ("shiftReportId") REFERENCES "shift_reports"("id") ON DELETE CASCADE ON UPDATE CASCADE
-);
-
-CREATE INDEX IF NOT EXISTS "shift_issues_shiftReportId_idx" ON shift_issues ("shiftReportId");
-CREATE INDEX IF NOT EXISTS "shift_issues_status_idx" ON shift_issues ("status");
-
 -- ============================================
--- SHIFT_BACKUP_TEMPLATES TABLE - Create if not exists
+-- SHIFT_BACKUP_TEMPLATES TABLE
 -- ============================================
 CREATE TABLE IF NOT EXISTS "shift_backup_templates" (
     "id" TEXT NOT NULL,
     "databaseName" TEXT NOT NULL,
-    "displayName" TEXT NOT NULL,
     "description" TEXT,
-    "backupType" TEXT NOT NULL DEFAULT 'FULL',
-    "expectedSizeMin" BIGINT,
-    "expectedSizeMax" BIGINT,
-    "isActive" BOOLEAN NOT NULL DEFAULT true,
     "order" INTEGER NOT NULL DEFAULT 0,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP NOT NULL,
+    "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "shift_backup_templates_pkey" PRIMARY KEY ("id")
 );
 
--- Add unique constraint on databaseName if no duplicates
+-- Add unique constraint on databaseName
 DO $$
 DECLARE
     duplicate_count INTEGER;
@@ -279,13 +308,61 @@ BEGIN
     END IF;
 END $$;
 
+CREATE INDEX IF NOT EXISTS "shift_backup_templates_isActive_order_idx" ON shift_backup_templates ("isActive", "order");
+
 -- ============================================
--- SERVER_METRICS TABLE - Create if not exists
+-- SHIFT_ISSUES TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS "shift_issues" (
+    "id" TEXT NOT NULL,
+    "shiftReportId" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "description" TEXT,
+    "status" "ShiftIssueStatus" NOT NULL DEFAULT 'ONGOING',
+    "priority" "IssuePriority" NOT NULL DEFAULT 'MEDIUM',
+    "resolvedAt" TIMESTAMP,
+    "resolution" TEXT,
+    "ticketId" TEXT,
+    "ticketNumber" TEXT,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "shift_issues_pkey" PRIMARY KEY ("id")
+);
+
+-- Add foreign keys
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'shift_issues_shiftReportId_fkey'
+    ) THEN
+        ALTER TABLE "shift_issues" ADD CONSTRAINT "shift_issues_shiftReportId_fkey"
+            FOREIGN KEY ("shiftReportId") REFERENCES "shift_reports"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+        RAISE NOTICE 'Added foreign key: shift_issues_shiftReportId_fkey';
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'shift_issues_ticketId_fkey'
+    ) THEN
+        ALTER TABLE "shift_issues" ADD CONSTRAINT "shift_issues_ticketId_fkey"
+            FOREIGN KEY ("ticketId") REFERENCES "tickets"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+        RAISE NOTICE 'Added foreign key: shift_issues_ticketId_fkey';
+    END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS "shift_issues_shiftReportId_status_idx" ON shift_issues ("shiftReportId", "status");
+CREATE INDEX IF NOT EXISTS "shift_issues_ticketId_idx" ON shift_issues ("ticketId");
+
+-- ============================================
+-- SERVER_METRICS TABLE
 -- ============================================
 CREATE TABLE IF NOT EXISTS "server_metrics" (
     "id" TEXT NOT NULL,
-    "timestamp" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "serverName" TEXT NOT NULL,
+    "serverId" TEXT NOT NULL,
+    "collectedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "cpuUsage" DOUBLE PRECISION,
     "memoryUsage" DOUBLE PRECISION,
     "diskUsage" DOUBLE PRECISION,
@@ -300,18 +377,61 @@ CREATE TABLE IF NOT EXISTS "server_metrics" (
     CONSTRAINT "server_metrics_pkey" PRIMARY KEY ("id")
 );
 
-CREATE INDEX IF NOT EXISTS "server_metrics_timestamp_idx" ON server_metrics ("timestamp");
-CREATE INDEX IF NOT EXISTS "server_metrics_serverName_idx" ON server_metrics ("serverName");
+CREATE INDEX IF NOT EXISTS "server_metrics_collectedAt_idx" ON server_metrics ("collectedAt");
+CREATE INDEX IF NOT EXISTS "server_metrics_serverId_collectedAt_idx" ON server_metrics ("serverId", "collectedAt");
 
 -- ============================================
--- VERIFICATION
+-- TICKETS TABLE - Add firstResponseAt if missing
+-- ============================================
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                   WHERE table_name = 'tickets' AND column_name = 'firstResponseAt') THEN
+        ALTER TABLE tickets ADD COLUMN "firstResponseAt" TIMESTAMP;
+        RAISE NOTICE 'Added column: tickets.firstResponseAt';
+    ELSE
+        RAISE NOTICE 'Column tickets.firstResponseAt already exists';
+    END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS "tickets_firstResponseAt_idx" ON tickets ("firstResponseAt");
+
+-- ============================================
+-- VERIFICATION QUERIES
 -- ============================================
 \echo ''
-\echo '=== SHIFT_REPORTS COLUMNS ==='
-SELECT column_name, data_type, is_nullable, column_default
+\echo '=== SHIFT TABLES VERIFICATION ==='
+
+\echo ''
+\echo '--- shift_reports columns ---'
+SELECT column_name, data_type, is_nullable
 FROM information_schema.columns
 WHERE table_name = 'shift_reports'
 ORDER BY ordinal_position;
+
+\echo ''
+\echo '--- shift_checklist_items exists ---'
+SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'shift_checklist_items') AS "shift_checklist_items_exists";
+
+\echo ''
+\echo '--- shift_checklist_templates exists ---'
+SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'shift_checklist_templates') AS "shift_checklist_templates_exists";
+
+\echo ''
+\echo '--- shift_backup_checklist exists ---'
+SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'shift_backup_checklist') AS "shift_backup_checklist_exists";
+
+\echo ''
+\echo '--- shift_backup_templates exists ---'
+SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'shift_backup_templates') AS "shift_backup_templates_exists";
+
+\echo ''
+\echo '--- shift_issues exists ---'
+SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'shift_issues') AS "shift_issues_exists";
+
+\echo ''
+\echo '--- server_metrics exists ---'
+SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'server_metrics') AS "server_metrics_exists";
 
 \echo ''
 \echo '=== Migration completed ==='
