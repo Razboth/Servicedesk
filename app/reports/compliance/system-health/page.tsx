@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table,
   TableBody,
@@ -17,7 +16,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { formatDateTimeWITA } from '@/lib/export-utils';
-import { Activity, Database, Server, AlertTriangle, Calendar, CheckCircle, XCircle, RefreshCw, HardDrive, Cpu, Users } from 'lucide-react';
+import { Activity, Database, Server, AlertTriangle, Calendar, CheckCircle, XCircle, RefreshCw, HardDrive, Cpu, Users, LayoutDashboard, FileWarning, Component, History } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 
 interface SystemHealthData {
@@ -111,6 +110,14 @@ export default function SystemHealthReport() {
   const [endDate, setEndDate] = useState(
     new Date().toISOString().split('T')[0]
   );
+  const [activeTab, setActiveTab] = useState('overview');
+
+  const tabConfig = [
+    { id: 'overview', label: 'Health Overview', icon: LayoutDashboard },
+    { id: 'data', label: 'Data Quality', icon: FileWarning },
+    { id: 'components', label: 'Components', icon: Component },
+    { id: 'recent', label: 'Recent Issues', icon: History },
+  ];
 
   const fetchData = async () => {
     try {
@@ -419,357 +426,373 @@ export default function SystemHealthReport() {
         </Card>
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-4">
-        <div className="w-full overflow-x-auto pb-2">
-          <TabsList className="inline-flex h-auto min-w-full sm:min-w-0 p-1 bg-muted/50 rounded-lg">
-            <TabsTrigger value="overview" className="flex-shrink-0 px-4 py-2.5 text-sm font-medium rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              Health Overview
-            </TabsTrigger>
-            <TabsTrigger value="data" className="flex-shrink-0 px-4 py-2.5 text-sm font-medium rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              Data Quality
-            </TabsTrigger>
-            <TabsTrigger value="components" className="flex-shrink-0 px-4 py-2.5 text-sm font-medium rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              Components
-            </TabsTrigger>
-            <TabsTrigger value="recent" className="flex-shrink-0 px-4 py-2.5 text-sm font-medium rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              Recent Issues
-            </TabsTrigger>
-          </TabsList>
+      <div className="space-y-4">
+        <div className="border-b mb-6">
+          <nav className="flex gap-6 overflow-x-auto" aria-label="Tabs">
+            {tabConfig.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`
+                    flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors
+                    ${isActive
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+                    }
+                  `}
+                >
+                  <Icon className="h-4 w-4" />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </nav>
         </div>
 
-        <TabsContent value="overview" className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Health Score Breakdown</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {healthScoreData.map((item) => (
-                  <div key={item.name} className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="capitalize">{item.name}</span>
-                      <span className={`font-bold ${getScoreColor(item.value)}`}>{item.value.toFixed(1)}%</span>
+        {activeTab === 'overview' && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Health Score Breakdown</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {healthScoreData.map((item) => (
+                    <div key={item.name} className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="capitalize">{item.name}</span>
+                        <span className={`font-bold ${getScoreColor(item.value)}`}>{item.value.toFixed(1)}%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full ${getScoreBg(item.value)}`}
+                          style={{ width: `${Math.min(100, item.value)}%` }}
+                        />
+                      </div>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className={`h-2 rounded-full ${getScoreBg(item.value)}`}
-                        style={{ width: `${Math.min(100, item.value)}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>System Reliability Metrics</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="text-center p-4 bg-gray-50 rounded">
-                    <div className="text-2xl font-bold">{data.systemHealth.reliability.totalSystemIssues}</div>
-                    <div className="text-sm text-gray-500">Total Issues</div>
-                  </div>
-                  <div className="text-center p-4 bg-red-50 rounded">
-                    <div className="text-2xl font-bold text-red-600">{data.systemHealth.reliability.criticalSystemIssues}</div>
-                    <div className="text-sm text-gray-500">Critical</div>
-                  </div>
-                  <div className="text-center p-4 bg-green-50 rounded">
-                    <div className="text-2xl font-bold text-green-600">{data.systemHealth.reliability.resolvedSystemIssues}</div>
-                    <div className="text-sm text-gray-500">Resolved</div>
-                  </div>
-                  <div className="text-center p-4 bg-yellow-50 rounded">
-                    <div className="text-2xl font-bold text-yellow-600">{data.systemHealth.reliability.openSystemIssues}</div>
-                    <div className="text-sm text-gray-500">Open</div>
-                  </div>
-                </div>
-                <div className="mt-4 pt-4 border-t">
-                  <div className="flex justify-between text-sm">
-                    <span>MTTR (Mean Time To Resolution)</span>
-                    <span className="font-bold">{data.systemHealth.uptime.mttr.toFixed(1)} hours</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {data.recommendations && data.recommendations.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Recommendations</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2">
-                  {data.recommendations.map((rec, i) => (
-                    <li key={i} className="flex items-start gap-2">
-                      <AlertTriangle className="h-4 w-4 text-yellow-500 mt-0.5 flex-shrink-0" />
-                      <span>{rec}</span>
-                    </li>
                   ))}
-                </ul>
-              </CardContent>
-            </Card>
-          )}
+                </CardContent>
+              </Card>
 
-          {/* Regional Health */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Regional System Health</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={regionalData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="region" fontSize={12} />
-                    <YAxis fontSize={12} />
-                    <Tooltip />
-                    <Bar dataKey="issues" fill="#3b82f6" name="Total Issues" />
-                    <Bar dataKey="critical" fill="#ef4444" name="Critical" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+              <Card>
+                <CardHeader>
+                  <CardTitle>System Reliability Metrics</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="text-center p-4 bg-gray-50 rounded">
+                      <div className="text-2xl font-bold">{data.systemHealth.reliability.totalSystemIssues}</div>
+                      <div className="text-sm text-gray-500">Total Issues</div>
+                    </div>
+                    <div className="text-center p-4 bg-red-50 rounded">
+                      <div className="text-2xl font-bold text-red-600">{data.systemHealth.reliability.criticalSystemIssues}</div>
+                      <div className="text-sm text-gray-500">Critical</div>
+                    </div>
+                    <div className="text-center p-4 bg-green-50 rounded">
+                      <div className="text-2xl font-bold text-green-600">{data.systemHealth.reliability.resolvedSystemIssues}</div>
+                      <div className="text-sm text-gray-500">Resolved</div>
+                    </div>
+                    <div className="text-center p-4 bg-yellow-50 rounded">
+                      <div className="text-2xl font-bold text-yellow-600">{data.systemHealth.reliability.openSystemIssues}</div>
+                      <div className="text-sm text-gray-500">Open</div>
+                    </div>
+                  </div>
+                  <div className="mt-4 pt-4 border-t">
+                    <div className="flex justify-between text-sm">
+                      <span>MTTR (Mean Time To Resolution)</span>
+                      <span className="font-bold">{data.systemHealth.uptime.mttr.toFixed(1)} hours</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
 
-        <TabsContent value="data" className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {data.recommendations && data.recommendations.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Recommendations</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-2">
+                    {data.recommendations.map((rec, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <AlertTriangle className="h-4 w-4 text-yellow-500 mt-0.5 flex-shrink-0" />
+                        <span>{rec}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Regional Health */}
             <Card>
               <CardHeader>
-                <CardTitle>Data Quality Issues</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
-                    <span>Tickets Without Description</span>
-                    <Badge variant={data.dataQuality.metrics.ticketsWithoutDescription > 0 ? 'destructive' : 'secondary'}>
-                      {data.dataQuality.metrics.ticketsWithoutDescription}
-                    </Badge>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
-                    <span>Unassigned Active Tickets</span>
-                    <Badge variant={data.dataQuality.metrics.unassignedTickets > 0 ? 'destructive' : 'secondary'}>
-                      {data.dataQuality.metrics.unassignedTickets}
-                    </Badge>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
-                    <span>Uncategorized Tickets</span>
-                    <Badge variant={data.dataQuality.metrics.uncategorizedTickets > 0 ? 'destructive' : 'secondary'}>
-                      {data.dataQuality.metrics.uncategorizedTickets}
-                    </Badge>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
-                    <span>Users Without Branch</span>
-                    <Badge variant={data.dataQuality.metrics.usersWithoutBranch > 0 ? 'destructive' : 'secondary'}>
-                      {data.dataQuality.metrics.usersWithoutBranch}
-                    </Badge>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Data Integrity</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
-                    <span>Orphaned Tickets</span>
-                    <Badge variant={data.dataQuality.integrity.orphanedTickets > 0 ? 'destructive' : 'secondary'}>
-                      {data.dataQuality.integrity.orphanedTickets}
-                    </Badge>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
-                    <span>Invalid Service References</span>
-                    <Badge variant={data.dataQuality.integrity.invalidServiceReferences > 0 ? 'destructive' : 'secondary'}>
-                      {data.dataQuality.integrity.invalidServiceReferences}
-                    </Badge>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Database Record Counts</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="text-center p-4 bg-blue-50 rounded">
-                  <HardDrive className="h-6 w-6 mx-auto mb-2 text-blue-600" />
-                  <div className="text-2xl font-bold">{data.dataQuality.recordCounts.tickets.toLocaleString()}</div>
-                  <div className="text-sm text-gray-500">Tickets</div>
-                </div>
-                <div className="text-center p-4 bg-green-50 rounded">
-                  <Users className="h-6 w-6 mx-auto mb-2 text-green-600" />
-                  <div className="text-2xl font-bold">{data.dataQuality.recordCounts.users.toLocaleString()}</div>
-                  <div className="text-sm text-gray-500">Users</div>
-                </div>
-                <div className="text-center p-4 bg-purple-50 rounded">
-                  <Cpu className="h-6 w-6 mx-auto mb-2 text-purple-600" />
-                  <div className="text-2xl font-bold">{data.dataQuality.recordCounts.services.toLocaleString()}</div>
-                  <div className="text-sm text-gray-500">Services</div>
-                </div>
-                <div className="text-center p-4 bg-orange-50 rounded">
-                  <Server className="h-6 w-6 mx-auto mb-2 text-orange-600" />
-                  <div className="text-2xl font-bold">{data.dataQuality.recordCounts.branches.toLocaleString()}</div>
-                  <div className="text-sm text-gray-500">Branches</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="components" className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Issues by Component</CardTitle>
+                <CardTitle>Regional System Health</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={componentData} layout="vertical">
+                    <BarChart data={regionalData}>
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis type="number" fontSize={12} />
-                      <YAxis dataKey="name" type="category" fontSize={12} width={100} />
+                      <XAxis dataKey="region" fontSize={12} />
+                      <YAxis fontSize={12} />
                       <Tooltip />
-                      <Bar dataKey="value" fill="#3b82f6" />
+                      <Bar dataKey="issues" fill="#3b82f6" name="Total Issues" />
+                      <Bar dataKey="critical" fill="#ef4444" name="Critical" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
               </CardContent>
             </Card>
+          </div>
+        )}
+
+        {activeTab === 'data' && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Data Quality Issues</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                      <span>Tickets Without Description</span>
+                      <Badge variant={data.dataQuality.metrics.ticketsWithoutDescription > 0 ? 'destructive' : 'secondary'}>
+                        {data.dataQuality.metrics.ticketsWithoutDescription}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                      <span>Unassigned Active Tickets</span>
+                      <Badge variant={data.dataQuality.metrics.unassignedTickets > 0 ? 'destructive' : 'secondary'}>
+                        {data.dataQuality.metrics.unassignedTickets}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                      <span>Uncategorized Tickets</span>
+                      <Badge variant={data.dataQuality.metrics.uncategorizedTickets > 0 ? 'destructive' : 'secondary'}>
+                        {data.dataQuality.metrics.uncategorizedTickets}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                      <span>Users Without Branch</span>
+                      <Badge variant={data.dataQuality.metrics.usersWithoutBranch > 0 ? 'destructive' : 'secondary'}>
+                        {data.dataQuality.metrics.usersWithoutBranch}
+                      </Badge>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Data Integrity</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                      <span>Orphaned Tickets</span>
+                      <Badge variant={data.dataQuality.integrity.orphanedTickets > 0 ? 'destructive' : 'secondary'}>
+                        {data.dataQuality.integrity.orphanedTickets}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                      <span>Invalid Service References</span>
+                      <Badge variant={data.dataQuality.integrity.invalidServiceReferences > 0 ? 'destructive' : 'secondary'}>
+                        {data.dataQuality.integrity.invalidServiceReferences}
+                      </Badge>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
 
             <Card>
               <CardHeader>
-                <CardTitle>Top Affected Components</CardTitle>
+                <CardTitle>Database Record Counts</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {data.insights.topSystemIssues.map((item, i) => (
-                    <div key={i} className="flex justify-between items-center p-3 bg-gray-50 rounded">
-                      <span className="capitalize font-medium">{item.component}</span>
-                      <Badge>{item.count} issues</Badge>
-                    </div>
-                  ))}
-                  {data.insights.topSystemIssues.length === 0 && (
-                    <div className="text-center py-4 text-gray-500">
-                      No component issues found
-                    </div>
-                  )}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="text-center p-4 bg-blue-50 rounded">
+                    <HardDrive className="h-6 w-6 mx-auto mb-2 text-blue-600" />
+                    <div className="text-2xl font-bold">{data.dataQuality.recordCounts.tickets.toLocaleString()}</div>
+                    <div className="text-sm text-gray-500">Tickets</div>
+                  </div>
+                  <div className="text-center p-4 bg-green-50 rounded">
+                    <Users className="h-6 w-6 mx-auto mb-2 text-green-600" />
+                    <div className="text-2xl font-bold">{data.dataQuality.recordCounts.users.toLocaleString()}</div>
+                    <div className="text-sm text-gray-500">Users</div>
+                  </div>
+                  <div className="text-center p-4 bg-purple-50 rounded">
+                    <Cpu className="h-6 w-6 mx-auto mb-2 text-purple-600" />
+                    <div className="text-2xl font-bold">{data.dataQuality.recordCounts.services.toLocaleString()}</div>
+                    <div className="text-sm text-gray-500">Services</div>
+                  </div>
+                  <div className="text-center p-4 bg-orange-50 rounded">
+                    <Server className="h-6 w-6 mx-auto mb-2 text-orange-600" />
+                    <div className="text-2xl font-bold">{data.dataQuality.recordCounts.branches.toLocaleString()}</div>
+                    <div className="text-sm text-gray-500">Branches</div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           </div>
+        )}
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Most Affected Regions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Region</TableHead>
-                    <TableHead>Total Issues</TableHead>
-                    <TableHead>Critical</TableHead>
-                    <TableHead>Resolution Rate</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.insights.mostAffectedRegions.length === 0 ? (
+        {activeTab === 'components' && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Issues by Component</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={componentData} layout="vertical">
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis type="number" fontSize={12} />
+                        <YAxis dataKey="name" type="category" fontSize={12} width={100} />
+                        <Tooltip />
+                        <Bar dataKey="value" fill="#3b82f6" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Top Affected Components</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {data.insights.topSystemIssues.map((item, i) => (
+                      <div key={i} className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                        <span className="capitalize font-medium">{item.component}</span>
+                        <Badge>{item.count} issues</Badge>
+                      </div>
+                    ))}
+                    {data.insights.topSystemIssues.length === 0 && (
+                      <div className="text-center py-4 text-gray-500">
+                        No component issues found
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Most Affected Regions</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center py-8 text-gray-500">
-                        No regional issues found
-                      </TableCell>
+                      <TableHead>Region</TableHead>
+                      <TableHead>Total Issues</TableHead>
+                      <TableHead>Critical</TableHead>
+                      <TableHead>Resolution Rate</TableHead>
                     </TableRow>
-                  ) : (
-                    data.insights.mostAffectedRegions.map((region, i) => (
-                      <TableRow key={i}>
-                        <TableCell className="font-medium">{region.region}</TableCell>
-                        <TableCell>{region.issues}</TableCell>
-                        <TableCell>
-                          <Badge variant={region.critical > 0 ? 'destructive' : 'secondary'}>
-                            {region.critical}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <span className={getScoreColor(region.resolutionRate)}>
-                            {region.resolutionRate.toFixed(1)}%
-                          </span>
+                  </TableHeader>
+                  <TableBody>
+                    {data.insights.mostAffectedRegions.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                          No regional issues found
                         </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                    ) : (
+                      data.insights.mostAffectedRegions.map((region, i) => (
+                        <TableRow key={i}>
+                          <TableCell className="font-medium">{region.region}</TableCell>
+                          <TableCell>{region.issues}</TableCell>
+                          <TableCell>
+                            <Badge variant={region.critical > 0 ? 'destructive' : 'secondary'}>
+                              {region.critical}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <span className={getScoreColor(region.resolutionRate)}>
+                              {region.resolutionRate.toFixed(1)}%
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
-        <TabsContent value="recent" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent System Issues</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Priority</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Branch</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead>Resolved</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.recentIssues.length === 0 ? (
+        {activeTab === 'recent' && (
+          <div className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent System Issues</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                        No system issues found in this period
-                      </TableCell>
+                      <TableHead>Title</TableHead>
+                      <TableHead>Priority</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Branch</TableHead>
+                      <TableHead>Created</TableHead>
+                      <TableHead>Resolved</TableHead>
                     </TableRow>
-                  ) : (
-                    data.recentIssues.map((issue) => (
-                      <TableRow key={issue.id}>
-                        <TableCell className="font-medium max-w-[300px] truncate">
-                          {issue.title}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={getPriorityBadge(issue.priority)}>
-                            {issue.priority}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={getStatusBadge(issue.status)}>
-                            {issue.status.replace('_', ' ')}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{issue.branch || '-'}</TableCell>
-                        <TableCell className="text-sm text-gray-500">
-                          {formatDateTimeWITA(issue.createdAt)}
-                        </TableCell>
-                        <TableCell className="text-sm text-gray-500">
-                          {issue.resolvedAt ? formatDateTimeWITA(issue.resolvedAt) : (
-                            <span className="text-yellow-600">Not resolved</span>
-                          )}
+                  </TableHeader>
+                  <TableBody>
+                    {data.recentIssues.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                          No system issues found in this period
                         </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                    ) : (
+                      data.recentIssues.map((issue) => (
+                        <TableRow key={issue.id}>
+                          <TableCell className="font-medium max-w-[300px] truncate">
+                            {issue.title}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={getPriorityBadge(issue.priority)}>
+                              {issue.priority}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={getStatusBadge(issue.status)}>
+                              {issue.status.replace('_', ' ')}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{issue.branch || '-'}</TableCell>
+                          <TableCell className="text-sm text-gray-500">
+                            {formatDateTimeWITA(issue.createdAt)}
+                          </TableCell>
+                          <TableCell className="text-sm text-gray-500">
+                            {issue.resolvedAt ? formatDateTimeWITA(issue.resolvedAt) : (
+                              <span className="text-yellow-600">Not resolved</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

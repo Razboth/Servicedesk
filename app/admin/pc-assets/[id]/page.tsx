@@ -6,7 +6,6 @@ import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -112,6 +111,13 @@ const FORM_FACTOR_OPTIONS = [
   { value: 'WORKSTATION', label: 'Workstation' }
 ];
 
+const tabConfig = [
+  { id: 'details', label: 'Details', icon: Info },
+  { id: 'service-logs', label: 'Service Logs', icon: Wrench },
+  { id: 'hardening', label: 'Hardening', icon: Shield },
+  { id: 'qr-code', label: 'QR Code', icon: QrCode },
+];
+
 export default function PCAssetDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -124,6 +130,7 @@ export default function PCAssetDetailPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [osTypes, setOsTypes] = useState<any[]>([]);
   const [officeTypes, setOfficeTypes] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState('details');
 
   useEffect(() => {
     fetchAsset();
@@ -271,416 +278,423 @@ export default function PCAssetDetailPage() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="details" className="space-y-6">
-        <div className="overflow-x-auto -mx-1 px-1">
-          <TabsList className="inline-flex h-10 min-w-full sm:min-w-0 p-1 bg-muted/50 rounded-lg">
-            <TabsTrigger value="details" className="flex-shrink-0 flex items-center gap-2 text-xs sm:text-sm">
-              <Info className="h-4 w-4" />
-              Details
-            </TabsTrigger>
-            <TabsTrigger value="service-logs" className="flex-shrink-0 flex items-center gap-2 text-xs sm:text-sm">
-              <Wrench className="h-4 w-4" />
-              <span className="hidden sm:inline">Service Logs</span>
-              <span className="sm:hidden">Service</span>
-              {asset.serviceLogs.length > 0 && (
-                <Badge variant="secondary" className="ml-1">{asset.serviceLogs.length}</Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="hardening" className="flex-shrink-0 flex items-center gap-2 text-xs sm:text-sm">
-              <Shield className="h-4 w-4" />
-              Hardening
-              {asset.hardeningChecklists.length > 0 && (
-                <Badge variant="secondary" className="ml-1">{asset.hardeningChecklists.length}</Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="qr-code" className="flex-shrink-0 flex items-center gap-2 text-xs sm:text-sm">
-              <QrCode className="h-4 w-4" />
-              <span className="hidden sm:inline">QR Code</span>
-              <span className="sm:hidden">QR</span>
-            </TabsTrigger>
-          </TabsList>
+      <div className="space-y-6">
+        <div className="border-b mb-6">
+          <nav className="flex gap-6 overflow-x-auto" aria-label="Tabs">
+            {tabConfig.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              let badgeCount = 0;
+              if (tab.id === 'service-logs') badgeCount = asset.serviceLogs.length;
+              if (tab.id === 'hardening') badgeCount = asset.hardeningChecklists.length;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`
+                    flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors
+                    ${isActive
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+                    }
+                  `}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span className="hidden sm:inline">{tab.label}</span>
+                  <span className="sm:hidden">
+                    {tab.id === 'service-logs' ? 'Service' : tab.id === 'qr-code' ? 'QR' : tab.label}
+                  </span>
+                  {badgeCount > 0 && (
+                    <Badge variant="secondary" className="ml-1">{badgeCount}</Badge>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
         </div>
 
         {/* Details Tab */}
-        <TabsContent value="details">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Basic Info */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Basic Information</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="pcName">PC Name *</Label>
-                    <Input
-                      id="pcName"
-                      value={formData.pcName || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, pcName: e.target.value }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="assetTag">Asset Tag</Label>
-                    <Input
-                      id="assetTag"
-                      value={formData.assetTag || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, assetTag: e.target.value }))}
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="brand">Brand *</Label>
-                    <Input
-                      id="brand"
-                      value={formData.brand || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, brand: e.target.value }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="model">Model</Label>
-                    <Input
-                      id="model"
-                      value={formData.model || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, model: e.target.value }))}
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="serialNumber">Serial Number</Label>
-                    <Input
-                      id="serialNumber"
-                      value={formData.serialNumber || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, serialNumber: e.target.value }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="formFactor">Form Factor</Label>
-                    <Select
-                      value={formData.formFactor || ''}
-                      onValueChange={(value) => setFormData(prev => ({ ...prev, formFactor: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select form factor" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {FORM_FACTOR_OPTIONS.map(opt => (
-                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="status">Status</Label>
-                    <Select
-                      value={formData.status || ''}
-                      onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {STATUS_OPTIONS.map(opt => (
-                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Active</Label>
-                    <div className="flex items-center space-x-2 pt-2">
-                      <Switch
-                        checked={formData.isActive}
-                        onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isActive: checked }))}
+        {activeTab === 'details' && (
+          <div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Basic Info */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Basic Information</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="pcName">PC Name *</Label>
+                      <Input
+                        id="pcName"
+                        value={formData.pcName || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, pcName: e.target.value }))}
                       />
-                      <span className="text-sm text-gray-500">
-                        {formData.isActive ? 'Active' : 'Inactive'}
-                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="assetTag">Asset Tag</Label>
+                      <Input
+                        id="assetTag"
+                        value={formData.assetTag || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, assetTag: e.target.value }))}
+                      />
                     </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="brand">Brand *</Label>
+                      <Input
+                        id="brand"
+                        value={formData.brand || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, brand: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="model">Model</Label>
+                      <Input
+                        id="model"
+                        value={formData.model || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, model: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="serialNumber">Serial Number</Label>
+                      <Input
+                        id="serialNumber"
+                        value={formData.serialNumber || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, serialNumber: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="formFactor">Form Factor</Label>
+                      <Select
+                        value={formData.formFactor || ''}
+                        onValueChange={(value) => setFormData(prev => ({ ...prev, formFactor: value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select form factor" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {FORM_FACTOR_OPTIONS.map(opt => (
+                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="status">Status</Label>
+                      <Select
+                        value={formData.status || ''}
+                        onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {STATUS_OPTIONS.map(opt => (
+                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Active</Label>
+                      <div className="flex items-center space-x-2 pt-2">
+                        <Switch
+                          checked={formData.isActive}
+                          onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isActive: checked }))}
+                        />
+                        <span className="text-sm text-gray-500">
+                          {formData.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-            {/* Hardware */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Hardware Specifications</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="processor">Processor</Label>
-                  <Input
-                    id="processor"
-                    value={formData.processor || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, processor: e.target.value }))}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
+              {/* Hardware */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Hardware Specifications</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="ram">RAM (GB)</Label>
+                    <Label htmlFor="processor">Processor</Label>
                     <Input
-                      id="ram"
-                      type="number"
-                      value={formData.ram || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, ram: parseInt(e.target.value) || 0 }))}
+                      id="processor"
+                      value={formData.processor || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, processor: e.target.value }))}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="storageCapacity">Storage</Label>
-                    <Input
-                      id="storageCapacity"
-                      placeholder="e.g., 512GB SSD"
-                      value={formData.storageCapacity || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, storageCapacity: e.target.value }))}
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="ram">RAM (GB)</Label>
+                      <Input
+                        id="ram"
+                        type="number"
+                        value={formData.ram || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, ram: parseInt(e.target.value) || 0 }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="storageCapacity">Storage</Label>
+                      <Input
+                        id="storageCapacity"
+                        placeholder="e.g., 512GB SSD"
+                        value={formData.storageCapacity || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, storageCapacity: e.target.value }))}
+                      />
+                    </div>
                   </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="macAddress">MAC Address</Label>
-                    <Input
-                      id="macAddress"
-                      placeholder="XX:XX:XX:XX:XX:XX"
-                      value={formData.macAddress || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, macAddress: e.target.value }))}
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="macAddress">MAC Address</Label>
+                      <Input
+                        id="macAddress"
+                        placeholder="XX:XX:XX:XX:XX:XX"
+                        value={formData.macAddress || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, macAddress: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="ipAddress">IP Address</Label>
+                      <Input
+                        id="ipAddress"
+                        placeholder="xxx.xxx.xxx.xxx"
+                        value={formData.ipAddress || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, ipAddress: e.target.value }))}
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="ipAddress">IP Address</Label>
-                    <Input
-                      id="ipAddress"
-                      placeholder="xxx.xxx.xxx.xxx"
-                      value={formData.ipAddress || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, ipAddress: e.target.value }))}
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
 
-            {/* Location & Assignment */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Location & Assignment</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Branch *</Label>
-                  <BranchSelect
-                    branches={branches}
-                    value={formData.branchId || ''}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, branchId: value }))}
-                    placeholder="Select branch"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Assigned To</Label>
-                  <Select
-                    value={formData.assignedToId || 'unassigned'}
-                    onValueChange={(value) => setFormData(prev => ({
-                      ...prev,
-                      assignedToId: value === 'unassigned' ? null : value
-                    }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select user" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="unassigned">Unassigned</SelectItem>
-                      {users.map((user: any) => (
-                        <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="department">Department</Label>
-                  <Input
-                    id="department"
-                    value={formData.department || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, department: e.target.value }))}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Purchase & Warranty */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Purchase & Warranty</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+              {/* Location & Assignment */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Location & Assignment</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="purchaseDate">Purchase Date</Label>
+                    <Label>Branch *</Label>
+                    <BranchSelect
+                      branches={branches}
+                      value={formData.branchId || ''}
+                      onValueChange={(value) => setFormData(prev => ({ ...prev, branchId: value }))}
+                      placeholder="Select branch"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Assigned To</Label>
+                    <Select
+                      value={formData.assignedToId || 'unassigned'}
+                      onValueChange={(value) => setFormData(prev => ({
+                        ...prev,
+                        assignedToId: value === 'unassigned' ? null : value
+                      }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select user" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
+                        {users.map((user: any) => (
+                          <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="department">Department</Label>
                     <Input
-                      id="purchaseDate"
+                      id="department"
+                      value={formData.department || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, department: e.target.value }))}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Purchase & Warranty */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Purchase & Warranty</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="purchaseDate">Purchase Date</Label>
+                      <Input
+                        id="purchaseDate"
+                        type="date"
+                        value={formData.purchaseDate || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, purchaseDate: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="warrantyExpiry">Warranty Expiry</Label>
+                      <Input
+                        id="warrantyExpiry"
+                        type="date"
+                        value={formData.warrantyExpiry || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, warrantyExpiry: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="purchaseOrderNumber">Purchase Order Number</Label>
+                    <Input
+                      id="purchaseOrderNumber"
+                      value={formData.purchaseOrderNumber || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, purchaseOrderNumber: e.target.value }))}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Software */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Software</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Operating System</Label>
+                    <Select
+                      value={formData.operatingSystemId || 'none'}
+                      onValueChange={(value) => setFormData(prev => ({
+                        ...prev,
+                        operatingSystemId: value === 'none' ? null : value
+                      }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select OS" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {osTypes.map((os: any) => (
+                          <SelectItem key={os.id} value={os.id}>
+                            {os.name} {os.version}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Office Product</Label>
+                    <Select
+                      value={formData.officeProductId || 'none'}
+                      onValueChange={(value) => setFormData(prev => ({
+                        ...prev,
+                        officeProductId: value === 'none' ? null : value
+                      }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Office" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {officeTypes.map((office: any) => (
+                          <SelectItem key={office.id} value={office.id}>
+                            {office.name} {office.version}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Antivirus */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Security</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="antivirusName">Antivirus</Label>
+                      <Input
+                        id="antivirusName"
+                        value={formData.antivirusName || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, antivirusName: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="antivirusVersion">Version</Label>
+                      <Input
+                        id="antivirusVersion"
+                        value={formData.antivirusVersion || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, antivirusVersion: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="antivirusLicenseExpiry">License Expiry</Label>
+                    <Input
+                      id="antivirusLicenseExpiry"
                       type="date"
-                      value={formData.purchaseDate || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, purchaseDate: e.target.value }))}
+                      value={formData.antivirusLicenseExpiry || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, antivirusLicenseExpiry: e.target.value }))}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="warrantyExpiry">Warranty Expiry</Label>
-                    <Input
-                      id="warrantyExpiry"
-                      type="date"
-                      value={formData.warrantyExpiry || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, warrantyExpiry: e.target.value }))}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="purchaseOrderNumber">Purchase Order Number</Label>
-                  <Input
-                    id="purchaseOrderNumber"
-                    value={formData.purchaseOrderNumber || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, purchaseOrderNumber: e.target.value }))}
+                </CardContent>
+              </Card>
+
+              {/* Notes */}
+              <Card className="lg:col-span-2">
+                <CardHeader>
+                  <CardTitle>Notes</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Textarea
+                    placeholder="Additional notes..."
+                    value={formData.notes || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                    rows={4}
                   />
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
 
-            {/* Software */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Software</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Operating System</Label>
-                  <Select
-                    value={formData.operatingSystemId || 'none'}
-                    onValueChange={(value) => setFormData(prev => ({
-                      ...prev,
-                      operatingSystemId: value === 'none' ? null : value
-                    }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select OS" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      {osTypes.map((os: any) => (
-                        <SelectItem key={os.id} value={os.id}>
-                          {os.name} {os.version}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Office Product</Label>
-                  <Select
-                    value={formData.officeProductId || 'none'}
-                    onValueChange={(value) => setFormData(prev => ({
-                      ...prev,
-                      officeProductId: value === 'none' ? null : value
-                    }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Office" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      {officeTypes.map((office: any) => (
-                        <SelectItem key={office.id} value={office.id}>
-                          {office.name} {office.version}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Antivirus */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Security</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="antivirusName">Antivirus</Label>
-                    <Input
-                      id="antivirusName"
-                      value={formData.antivirusName || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, antivirusName: e.target.value }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="antivirusVersion">Version</Label>
-                    <Input
-                      id="antivirusVersion"
-                      value={formData.antivirusVersion || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, antivirusVersion: e.target.value }))}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="antivirusLicenseExpiry">License Expiry</Label>
-                  <Input
-                    id="antivirusLicenseExpiry"
-                    type="date"
-                    value={formData.antivirusLicenseExpiry || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, antivirusLicenseExpiry: e.target.value }))}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Notes */}
-            <Card className="lg:col-span-2">
-              <CardHeader>
-                <CardTitle>Notes</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Textarea
-                  placeholder="Additional notes..."
-                  value={formData.notes || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                  rows={4}
-                />
-              </CardContent>
-            </Card>
+            {/* Save Button */}
+            <div className="flex justify-end mt-6">
+              <Button onClick={handleSave} disabled={saving}>
+                <Save className="h-4 w-4 mr-2" />
+                {saving ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
           </div>
-
-          {/* Save Button */}
-          <div className="flex justify-end mt-6">
-            <Button onClick={handleSave} disabled={saving}>
-              <Save className="h-4 w-4 mr-2" />
-              {saving ? 'Saving...' : 'Save Changes'}
-            </Button>
-          </div>
-        </TabsContent>
+        )}
 
         {/* Service Logs Tab */}
-        <TabsContent value="service-logs">
+        {activeTab === 'service-logs' && (
           <ServiceLogsTab
             assetId={asset.id}
             assetName={asset.pcName}
             serviceLogs={asset.serviceLogs}
             onRefresh={fetchAsset}
           />
-        </TabsContent>
+        )}
 
         {/* Hardening Tab */}
-        <TabsContent value="hardening">
+        {activeTab === 'hardening' && (
           <HardeningTab
             assetId={asset.id}
             assetName={asset.pcName}
             hardeningChecklists={asset.hardeningChecklists}
             onRefresh={fetchAsset}
           />
-        </TabsContent>
+        )}
 
         {/* QR Code Tab */}
-        <TabsContent value="qr-code">
+        {activeTab === 'qr-code' && (
           <PCAssetQRTab
             asset={{
               id: asset.id,
@@ -690,8 +704,8 @@ export default function PCAssetDetailPage() {
               branch: asset.branch
             }}
           />
-        </TabsContent>
-      </Tabs>
+        )}
+      </div>
     </div>
   );
 }

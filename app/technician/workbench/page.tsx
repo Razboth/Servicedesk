@@ -9,7 +9,6 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TicketsDataTable } from '@/components/tickets/data-table/tickets-data-table'
 import { TicketCards } from '@/components/tickets/ticket-cards'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { PageHeader } from '@/components/ui/page-header'
 import { cn } from '@/lib/utils'
@@ -35,6 +34,11 @@ interface QuickStat {
   trend?: number
 }
 
+const tabConfig = [
+  { id: 'my-tickets', label: 'My Tickets', shortLabel: 'Mine', icon: User },
+  { id: 'available-tickets', label: 'Available Tickets', shortLabel: 'Available', icon: Inbox },
+]
+
 export default function TechnicianWorkbenchPage() {
   const { data: session } = useSession()
   const router = useRouter()
@@ -42,6 +46,7 @@ export default function TechnicianWorkbenchPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table')
+  const [activeTab, setActiveTab] = useState('my-tickets')
 
   useEffect(() => {
     loadQuickStats()
@@ -191,11 +196,9 @@ export default function TechnicianWorkbenchPage() {
                   onClick={() => {
                     // Navigate to appropriate view based on stat
                     if (stat.label === 'My Tickets') {
-                      const myTicketsTab = document.querySelector('[value="my-tickets"]') as HTMLElement;
-                      myTicketsTab?.click();
+                      setActiveTab('my-tickets');
                     } else if (stat.label === 'Available') {
-                      const availableTab = document.querySelector('[value="available-tickets"]') as HTMLElement;
-                      availableTab?.click();
+                      setActiveTab('available-tickets');
                     }
                   }}
                 >
@@ -244,35 +247,49 @@ export default function TechnicianWorkbenchPage() {
           {/* Tabs with Data Tables/Cards - ReUI Style */}
           <Card className="bg-card dark:bg-card border border-border rounded-xl shadow-sm">
             <CardContent className="p-6">
-              <Tabs defaultValue="my-tickets" className="w-full">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-                  <TabsList className="grid w-full sm:w-auto max-w-md grid-cols-2">
-                    <TabsTrigger value="my-tickets" className="flex items-center gap-1 sm:gap-2">
-                      <User className="h-4 w-4" />
-                      <span className="hidden sm:inline">My Tickets</span>
-                      <span className="sm:hidden">Mine</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="available-tickets" className="flex items-center gap-1 sm:gap-2">
-                      <Inbox className="h-4 w-4" />
-                      <span className="hidden sm:inline">Available Tickets</span>
-                      <span className="sm:hidden">Available</span>
-                    </TabsTrigger>
-                  </TabsList>
-
-                  {/* View Mode Toggle */}
-                  <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value as 'table' | 'cards')} className="shrink-0">
-                    <ToggleGroupItem value="table" aria-label="Table view" className="px-2 sm:px-3">
-                      <Table className="h-4 w-4 sm:mr-2" />
-                      <span className="hidden sm:inline">Table</span>
-                    </ToggleGroupItem>
-                    <ToggleGroupItem value="cards" aria-label="Cards view" className="px-2 sm:px-3">
-                      <LayoutGrid className="h-4 w-4 sm:mr-2" />
-                      <span className="hidden sm:inline">Cards</span>
-                    </ToggleGroupItem>
-                  </ToggleGroup>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+                {/* Underline Tabs Navigation */}
+                <div className="border-b w-full sm:w-auto">
+                  <nav className="flex gap-6 overflow-x-auto" aria-label="Tabs">
+                    {tabConfig.map((tab) => {
+                      const Icon = tab.icon;
+                      const isActive = activeTab === tab.id;
+                      return (
+                        <button
+                          key={tab.id}
+                          onClick={() => setActiveTab(tab.id)}
+                          className={`
+                            flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors
+                            ${isActive
+                              ? 'border-primary text-primary'
+                              : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+                            }
+                          `}
+                        >
+                          <Icon className="h-4 w-4" />
+                          <span className="hidden sm:inline">{tab.label}</span>
+                          <span className="sm:hidden">{tab.shortLabel}</span>
+                        </button>
+                      );
+                    })}
+                  </nav>
                 </div>
-                
-                <TabsContent value="my-tickets" className="mt-0">
+
+                {/* View Mode Toggle */}
+                <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value as 'table' | 'cards')} className="shrink-0">
+                  <ToggleGroupItem value="table" aria-label="Table view" className="px-2 sm:px-3">
+                    <Table className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Table</span>
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="cards" aria-label="Cards view" className="px-2 sm:px-3">
+                    <LayoutGrid className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Cards</span>
+                  </ToggleGroupItem>
+                </ToggleGroup>
+              </div>
+
+              {activeTab === 'my-tickets' && (
+                <div className="mt-0">
                   {viewMode === 'table' ? (
                     <TicketsDataTable
                       ticketFilter="my-tickets"
@@ -284,9 +301,11 @@ export default function TechnicianWorkbenchPage() {
                       ticketFilter="my-tickets"
                     />
                   )}
-                </TabsContent>
+                </div>
+              )}
 
-                <TabsContent value="available-tickets" className="mt-0">
+              {activeTab === 'available-tickets' && (
+                <div className="mt-0">
                   {viewMode === 'table' ? (
                     <TicketsDataTable
                       ticketFilter="available-tickets"
@@ -300,8 +319,8 @@ export default function TechnicianWorkbenchPage() {
                       showClaimButton={true}
                     />
                   )}
-                </TabsContent>
-              </Tabs>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDateTimeWITA } from '@/lib/export-utils';
@@ -13,7 +12,8 @@ import {
 } from 'recharts';
 import {
   Clock, AlertTriangle, CheckCircle, XCircle, Download,
-  TrendingDown, Target, Timer, Activity, FileText, AlertCircle
+  TrendingDown, Target, Timer, Activity, FileText, AlertCircle,
+  LayoutDashboard, Settings, ListOrdered, ShieldAlert, TrendingUp, Crosshair
 } from 'lucide-react';
 
 interface SlaBreachData {
@@ -91,7 +91,7 @@ interface SlaBreachData {
 
 const PRIORITY_COLORS = {
   'CRITICAL': '#dc2626',
-  'HIGH': '#ea580c', 
+  'HIGH': '#ea580c',
   'MEDIUM': '#d97706',
   'LOW': '#65a30d'
 };
@@ -103,10 +103,20 @@ const SEVERITY_COLORS = {
   'NONE': '#22c55e'
 };
 
+const tabConfig = [
+  { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+  { id: 'services', label: 'Services', icon: Settings },
+  { id: 'priority', label: 'Priority', icon: ListOrdered },
+  { id: 'breaches', label: 'Breaches', icon: ShieldAlert },
+  { id: 'trends', label: 'Trends', icon: TrendingUp },
+  { id: 'targets', label: 'Targets', icon: Crosshair },
+];
+
 export default function SlaBreachAnalysisPage() {
   const [data, setData] = useState<SlaBreachData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
     fetchData();
@@ -278,7 +288,7 @@ export default function SlaBreachAnalysisPage() {
     name: priority.priority,
     totalTickets: priority.totalTickets,
     breaches: priority.totalBreaches,
-    complianceRate: priority.totalTickets > 0 ? 
+    complianceRate: priority.totalTickets > 0 ?
       ((priority.totalTickets - priority.totalBreaches) / priority.totalTickets) * 100 : 100
   }));
 
@@ -400,138 +410,205 @@ export default function SlaBreachAnalysisPage() {
         </Card>
       </div>
 
-      <Tabs defaultValue="overview" className="w-full">
-        <div className="overflow-x-auto -mx-1 px-1">
-          <TabsList className="inline-flex h-10 min-w-full sm:min-w-0 p-1 bg-muted/50 rounded-lg">
-            <TabsTrigger value="overview" className="flex-shrink-0 text-xs sm:text-sm">Overview</TabsTrigger>
-            <TabsTrigger value="services" className="flex-shrink-0 text-xs sm:text-sm">Services</TabsTrigger>
-            <TabsTrigger value="priority" className="flex-shrink-0 text-xs sm:text-sm">Priority</TabsTrigger>
-            <TabsTrigger value="breaches" className="flex-shrink-0 text-xs sm:text-sm">Breaches</TabsTrigger>
-            <TabsTrigger value="trends" className="flex-shrink-0 text-xs sm:text-sm">Trends</TabsTrigger>
-            <TabsTrigger value="targets" className="flex-shrink-0 text-xs sm:text-sm">Targets</TabsTrigger>
-          </TabsList>
+      <div className="w-full">
+        <div className="border-b mb-6">
+          <nav className="flex gap-6 overflow-x-auto" aria-label="Tabs">
+            {tabConfig.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`
+                    flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors
+                    ${isActive
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+                    }
+                  `}
+                >
+                  <Icon className="h-4 w-4" />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </nav>
         </div>
 
-        <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Compliance Overview</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={complianceData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip 
-                      formatter={(value, name) => [
-                        name === 'compliance' ? `${value}%` : value,
-                        name === 'compliance' ? 'Compliance Rate' : 'Breaches'
-                      ]}
-                    />
-                    <Bar dataKey="compliance" fill="#22c55e" name="Compliance %" />
-                    <Bar dataKey="breaches" fill="#ef4444" name="Breaches" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
+        {activeTab === 'overview' && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Compliance Overview</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={complianceData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip
+                        formatter={(value, name) => [
+                          name === 'compliance' ? `${value}%` : value,
+                          name === 'compliance' ? 'Compliance Rate' : 'Breaches'
+                        ]}
+                      />
+                      <Bar dataKey="compliance" fill="#22c55e" name="Compliance %" />
+                      <Bar dataKey="breaches" fill="#ef4444" name="Breaches" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Breach Analysis by Priority</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={priorityBreachData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="totalTickets" fill="#f59e0b" name="Total Tickets" />
-                    <Bar dataKey="breaches" fill="#ef4444" name="Breaches" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Breach Analysis by Priority</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={priorityBreachData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="totalTickets" fill="#f59e0b" name="Total Tickets" />
+                      <Bar dataKey="breaches" fill="#ef4444" name="Breaches" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </div>
           </div>
-        </TabsContent>
+        )}
 
-        <TabsContent value="services" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Service SLA Performance</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={400}>
-                <BarChart data={serviceBreachData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="name" 
-                    angle={-45}
-                    textAnchor="end"
-                    height={100}
-                  />
-                  <YAxis yAxisId="left" />
-                  <YAxis yAxisId="right" orientation="right" />
-                  <Tooltip 
-                    labelFormatter={(label) => {
-                      const service = serviceBreachData.find(s => s.name === label);
-                      return service?.fullName || label;
-                    }}
-                  />
-                  <Bar yAxisId="left" dataKey="breaches" fill="#ef4444" name="Breaches" />
-                  <Bar yAxisId="right" dataKey="complianceRate" fill="#22c55e" name="Compliance %" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+        {activeTab === 'services' && (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Service SLA Performance</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={400}>
+                  <BarChart data={serviceBreachData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="name"
+                      angle={-45}
+                      textAnchor="end"
+                      height={100}
+                    />
+                    <YAxis yAxisId="left" />
+                    <YAxis yAxisId="right" orientation="right" />
+                    <Tooltip
+                      labelFormatter={(label) => {
+                        const service = serviceBreachData.find(s => s.name === label);
+                        return service?.fullName || label;
+                      }}
+                    />
+                    <Bar yAxisId="left" dataKey="breaches" fill="#ef4444" name="Breaches" />
+                    <Bar yAxisId="right" dataKey="complianceRate" fill="#22c55e" name="Compliance %" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
 
-          {/* Service Details */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Service SLA Details</h3>
+            {/* Service Details */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Service SLA Details</h3>
+              <div className="grid gap-4">
+                {data.serviceBreaches.slice(0, 10).map((service) => (
+                  <Card key={service.serviceName}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <h4 className="font-semibold">{service.serviceName}</h4>
+                          <p className="text-sm text-muted-foreground">{service.categoryName}</p>
+                          <Badge variant={service.overallComplianceRate >= 90 ? "default" : service.overallComplianceRate >= 80 ? "secondary" : "destructive"} className="mt-2">
+                            {service.overallComplianceRate.toFixed(1)}% Overall Compliance
+                          </Badge>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-2xl font-bold text-red-600">{service.totalBreaches}</div>
+                          <div className="text-xs text-muted-foreground">Total Breaches</div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+                        <div className="text-center">
+                          <div className="text-lg font-semibold">{service.totalTickets}</div>
+                          <div className="text-xs text-muted-foreground">Total Tickets</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-lg font-semibold text-red-600">{service.responseBreaches}</div>
+                          <div className="text-xs text-muted-foreground">Response Breaches</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-lg font-semibold text-red-600">{service.resolutionBreaches}</div>
+                          <div className="text-xs text-muted-foreground">Resolution Breaches</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-lg font-semibold text-blue-600">{service.responseComplianceRate.toFixed(1)}%</div>
+                          <div className="text-xs text-muted-foreground">Response SLA</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-lg font-semibold text-green-600">{service.resolutionComplianceRate.toFixed(1)}%</div>
+                          <div className="text-xs text-muted-foreground">Resolution SLA</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-lg font-semibold text-purple-600">{service.avgResolutionHours.toFixed(1)}h</div>
+                          <div className="text-xs text-muted-foreground">Avg Resolution</div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'priority' && (
+          <div className="space-y-6">
             <div className="grid gap-4">
-              {data.serviceBreaches.slice(0, 10).map((service) => (
-                <Card key={service.serviceName}>
+              {data.priorityBreaches.map((priority) => (
+                <Card key={priority.priority}>
                   <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h4 className="font-semibold">{service.serviceName}</h4>
-                        <p className="text-sm text-muted-foreground">{service.categoryName}</p>
-                        <Badge variant={service.overallComplianceRate >= 90 ? "default" : service.overallComplianceRate >= 80 ? "secondary" : "destructive"} className="mt-2">
-                          {service.overallComplianceRate.toFixed(1)}% Overall Compliance
-                        </Badge>
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className={`w-4 h-4 rounded-full`} style={{ backgroundColor: PRIORITY_COLORS[priority.priority as keyof typeof PRIORITY_COLORS] }}></div>
+                        <div>
+                          <h4 className="font-semibold">{priority.priority} Priority</h4>
+                          <Badge variant={getPriorityBadgeColor(priority.priority)}>
+                            {priority.priority}
+                          </Badge>
+                        </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-2xl font-bold text-red-600">{service.totalBreaches}</div>
-                        <div className="text-xs text-muted-foreground">Total Breaches</div>
+                        <div className="text-2xl font-bold">{priority.totalBreaches}</div>
+                        <div className="text-xs text-muted-foreground">Breaches</div>
                       </div>
                     </div>
-                    
-                    <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+
+                    <div className="grid grid-cols-4 gap-3 mt-4">
                       <div className="text-center">
-                        <div className="text-lg font-semibold">{service.totalTickets}</div>
-                        <div className="text-xs text-muted-foreground">Total Tickets</div>
+                        <div className="text-lg font-semibold">{priority.totalTickets}</div>
+                        <div className="text-xs text-muted-foreground">Total</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-lg font-semibold text-red-600">{service.responseBreaches}</div>
-                        <div className="text-xs text-muted-foreground">Response Breaches</div>
+                        <div className="text-lg font-semibold text-red-600">{priority.responseBreaches}</div>
+                        <div className="text-xs text-muted-foreground">Response</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-lg font-semibold text-red-600">{service.resolutionBreaches}</div>
-                        <div className="text-xs text-muted-foreground">Resolution Breaches</div>
+                        <div className="text-lg font-semibold text-red-600">{priority.resolutionBreaches}</div>
+                        <div className="text-xs text-muted-foreground">Resolution</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-lg font-semibold text-blue-600">{service.responseComplianceRate.toFixed(1)}%</div>
-                        <div className="text-xs text-muted-foreground">Response SLA</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-lg font-semibold text-green-600">{service.resolutionComplianceRate.toFixed(1)}%</div>
-                        <div className="text-xs text-muted-foreground">Resolution SLA</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-lg font-semibold text-purple-600">{service.avgResolutionHours.toFixed(1)}h</div>
-                        <div className="text-xs text-muted-foreground">Avg Resolution</div>
+                        <div className="text-lg font-semibold text-green-600">
+                          {priority.totalTickets > 0 ? (((priority.totalTickets - priority.totalBreaches) / priority.totalTickets) * 100).toFixed(1) : 100}%
+                        </div>
+                        <div className="text-xs text-muted-foreground">Compliance</div>
                       </div>
                     </div>
                   </CardContent>
@@ -539,207 +616,166 @@ export default function SlaBreachAnalysisPage() {
               ))}
             </div>
           </div>
-        </TabsContent>
+        )}
 
-        <TabsContent value="priority" className="space-y-6">
-          <div className="grid gap-4">
-            {data.priorityBreaches.map((priority) => (
-              <Card key={priority.priority}>
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className={`w-4 h-4 rounded-full`} style={{ backgroundColor: PRIORITY_COLORS[priority.priority as keyof typeof PRIORITY_COLORS] }}></div>
-                      <div>
-                        <h4 className="font-semibold">{priority.priority} Priority</h4>
-                        <Badge variant={getPriorityBadgeColor(priority.priority)}>
-                          {priority.priority}
-                        </Badge>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold">{priority.totalBreaches}</div>
-                      <div className="text-xs text-muted-foreground">Breaches</div>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-4 gap-3 mt-4">
-                    <div className="text-center">
-                      <div className="text-lg font-semibold">{priority.totalTickets}</div>
-                      <div className="text-xs text-muted-foreground">Total</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-lg font-semibold text-red-600">{priority.responseBreaches}</div>
-                      <div className="text-xs text-muted-foreground">Response</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-lg font-semibold text-red-600">{priority.resolutionBreaches}</div>
-                      <div className="text-xs text-muted-foreground">Resolution</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-lg font-semibold text-green-600">
-                        {priority.totalTickets > 0 ? (((priority.totalTickets - priority.totalBreaches) / priority.totalTickets) * 100).toFixed(1) : 100}%
-                      </div>
-                      <div className="text-xs text-muted-foreground">Compliance</div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
+        {activeTab === 'breaches' && (
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Current Active Breaches ({data.currentBreaches.length})</h3>
+                <Button onClick={() => exportToCsv('breaches')} variant="outline" className="flex items-center gap-2">
+                  <Download className="h-4 w-4" />
+                  Export Current Breaches
+                </Button>
+              </div>
 
-        <TabsContent value="breaches" className="space-y-6">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Current Active Breaches ({data.currentBreaches.length})</h3>
-              <Button onClick={() => exportToCsv('breaches')} variant="outline" className="flex items-center gap-2">
-                <Download className="h-4 w-4" />
-                Export Current Breaches
-              </Button>
+              {data.currentBreaches.length === 0 ? (
+                <Card>
+                  <CardContent className="p-8">
+                    <div className="text-center">
+                      <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold">No Active SLA Breaches</h3>
+                      <p className="text-muted-foreground">All tickets are within SLA compliance.</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid gap-4">
+                  {data.currentBreaches.map((breach) => (
+                    <Card key={breach.id} className={`${breach.breachSeverity === 'SEVERE' ? 'border-red-500 bg-red-50' : breach.breachSeverity === 'MODERATE' ? 'border-orange-400 bg-orange-50' : 'border-yellow-400 bg-yellow-50'}`}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <h4 className="font-semibold">{breach.ticketNumber}</h4>
+                              <Badge variant={getPriorityBadgeColor(breach.priority)}>
+                                {breach.priority}
+                              </Badge>
+                              <Badge variant={getSeverityBadgeColor(breach.breachSeverity)}>
+                                {breach.breachSeverity}
+                              </Badge>
+                            </div>
+                            <p className="text-sm font-medium mb-1">{breach.title}</p>
+                            <p className="text-xs text-muted-foreground mb-2">{breach.serviceName}</p>
+
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                              <div>
+                                <span className="font-medium">Created By:</span>
+                                <p className="text-muted-foreground">{breach.createdBy}</p>
+                              </div>
+                              <div>
+                                <span className="font-medium">Assigned To:</span>
+                                <p className="text-muted-foreground">{breach.assignedTo}</p>
+                              </div>
+                              <div>
+                                <span className="font-medium">Branch:</span>
+                                <p className="text-muted-foreground">{breach.branchName}</p>
+                              </div>
+                              <div>
+                                <span className="font-medium">Status:</span>
+                                <p className="text-muted-foreground">{breach.status}</p>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3 text-xs">
+                              <div className={breach.responseBreached ? 'text-red-600' : 'text-green-600'}>
+                                <span className="font-medium">Response SLA:</span>
+                                <p>{breach.actualResponseHours.toFixed(1)}h / {breach.responseSlaHours}h</p>
+                              </div>
+                              <div className={breach.resolutionBreached ? 'text-red-600' : 'text-blue-600'}>
+                                <span className="font-medium">Resolution SLA:</span>
+                                <p>{breach.actualResolutionHours.toFixed(1)}h / {breach.resolutionSlaHours}h</p>
+                              </div>
+                              <div>
+                                <span className="font-medium">Created:</span>
+                                <p className="text-muted-foreground">{new Date(breach.createdAt).toLocaleDateString()}</p>
+                              </div>
+                              <div>
+                                <span className="font-medium">Age:</span>
+                                <p className="text-muted-foreground">{breach.daysSinceCreated} days</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="text-right">
+                            <div className="text-2xl font-bold text-red-600">{breach.daysSinceCreated}</div>
+                            <div className="text-xs text-muted-foreground">Days Old</div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </div>
-            
-            {data.currentBreaches.length === 0 ? (
-              <Card>
-                <CardContent className="p-8">
-                  <div className="text-center">
-                    <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold">No Active SLA Breaches</h3>
-                    <p className="text-muted-foreground">All tickets are within SLA compliance.</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid gap-4">
-                {data.currentBreaches.map((breach) => (
-                  <Card key={breach.id} className={`${breach.breachSeverity === 'SEVERE' ? 'border-red-500 bg-red-50' : breach.breachSeverity === 'MODERATE' ? 'border-orange-400 bg-orange-50' : 'border-yellow-400 bg-yellow-50'}`}>
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <h4 className="font-semibold">{breach.ticketNumber}</h4>
-                            <Badge variant={getPriorityBadgeColor(breach.priority)}>
-                              {breach.priority}
-                            </Badge>
-                            <Badge variant={getSeverityBadgeColor(breach.breachSeverity)}>
-                              {breach.breachSeverity}
-                            </Badge>
-                          </div>
-                          <p className="text-sm font-medium mb-1">{breach.title}</p>
-                          <p className="text-xs text-muted-foreground mb-2">{breach.serviceName}</p>
-                          
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-                            <div>
-                              <span className="font-medium">Created By:</span>
-                              <p className="text-muted-foreground">{breach.createdBy}</p>
-                            </div>
-                            <div>
-                              <span className="font-medium">Assigned To:</span>
-                              <p className="text-muted-foreground">{breach.assignedTo}</p>
-                            </div>
-                            <div>
-                              <span className="font-medium">Branch:</span>
-                              <p className="text-muted-foreground">{breach.branchName}</p>
-                            </div>
-                            <div>
-                              <span className="font-medium">Status:</span>
-                              <p className="text-muted-foreground">{breach.status}</p>
-                            </div>
-                          </div>
-                          
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3 text-xs">
-                            <div className={breach.responseBreached ? 'text-red-600' : 'text-green-600'}>
-                              <span className="font-medium">Response SLA:</span>
-                              <p>{breach.actualResponseHours.toFixed(1)}h / {breach.responseSlaHours}h</p>
-                            </div>
-                            <div className={breach.resolutionBreached ? 'text-red-600' : 'text-blue-600'}>
-                              <span className="font-medium">Resolution SLA:</span>
-                              <p>{breach.actualResolutionHours.toFixed(1)}h / {breach.resolutionSlaHours}h</p>
-                            </div>
-                            <div>
-                              <span className="font-medium">Created:</span>
-                              <p className="text-muted-foreground">{new Date(breach.createdAt).toLocaleDateString()}</p>
-                            </div>
-                            <div>
-                              <span className="font-medium">Age:</span>
-                              <p className="text-muted-foreground">{breach.daysSinceCreated} days</p>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="text-right">
-                          <div className="text-2xl font-bold text-red-600">{breach.daysSinceCreated}</div>
-                          <div className="text-xs text-muted-foreground">Days Old</div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
           </div>
-        </TabsContent>
+        )}
 
-        <TabsContent value="trends" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>SLA Compliance Trend (Last 6 Months)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={400}>
-                <LineChart data={data.monthlyTrend}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis yAxisId="left" />
-                  <YAxis yAxisId="right" orientation="right" />
-                  <Tooltip />
-                  <Line yAxisId="left" type="monotone" dataKey="totalTickets" stroke="#f59e0b" name="Total Tickets" />
-                  <Line yAxisId="left" type="monotone" dataKey="breaches" stroke="#ef4444" name="Breaches" />
-                  <Line yAxisId="right" type="monotone" dataKey="complianceRate" stroke="#22c55e" name="Compliance %" />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </TabsContent>
+        {activeTab === 'trends' && (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>SLA Compliance Trend (Last 6 Months)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={400}>
+                  <LineChart data={data.monthlyTrend}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis yAxisId="left" />
+                    <YAxis yAxisId="right" orientation="right" />
+                    <Tooltip />
+                    <Line yAxisId="left" type="monotone" dataKey="totalTickets" stroke="#f59e0b" name="Total Tickets" />
+                    <Line yAxisId="left" type="monotone" dataKey="breaches" stroke="#ef4444" name="Breaches" />
+                    <Line yAxisId="right" type="monotone" dataKey="complianceRate" stroke="#22c55e" name="Compliance %" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
-        <TabsContent value="targets" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>SLA Target Matrix</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4">
-                {Object.entries(data.slaTargets).map(([priority, targets]) => (
-                  <Card key={priority}>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <Badge variant={getPriorityBadgeColor(priority)} className="text-sm">
-                            {priority}
-                          </Badge>
-                          <div>
-                            <h4 className="font-semibold">{priority} Priority Targets</h4>
-                            <p className="text-sm text-muted-foreground">Standard SLA expectations</p>
+        {activeTab === 'targets' && (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>SLA Target Matrix</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4">
+                  {Object.entries(data.slaTargets).map(([priority, targets]) => (
+                    <Card key={priority}>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Badge variant={getPriorityBadgeColor(priority)} className="text-sm">
+                              {priority}
+                            </Badge>
+                            <div>
+                              <h4 className="font-semibold">{priority} Priority Targets</h4>
+                              <p className="text-sm text-muted-foreground">Standard SLA expectations</p>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-6 text-center">
+                            <div>
+                              <div className="text-2xl font-bold text-blue-600">{targets.response}h</div>
+                              <div className="text-xs text-muted-foreground">Response SLA</div>
+                            </div>
+                            <div>
+                              <div className="text-2xl font-bold text-green-600">{targets.resolution}h</div>
+                              <div className="text-xs text-muted-foreground">Resolution SLA</div>
+                            </div>
                           </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-6 text-center">
-                          <div>
-                            <div className="text-2xl font-bold text-blue-600">{targets.response}h</div>
-                            <div className="text-xs text-muted-foreground">Response SLA</div>
-                          </div>
-                          <div>
-                            <div className="text-2xl font-bold text-green-600">{targets.resolution}h</div>
-                            <div className="text-xs text-muted-foreground">Resolution SLA</div>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -5,12 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Trash2, ArrowUp, ArrowDown, Settings, Link } from 'lucide-react';
+import { Plus, Trash2, ArrowUp, ArrowDown, Settings, Link, FileText, List, Layers, Eraser } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface FieldTemplate {
@@ -62,6 +61,13 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   onUpdate: () => void;
 }
+
+const mainTabConfig = [
+  { id: 'templates', label: 'Active Fields', icon: FileText },
+  { id: 'custom', label: 'Custom Fields', icon: List },
+  { id: 'all', label: 'All Fields', icon: Layers },
+  { id: 'cleanup', label: 'Cleanup', icon: Eraser },
+];
 
 export function ServiceFieldTemplatesDialog({
   service,
@@ -193,16 +199,16 @@ export function ServiceFieldTemplatesDialog({
   const handleMoveTemplate = (index: number, direction: 'up' | 'down') => {
     const newTemplates = [...serviceFieldTemplates];
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    
+
     if (targetIndex >= 0 && targetIndex < newTemplates.length) {
       [newTemplates[index], newTemplates[targetIndex]] = [newTemplates[targetIndex], newTemplates[index]];
-      
+
       // Update order values and save
       const updates = newTemplates.map((template, i) => ({
         id: template.id,
         order: i
       }));
-      
+
       setServiceFieldTemplates(newTemplates);
       handleUpdateTemplates(updates);
     }
@@ -227,18 +233,18 @@ export function ServiceFieldTemplatesDialog({
   const handleMoveCustomField = async (index: number, direction: 'up' | 'down') => {
     const newFields = [...customFields];
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    
+
     if (targetIndex >= 0 && targetIndex < newFields.length) {
       [newFields[index], newFields[targetIndex]] = [newFields[targetIndex], newFields[index]];
-      
+
       // Update order values
       const updatedFields = newFields.map((field, i) => ({
         ...field,
         order: i
       }));
-      
+
       setCustomFields(updatedFields);
-      
+
       // Save to backend
       try {
         const response = await fetch(`/api/admin/services/${serviceId}/fields`, {
@@ -407,262 +413,64 @@ export function ServiceFieldTemplatesDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="templates">Active Fields</TabsTrigger>
-            <TabsTrigger value="custom">Custom Fields</TabsTrigger>
-            <TabsTrigger value="all">All Fields</TabsTrigger>
-            <TabsTrigger value="cleanup" className="text-red-600">🧹 Cleanup</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="templates" className="space-y-4">
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-sm font-medium mb-2">Active Fields</h3>
-                {serviceFieldTemplates.length === 0 && customFields.length === 0 ? (
-                  <Card>
-                    <CardContent className="text-center py-6">
-                      <p className="text-gray-500">No fields configured yet</p>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <div className="space-y-2">
-                    {/* Custom Fields */}
-                    {customFields.map((field, index) => (
-                      <Card key={`field-${field.id}`}>
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800">📝 Direct Field</Badge>
-                                <Badge variant="outline">{field.type}</Badge>
-                                <span className="font-medium">{field.label}</span>
-                                <Badge variant={field.isRequired ? "destructive" : "secondary"} className="text-xs">
-                                  {field.isRequired ? 'Required' : 'Optional'}
-                                </Badge>
-                                <Badge variant={field.isUserVisible ? "default" : "secondary"} className="text-xs">
-                                  {field.isUserVisible ? 'User Visible' : 'Technician Only'}
-                                </Badge>
-                              </div>
-                              {field.helpText && (
-                                <p className="text-sm text-gray-600">{field.helpText}</p>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleMoveCustomField(index, 'up')}
-                                disabled={index === 0}
-                              >
-                                <ArrowUp className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleMoveCustomField(index, 'down')}
-                                disabled={index === customFields.length - 1}
-                              >
-                                <ArrowDown className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleEditCustomField(field)}
-                              >
-                                <Settings className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleDeleteCustomField(field.id!)}
-                                className="text-red-600 hover:text-red-700"
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                    
-                    {/* Field Templates */}
-                    {serviceFieldTemplates.map((template, index) => (
-                      <Card key={template.id}>
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <Badge variant="default" className="text-xs bg-purple-100 text-purple-800">📋 Template Field</Badge>
-                                <Badge variant="outline">{template.fieldTemplate.type}</Badge>
-                                <span className="font-medium">{template.fieldTemplate.label}</span>
-                                <Badge variant={template.isRequired ? "destructive" : "secondary"} className="text-xs">
-                                  {template.isRequired ? 'Required' : 'Optional'}
-                                </Badge>
-                                <Badge variant={template.isUserVisible ? "default" : "secondary"} className="text-xs">
-                                  {template.isUserVisible ? 'User Visible' : 'Technician Only'}
-                                </Badge>
-                              </div>
-                              {template.fieldTemplate.description && (
-                                <p className="text-sm text-gray-600">{template.fieldTemplate.description}</p>
-                              )}
-                              <div className="flex items-center gap-4 mt-2">
-                                <div className="flex items-center gap-2">
-                                  <Switch
-                                    id={`visible-${template.id}`}
-                                    checked={template.isUserVisible}
-                                    onCheckedChange={() => handleToggleVisibility(template)}
-                                  />
-                                  <Label htmlFor={`visible-${template.id}`} className="text-xs">
-                                    User Visible
-                                  </Label>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Switch
-                                    id={`required-${template.id}`}
-                                    checked={template.isRequired ?? template.fieldTemplate.isRequired}
-                                    onCheckedChange={() => handleToggleRequired(template)}
-                                  />
-                                  <Label htmlFor={`required-${template.id}`} className="text-xs">
-                                    Required
-                                  </Label>
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleMoveTemplate(index, 'up')}
-                                disabled={index === 0}
-                              >
-                                <ArrowUp className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleMoveTemplate(index, 'down')}
-                                disabled={index === serviceFieldTemplates.length - 1}
-                              >
-                                <ArrowDown className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleRemoveTemplate(template.fieldTemplateId)}
-                                className="text-red-600 hover:text-red-700"
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <h3 className="text-sm font-medium mb-2">Available Templates</h3>
-                <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
-                  <TabsList className="h-auto flex-wrap">
-                    {categories.map(cat => (
-                      <TabsTrigger key={cat} value={cat} className="text-xs">
-                        {cat === 'all' ? 'All' : cat}
-                      </TabsTrigger>
-                    ))}
-                  </TabsList>
-                  <TabsContent value={selectedCategory} className="mt-2">
-                    {filteredAvailableTemplates.length === 0 ? (
-                      <Card>
-                        <CardContent className="text-center py-4">
-                          <p className="text-gray-500 text-sm">No available templates</p>
-                        </CardContent>
-                      </Card>
-                    ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                        {filteredAvailableTemplates.map((template) => (
-                          <Card key={template.id} className="hover:shadow-md transition-shadow">
-                            <CardContent className="p-3">
-                              <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <Badge variant="outline" className="text-xs">{template.type}</Badge>
-                                    <span className="text-sm font-medium">{template.label}</span>
-                                  </div>
-                                  {template.description && (
-                                    <p className="text-xs text-gray-600">{template.description}</p>
-                                  )}
-                                </div>
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleAddTemplate(template.id)}
-                                >
-                                  <Plus className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    )}
-                  </TabsContent>
-                </Tabs>
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="custom" className="space-y-4">
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="text-sm font-medium">Custom Fields</h3>
-                <Button
-                  size="sm"
-                  onClick={() => toast.info('Add custom field functionality coming soon')}
+        <div className="border-b mb-6">
+          <nav className="flex gap-6 overflow-x-auto" aria-label="Tabs">
+            {mainTabConfig.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`
+                    flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors
+                    ${isActive
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+                    }
+                    ${tab.id === 'cleanup' ? 'text-red-600' : ''}
+                  `}
                 >
-                  <Plus className="h-3 w-3 mr-1" />
-                  Add Custom Field
-                </Button>
-              </div>
-              
-              {customFields.length === 0 ? (
+                  <Icon className="h-4 w-4" />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+
+        {activeTab === 'templates' && (
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-sm font-medium mb-2">Active Fields</h3>
+              {serviceFieldTemplates.length === 0 && customFields.length === 0 ? (
                 <Card>
                   <CardContent className="text-center py-6">
-                    <p className="text-gray-500">No custom fields created yet</p>
-                    <p className="text-sm text-gray-400 mt-2">
-                      Custom fields are specific to this service only. For reusable fields, use field templates.
-                    </p>
+                    <p className="text-gray-500">No fields configured yet</p>
                   </CardContent>
                 </Card>
               ) : (
                 <div className="space-y-2">
+                  {/* Custom Fields */}
                   {customFields.map((field, index) => (
-                    <Card key={field.id}>
+                    <Card key={`field-${field.id}`}>
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
+                              <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800">Direct Field</Badge>
                               <Badge variant="outline">{field.type}</Badge>
                               <span className="font-medium">{field.label}</span>
-                              <span className="text-sm text-gray-500">({field.name})</span>
+                              <Badge variant={field.isRequired ? "destructive" : "secondary"} className="text-xs">
+                                {field.isRequired ? 'Required' : 'Optional'}
+                              </Badge>
+                              <Badge variant={field.isUserVisible ? "default" : "secondary"} className="text-xs">
+                                {field.isUserVisible ? 'User Visible' : 'Technician Only'}
+                              </Badge>
                             </div>
                             {field.helpText && (
-                              <p className="text-sm text-gray-600 mt-1">{field.helpText}</p>
+                              <p className="text-sm text-gray-600">{field.helpText}</p>
                             )}
-                            <div className="flex items-center gap-4 mt-2 text-sm">
-                              <span className={field.isRequired ? "text-red-600" : "text-gray-500"}>
-                                {field.isRequired ? "Required" : "Optional"}
-                              </span>
-                              <span className={field.isUserVisible ? "text-green-600" : "text-orange-600"}>
-                                {field.isUserVisible ? "User Visible" : "Technician Only"}
-                              </span>
-                              {field.defaultValue && (
-                                <span className="text-gray-500">
-                                  Default: {field.defaultValue}
-                                </span>
-                              )}
-                            </div>
                           </div>
                           <div className="flex items-center gap-1">
                             <Button
@@ -701,69 +509,135 @@ export function ServiceFieldTemplatesDialog({
                       </CardContent>
                     </Card>
                   ))}
+
+                  {/* Field Templates */}
+                  {serviceFieldTemplates.map((template, index) => (
+                    <Card key={template.id}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Badge variant="default" className="text-xs bg-purple-100 text-purple-800">Template Field</Badge>
+                              <Badge variant="outline">{template.fieldTemplate.type}</Badge>
+                              <span className="font-medium">{template.fieldTemplate.label}</span>
+                              <Badge variant={template.isRequired ? "destructive" : "secondary"} className="text-xs">
+                                {template.isRequired ? 'Required' : 'Optional'}
+                              </Badge>
+                              <Badge variant={template.isUserVisible ? "default" : "secondary"} className="text-xs">
+                                {template.isUserVisible ? 'User Visible' : 'Technician Only'}
+                              </Badge>
+                            </div>
+                            {template.fieldTemplate.description && (
+                              <p className="text-sm text-gray-600">{template.fieldTemplate.description}</p>
+                            )}
+                            <div className="flex items-center gap-4 mt-2">
+                              <div className="flex items-center gap-2">
+                                <Switch
+                                  id={`visible-${template.id}`}
+                                  checked={template.isUserVisible}
+                                  onCheckedChange={() => handleToggleVisibility(template)}
+                                />
+                                <Label htmlFor={`visible-${template.id}`} className="text-xs">
+                                  User Visible
+                                </Label>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Switch
+                                  id={`required-${template.id}`}
+                                  checked={template.isRequired ?? template.fieldTemplate.isRequired}
+                                  onCheckedChange={() => handleToggleRequired(template)}
+                                />
+                                <Label htmlFor={`required-${template.id}`} className="text-xs">
+                                  Required
+                                </Label>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleMoveTemplate(index, 'up')}
+                              disabled={index === 0}
+                            >
+                              <ArrowUp className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleMoveTemplate(index, 'down')}
+                              disabled={index === serviceFieldTemplates.length - 1}
+                            >
+                              <ArrowDown className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleRemoveTemplate(template.fieldTemplateId)}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
               )}
             </div>
-          </TabsContent>
 
-          <TabsContent value="all">
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="text-sm font-medium">
-                  All Fields ({serviceFieldTemplates.length + customFields.length} total)
-                </h3>
-                <div className="text-sm text-gray-600">
-                  {serviceFieldTemplates.length} templates, {customFields.length} custom
-                </div>
+            <div>
+              <h3 className="text-sm font-medium mb-2">Available Templates</h3>
+              <div className="border-b mb-4">
+                <nav className="flex gap-4 overflow-x-auto" aria-label="Category Tabs">
+                  {categories.map((cat) => {
+                    const isActive = selectedCategory === cat;
+                    return (
+                      <button
+                        key={cat}
+                        onClick={() => setSelectedCategory(cat)}
+                        className={`
+                          py-2 px-1 border-b-2 font-medium text-xs whitespace-nowrap transition-colors
+                          ${isActive
+                            ? 'border-primary text-primary'
+                            : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+                          }
+                        `}
+                      >
+                        {cat === 'all' ? 'All' : cat}
+                      </button>
+                    );
+                  })}
+                </nav>
               </div>
-              
-              {serviceFieldTemplates.length === 0 && customFields.length === 0 ? (
+              {filteredAvailableTemplates.length === 0 ? (
                 <Card>
-                  <CardContent className="text-center py-6">
-                    <p className="text-gray-500">No fields configured</p>
+                  <CardContent className="text-center py-4">
+                    <p className="text-gray-500 text-sm">No available templates</p>
                   </CardContent>
                 </Card>
               ) : (
-                <div className="space-y-2">
-                  {/* Custom Fields */}
-                  {customFields.map((field) => (
-                    <Card key={`all-field-${field.id}`}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {filteredAvailableTemplates.map((template) => (
+                    <Card key={template.id} className="hover:shadow-md transition-shadow">
                       <CardContent className="p-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800">📝 Direct</Badge>
-                            <Badge variant="outline" className="text-xs">{field.type}</Badge>
-                            <span className="text-sm font-medium">{field.label}</span>
-                            {field.isRequired && (
-                              <Badge variant="destructive" className="text-xs">Required</Badge>
-                            )}
-                            {!field.isUserVisible && (
-                              <Badge variant="secondary" className="text-xs">Technician Only</Badge>
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Badge variant="outline" className="text-xs">{template.type}</Badge>
+                              <span className="text-sm font-medium">{template.label}</span>
+                            </div>
+                            {template.description && (
+                              <p className="text-xs text-gray-600">{template.description}</p>
                             )}
                           </div>
-                          <span className="text-xs text-gray-500">Order: {field.order}</span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                  
-                  {/* Field Templates */}
-                  {serviceFieldTemplates.map((template) => (
-                    <Card key={`all-template-${template.id}`}>
-                      <CardContent className="p-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="default" className="text-xs bg-purple-100 text-purple-800">📋 Template</Badge>
-                            <Badge variant="outline" className="text-xs">{template.fieldTemplate.type}</Badge>
-                            <span className="text-sm font-medium">{template.fieldTemplate.label}</span>
-                            {(template.isRequired ?? template.fieldTemplate.isRequired) && (
-                              <Badge variant="destructive" className="text-xs">Required</Badge>
-                            )}
-                            {!template.isUserVisible && (
-                              <Badge variant="secondary" className="text-xs">Technician Only</Badge>
-                            )}
-                          </div>
-                          <span className="text-xs text-gray-500">Order: {template.order}</span>
+                          <Button
+                            size="sm"
+                            onClick={() => handleAddTemplate(template.id)}
+                          >
+                            <Plus className="h-3 w-3" />
+                          </Button>
                         </div>
                       </CardContent>
                     </Card>
@@ -771,172 +645,332 @@ export function ServiceFieldTemplatesDialog({
                 </div>
               )}
             </div>
-          </TabsContent>
+          </div>
+        )}
 
-          <TabsContent value="cleanup">
-            <div className="space-y-6">
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <h3 className="text-lg font-semibold text-yellow-800 mb-2">⚠️ Field Cleanup Tool</h3>
-                <p className="text-yellow-700 text-sm mb-4">
-                  This service has <strong>TWO TYPES</strong> of custom fields that might be causing confusion:
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                  <div className="bg-white p-3 rounded border">
-                    <h4 className="font-medium text-blue-800">📝 Direct Custom Fields</h4>
-                    <p className="text-gray-600">Fields created directly for this service</p>
-                    <p className="text-sm text-gray-500">Count: {customFields.length}</p>
-                  </div>
-                  <div className="bg-white p-3 rounded border">
-                    <h4 className="font-medium text-purple-800">📋 Field Templates</h4>
-                    <p className="text-gray-600">Reusable field templates linked to this service</p>
-                    <p className="text-sm text-gray-500">Count: {serviceFieldTemplates.length}</p>
-                  </div>
-                </div>
-                <p className="text-yellow-700 text-sm mt-3">
-                  <strong>Problem:</strong> When you delete fields through the normal UI, only one type gets removed,
-                  so fields from the other system "come back" and appear to regenerate.
-                </p>
-              </div>
+        {activeTab === 'custom' && (
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-sm font-medium">Custom Fields</h3>
+              <Button
+                size="sm"
+                onClick={() => toast.info('Add custom field functionality coming soon')}
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Add Custom Field
+              </Button>
+            </div>
 
-              {/* Cleanup Preview */}
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <h4 className="text-md font-medium">Cleanup Preview</h4>
-                  <Button
-                    variant="outline"
-                    onClick={handleCleanupPreview}
-                    disabled={cleanupLoading}
-                  >
-                    {cleanupLoading ? 'Loading...' : 'Preview Cleanup'}
-                  </Button>
-                </div>
-
-                {cleanupPreview && (
-                  <div className="bg-gray-50 border rounded-lg p-4">
-                    <h5 className="font-medium mb-3">Service: {cleanupPreview.service.name}</h5>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                      <div className="bg-white p-3 rounded border">
-                        <div className="text-lg font-bold text-blue-600">
-                          {cleanupPreview.currentFields.counts.serviceFields}
-                        </div>
-                        <div className="text-sm text-gray-600">Direct Custom Fields</div>
-                      </div>
-                      <div className="bg-white p-3 rounded border">
-                        <div className="text-lg font-bold text-purple-600">
-                          {cleanupPreview.currentFields.counts.serviceFieldTemplates}
-                        </div>
-                        <div className="text-sm text-gray-600">Field Templates</div>
-                      </div>
-                      <div className="bg-white p-3 rounded border">
-                        <div className="text-lg font-bold text-gray-700">
-                          {cleanupPreview.currentFields.counts.total}
-                        </div>
-                        <div className="text-sm text-gray-600">Total Fields</div>
-                      </div>
-                    </div>
-
-                    {cleanupPreview.riskAssessment.hasTicketData && (
-                      <div className="bg-red-50 border border-red-200 rounded p-3 mb-4">
-                        <p className="text-red-800 text-sm">
-                          <strong>⚠️ Warning:</strong> This service has {cleanupPreview.riskAssessment.affectedTicketFieldValues}
-                          ticket field values that may be affected by cleanup.
-                        </p>
-                        <p className="text-red-700 text-xs mt-1">
-                          Recommendation: Use the command-line cleanup script for services with ticket data.
-                        </p>
-                      </div>
-                    )}
-
-                    <div className="text-sm text-gray-600">
-                      <strong>Recommendation:</strong> {cleanupPreview.riskAssessment.recommendation}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Cleanup Actions */}
-              <div className="space-y-4">
-                <h4 className="text-md font-medium">Cleanup Actions</h4>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm">Remove All Fields</CardTitle>
-                      <CardDescription className="text-xs">
-                        Removes both direct custom fields AND field templates
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleCleanupFields('all')}
-                        disabled={cleanupLoading}
-                        className="w-full"
-                      >
-                        🧹 Clean All
-                      </Button>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm">Remove Direct Fields Only</CardTitle>
-                      <CardDescription className="text-xs">
-                        Keeps field templates, removes direct custom fields
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleCleanupFields('fields')}
-                        disabled={cleanupLoading || customFields.length === 0}
-                        className="w-full"
-                      >
-                        📝 Clean Direct Fields
-                      </Button>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm">Remove Templates Only</CardTitle>
-                      <CardDescription className="text-xs">
-                        Keeps direct fields, removes field template links
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleCleanupFields('templates')}
-                        disabled={cleanupLoading || serviceFieldTemplates.length === 0}
-                        className="w-full"
-                      >
-                        📋 Clean Templates
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h5 className="font-medium text-blue-800 mb-2">💡 Alternative: Command Line Tool</h5>
-                  <p className="text-blue-700 text-sm mb-2">
-                    For services with existing ticket data, use the command-line cleanup tool:
+            {customFields.length === 0 ? (
+              <Card>
+                <CardContent className="text-center py-6">
+                  <p className="text-gray-500">No custom fields created yet</p>
+                  <p className="text-sm text-gray-400 mt-2">
+                    Custom fields are specific to this service only. For reusable fields, use field templates.
                   </p>
-                  <code className="text-xs bg-blue-100 p-2 rounded block">
-                    npx tsx scripts/cleanup-service-fields.ts --service-name "{serviceName}" --dry-run
-                  </code>
-                  <p className="text-blue-600 text-xs mt-2">
-                    Remove --dry-run flag to execute actual cleanup
-                  </p>
-                </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-2">
+                {customFields.map((field, index) => (
+                  <Card key={field.id}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Badge variant="outline">{field.type}</Badge>
+                            <span className="font-medium">{field.label}</span>
+                            <span className="text-sm text-gray-500">({field.name})</span>
+                          </div>
+                          {field.helpText && (
+                            <p className="text-sm text-gray-600 mt-1">{field.helpText}</p>
+                          )}
+                          <div className="flex items-center gap-4 mt-2 text-sm">
+                            <span className={field.isRequired ? "text-red-600" : "text-gray-500"}>
+                              {field.isRequired ? "Required" : "Optional"}
+                            </span>
+                            <span className={field.isUserVisible ? "text-green-600" : "text-orange-600"}>
+                              {field.isUserVisible ? "User Visible" : "Technician Only"}
+                            </span>
+                            {field.defaultValue && (
+                              <span className="text-gray-500">
+                                Default: {field.defaultValue}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleMoveCustomField(index, 'up')}
+                            disabled={index === 0}
+                          >
+                            <ArrowUp className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleMoveCustomField(index, 'down')}
+                            disabled={index === customFields.length - 1}
+                          >
+                            <ArrowDown className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditCustomField(field)}
+                          >
+                            <Settings className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteCustomField(field.id!)}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'all' && (
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-sm font-medium">
+                All Fields ({serviceFieldTemplates.length + customFields.length} total)
+              </h3>
+              <div className="text-sm text-gray-600">
+                {serviceFieldTemplates.length} templates, {customFields.length} custom
               </div>
             </div>
-          </TabsContent>
-        </Tabs>
+
+            {serviceFieldTemplates.length === 0 && customFields.length === 0 ? (
+              <Card>
+                <CardContent className="text-center py-6">
+                  <p className="text-gray-500">No fields configured</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-2">
+                {/* Custom Fields */}
+                {customFields.map((field) => (
+                  <Card key={`all-field-${field.id}`}>
+                    <CardContent className="p-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800">Direct</Badge>
+                          <Badge variant="outline" className="text-xs">{field.type}</Badge>
+                          <span className="text-sm font-medium">{field.label}</span>
+                          {field.isRequired && (
+                            <Badge variant="destructive" className="text-xs">Required</Badge>
+                          )}
+                          {!field.isUserVisible && (
+                            <Badge variant="secondary" className="text-xs">Technician Only</Badge>
+                          )}
+                        </div>
+                        <span className="text-xs text-gray-500">Order: {field.order}</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+
+                {/* Field Templates */}
+                {serviceFieldTemplates.map((template) => (
+                  <Card key={`all-template-${template.id}`}>
+                    <CardContent className="p-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="default" className="text-xs bg-purple-100 text-purple-800">Template</Badge>
+                          <Badge variant="outline" className="text-xs">{template.fieldTemplate.type}</Badge>
+                          <span className="text-sm font-medium">{template.fieldTemplate.label}</span>
+                          {(template.isRequired ?? template.fieldTemplate.isRequired) && (
+                            <Badge variant="destructive" className="text-xs">Required</Badge>
+                          )}
+                          {!template.isUserVisible && (
+                            <Badge variant="secondary" className="text-xs">Technician Only</Badge>
+                          )}
+                        </div>
+                        <span className="text-xs text-gray-500">Order: {template.order}</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'cleanup' && (
+          <div className="space-y-6">
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <h3 className="text-lg font-semibold text-yellow-800 mb-2">Field Cleanup Tool</h3>
+              <p className="text-yellow-700 text-sm mb-4">
+                This service has <strong>TWO TYPES</strong> of custom fields that might be causing confusion:
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div className="bg-white p-3 rounded border">
+                  <h4 className="font-medium text-blue-800">Direct Custom Fields</h4>
+                  <p className="text-gray-600">Fields created directly for this service</p>
+                  <p className="text-sm text-gray-500">Count: {customFields.length}</p>
+                </div>
+                <div className="bg-white p-3 rounded border">
+                  <h4 className="font-medium text-purple-800">Field Templates</h4>
+                  <p className="text-gray-600">Reusable field templates linked to this service</p>
+                  <p className="text-sm text-gray-500">Count: {serviceFieldTemplates.length}</p>
+                </div>
+              </div>
+              <p className="text-yellow-700 text-sm mt-3">
+                <strong>Problem:</strong> When you delete fields through the normal UI, only one type gets removed,
+                so fields from the other system "come back" and appear to regenerate.
+              </p>
+            </div>
+
+            {/* Cleanup Preview */}
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h4 className="text-md font-medium">Cleanup Preview</h4>
+                <Button
+                  variant="outline"
+                  onClick={handleCleanupPreview}
+                  disabled={cleanupLoading}
+                >
+                  {cleanupLoading ? 'Loading...' : 'Preview Cleanup'}
+                </Button>
+              </div>
+
+              {cleanupPreview && (
+                <div className="bg-gray-50 border rounded-lg p-4">
+                  <h5 className="font-medium mb-3">Service: {cleanupPreview.service.name}</h5>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div className="bg-white p-3 rounded border">
+                      <div className="text-lg font-bold text-blue-600">
+                        {cleanupPreview.currentFields.counts.serviceFields}
+                      </div>
+                      <div className="text-sm text-gray-600">Direct Custom Fields</div>
+                    </div>
+                    <div className="bg-white p-3 rounded border">
+                      <div className="text-lg font-bold text-purple-600">
+                        {cleanupPreview.currentFields.counts.serviceFieldTemplates}
+                      </div>
+                      <div className="text-sm text-gray-600">Field Templates</div>
+                    </div>
+                    <div className="bg-white p-3 rounded border">
+                      <div className="text-lg font-bold text-gray-700">
+                        {cleanupPreview.currentFields.counts.total}
+                      </div>
+                      <div className="text-sm text-gray-600">Total Fields</div>
+                    </div>
+                  </div>
+
+                  {cleanupPreview.riskAssessment.hasTicketData && (
+                    <div className="bg-red-50 border border-red-200 rounded p-3 mb-4">
+                      <p className="text-red-800 text-sm">
+                        <strong>Warning:</strong> This service has {cleanupPreview.riskAssessment.affectedTicketFieldValues}
+                        ticket field values that may be affected by cleanup.
+                      </p>
+                      <p className="text-red-700 text-xs mt-1">
+                        Recommendation: Use the command-line cleanup script for services with ticket data.
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="text-sm text-gray-600">
+                    <strong>Recommendation:</strong> {cleanupPreview.riskAssessment.recommendation}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Cleanup Actions */}
+            <div className="space-y-4">
+              <h4 className="text-md font-medium">Cleanup Actions</h4>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm">Remove All Fields</CardTitle>
+                    <CardDescription className="text-xs">
+                      Removes both direct custom fields AND field templates
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleCleanupFields('all')}
+                      disabled={cleanupLoading}
+                      className="w-full"
+                    >
+                      Clean All
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm">Remove Direct Fields Only</CardTitle>
+                    <CardDescription className="text-xs">
+                      Keeps field templates, removes direct custom fields
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleCleanupFields('fields')}
+                      disabled={cleanupLoading || customFields.length === 0}
+                      className="w-full"
+                    >
+                      Clean Direct Fields
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm">Remove Templates Only</CardTitle>
+                    <CardDescription className="text-xs">
+                      Keeps direct fields, removes field template links
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleCleanupFields('templates')}
+                      disabled={cleanupLoading || serviceFieldTemplates.length === 0}
+                      className="w-full"
+                    >
+                      Clean Templates
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h5 className="font-medium text-blue-800 mb-2">Alternative: Command Line Tool</h5>
+                <p className="text-blue-700 text-sm mb-2">
+                  For services with existing ticket data, use the command-line cleanup tool:
+                </p>
+                <code className="text-xs bg-blue-100 p-2 rounded block">
+                  npx tsx scripts/cleanup-service-fields.ts --service-name "{serviceName}" --dry-run
+                </code>
+                <p className="text-blue-600 text-xs mt-2">
+                  Remove --dry-run flag to execute actual cleanup
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="flex justify-end gap-2 mt-6">
           <Button variant="outline" onClick={onClose}>
@@ -950,7 +984,7 @@ export function ServiceFieldTemplatesDialog({
           </Button>
         </div>
       </DialogContent>
-      
+
       {/* Edit Field Dialog */}
       {editingField && (
         <Dialog open={!!editingField} onOpenChange={(open) => !open && handleCancelEdit()}>
@@ -961,7 +995,7 @@ export function ServiceFieldTemplatesDialog({
                 Modify the properties of this custom field
               </DialogDescription>
             </DialogHeader>
-            
+
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-name">Field Name</Label>
@@ -972,7 +1006,7 @@ export function ServiceFieldTemplatesDialog({
                   placeholder="field_name"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="edit-label">Display Label</Label>
                 <Input
@@ -982,7 +1016,7 @@ export function ServiceFieldTemplatesDialog({
                   placeholder="Field Label"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="edit-placeholder">Placeholder Text</Label>
                 <Input
@@ -992,7 +1026,7 @@ export function ServiceFieldTemplatesDialog({
                   placeholder="Enter placeholder text..."
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="edit-help">Help Text</Label>
                 <Textarea
@@ -1003,7 +1037,7 @@ export function ServiceFieldTemplatesDialog({
                   rows={3}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="edit-default">Default Value</Label>
                 <Input
@@ -1013,7 +1047,7 @@ export function ServiceFieldTemplatesDialog({
                   placeholder="Default value..."
                 />
               </div>
-              
+
               <div className="flex items-center space-x-2">
                 <Switch
                   id="edit-required"
@@ -1022,7 +1056,7 @@ export function ServiceFieldTemplatesDialog({
                 />
                 <Label htmlFor="edit-required">Required Field</Label>
               </div>
-              
+
               <div className="flex items-center space-x-2">
                 <Switch
                   id="edit-visible"
@@ -1031,7 +1065,7 @@ export function ServiceFieldTemplatesDialog({
                 />
                 <Label htmlFor="edit-visible">User Visible</Label>
               </div>
-              
+
               <div className="flex items-center space-x-2">
                 <Switch
                   id="edit-active"
@@ -1041,7 +1075,7 @@ export function ServiceFieldTemplatesDialog({
                 <Label htmlFor="edit-active">Active</Label>
               </div>
             </div>
-            
+
             <div className="flex justify-end gap-2 mt-6">
               <Button variant="outline" onClick={handleCancelEdit}>
                 Cancel

@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -14,7 +13,8 @@ import {
 } from 'recharts';
 import {
   Clock, CheckCircle, XCircle, AlertCircle, Download,
-  TrendingUp, Users, FileText, Building, AlertTriangle
+  TrendingUp, Users, FileText, Building, AlertTriangle,
+  LayoutDashboard, User, Settings, Hourglass, Activity, Calendar
 } from 'lucide-react';
 
 interface ApprovalData {
@@ -106,16 +106,26 @@ interface ApprovalData {
 
 const STATUS_COLORS = {
   'PENDING': '#f59e0b',
-  'APPROVED': '#22c55e', 
+  'APPROVED': '#22c55e',
   'REJECTED': '#ef4444'
 };
 
 const PRIORITY_COLORS = ['#ef4444', '#f59e0b', '#3b82f6', '#10b981'];
 
+const tabConfig = [
+  { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+  { id: 'approvers', label: 'Approvers', icon: User },
+  { id: 'services', label: 'Services', icon: Settings },
+  { id: 'pending', label: 'Pending', icon: Hourglass },
+  { id: 'trends', label: 'Trends', icon: Activity },
+  { id: 'branches', label: 'Branches', icon: Building },
+];
+
 export default function ApprovalWorkflowAnalysisPage() {
   const [data, setData] = useState<ApprovalData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
     fetchData();
@@ -400,360 +410,386 @@ export default function ApprovalWorkflowAnalysisPage() {
         </Card>
       </div>
 
-      <Tabs defaultValue="overview" className="w-full">
-        <div className="overflow-x-auto -mx-1 px-1">
-          <TabsList className="inline-flex h-10 min-w-full sm:min-w-0 p-1 bg-muted/50 rounded-lg">
-            <TabsTrigger value="overview" className="flex-shrink-0 text-xs sm:text-sm">Overview</TabsTrigger>
-            <TabsTrigger value="approvers" className="flex-shrink-0 text-xs sm:text-sm">Approvers</TabsTrigger>
-            <TabsTrigger value="services" className="flex-shrink-0 text-xs sm:text-sm">Services</TabsTrigger>
-            <TabsTrigger value="pending" className="flex-shrink-0 text-xs sm:text-sm">Pending</TabsTrigger>
-            <TabsTrigger value="trends" className="flex-shrink-0 text-xs sm:text-sm">Trends</TabsTrigger>
-            <TabsTrigger value="branches" className="flex-shrink-0 text-xs sm:text-sm">Branches</TabsTrigger>
-          </TabsList>
+      <div className="w-full">
+        <div className="border-b mb-6">
+          <nav className="flex gap-6 overflow-x-auto" aria-label="Tabs">
+            {tabConfig.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`
+                    flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors
+                    ${isActive
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+                    }
+                  `}
+                >
+                  <Icon className="h-4 w-4" />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </nav>
         </div>
 
-        <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Approval Status Distribution</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={statusChartData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {statusChartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Approval Requests by Priority</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={priorityChartData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {priorityChartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={PRIORITY_COLORS[index % PRIORITY_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="approvers" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Approver Performance Overview</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={400}>
-                <BarChart data={approverPerformanceData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="name" 
-                    angle={-45}
-                    textAnchor="end"
-                    height={100}
-                  />
-                  <YAxis yAxisId="left" />
-                  <YAxis yAxisId="right" orientation="right" />
-                  <Tooltip 
-                    labelFormatter={(label) => {
-                      const approver = approverPerformanceData.find(a => a.name === label);
-                      return approver?.fullName || label;
-                    }}
-                  />
-                  <Bar yAxisId="left" dataKey="totalApprovals" fill="#f59e0b" name="Total Approvals" />
-                  <Bar yAxisId="right" dataKey="approvalRate" fill="#22c55e" name="Approval Rate %" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          {/* Individual Approver Details */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Individual Approver Performance</h3>
-            <div className="grid gap-4">
-              {data.approvers.slice(0, 10).map((approver) => (
-                <Card key={approver.email}>
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center space-x-3">
-                        <Avatar>
-                          <AvatarFallback>{approver.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <h4 className="font-semibold">{approver.name}</h4>
-                          <p className="text-sm text-muted-foreground">{approver.email}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Badge variant="outline">{approver.role}</Badge>
-                            <Badge variant="outline">{approver.branch}</Badge>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <Badge variant={approver.approvalRate >= 80 ? "default" : "secondary"}>
-                          {approver.approvalRate.toFixed(1)}% Approval Rate
-                        </Badge>
-                        {approver.pending > 0 && (
-                          <Badge variant="destructive" className="ml-2">
-                            {approver.pending} Pending
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mt-4">
-                      <div className="text-center">
-                        <div className="text-lg font-semibold">{approver.totalApprovals}</div>
-                        <div className="text-xs text-muted-foreground">Total</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-lg font-semibold text-green-600">{approver.approved}</div>
-                        <div className="text-xs text-muted-foreground">Approved</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-lg font-semibold text-red-600">{approver.rejected}</div>
-                        <div className="text-xs text-muted-foreground">Rejected</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-lg font-semibold text-yellow-600">{approver.pending}</div>
-                        <div className="text-xs text-muted-foreground">Pending</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-lg font-semibold text-blue-600">{approver.avgProcessingHours.toFixed(1)}h</div>
-                        <div className="text-xs text-muted-foreground">Avg Time</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-lg font-semibold text-purple-600">{approver.recentApprovals}</div>
-                        <div className="text-xs text-muted-foreground">Recent</div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="services" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Service Approval Analysis</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={400}>
-                <BarChart data={serviceApprovalData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="name" 
-                    angle={-45}
-                    textAnchor="end"
-                    height={100}
-                  />
-                  <YAxis />
-                  <Tooltip 
-                    labelFormatter={(label) => {
-                      const service = serviceApprovalData.find(s => s.name === label);
-                      return service?.fullName || label;
-                    }}
-                  />
-                  <Bar dataKey="totalApprovals" fill="#f59e0b" name="Total Approvals" />
-                  <Bar dataKey="approvalRate" fill="#22c55e" name="Approval Rate %" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="pending" className="space-y-6">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Pending Approvals ({data.pendingApprovals.length})</h3>
-              <Button onClick={() => exportToCsv('pending')} variant="outline" className="flex items-center gap-2">
-                <Download className="h-4 w-4" />
-                Export Pending
-              </Button>
-            </div>
-            
-            {data.pendingApprovals.length === 0 ? (
+        {activeTab === 'overview' && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card>
-                <CardContent className="p-8">
-                  <div className="text-center">
-                    <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold">No Pending Approvals</h3>
-                    <p className="text-muted-foreground">All approval requests have been processed.</p>
-                  </div>
+                <CardHeader>
+                  <CardTitle>Approval Status Distribution</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={statusChartData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {statusChartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.fill} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
                 </CardContent>
               </Card>
-            ) : (
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Approval Requests by Priority</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={priorityChartData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {priorityChartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={PRIORITY_COLORS[index % PRIORITY_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'approvers' && (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Approver Performance Overview</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={400}>
+                  <BarChart data={approverPerformanceData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="name"
+                      angle={-45}
+                      textAnchor="end"
+                      height={100}
+                    />
+                    <YAxis yAxisId="left" />
+                    <YAxis yAxisId="right" orientation="right" />
+                    <Tooltip
+                      labelFormatter={(label) => {
+                        const approver = approverPerformanceData.find(a => a.name === label);
+                        return approver?.fullName || label;
+                      }}
+                    />
+                    <Bar yAxisId="left" dataKey="totalApprovals" fill="#f59e0b" name="Total Approvals" />
+                    <Bar yAxisId="right" dataKey="approvalRate" fill="#22c55e" name="Approval Rate %" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* Individual Approver Details */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Individual Approver Performance</h3>
               <div className="grid gap-4">
-                {data.pendingApprovals.map((approval) => (
-                  <Card key={approval.id} className={`${approval.daysPending > 3 ? 'border-red-200 bg-red-50' : approval.daysPending > 1 ? 'border-yellow-200 bg-yellow-50' : ''}`}>
+                {data.approvers.slice(0, 10).map((approver) => (
+                  <Card key={approver.email}>
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <h4 className="font-semibold">{approval.ticketNumber}</h4>
-                            <Badge variant={getPriorityBadgeColor(approval.priority)}>
-                              {approval.priority}
+                        <div className="flex items-center space-x-3">
+                          <Avatar>
+                            <AvatarFallback>{approver.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <h4 className="font-semibold">{approver.name}</h4>
+                            <p className="text-sm text-muted-foreground">{approver.email}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Badge variant="outline">{approver.role}</Badge>
+                              <Badge variant="outline">{approver.branch}</Badge>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <Badge variant={approver.approvalRate >= 80 ? "default" : "secondary"}>
+                            {approver.approvalRate.toFixed(1)}% Approval Rate
+                          </Badge>
+                          {approver.pending > 0 && (
+                            <Badge variant="destructive" className="ml-2">
+                              {approver.pending} Pending
                             </Badge>
-                            {approval.daysPending > 3 && (
-                              <Badge variant="destructive" className="flex items-center gap-1">
-                                <AlertTriangle className="h-3 w-3" />
-                                Overdue
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="text-sm font-medium mb-1">{approval.ticketTitle}</p>
-                          <p className="text-xs text-muted-foreground mb-2">{approval.serviceName}</p>
-                          
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-                            <div>
-                              <span className="font-medium">Requester:</span>
-                              <p className="text-muted-foreground">{approval.requesterName}</p>
-                            </div>
-                            <div>
-                              <span className="font-medium">Branch:</span>
-                              <p className="text-muted-foreground">{approval.branchName}</p>
-                            </div>
-                            <div>
-                              <span className="font-medium">Approver:</span>
-                              <p className="text-muted-foreground">{approval.approverName || 'Unassigned'}</p>
-                            </div>
-                            <div>
-                              <span className="font-medium">Created:</span>
-                              <p className="text-muted-foreground">{new Date(approval.createdAt).toLocaleDateString()}</p>
-                            </div>
-                          </div>
-                          
-                          {approval.comments && (
-                            <div className="mt-2 p-2 bg-muted rounded text-xs">
-                              <span className="font-medium">Comments:</span>
-                              <p className="text-muted-foreground mt-1">{approval.comments}</p>
-                            </div>
                           )}
                         </div>
-                        
-                        <div className="text-right">
-                          <div className="text-2xl font-bold text-red-600">{approval.daysPending}</div>
-                          <div className="text-xs text-muted-foreground">Days Pending</div>
-                        </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
-        </TabsContent>
 
-        <TabsContent value="trends" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Daily Approval Trends (Last 30 Days)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={400}>
-                <AreaChart data={data.dailyTrend}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip />
-                  <Area type="monotone" dataKey="created" stackId="1" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.6} name="Created" />
-                  <Area type="monotone" dataKey="approved" stackId="2" stroke="#22c55e" fill="#22c55e" fillOpacity={0.6} name="Approved" />
-                  <Area type="monotone" dataKey="rejected" stackId="2" stroke="#ef4444" fill="#ef4444" fillOpacity={0.6} name="Rejected" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="branches" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Branch Approval Analysis</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {data.branches.map((branch) => (
-                  <Card key={branch.branchName}>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-brown-500 rounded-lg flex items-center justify-center">
-                            <Building className="h-5 w-5 text-white" />
-                          </div>
-                          <div>
-                            <h4 className="font-semibold">{branch.branchName}</h4>
-                            <p className="text-sm text-muted-foreground">Code: {branch.branchCode}</p>
-                          </div>
-                        </div>
-                        <Badge variant={branch.approvalRate >= 80 ? "default" : "secondary"}>
-                          {branch.approvalRate.toFixed(1)}% Approval Rate
-                        </Badge>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                      <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mt-4">
                         <div className="text-center">
-                          <div className="text-lg font-semibold">{branch.totalApprovals}</div>
+                          <div className="text-lg font-semibold">{approver.totalApprovals}</div>
                           <div className="text-xs text-muted-foreground">Total</div>
                         </div>
                         <div className="text-center">
-                          <div className="text-lg font-semibold text-green-600">{branch.approved}</div>
+                          <div className="text-lg font-semibold text-green-600">{approver.approved}</div>
                           <div className="text-xs text-muted-foreground">Approved</div>
                         </div>
                         <div className="text-center">
-                          <div className="text-lg font-semibold text-red-600">{branch.rejected}</div>
+                          <div className="text-lg font-semibold text-red-600">{approver.rejected}</div>
                           <div className="text-xs text-muted-foreground">Rejected</div>
                         </div>
                         <div className="text-center">
-                          <div className="text-lg font-semibold text-yellow-600">{branch.pending}</div>
+                          <div className="text-lg font-semibold text-yellow-600">{approver.pending}</div>
                           <div className="text-xs text-muted-foreground">Pending</div>
                         </div>
                         <div className="text-center">
-                          <div className="text-lg font-semibold text-blue-600">{branch.avgProcessingHours.toFixed(1)}h</div>
+                          <div className="text-lg font-semibold text-blue-600">{approver.avgProcessingHours.toFixed(1)}h</div>
                           <div className="text-xs text-muted-foreground">Avg Time</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-lg font-semibold text-purple-600">{approver.recentApprovals}</div>
+                          <div className="text-xs text-muted-foreground">Recent</div>
                         </div>
                       </div>
                     </CardContent>
                   </Card>
                 ))}
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'services' && (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Service Approval Analysis</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={400}>
+                  <BarChart data={serviceApprovalData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="name"
+                      angle={-45}
+                      textAnchor="end"
+                      height={100}
+                    />
+                    <YAxis />
+                    <Tooltip
+                      labelFormatter={(label) => {
+                        const service = serviceApprovalData.find(s => s.name === label);
+                        return service?.fullName || label;
+                      }}
+                    />
+                    <Bar dataKey="totalApprovals" fill="#f59e0b" name="Total Approvals" />
+                    <Bar dataKey="approvalRate" fill="#22c55e" name="Approval Rate %" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {activeTab === 'pending' && (
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Pending Approvals ({data.pendingApprovals.length})</h3>
+                <Button onClick={() => exportToCsv('pending')} variant="outline" className="flex items-center gap-2">
+                  <Download className="h-4 w-4" />
+                  Export Pending
+                </Button>
+              </div>
+
+              {data.pendingApprovals.length === 0 ? (
+                <Card>
+                  <CardContent className="p-8">
+                    <div className="text-center">
+                      <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold">No Pending Approvals</h3>
+                      <p className="text-muted-foreground">All approval requests have been processed.</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid gap-4">
+                  {data.pendingApprovals.map((approval) => (
+                    <Card key={approval.id} className={`${approval.daysPending > 3 ? 'border-red-200 bg-red-50' : approval.daysPending > 1 ? 'border-yellow-200 bg-yellow-50' : ''}`}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <h4 className="font-semibold">{approval.ticketNumber}</h4>
+                              <Badge variant={getPriorityBadgeColor(approval.priority)}>
+                                {approval.priority}
+                              </Badge>
+                              {approval.daysPending > 3 && (
+                                <Badge variant="destructive" className="flex items-center gap-1">
+                                  <AlertTriangle className="h-3 w-3" />
+                                  Overdue
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-sm font-medium mb-1">{approval.ticketTitle}</p>
+                            <p className="text-xs text-muted-foreground mb-2">{approval.serviceName}</p>
+
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                              <div>
+                                <span className="font-medium">Requester:</span>
+                                <p className="text-muted-foreground">{approval.requesterName}</p>
+                              </div>
+                              <div>
+                                <span className="font-medium">Branch:</span>
+                                <p className="text-muted-foreground">{approval.branchName}</p>
+                              </div>
+                              <div>
+                                <span className="font-medium">Approver:</span>
+                                <p className="text-muted-foreground">{approval.approverName || 'Unassigned'}</p>
+                              </div>
+                              <div>
+                                <span className="font-medium">Created:</span>
+                                <p className="text-muted-foreground">{new Date(approval.createdAt).toLocaleDateString()}</p>
+                              </div>
+                            </div>
+
+                            {approval.comments && (
+                              <div className="mt-2 p-2 bg-muted rounded text-xs">
+                                <span className="font-medium">Comments:</span>
+                                <p className="text-muted-foreground mt-1">{approval.comments}</p>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="text-right">
+                            <div className="text-2xl font-bold text-red-600">{approval.daysPending}</div>
+                            <div className="text-xs text-muted-foreground">Days Pending</div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'trends' && (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Daily Approval Trends (Last 30 Days)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={400}>
+                  <AreaChart data={data.dailyTrend}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip />
+                    <Area type="monotone" dataKey="created" stackId="1" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.6} name="Created" />
+                    <Area type="monotone" dataKey="approved" stackId="2" stroke="#22c55e" fill="#22c55e" fillOpacity={0.6} name="Approved" />
+                    <Area type="monotone" dataKey="rejected" stackId="2" stroke="#ef4444" fill="#ef4444" fillOpacity={0.6} name="Rejected" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {activeTab === 'branches' && (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Branch Approval Analysis</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {data.branches.map((branch) => (
+                    <Card key={branch.branchName}>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-brown-500 rounded-lg flex items-center justify-center">
+                              <Building className="h-5 w-5 text-white" />
+                            </div>
+                            <div>
+                              <h4 className="font-semibold">{branch.branchName}</h4>
+                              <p className="text-sm text-muted-foreground">Code: {branch.branchCode}</p>
+                            </div>
+                          </div>
+                          <Badge variant={branch.approvalRate >= 80 ? "default" : "secondary"}>
+                            {branch.approvalRate.toFixed(1)}% Approval Rate
+                          </Badge>
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                          <div className="text-center">
+                            <div className="text-lg font-semibold">{branch.totalApprovals}</div>
+                            <div className="text-xs text-muted-foreground">Total</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-lg font-semibold text-green-600">{branch.approved}</div>
+                            <div className="text-xs text-muted-foreground">Approved</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-lg font-semibold text-red-600">{branch.rejected}</div>
+                            <div className="text-xs text-muted-foreground">Rejected</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-lg font-semibold text-yellow-600">{branch.pending}</div>
+                            <div className="text-xs text-muted-foreground">Pending</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-lg font-semibold text-blue-600">{branch.avgProcessingHours.toFixed(1)}h</div>
+                            <div className="text-xs text-muted-foreground">Avg Time</div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

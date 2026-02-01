@@ -15,7 +15,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Bell,
   BellOff,
@@ -50,10 +49,15 @@ interface NotificationInboxProps {
   onOpenChange?: (open: boolean) => void;
 }
 
+const tabConfig = [
+  { id: 'all', label: 'All', icon: Inbox },
+  { id: 'unread', label: 'Unread', icon: Bell },
+];
+
 export function NotificationInbox({ trigger, open: controlledOpen, onOpenChange }: NotificationInboxProps) {
   const router = useRouter();
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
-  
+
   // Use controlled state if provided, otherwise use internal state
   const open = controlledOpen !== undefined ? controlledOpen : uncontrolledOpen;
   const setOpen = onOpenChange || setUncontrolledOpen;
@@ -87,7 +91,7 @@ export function NotificationInbox({ trigger, open: controlledOpen, onOpenChange 
       if (activeTab === 'unread') {
         params.append('unreadOnly', 'true');
       }
-      
+
       const response = await fetch(`/api/notifications?${params}`);
       if (response.ok) {
         const data = await response.json();
@@ -120,7 +124,7 @@ export function NotificationInbox({ trigger, open: controlledOpen, onOpenChange 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notificationIds })
       });
-      
+
       if (response.ok) {
         setNotifications(prev =>
           prev.map(n =>
@@ -143,7 +147,7 @@ export function NotificationInbox({ trigger, open: controlledOpen, onOpenChange 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ markAll: true })
       });
-      
+
       if (response.ok) {
         setNotifications(prev =>
           prev.map(n => ({ ...n, isRead: true, readAt: new Date().toISOString() }))
@@ -160,7 +164,7 @@ export function NotificationInbox({ trigger, open: controlledOpen, onOpenChange 
       const response = await fetch(`/api/notifications?id=${id}`, {
         method: 'DELETE'
       });
-      
+
       if (response.ok) {
         setNotifications(prev => prev.filter(n => n.id !== id));
         const notification = notifications.find(n => n.id === id);
@@ -178,7 +182,7 @@ export function NotificationInbox({ trigger, open: controlledOpen, onOpenChange 
       const response = await fetch('/api/notifications?deleteRead=true', {
         method: 'DELETE'
       });
-      
+
       if (response.ok) {
         setNotifications(prev => prev.filter(n => !n.isRead));
       }
@@ -191,7 +195,7 @@ export function NotificationInbox({ trigger, open: controlledOpen, onOpenChange 
     if (!notification.isRead) {
       markAsRead([notification.id]);
     }
-    
+
     // Navigate to relevant page based on notification data
     if (notification.data?.ticketId) {
       setOpen(false);
@@ -273,129 +277,144 @@ export function NotificationInbox({ trigger, open: controlledOpen, onOpenChange 
         </SheetHeader>
 
         <div className="mt-6">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="inline-flex h-10 w-full p-1 bg-muted/50 rounded-lg">
-              <TabsTrigger value="all" className="flex-1">All</TabsTrigger>
-              <TabsTrigger value="unread" className="flex-1">
-                Unread {unreadCount > 0 && `(${unreadCount})`}
-              </TabsTrigger>
-            </TabsList>
+          <div className="border-b mb-4">
+            <nav className="flex gap-6 overflow-x-auto" aria-label="Tabs">
+              {tabConfig.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`
+                      flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors
+                      ${isActive
+                        ? 'border-primary text-primary'
+                        : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+                      }
+                    `}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {tab.label}
+                    {tab.id === 'unread' && unreadCount > 0 && ` (${unreadCount})`}
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
 
-            <div className="flex items-center justify-between py-2">
-              <div className="text-sm text-muted-foreground">
-                {filteredNotifications.length} notifications
-              </div>
-              <div className="flex gap-2">
-                {unreadCount > 0 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={markAllAsRead}
-                    className="text-xs"
-                  >
-                    <CheckCheck className="h-3 w-3 mr-1" />
-                    Mark all read
-                  </Button>
-                )}
-                {filteredNotifications.some(n => n.isRead) && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={clearAllRead}
-                    className="text-xs"
-                  >
-                    <Archive className="h-3 w-3 mr-1" />
-                    Clear read
-                  </Button>
-                )}
-              </div>
+          <div className="flex items-center justify-between py-2">
+            <div className="text-sm text-muted-foreground">
+              {filteredNotifications.length} notifications
             </div>
+            <div className="flex gap-2">
+              {unreadCount > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={markAllAsRead}
+                  className="text-xs"
+                >
+                  <CheckCheck className="h-3 w-3 mr-1" />
+                  Mark all read
+                </Button>
+              )}
+              {filteredNotifications.some(n => n.isRead) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearAllRead}
+                  className="text-xs"
+                >
+                  <Archive className="h-3 w-3 mr-1" />
+                  Clear read
+                </Button>
+              )}
+            </div>
+          </div>
 
-            <TabsContent value={activeTab} className="mt-0">
-              <ScrollArea className="h-[calc(100vh-280px)]">
-                {loading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                  </div>
-                ) : filteredNotifications.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-8 text-center">
-                    <Inbox className="h-12 w-12 text-muted-foreground mb-3" />
-                    <p className="text-sm font-medium">No notifications</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {activeTab === 'unread' ? "You're all caught up!" : "Your inbox is empty"}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {filteredNotifications.map((notification) => (
-                      <div
-                        key={notification.id}
-                        className={cn(
-                          "group relative p-3 rounded-lg border transition-all cursor-pointer hover:shadow-md",
-                          notification.isRead
-                            ? "bg-background border-border"
-                            : "bg-blue-50/50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-900"
-                        )}
-                        onClick={() => handleNotificationClick(notification)}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className={cn(
-                            "p-2 rounded-full",
-                            getNotificationColor(notification.type)
-                          )}>
-                            {getNotificationIcon(notification.type)}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="flex-1">
-                                <p className={cn(
-                                  "text-sm",
-                                  !notification.isRead && "font-semibold"
-                                )}>
-                                  {notification.title}
-                                </p>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  {notification.message}
-                                </p>
-                                <div className="flex items-center gap-2 mt-2">
-                                  <Clock className="h-3 w-3 text-muted-foreground" />
-                                  <span className="text-xs text-muted-foreground">
-                                    {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
+          <ScrollArea className="h-[calc(100vh-280px)]">
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : filteredNotifications.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <Inbox className="h-12 w-12 text-muted-foreground mb-3" />
+                <p className="text-sm font-medium">No notifications</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {activeTab === 'unread' ? "You're all caught up!" : "Your inbox is empty"}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {filteredNotifications.map((notification) => (
+                  <div
+                    key={notification.id}
+                    className={cn(
+                      "group relative p-3 rounded-lg border transition-all cursor-pointer hover:shadow-md",
+                      notification.isRead
+                        ? "bg-background border-border"
+                        : "bg-blue-50/50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-900"
+                    )}
+                    onClick={() => handleNotificationClick(notification)}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={cn(
+                        "p-2 rounded-full",
+                        getNotificationColor(notification.type)
+                      )}>
+                        {getNotificationIcon(notification.type)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1">
+                            <p className={cn(
+                              "text-sm",
+                              !notification.isRead && "font-semibold"
+                            )}>
+                              {notification.title}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {notification.message}
+                            </p>
+                            <div className="flex items-center gap-2 mt-2">
+                              <Clock className="h-3 w-3 text-muted-foreground" />
+                              <span className="text-xs text-muted-foreground">
+                                {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
+                              </span>
+                              {notification.data?.ticketNumber && (
+                                <>
+                                  <span className="text-xs text-muted-foreground">•</span>
+                                  <span className="text-xs font-medium">
+                                    #{notification.data.ticketNumber}
                                   </span>
-                                  {notification.data?.ticketNumber && (
-                                    <>
-                                      <span className="text-xs text-muted-foreground">•</span>
-                                      <span className="text-xs font-medium">
-                                        #{notification.data.ticketNumber}
-                                      </span>
-                                    </>
-                                  )}
-                                </div>
-                              </div>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  deleteNotification(notification.id);
-                                }}
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
+                                </>
+                              )}
                             </div>
                           </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteNotification(notification.id);
+                            }}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
                         </div>
-                        {!notification.isRead && (
-                          <div className="absolute top-3 right-3 h-2 w-2 rounded-full bg-blue-500"></div>
-                        )}
                       </div>
-                    ))}
+                    </div>
+                    {!notification.isRead && (
+                      <div className="absolute top-3 right-3 h-2 w-2 rounded-full bg-blue-500"></div>
+                    )}
                   </div>
-                )}
-              </ScrollArea>
-            </TabsContent>
-          </Tabs>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
         </div>
       </SheetContent>
     </Sheet>

@@ -5,12 +5,11 @@ import { useParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { 
-  Play, 
-  Download, 
-  Edit, 
+import {
+  Play,
+  Download,
+  Edit,
   Calendar,
   Star,
   Share2,
@@ -82,11 +81,11 @@ export default function ReportViewPage() {
       setIsLoading(true)
       const response = await fetch(`/api/reports/custom/${reportId}`)
       if (!response.ok) throw new Error('Failed to load report')
-      
+
       const data = await response.json()
       setReport(data)
       setIsFavorite(data.isFavorite)
-      
+
       // Auto-execute if never executed
       if (!data.lastExecutedAt) {
         await executeReport()
@@ -114,15 +113,15 @@ export default function ReportViewPage() {
           exportMode: false
         })
       })
-      
+
       if (!response.ok) {
         const error = await response.json()
         throw new Error(error.details || 'Failed to execute report')
       }
-      
+
       const result = await response.json()
       setExecutionResult(result)
-      
+
       // Update report's last executed time
       if (report) {
         setReport({
@@ -143,7 +142,7 @@ export default function ReportViewPage() {
       const response = await fetch(`/api/reports/custom/${reportId}/favorite`, {
         method: isFavorite ? 'DELETE' : 'POST'
       })
-      
+
       if (response.ok) {
         setIsFavorite(!isFavorite)
       }
@@ -176,6 +175,18 @@ export default function ReportViewPage() {
     }
   }
 
+  // Build tab config dynamically based on report configuration
+  const getTabConfig = () => {
+    const tabs = [
+      { id: 'data', label: 'Data Table', icon: Table },
+    ]
+    if (report?.configuration.chartConfig) {
+      tabs.push({ id: 'chart', label: 'Chart', icon: BarChart3 })
+    }
+    tabs.push({ id: 'config', label: 'Configuration', icon: Filter })
+    return tabs
+  }
+
   if (isLoading) {
     return (
       <div className="container mx-auto py-6">
@@ -199,6 +210,8 @@ export default function ReportViewPage() {
 
   if (!report) return null
 
+  const tabConfig = getTabConfig()
+
   return (
     <div className="container mx-auto py-6 space-y-6">
       {/* Header */}
@@ -217,12 +230,12 @@ export default function ReportViewPage() {
           </div>
           {report.lastExecutedAt && (
             <p className="text-sm text-muted-foreground mt-2">
-              Last executed: {format(new Date(report.lastExecutedAt), 'PPpp')} • 
+              Last executed: {format(new Date(report.lastExecutedAt), 'PPpp')} •
               Run {report.executionCount} times
             </p>
           )}
         </div>
-        
+
         <div className="flex gap-2">
           <Button
             variant="outline"
@@ -258,8 +271,8 @@ export default function ReportViewPage() {
       <Card>
         <CardContent className="flex items-center justify-between p-4">
           <div className="flex gap-2">
-            <Button 
-              onClick={executeReport} 
+            <Button
+              onClick={executeReport}
               disabled={isExecuting}
             >
               {isExecuting ? (
@@ -279,7 +292,7 @@ export default function ReportViewPage() {
               Refresh
             </Button>
           </div>
-          
+
           {executionResult && (
             <div className="flex items-center gap-4">
               <span className="text-sm text-muted-foreground">
@@ -326,49 +339,57 @@ export default function ReportViewPage() {
 
       {/* Results */}
       {executionResult && (
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="data">
-              <Table className="mr-2 h-4 w-4" />
-              Data Table
-            </TabsTrigger>
-            {report.configuration.chartConfig && (
-              <TabsTrigger value="chart">
-                <BarChart3 className="mr-2 h-4 w-4" />
-                Chart
-              </TabsTrigger>
-            )}
-            <TabsTrigger value="config">
-              <Filter className="mr-2 h-4 w-4" />
-              Configuration
-            </TabsTrigger>
-          </TabsList>
+        <>
+          {/* Tab Navigation */}
+          <div className="border-b mb-6">
+            <nav className="flex gap-6 overflow-x-auto" aria-label="Tabs">
+              {tabConfig.map((tab) => {
+                const Icon = tab.icon
+                const isActive = activeTab === tab.id
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`
+                      flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors
+                      ${isActive
+                        ? 'border-primary text-primary'
+                        : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+                      }
+                    `}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {tab.label}
+                  </button>
+                )
+              })}
+            </nav>
+          </div>
 
-          <TabsContent value="data" className="mt-4">
+          {/* Tab Content */}
+          {activeTab === 'data' && (
             <Card>
               <CardContent className="p-0">
-                <ReportDataTable 
+                <ReportDataTable
                   data={executionResult.data}
                   columns={executionResult.metadata.columns}
                 />
               </CardContent>
             </Card>
-          </TabsContent>
-
-          {report.configuration.chartConfig && (
-            <TabsContent value="chart" className="mt-4">
-              <Card>
-                <CardContent className="p-6">
-                  <ReportChart
-                    data={executionResult.data}
-                    config={report.configuration.chartConfig}
-                  />
-                </CardContent>
-              </Card>
-            </TabsContent>
           )}
 
-          <TabsContent value="config" className="mt-4">
+          {activeTab === 'chart' && report.configuration.chartConfig && (
+            <Card>
+              <CardContent className="p-6">
+                <ReportChart
+                  data={executionResult.data}
+                  config={report.configuration.chartConfig}
+                />
+              </CardContent>
+            </Card>
+          )}
+
+          {activeTab === 'config' && (
             <Card>
               <CardHeader>
                 <CardTitle>Report Configuration</CardTitle>
@@ -425,8 +446,8 @@ export default function ReportViewPage() {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
+          )}
+        </>
       )}
     </div>
   )

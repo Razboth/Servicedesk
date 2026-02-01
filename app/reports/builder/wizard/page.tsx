@@ -4,11 +4,10 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  Save, 
+import {
+  ChevronLeft,
+  ChevronRight,
+  Save,
   Play,
   Download,
   Calendar,
@@ -22,13 +21,26 @@ import {
   Plus,
   ChevronDown,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  Database,
+  Users,
+  CreditCard,
+  BookOpen,
+  FileCode
 } from 'lucide-react'
 import { ColumnSelector } from '@/components/reports/column-selector'
 import { FilterBuilder } from '@/components/reports/filter-builder'
 import { QueryEditor } from '@/components/reports/query-editor'
 import { ReportScheduler } from '@/components/reports/report-scheduler'
 import { ChartConfiguration } from '@/components/reports/chart-configuration'
+
+const moduleTabConfig = [
+  { id: 'TICKETS', label: 'Tickets', icon: Database },
+  { id: 'USERS', label: 'Users', icon: Users },
+  { id: 'ATMS', label: 'ATMs', icon: CreditCard },
+  { id: 'KNOWLEDGE', label: 'Knowledge Base', icon: BookOpen },
+  { id: 'CUSTOM', label: 'Custom Query', icon: FileCode },
+]
 
 function ReportWizardContent() {
   const router = useRouter()
@@ -97,12 +109,12 @@ function ReportWizardContent() {
 
   const handleSave = async () => {
     setIsSaving(true)
-    
+
     // Basic validation
     const errors: string[] = []
     if (!reportConfig.title) errors.push('Report title is required')
     if (reportConfig.columns.length === 0) errors.push('At least one column must be selected')
-    
+
     if (errors.length > 0) {
       setValidationErrors(errors)
       setIsSaving(false)
@@ -202,8 +214,8 @@ function ReportWizardContent() {
                       key={step.id}
                       onClick={() => handleStepChange(step.id)}
                       className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        activeStep === step.id 
-                          ? 'bg-blue-50 text-blue-600 border border-blue-200' 
+                        activeStep === step.id
+                          ? 'bg-blue-50 text-blue-600 border border-blue-200'
                           : 'hover:bg-gray-50 text-gray-700'
                       }`}
                     >
@@ -241,7 +253,7 @@ function ReportWizardContent() {
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-700">Report Type</label>
-                    <select 
+                    <select
                       value={reportConfig.type}
                       onChange={(e) => setReportConfig({...reportConfig, type: e.target.value})}
                       className="mt-1 w-full px-3 py-2 border rounded-lg text-sm"
@@ -268,24 +280,43 @@ function ReportWizardContent() {
                       <p className="text-sm text-gray-500 mb-4">
                         Choose the module you want to report on
                       </p>
-                      
-                      <Tabs value={reportConfig.module} onValueChange={(value) => setReportConfig({...reportConfig, module: value})}>
-                        <TabsList>
-                          <TabsTrigger value="TICKETS">Tickets</TabsTrigger>
-                          <TabsTrigger value="USERS">Users</TabsTrigger>
-                          <TabsTrigger value="ATMS">ATMs</TabsTrigger>
-                          <TabsTrigger value="KNOWLEDGE">Knowledge Base</TabsTrigger>
-                          <TabsTrigger value="CUSTOM">Custom Query</TabsTrigger>
-                        </TabsList>
-                        
-                        <TabsContent value="CUSTOM" className="mt-4">
+
+                      {/* Module Tab Navigation */}
+                      <div className="border-b mb-6">
+                        <nav className="flex gap-6 overflow-x-auto" aria-label="Module Tabs">
+                          {moduleTabConfig.map((tab) => {
+                            const Icon = tab.icon
+                            const isActive = reportConfig.module === tab.id
+                            return (
+                              <button
+                                key={tab.id}
+                                onClick={() => setReportConfig({...reportConfig, module: tab.id})}
+                                className={`
+                                  flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors
+                                  ${isActive
+                                    ? 'border-primary text-primary'
+                                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+                                  }
+                                `}
+                              >
+                                <Icon className="h-4 w-4" />
+                                {tab.label}
+                              </button>
+                            )
+                          })}
+                        </nav>
+                      </div>
+
+                      {/* Module Content */}
+                      {reportConfig.module === 'CUSTOM' && (
+                        <div className="mt-4">
                           <QueryEditor
                             initialQuery={reportConfig.query}
                             module={reportConfig.module}
                             onQueryChange={(query) => setReportConfig({...reportConfig, query})}
                           />
-                        </TabsContent>
-                      </Tabs>
+                        </div>
+                      )}
                     </div>
 
                     {/* Service Selection for TICKETS module */}
@@ -359,7 +390,7 @@ function ReportWizardContent() {
                       <p className="text-sm text-gray-500 mb-4">
                         Choose which columns to include in your report
                       </p>
-                      
+
                       <ColumnSelector
                         module={reportConfig.module}
                         selectedColumns={reportConfig.columns}
@@ -389,7 +420,7 @@ function ReportWizardContent() {
                       <p className="text-sm text-gray-500 mb-4">
                         Filter the data to focus on specific criteria
                       </p>
-                      
+
                       <FilterBuilder
                         module={reportConfig.module}
                         filters={reportConfig.filters}
@@ -419,7 +450,7 @@ function ReportWizardContent() {
                       <p className="text-sm text-gray-500 mb-4">
                         Organize and sort your report data
                       </p>
-                      
+
                       <GroupingSortingConfig
                         columns={reportConfig.columns}
                         groupBy={reportConfig.groupBy}
@@ -450,7 +481,7 @@ function ReportWizardContent() {
                       <p className="text-sm text-gray-500 mb-4">
                         Configure charts and visual representations
                       </p>
-                      
+
                       {reportConfig.type === 'CHART' || reportConfig.type === 'DASHBOARD' ? (
                         <ChartConfiguration
                           chartConfig={reportConfig.chartConfig}
@@ -488,7 +519,7 @@ function ReportWizardContent() {
                       <p className="text-sm text-gray-500 mb-4">
                         Set up automatic report generation and delivery
                       </p>
-                      
+
                       <ReportScheduler
                         schedule={reportConfig.schedule}
                         onScheduleChange={(schedule: any) => setReportConfig({...reportConfig, schedule})}
@@ -517,12 +548,12 @@ function ReportWizardContent() {
 }
 
 // Grouping and Sorting Configuration Component
-function GroupingSortingConfig({ 
-  columns, 
-  groupBy, 
-  orderBy, 
-  onGroupByChange, 
-  onOrderByChange 
+function GroupingSortingConfig({
+  columns,
+  groupBy,
+  orderBy,
+  onGroupByChange,
+  onOrderByChange
 }: any) {
   return (
     <div className="space-y-6">

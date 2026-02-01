@@ -4,18 +4,18 @@ import { useState, useEffect } from 'react';
 import { formatDateTimeWITA } from '@/lib/export-utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { 
+import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, PieChart, Pie, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
   ScatterChart, Scatter
 } from 'recharts';
-import { 
-  Users, Activity, Clock, TrendingUp, Download, 
-  UserCheck, UserX, AlertTriangle, MessageCircle, Calendar
+import {
+  Users, Activity, Clock, TrendingUp, Download,
+  UserCheck, UserX, AlertTriangle, MessageCircle, Calendar,
+  Building, BarChart3
 } from 'lucide-react';
 
 interface UserActivity {
@@ -71,15 +71,25 @@ interface ReportData {
 const COLORS = ['#f59e0b', '#d97706', '#b45309', '#92400e', '#78350f', '#451a03'];
 const ACTIVITY_COLORS = {
   'High': '#22c55e',
-  'Medium': '#f59e0b', 
+  'Medium': '#f59e0b',
   'Low': '#ef4444',
   'Inactive': '#6b7280'
 };
+
+const tabConfig = [
+  { id: 'overview', label: 'Overview', icon: BarChart3 },
+  { id: 'individual', label: 'Users', icon: Users },
+  { id: 'roles', label: 'Roles', icon: UserCheck },
+  { id: 'branches', label: 'Branches', icon: Building },
+  { id: 'engagement', label: 'Engagement', icon: Activity },
+  { id: 'alerts', label: 'Alerts', icon: AlertTriangle },
+];
 
 export default function UserActivityReportPage() {
   const [data, setData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
     fetchData();
@@ -272,7 +282,7 @@ export default function UserActivityReportPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-amber-600">{data.summary.highActivityUsers}</div>
-            <p className="text-xs text-muted-foreground">Score ≥ 70</p>
+            <p className="text-xs text-muted-foreground">Score &gt;= 70</p>
           </CardContent>
         </Card>
 
@@ -321,316 +331,342 @@ export default function UserActivityReportPage() {
         </Card>
       </div>
 
-      <Tabs defaultValue="overview" className="w-full">
-        <div className="overflow-x-auto -mx-1 px-1">
-          <TabsList className="inline-flex h-10 min-w-full sm:min-w-0 p-1 bg-muted/50 rounded-lg">
-            <TabsTrigger value="overview" className="flex-shrink-0 text-xs sm:text-sm">Overview</TabsTrigger>
-            <TabsTrigger value="individual" className="flex-shrink-0 text-xs sm:text-sm">Users</TabsTrigger>
-            <TabsTrigger value="roles" className="flex-shrink-0 text-xs sm:text-sm">Roles</TabsTrigger>
-            <TabsTrigger value="branches" className="flex-shrink-0 text-xs sm:text-sm">Branches</TabsTrigger>
-            <TabsTrigger value="engagement" className="flex-shrink-0 text-xs sm:text-sm">Engagement</TabsTrigger>
-            <TabsTrigger value="alerts" className="flex-shrink-0 text-xs sm:text-sm">Alerts</TabsTrigger>
-          </TabsList>
+      <div className="w-full">
+        <div className="border-b mb-6">
+          <nav className="flex gap-6 overflow-x-auto" aria-label="Tabs">
+            {tabConfig.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`
+                    flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors
+                    ${isActive
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+                    }
+                  `}
+                >
+                  <Icon className="h-4 w-4" />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </nav>
         </div>
 
-        <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Activity Level Distribution</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={activityLevelData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {activityLevelData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
+        {activeTab === 'overview' && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Activity Level Distribution</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={activityLevelData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {activityLevelData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.fill} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
 
+              <Card>
+                <CardHeader>
+                  <CardTitle>Most Active Users</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={data.mostActiveUsers.slice(0, 8)}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis
+                        dataKey="name"
+                        angle={-45}
+                        textAnchor="end"
+                        height={100}
+                      />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="activityScore" fill="#f59e0b" name="Activity Score" />
+                      <Bar dataKey="recentTickets" fill="#d97706" name="Recent Tickets" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'individual' && (
+          <div className="space-y-6">
+            <div className="grid gap-4">
+              {data.users.slice(0, 20).map((user) => (
+                <Card key={user.id}>
+                  <CardContent className="p-6">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center space-x-4">
+                        <Avatar>
+                          {user.avatar ? (
+                            <AvatarImage src={user.avatar} alt={user.name} />
+                          ) : (
+                            <AvatarFallback>{user.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                          )}
+                        </Avatar>
+                        <div>
+                          <h3 className="font-semibold">{user.name}</h3>
+                          <p className="text-sm text-muted-foreground">{user.email}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge variant="outline">{user.role}</Badge>
+                            <Badge variant="outline">{user.branch}</Badge>
+                            <Badge className={getActivityBadgeColor(user.activityLevel)}>
+                              {user.activityLevel}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-2 mt-2">
+                            <span className="text-xs text-muted-foreground">
+                              Activity Score: <strong>{user.activityScore}/100</strong>
+                            </span>
+                            {user.lastLogin && (
+                              <span className="text-xs text-muted-foreground">
+                                Last Login: {new Date(user.lastLogin).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <div className="text-sm text-muted-foreground">
+                          {user.daysSinceLastActivity === 0 ? 'Active today' :
+                           user.daysSinceLastActivity === 1 ? '1 day ago' :
+                           user.daysSinceLastActivity <= 7 ? `${user.daysSinceLastActivity} days ago` :
+                           user.daysSinceLastActivity <= 30 ? `${Math.floor(user.daysSinceLastActivity / 7)} weeks ago` :
+                           `${Math.floor(user.daysSinceLastActivity / 30)} months ago`}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mt-4">
+                      <div className="text-center">
+                        <div className="text-lg font-semibold">{user.totalTickets}</div>
+                        <div className="text-xs text-muted-foreground">Total Tickets</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-semibold text-green-600">{user.recentTickets}</div>
+                        <div className="text-xs text-muted-foreground">Recent (30d)</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-semibold text-blue-600">{user.totalComments}</div>
+                        <div className="text-xs text-muted-foreground">Comments</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-semibold text-purple-600">{user.recentComments}</div>
+                        <div className="text-xs text-muted-foreground">Recent (30d)</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-semibold">{user.totalLogins}</div>
+                        <div className="text-xs text-muted-foreground">Total Logins</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-semibold text-green-600">{user.recentLogins}</div>
+                        <div className="text-xs text-muted-foreground">Recent (30d)</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-semibold text-red-600">{user.failedLogins}</div>
+                        <div className="text-xs text-muted-foreground">Failed Logins</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-semibold">{user.avgTicketsPerWeek}</div>
+                        <div className="text-xs text-muted-foreground">Avg/Week</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'roles' && (
+          <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Most Active Users</CardTitle>
+                <CardTitle>Activity by Role</CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={data.mostActiveUsers.slice(0, 8)}>
+                <ResponsiveContainer width="100%" height={400}>
+                  <BarChart data={roleChartData}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey="name" 
-                      angle={-45}
-                      textAnchor="end"
-                      height={100}
-                    />
+                    <XAxis dataKey="role" />
                     <YAxis />
                     <Tooltip />
-                    <Bar dataKey="activityScore" fill="#f59e0b" name="Activity Score" />
-                    <Bar dataKey="recentTickets" fill="#d97706" name="Recent Tickets" />
+                    <Bar dataKey="users" fill="#f59e0b" name="Total Users" />
+                    <Bar dataKey="activeUsers" fill="#d97706" name="Active Users" />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
+        )}
 
-        <TabsContent value="individual" className="space-y-6">
-          <div className="grid gap-4">
-            {data.users.slice(0, 20).map((user) => (
-              <Card key={user.id}>
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center space-x-4">
-                      <Avatar>
-                        {user.avatar ? (
-                          <AvatarImage src={user.avatar} alt={user.name} />
-                        ) : (
-                          <AvatarFallback>{user.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                        )}
-                      </Avatar>
-                      <div>
-                        <h3 className="font-semibold">{user.name}</h3>
-                        <p className="text-sm text-muted-foreground">{user.email}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge variant="outline">{user.role}</Badge>
-                          <Badge variant="outline">{user.branch}</Badge>
-                          <Badge className={getActivityBadgeColor(user.activityLevel)}>
-                            {user.activityLevel}
+        {activeTab === 'branches' && (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Activity by Branch</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={400}>
+                  <BarChart data={branchChartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="branch"
+                      angle={-45}
+                      textAnchor="end"
+                      height={100}
+                    />
+                    <YAxis />
+                    <Tooltip
+                      labelFormatter={(label) => {
+                        const branch = branchChartData.find(b => b.branch === label);
+                        return branch?.fullBranch || label;
+                      }}
+                    />
+                    <Bar dataKey="users" fill="#f59e0b" name="Total Users" />
+                    <Bar dataKey="activeUsers" fill="#d97706" name="Active Users" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {activeTab === 'engagement' && (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Tickets vs Activity Score Correlation</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={400}>
+                  <ScatterChart data={activityScatterData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="x" name="Total Tickets" />
+                    <YAxis dataKey="y" name="Activity Score" />
+                    <Tooltip cursor={{ strokeDasharray: '3 3' }}
+                      formatter={(value, name) => [value, name === 'x' ? 'Total Tickets' : 'Activity Score']}
+                      labelFormatter={(label) => `User: ${activityScatterData[label]?.name || 'Unknown'}`}
+                    />
+                    <Scatter dataKey="y" fill="#f59e0b" />
+                  </ScatterChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {activeTab === 'alerts' && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                    Recently Inactive Users
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {data.recentlyInactiveUsers.slice(0, 10).map((user) => (
+                      <div key={user.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <Avatar className="h-8 w-8">
+                            {user.avatar ? (
+                              <AvatarImage src={user.avatar} alt={user.name} />
+                            ) : (
+                              <AvatarFallback className="text-xs">{user.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                            )}
+                          </Avatar>
+                          <div>
+                            <p className="font-medium text-sm">{user.name}</p>
+                            <p className="text-xs text-muted-foreground">{user.role} - {user.branch}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <Badge variant="outline" className="text-xs">
+                            {user.daysSinceLastActivity} days ago
                           </Badge>
-                        </div>
-                        <div className="flex items-center gap-2 mt-2">
-                          <span className="text-xs text-muted-foreground">
-                            Activity Score: <strong>{user.activityScore}/100</strong>
-                          </span>
-                          {user.lastLogin && (
-                            <span className="text-xs text-muted-foreground">
-                              Last Login: {new Date(user.lastLogin).toLocaleDateString()}
-                            </span>
-                          )}
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {user.totalTickets} tickets total
+                          </p>
                         </div>
                       </div>
-                    </div>
-                    
-                    <div className="text-right">
-                      <div className="text-sm text-muted-foreground">
-                        {user.daysSinceLastActivity === 0 ? 'Active today' :
-                         user.daysSinceLastActivity === 1 ? '1 day ago' :
-                         user.daysSinceLastActivity <= 7 ? `${user.daysSinceLastActivity} days ago` :
-                         user.daysSinceLastActivity <= 30 ? `${Math.floor(user.daysSinceLastActivity / 7)} weeks ago` :
-                         `${Math.floor(user.daysSinceLastActivity / 30)} months ago`}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mt-4">
-                    <div className="text-center">
-                      <div className="text-lg font-semibold">{user.totalTickets}</div>
-                      <div className="text-xs text-muted-foreground">Total Tickets</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-lg font-semibold text-green-600">{user.recentTickets}</div>
-                      <div className="text-xs text-muted-foreground">Recent (30d)</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-lg font-semibold text-blue-600">{user.totalComments}</div>
-                      <div className="text-xs text-muted-foreground">Comments</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-lg font-semibold text-purple-600">{user.recentComments}</div>
-                      <div className="text-xs text-muted-foreground">Recent (30d)</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-lg font-semibold">{user.totalLogins}</div>
-                      <div className="text-xs text-muted-foreground">Total Logins</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-lg font-semibold text-green-600">{user.recentLogins}</div>
-                      <div className="text-xs text-muted-foreground">Recent (30d)</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-lg font-semibold text-red-600">{user.failedLogins}</div>
-                      <div className="text-xs text-muted-foreground">Failed Logins</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-lg font-semibold">{user.avgTicketsPerWeek}</div>
-                      <div className="text-xs text-muted-foreground">Avg/Week</div>
-                    </div>
+                    ))}
                   </div>
                 </CardContent>
               </Card>
-            ))}
-          </div>
-        </TabsContent>
 
-        <TabsContent value="roles" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Activity by Role</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={400}>
-                <BarChart data={roleChartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="role" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="users" fill="#f59e0b" name="Total Users" />
-                  <Bar dataKey="activeUsers" fill="#d97706" name="Active Users" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="branches" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Activity by Branch</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={400}>
-                <BarChart data={branchChartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="branch" 
-                    angle={-45}
-                    textAnchor="end"
-                    height={100}
-                  />
-                  <YAxis />
-                  <Tooltip 
-                    labelFormatter={(label) => {
-                      const branch = branchChartData.find(b => b.branch === label);
-                      return branch?.fullBranch || label;
-                    }}
-                  />
-                  <Bar dataKey="users" fill="#f59e0b" name="Total Users" />
-                  <Bar dataKey="activeUsers" fill="#d97706" name="Active Users" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="engagement" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Tickets vs Activity Score Correlation</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={400}>
-                <ScatterChart data={activityScatterData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="x" name="Total Tickets" />
-                  <YAxis dataKey="y" name="Activity Score" />
-                  <Tooltip cursor={{ strokeDasharray: '3 3' }} 
-                    formatter={(value, name) => [value, name === 'x' ? 'Total Tickets' : 'Activity Score']}
-                    labelFormatter={(label) => `User: ${activityScatterData[label]?.name || 'Unknown'}`}
-                  />
-                  <Scatter dataKey="y" fill="#f59e0b" />
-                </ScatterChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="alerts" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-yellow-500" />
-                  Recently Inactive Users
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {data.recentlyInactiveUsers.slice(0, 10).map((user) => (
-                    <div key={user.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <Avatar className="h-8 w-8">
-                          {user.avatar ? (
-                            <AvatarImage src={user.avatar} alt={user.name} />
-                          ) : (
-                            <AvatarFallback className="text-xs">{user.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                          )}
-                        </Avatar>
-                        <div>
-                          <p className="font-medium text-sm">{user.name}</p>
-                          <p className="text-xs text-muted-foreground">{user.role} • {user.branch}</p>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <UserX className="h-5 w-5 text-red-500" />
+                    Users with Failed Logins
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {data.users
+                      .filter(u => u.failedLogins > 0)
+                      .sort((a, b) => b.failedLogins - a.failedLogins)
+                      .slice(0, 10)
+                      .map((user) => (
+                      <div key={user.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <Avatar className="h-8 w-8">
+                            {user.avatar ? (
+                              <AvatarImage src={user.avatar} alt={user.name} />
+                            ) : (
+                              <AvatarFallback className="text-xs">{user.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                            )}
+                          </Avatar>
+                          <div>
+                            <p className="font-medium text-sm">{user.name}</p>
+                            <p className="text-xs text-muted-foreground">{user.email}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <Badge variant="destructive" className="text-xs">
+                            {user.failedLogins} failed
+                          </Badge>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {user.totalLogins} successful
+                          </p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <Badge variant="outline" className="text-xs">
-                          {user.daysSinceLastActivity} days ago
-                        </Badge>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {user.totalTickets} tickets total
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <UserX className="h-5 w-5 text-red-500" />
-                  Users with Failed Logins
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {data.users
-                    .filter(u => u.failedLogins > 0)
-                    .sort((a, b) => b.failedLogins - a.failedLogins)
-                    .slice(0, 10)
-                    .map((user) => (
-                    <div key={user.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <Avatar className="h-8 w-8">
-                          {user.avatar ? (
-                            <AvatarImage src={user.avatar} alt={user.name} />
-                          ) : (
-                            <AvatarFallback className="text-xs">{user.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                          )}
-                        </Avatar>
-                        <div>
-                          <p className="font-medium text-sm">{user.name}</p>
-                          <p className="text-xs text-muted-foreground">{user.email}</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <Badge variant="destructive" className="text-xs">
-                          {user.failedLogins} failed
-                        </Badge>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {user.totalLogins} successful
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
-        </TabsContent>
-      </Tabs>
+        )}
+      </div>
     </div>
   );
 }

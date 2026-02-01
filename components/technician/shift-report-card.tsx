@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
   DialogContent,
@@ -140,6 +139,14 @@ const statusLabels: Record<string, { label: string; color: string }> = {
   COMPLETED: { label: 'Selesai', color: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' },
 };
 
+const tabConfig = [
+  { id: 'metrics', label: 'Metrik', icon: Server },
+  { id: 'backup', label: 'Backup', icon: Database },
+  { id: 'issues', label: 'Masalah', icon: AlertTriangle },
+  { id: 'checklist', label: 'Checklist', icon: FileText },
+  { id: 'notes', label: 'Catatan', icon: MessageSquare },
+];
+
 export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftReportCardProps) {
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -155,6 +162,7 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
   });
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [activeTab, setActiveTab] = useState('metrics');
 
   const fetchReport = useCallback(async () => {
     try {
@@ -809,135 +817,141 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Tabs for different sections */}
-          <Tabs defaultValue="metrics" className="w-full">
-            <div className="overflow-x-auto -mx-1 px-1">
-              <TabsList className="inline-flex h-10 min-w-full sm:min-w-0 p-1 bg-muted/50 rounded-lg">
-                <TabsTrigger value="metrics" className="flex-shrink-0 text-xs sm:text-sm px-2 sm:px-3">
-                  <Server className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                  <span className="hidden xs:inline">Metrik</span>
-                  <span className="xs:hidden">M</span>
-                </TabsTrigger>
-                <TabsTrigger value="backup" className="flex-shrink-0 text-xs sm:text-sm px-2 sm:px-3">
-                  <Database className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                  <span className="hidden xs:inline">Backup</span>
-                  <span className="xs:hidden">B</span>
-                </TabsTrigger>
-                <TabsTrigger value="issues" className="flex-shrink-0 text-xs sm:text-sm px-2 sm:px-3">
-                  <AlertTriangle className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                  <span className="hidden xs:inline">Masalah</span>
-                  <span className="xs:hidden">I</span>
-                </TabsTrigger>
-                <TabsTrigger value="checklist" className="flex-shrink-0 text-xs sm:text-sm px-2 sm:px-3">
-                  <FileText className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                  <span className="hidden xs:inline">Checklist</span>
-                  <span className="xs:hidden">C</span>
-                </TabsTrigger>
-                <TabsTrigger value="notes" className="flex-shrink-0 text-xs sm:text-sm px-2 sm:px-3">
-                  <MessageSquare className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                  <span className="hidden xs:inline">Catatan</span>
-                  <span className="xs:hidden">N</span>
-                </TabsTrigger>
-              </TabsList>
+          <div className="w-full">
+            <div className="border-b mb-6">
+              <nav className="flex gap-4 overflow-x-auto" aria-label="Tabs">
+                {tabConfig.map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`
+                        flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap transition-colors
+                        ${isActive
+                          ? 'border-primary text-primary'
+                          : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+                        }
+                      `}
+                    >
+                      <Icon className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="hidden xs:inline">{tab.label}</span>
+                      <span className="xs:hidden">{tab.label.charAt(0)}</span>
+                    </button>
+                  );
+                })}
+              </nav>
             </div>
 
             {/* Server Metrics Tab */}
-            <TabsContent value="metrics" className="mt-4">
-              <ServerMetricsDisplay
-                metrics={serverMetrics}
-                available={metricsAvailable}
-                isStale={metricsStale}
-              />
-            </TabsContent>
+            {activeTab === 'metrics' && (
+              <div className="mt-4">
+                <ServerMetricsDisplay
+                  metrics={serverMetrics}
+                  available={metricsAvailable}
+                  isStale={metricsStale}
+                />
+              </div>
+            )}
 
             {/* Backup Checklist Tab */}
-            <TabsContent value="backup" className="mt-4">
-              <BackupChecklist
-                items={backupChecklist}
-                onUpdateItems={handleUpdateBackup}
-                onCheckAll={handleCheckAllBackup}
-                isLoading={isUpdating}
-                readOnly={isCompleted}
-              />
-              <div className="mt-3 flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Progress Backup</span>
-                <span className="font-medium">
-                  {backupStats.checked}/{backupStats.total} ({Math.round((backupStats.checked / backupStats.total) * 100) || 0}%)
-                </span>
+            {activeTab === 'backup' && (
+              <div className="mt-4">
+                <BackupChecklist
+                  items={backupChecklist}
+                  onUpdateItems={handleUpdateBackup}
+                  onCheckAll={handleCheckAllBackup}
+                  isLoading={isUpdating}
+                  readOnly={isCompleted}
+                />
+                <div className="mt-3 flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Progress Backup</span>
+                  <span className="font-medium">
+                    {backupStats.checked}/{backupStats.total} ({Math.round((backupStats.checked / backupStats.total) * 100) || 0}%)
+                  </span>
+                </div>
+                <Progress value={(backupStats.checked / backupStats.total) * 100 || 0} className="h-2 mt-2" />
               </div>
-              <Progress value={(backupStats.checked / backupStats.total) * 100 || 0} className="h-2 mt-2" />
-            </TabsContent>
+            )}
 
             {/* Issues Tab */}
-            <TabsContent value="issues" className="mt-4 space-y-4">
-              {/* Alert for pending issues from previous shifts */}
-              {!isCompleted && (
-                <PendingIssuesAlert onAddIssue={handleCreateIssue} />
-              )}
-              <ShiftIssues
-                ongoingIssues={ongoingIssues}
-                resolvedIssues={resolvedIssues}
-                onCreateIssue={handleCreateIssue}
-                onUpdateIssue={handleUpdateIssue}
-                onDeleteIssue={handleDeleteIssue}
-                isLoading={isUpdating}
-                readOnly={isCompleted}
-              />
-            </TabsContent>
+            {activeTab === 'issues' && (
+              <div className="mt-4 space-y-4">
+                {/* Alert for pending issues from previous shifts */}
+                {!isCompleted && (
+                  <PendingIssuesAlert onAddIssue={handleCreateIssue} />
+                )}
+                <ShiftIssues
+                  ongoingIssues={ongoingIssues}
+                  resolvedIssues={resolvedIssues}
+                  onCreateIssue={handleCreateIssue}
+                  onUpdateIssue={handleUpdateIssue}
+                  onDeleteIssue={handleDeleteIssue}
+                  isLoading={isUpdating}
+                  readOnly={isCompleted}
+                />
+              </div>
+            )}
 
             {/* Checklist Tab */}
-            <TabsContent value="checklist" className="mt-4 space-y-4">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Progress Checklist</span>
-                <span className="font-medium">
-                  {stats.completed + stats.skipped}/{stats.total} ({progressPercentage}%)
-                </span>
+            {activeTab === 'checklist' && (
+              <div className="mt-4 space-y-4">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Progress Checklist</span>
+                  <span className="font-medium">
+                    {stats.completed + stats.skipped}/{stats.total} ({progressPercentage}%)
+                  </span>
+                </div>
+                <Progress value={progressPercentage} className="h-2" />
+                <ShiftChecklist
+                  items={checklistItems}
+                  onUpdateItems={handleUpdateChecklist}
+                  isLoading={isUpdating}
+                  readOnly={isCompleted}
+                />
               </div>
-              <Progress value={progressPercentage} className="h-2" />
-              <ShiftChecklist
-                items={checklistItems}
-                onUpdateItems={handleUpdateChecklist}
-                isLoading={isUpdating}
-                readOnly={isCompleted}
-              />
-            </TabsContent>
+            )}
 
             {/* Notes Tab */}
-            <TabsContent value="notes" className="mt-4">
-              <div className="space-y-3">
-                <Label>Catatan Umum</Label>
-                {isEditingNotes || !notes ? (
-                  <div className="space-y-2">
-                    <Textarea
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      placeholder="Tulis catatan untuk shift ini..."
-                      className="min-h-[120px]"
-                      disabled={isCompleted}
-                    />
-                    {!isCompleted && (
-                      <div className="flex gap-2">
-                        <Button size="sm" onClick={handleSaveNotes} disabled={isUpdating}>
-                          Simpan
-                        </Button>
-                        {notes && (
-                          <Button size="sm" variant="outline" onClick={() => setIsEditingNotes(false)}>
-                            Batal
+            {activeTab === 'notes' && (
+              <div className="mt-4">
+                <div className="space-y-3">
+                  <Label>Catatan Umum</Label>
+                  {isEditingNotes || !notes ? (
+                    <div className="space-y-2">
+                      <Textarea
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        placeholder="Tulis catatan untuk shift ini..."
+                        className="min-h-[120px]"
+                        disabled={isCompleted}
+                      />
+                      {!isCompleted && (
+                        <div className="flex gap-2">
+                          <Button size="sm" onClick={handleSaveNotes} disabled={isUpdating}>
+                            Simpan
                           </Button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div
-                    className="p-3 bg-muted/50 rounded-lg cursor-pointer hover:bg-muted"
-                    onClick={() => !isCompleted && setIsEditingNotes(true)}
-                  >
-                    <p className="text-sm whitespace-pre-wrap">{notes}</p>
-                  </div>
-                )}
+                          {notes && (
+                            <Button size="sm" variant="outline" onClick={() => setIsEditingNotes(false)}>
+                              Batal
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div
+                      className="p-3 bg-muted/50 rounded-lg cursor-pointer hover:bg-muted"
+                      onClick={() => !isCompleted && setIsEditingNotes(true)}
+                    >
+                      <p className="text-sm whitespace-pre-wrap">{notes}</p>
+                    </div>
+                  )}
+                </div>
               </div>
-            </TabsContent>
-          </Tabs>
+            )}
+          </div>
 
           {/* Actions */}
           <div className="flex flex-wrap gap-2 pt-4 border-t">

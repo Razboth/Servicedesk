@@ -24,7 +24,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { BranchSelect } from '@/components/ui/branch-select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import {
   Monitor,
@@ -183,6 +182,13 @@ function StatCard({
   );
 }
 
+const tabConfig = [
+  { id: 'inventory', label: 'Inventory', icon: LayoutDashboard },
+  { id: 'os-types', label: 'OS Types', icon: Shield },
+  { id: 'office-types', label: 'Office Products', icon: FileText },
+  { id: 'service-logs', label: 'Recent Services', icon: Activity },
+];
+
 export default function PCManagementPage() {
   const { data: session } = useSession();
   const router = useRouter();
@@ -197,6 +203,7 @@ export default function PCManagementPage() {
   const [filterWarrantyStatus, setFilterWarrantyStatus] = useState('');
   const [branches, setBranches] = useState<any[]>([]);
   const [exporting, setExporting] = useState(false);
+  const [activeTab, setActiveTab] = useState('inventory');
 
   useEffect(() => {
     fetchBranches();
@@ -442,265 +449,271 @@ export default function PCManagementPage() {
           </div>
         )}
 
-        <Tabs defaultValue="inventory" className="space-y-6">
-          <div className="w-full overflow-x-auto pb-2">
-            <TabsList className="inline-flex h-auto min-w-full sm:min-w-0 p-1 bg-muted/50 rounded-lg">
-              <TabsTrigger value="inventory" className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                <LayoutDashboard className="h-4 w-4" />
-                Inventory
-              </TabsTrigger>
-              <TabsTrigger value="os-types" className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                <Shield className="h-4 w-4" />
-                OS Types
-              </TabsTrigger>
-              <TabsTrigger value="office-types" className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                <FileText className="h-4 w-4" />
-                Office Products
-              </TabsTrigger>
-              <TabsTrigger value="service-logs" className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                <Activity className="h-4 w-4" />
-                Recent Services
-              </TabsTrigger>
-            </TabsList>
+        <div className="space-y-6">
+          <div className="border-b mb-6">
+            <nav className="flex gap-6 overflow-x-auto" aria-label="Tabs">
+              {tabConfig.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`
+                      flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors
+                      ${isActive
+                        ? 'border-primary text-primary'
+                        : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+                      }
+                    `}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </nav>
           </div>
 
-          <TabsContent value="inventory" className="space-y-6">
-            {/* Filters Card */}
-            <Card>
-              <CardHeader className="pb-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Filter className="h-5 w-5 text-muted-foreground" />
-                    <CardTitle className="text-base">Search & Filter</CardTitle>
+          {activeTab === 'inventory' && (
+            <div className="space-y-6">
+              {/* Filters Card */}
+              <Card>
+                <CardHeader className="pb-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Filter className="h-5 w-5 text-muted-foreground" />
+                      <CardTitle className="text-base">Search & Filter</CardTitle>
+                    </div>
+                    {hasActiveFilters && (
+                      <Button variant="ghost" size="sm" onClick={clearFilters}>
+                        <XCircle className="h-4 w-4 mr-1" />
+                        Clear
+                      </Button>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    <div className="md:col-span-2 relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search hostname, serial, user, IP, MAC..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                    <BranchSelect
+                      branches={branches}
+                      value={filterBranch}
+                      onValueChange={(value) => setFilterBranch(value)}
+                      placeholder="All Branches"
+                      allOption={true}
+                      allOptionLabel="All Branches"
+                    />
+                    <Select value={filterStatus || "all"} onValueChange={(value) => setFilterStatus(value === "all" ? "" : value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Status</SelectItem>
+                        <SelectItem value="IN_USE">In Use</SelectItem>
+                        <SelectItem value="STOCK">Stock</SelectItem>
+                        <SelectItem value="BROKEN">Broken</SelectItem>
+                        <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
+                        <SelectItem value="DISPOSED">Disposed</SelectItem>
+                        <SelectItem value="RESERVED">Reserved</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={filterFormFactor || "all"} onValueChange={(value) => setFilterFormFactor(value === "all" ? "" : value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All Form Factors" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Form Factors</SelectItem>
+                        <SelectItem value="LAPTOP">Laptop</SelectItem>
+                        <SelectItem value="DESKTOP">Desktop</SelectItem>
+                        <SelectItem value="AIO">All-in-One</SelectItem>
+                        <SelectItem value="WORKSTATION">Workstation</SelectItem>
+                        <SelectItem value="SERVER">Server</SelectItem>
+                        <SelectItem value="THIN_CLIENT">Thin Client</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   {hasActiveFilters && (
-                    <Button variant="ghost" size="sm" onClick={clearFilters}>
-                      <XCircle className="h-4 w-4 mr-1" />
-                      Clear
-                    </Button>
+                    <div className="mt-3 text-sm text-muted-foreground">
+                      Showing {pcAssets.length} PC assets
+                    </div>
                   )}
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                  <div className="md:col-span-2 relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search hostname, serial, user, IP, MAC..."
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                  <BranchSelect
-                    branches={branches}
-                    value={filterBranch}
-                    onValueChange={(value) => setFilterBranch(value)}
-                    placeholder="All Branches"
-                    allOption={true}
-                    allOptionLabel="All Branches"
-                  />
-                  <Select value={filterStatus || "all"} onValueChange={(value) => setFilterStatus(value === "all" ? "" : value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="All Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="IN_USE">In Use</SelectItem>
-                      <SelectItem value="STOCK">Stock</SelectItem>
-                      <SelectItem value="BROKEN">Broken</SelectItem>
-                      <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
-                      <SelectItem value="DISPOSED">Disposed</SelectItem>
-                      <SelectItem value="RESERVED">Reserved</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select value={filterFormFactor || "all"} onValueChange={(value) => setFilterFormFactor(value === "all" ? "" : value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="All Form Factors" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Form Factors</SelectItem>
-                      <SelectItem value="LAPTOP">Laptop</SelectItem>
-                      <SelectItem value="DESKTOP">Desktop</SelectItem>
-                      <SelectItem value="AIO">All-in-One</SelectItem>
-                      <SelectItem value="WORKSTATION">Workstation</SelectItem>
-                      <SelectItem value="SERVER">Server</SelectItem>
-                      <SelectItem value="THIN_CLIENT">Thin Client</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                {hasActiveFilters && (
-                  <div className="mt-3 text-sm text-muted-foreground">
-                    Showing {pcAssets.length} PC assets
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
 
-            {/* PC Assets Table */}
-            <Card>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="font-semibold">Asset</TableHead>
-                      <TableHead className="font-semibold">Specs</TableHead>
-                      <TableHead className="font-semibold">Location</TableHead>
-                      <TableHead className="font-semibold">User</TableHead>
-                      <TableHead className="font-semibold">Software</TableHead>
-                      <TableHead className="font-semibold">Security</TableHead>
-                      <TableHead className="font-semibold">Status</TableHead>
-                      <TableHead className="font-semibold">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {loading ? (
-                      <TableRow>
-                        <TableCell colSpan={8} className="text-center py-8">
-                          <div className="flex items-center justify-center gap-2 text-muted-foreground">
-                            <RefreshCw className="h-4 w-4 animate-spin" />
-                            Loading PC assets...
-                          </div>
-                        </TableCell>
+              {/* PC Assets Table */}
+              <Card>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="font-semibold">Asset</TableHead>
+                        <TableHead className="font-semibold">Specs</TableHead>
+                        <TableHead className="font-semibold">Location</TableHead>
+                        <TableHead className="font-semibold">User</TableHead>
+                        <TableHead className="font-semibold">Software</TableHead>
+                        <TableHead className="font-semibold">Security</TableHead>
+                        <TableHead className="font-semibold">Status</TableHead>
+                        <TableHead className="font-semibold">Actions</TableHead>
                       </TableRow>
-                    ) : pcAssets.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={8} className="text-center py-8">
-                          <div className="text-muted-foreground">
-                            <Monitor className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                            No PC assets found
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      pcAssets.map((asset) => (
-                        <TableRow key={asset.id} className="hover:bg-muted/30">
-                          <TableCell>
-                            <div className="flex items-start gap-2">
-                              {getFormFactorIcon(asset.formFactor)}
-                              <div>
-                                <span className="font-medium text-foreground">{asset.pcName}</span>
-                                {asset.assetTag && (
-                                  <span className="text-xs text-muted-foreground block">
-                                    {asset.assetTag}
-                                  </span>
-                                )}
-                                <span className="text-xs text-muted-foreground">
-                                  {asset.brand} {asset.model}
-                                </span>
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="text-sm space-y-0.5">
-                              <div className="flex items-center gap-1 text-foreground">
-                                <Cpu className="h-3 w-3 text-muted-foreground" />
-                                <span className="truncate max-w-[150px]">{asset.processor}</span>
-                              </div>
-                              <div className="flex items-center gap-1 text-muted-foreground">
-                                <HardDrive className="h-3 w-3" />
-                                {asset.ram}GB RAM
-                                {asset.storageCapacity && ` / ${asset.storageCapacity}`}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-start gap-1">
-                              <MapPin className="h-3 w-3 mt-0.5 text-muted-foreground flex-shrink-0" />
-                              <div>
-                                <span className="text-sm text-foreground">{asset.branch.name}</span>
-                                {asset.department && (
-                                  <span className="text-xs text-muted-foreground block">{asset.department}</span>
-                                )}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {asset.assignedTo ? (
-                              <div>
-                                <span className="text-sm text-foreground">{asset.assignedTo.name}</span>
-                                <span className="text-xs text-muted-foreground block">
-                                  {asset.assignedTo.email}
-                                </span>
-                              </div>
-                            ) : asset.assignedUserName ? (
-                              <span className="text-sm text-foreground">{asset.assignedUserName}</span>
-                            ) : (
-                              <span className="text-muted-foreground">Unassigned</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <div className="space-y-1">
-                              {asset.operatingSystem && (
-                                <Badge variant="outline" size="sm">
-                                  {asset.operatingSystem.name}
-                                </Badge>
-                              )}
-                              {asset.officeProduct && (
-                                <Badge variant="outline" size="sm">
-                                  {asset.officeProduct.name}
-                                </Badge>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="space-y-1">
-                              {getAVStatus(asset)}
-                              {asset.hardeningCompliant ? (
-                                <Badge variant="success-soft" size="sm" className="flex items-center gap-1 w-fit">
-                                  <CheckCircle className="h-3 w-3" />
-                                  Hardened
-                                </Badge>
-                              ) : asset.lastHardeningDate ? (
-                                <Badge variant="warning-soft" size="sm" className="flex items-center gap-1 w-fit">
-                                  <AlertTriangle className="h-3 w-3" />
-                                  Non-compliant
-                                </Badge>
-                              ) : null}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {getStatusBadge(asset.status)}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-1">
-                              <Button
-                                variant="ghost"
-                                size="iconSm"
-                                onClick={() => router.push(`/admin/pc-management/${asset.id}`)}
-                                title="Edit PC Asset"
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="iconSm"
-                                onClick={() => handleDelete(asset.id)}
-                                title="Delete PC Asset"
-                                className="text-destructive hover:text-destructive"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                    </TableHeader>
+                    <TableBody>
+                      {loading ? (
+                        <TableRow>
+                          <TableCell colSpan={8} className="text-center py-8">
+                            <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                              <RefreshCw className="h-4 w-4 animate-spin" />
+                              Loading PC assets...
                             </div>
                           </TableCell>
                         </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                      ) : pcAssets.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={8} className="text-center py-8">
+                            <div className="text-muted-foreground">
+                              <Monitor className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                              No PC assets found
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        pcAssets.map((asset) => (
+                          <TableRow key={asset.id} className="hover:bg-muted/30">
+                            <TableCell>
+                              <div className="flex items-start gap-2">
+                                {getFormFactorIcon(asset.formFactor)}
+                                <div>
+                                  <span className="font-medium text-foreground">{asset.pcName}</span>
+                                  {asset.assetTag && (
+                                    <span className="text-xs text-muted-foreground block">
+                                      {asset.assetTag}
+                                    </span>
+                                  )}
+                                  <span className="text-xs text-muted-foreground">
+                                    {asset.brand} {asset.model}
+                                  </span>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-sm space-y-0.5">
+                                <div className="flex items-center gap-1 text-foreground">
+                                  <Cpu className="h-3 w-3 text-muted-foreground" />
+                                  <span className="truncate max-w-[150px]">{asset.processor}</span>
+                                </div>
+                                <div className="flex items-center gap-1 text-muted-foreground">
+                                  <HardDrive className="h-3 w-3" />
+                                  {asset.ram}GB RAM
+                                  {asset.storageCapacity && ` / ${asset.storageCapacity}`}
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-start gap-1">
+                                <MapPin className="h-3 w-3 mt-0.5 text-muted-foreground flex-shrink-0" />
+                                <div>
+                                  <span className="text-sm text-foreground">{asset.branch.name}</span>
+                                  {asset.department && (
+                                    <span className="text-xs text-muted-foreground block">{asset.department}</span>
+                                  )}
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {asset.assignedTo ? (
+                                <div>
+                                  <span className="text-sm text-foreground">{asset.assignedTo.name}</span>
+                                  <span className="text-xs text-muted-foreground block">
+                                    {asset.assignedTo.email}
+                                  </span>
+                                </div>
+                              ) : asset.assignedUserName ? (
+                                <span className="text-sm text-foreground">{asset.assignedUserName}</span>
+                              ) : (
+                                <span className="text-muted-foreground">Unassigned</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <div className="space-y-1">
+                                {asset.operatingSystem && (
+                                  <Badge variant="outline" size="sm">
+                                    {asset.operatingSystem.name}
+                                  </Badge>
+                                )}
+                                {asset.officeProduct && (
+                                  <Badge variant="outline" size="sm">
+                                    {asset.officeProduct.name}
+                                  </Badge>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="space-y-1">
+                                {getAVStatus(asset)}
+                                {asset.hardeningCompliant ? (
+                                  <Badge variant="success-soft" size="sm" className="flex items-center gap-1 w-fit">
+                                    <CheckCircle className="h-3 w-3" />
+                                    Hardened
+                                  </Badge>
+                                ) : asset.lastHardeningDate ? (
+                                  <Badge variant="warning-soft" size="sm" className="flex items-center gap-1 w-fit">
+                                    <AlertTriangle className="h-3 w-3" />
+                                    Non-compliant
+                                  </Badge>
+                                ) : null}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {getStatusBadge(asset.status)}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="iconSm"
+                                  onClick={() => router.push(`/admin/pc-management/${asset.id}`)}
+                                  title="Edit PC Asset"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="iconSm"
+                                  onClick={() => handleDelete(asset.id)}
+                                  title="Delete PC Asset"
+                                  className="text-destructive hover:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
-          <TabsContent value="os-types">
+          {activeTab === 'os-types' && (
             <OSTypesTab />
-          </TabsContent>
+          )}
 
-          <TabsContent value="office-types">
+          {activeTab === 'office-types' && (
             <OfficeTypesTab />
-          </TabsContent>
+          )}
 
-          <TabsContent value="service-logs">
+          {activeTab === 'service-logs' && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -762,8 +775,8 @@ export default function PCManagementPage() {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
+          )}
+        </div>
       </div>
     </div>
   );

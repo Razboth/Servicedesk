@@ -5,14 +5,13 @@ import { useSession } from 'next-auth/react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { TicketWizard } from '@/components/tickets/modern/ticket-wizard'
 import { ModernTicketList } from '@/components/tickets/modern/modern-ticket-list'
-import { 
-  Plus, 
-  List, 
-  Grid3X3, 
-  BarChart3, 
+import {
+  Plus,
+  List,
+  Grid3X3,
+  BarChart3,
   Filter,
   Search,
   Moon,
@@ -39,6 +38,11 @@ interface QuickStat {
   trend?: number
 }
 
+const tabConfig = [
+  { id: 'tickets', label: 'All Tickets', icon: List },
+  { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+]
+
 export default function ModernTicketsPage() {
   const { data: session } = useSession()
   const { theme, setTheme } = useTheme()
@@ -47,6 +51,7 @@ export default function ModernTicketsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [quickStats, setQuickStats] = useState<QuickStat[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('tickets')
 
   useEffect(() => {
     loadQuickStats()
@@ -212,7 +217,7 @@ export default function ModernTicketsPage() {
               </Button>
 
               {/* Create Ticket */}
-              <Button 
+              <Button
                 onClick={() => setShowWizard(true)}
                 className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-lg"
               >
@@ -253,50 +258,69 @@ export default function ModernTicketsPage() {
         </div>
 
         {/* Main Content */}
-        <Tabs defaultValue="tickets" className="space-y-6">
-          <TabsList className="bg-card/70 dark:bg-card/70 backdrop-blur-sm border border-border">
-            <TabsTrigger value="tickets" className="flex items-center gap-2">
-              <List className="h-4 w-4" />
-              All Tickets
-            </TabsTrigger>
-            <TabsTrigger value="analytics" className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
-              Analytics
-            </TabsTrigger>
-          </TabsList>
+        <div className="space-y-6">
+          {/* Underline Tabs Navigation */}
+          <div className="border-b">
+            <nav className="flex gap-6 overflow-x-auto" aria-label="Tabs">
+              {tabConfig.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`
+                      flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors
+                      ${isActive
+                        ? 'border-primary text-primary'
+                        : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+                      }
+                    `}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
 
-          <TabsContent value="tickets" className="space-y-6">
-            <ModernTicketList 
-              viewMode={viewMode}
-              searchTerm={searchTerm}
-              onCreateTicket={() => setShowWizard(true)}
-            />
-          </TabsContent>
+          {activeTab === 'tickets' && (
+            <div className="space-y-6">
+              <ModernTicketList
+                viewMode={viewMode}
+                searchTerm={searchTerm}
+                onCreateTicket={() => setShowWizard(true)}
+              />
+            </div>
+          )}
 
-          <TabsContent value="analytics" className="space-y-6">
-            <Card className="bg-card/70 dark:bg-card/70 backdrop-blur-sm border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5" />
-                  Ticket Analytics
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-center h-64 text-gray-500 dark:text-gray-400">
-                  <div className="text-center">
-                    <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>Analytics dashboard coming soon...</p>
+          {activeTab === 'analytics' && (
+            <div className="space-y-6">
+              <Card className="bg-card/70 dark:bg-card/70 backdrop-blur-sm border-0 shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BarChart3 className="h-5 w-5" />
+                    Ticket Analytics
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center justify-center h-64 text-gray-500 dark:text-gray-400">
+                    <div className="text-center">
+                      <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>Analytics dashboard coming soon...</p>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Ticket Creation Wizard */}
       {showWizard && (
-        <TicketWizard 
+        <TicketWizard
           onClose={() => setShowWizard(false)}
           onSuccess={() => {
             setShowWizard(false)

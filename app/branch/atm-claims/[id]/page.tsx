@@ -3,13 +3,12 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
-import { 
+import {
   ArrowLeft,
   CheckCircle2,
   XCircle,
@@ -52,6 +51,12 @@ interface ClaimDetail {
   approvals?: any[];
 }
 
+const tabConfig = [
+  { id: 'details', label: 'Detail', icon: FileText },
+  { id: 'verification', label: 'Verifikasi', icon: CheckCircle2 },
+  { id: 'communication', label: 'Komunikasi', icon: MessageSquare },
+];
+
 export default function ATMClaimDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -65,10 +70,10 @@ export default function ATMClaimDetailPage() {
     try {
       const response = await fetch(`/api/tickets/${params.id}`);
       const data = await response.json();
-      
+
       if (response.ok) {
         setClaim(data);
-        
+
         // Fetch verification progress
         const verifyResponse = await fetch(`/api/branch/atm-claims/${params.id}/verify`);
         if (verifyResponse.ok) {
@@ -114,8 +119,8 @@ export default function ATMClaimDetailPage() {
         body: JSON.stringify({
           ticketIds: [claim?.id],
           action,
-          reason: action === 'approve' 
-            ? 'Claim verified and approved' 
+          reason: action === 'approve'
+            ? 'Claim verified and approved'
             : 'Claim rejected after verification'
         })
       });
@@ -177,7 +182,7 @@ export default function ATMClaimDetailPage() {
             <p className="text-gray-600">{claim.title}</p>
           </div>
         </div>
-        
+
         <div className="flex gap-2">
           <Badge variant={getStatusColor(claim.status)} className="text-lg px-3 py-1">
             {claim.status}
@@ -238,39 +243,33 @@ export default function ATMClaimDetailPage() {
       )}
 
       {/* Main Content Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <Card className="mb-6">
-          <CardContent className="p-4">
-            <div className="flex gap-2">
-              <Button
-                variant={activeTab === 'details' ? 'default' : 'outline'}
-                onClick={() => setActiveTab('details')}
-                className="flex-1 gap-2"
+      <div className="border-b mb-6">
+        <nav className="flex gap-6 overflow-x-auto" aria-label="Tabs">
+          {tabConfig.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`
+                  flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors
+                  ${isActive
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+                  }
+                `}
               >
-                <FileText className="w-4 h-4" />
-                <span>Detail</span>
-              </Button>
-              <Button
-                variant={activeTab === 'verification' ? 'default' : 'outline'}
-                onClick={() => setActiveTab('verification')}
-                className="flex-1 gap-2"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Verifikasi</span>
-              </Button>
-              <Button
-                variant={activeTab === 'communication' ? 'default' : 'outline'}
-                onClick={() => setActiveTab('communication')}
-                className="flex-1 gap-2"
-              >
-                <MessageSquare className="w-4 h-4" />
-                <span>Komunikasi</span>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+                <Icon className="h-4 w-4" />
+                {tab.label}
+              </button>
+            );
+          })}
+        </nav>
+      </div>
 
-        <TabsContent value="details">
+      {activeTab === 'details' && (
+        <div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Claim Information */}
             <Card>
@@ -348,33 +347,23 @@ export default function ATMClaimDetailPage() {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
+        </div>
+      )}
 
-        <TabsContent value="verification">
-          <VerificationChecklist
-            ticketId={claim.id}
-            onUpdate={fetchClaimDetails}
-            readOnly={isReadOnly}
-          />
-        </TabsContent>
+      {activeTab === 'verification' && (
+        <VerificationChecklist
+          ticketId={claim.id}
+          onUpdate={fetchClaimDetails}
+          readOnly={isReadOnly}
+        />
+      )}
 
-        {/* Assignments tab content - hidden for now but implementation preserved */}
-        {/* <TabsContent value="assignments">
-          <AssignmentPanel 
-            ticketId={claim.id}
-            branchId={claim.branch?.code || ''}
-            currentAssignments={claim.branchAssignments || []}
-            onUpdate={fetchClaimDetails}
-          />
-        </TabsContent> */}
-
-        <TabsContent value="communication">
-          <CommunicationPanel 
-            ticketId={claim.id}
-            onUpdate={fetchClaimDetails}
-          />
-        </TabsContent>
-      </Tabs>
+      {activeTab === 'communication' && (
+        <CommunicationPanel
+          ticketId={claim.id}
+          onUpdate={fetchClaimDetails}
+        />
+      )}
     </div>
   );
 }

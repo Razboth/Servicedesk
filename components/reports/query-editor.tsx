@@ -4,11 +4,10 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { 
-  Code, 
-  Play, 
-  AlertCircle, 
+import {
+  Code,
+  Play,
+  AlertCircle,
   CheckCircle,
   Copy,
   Download,
@@ -54,7 +53,7 @@ const getModuleHints = (module: string) => {
 
 const sampleQueries = {
   TICKETS: {
-    'Tickets by Status': `SELECT 
+    'Tickets by Status': `SELECT
   status,
   COUNT(*) as ticket_count,
   AVG(EXTRACT(EPOCH FROM (resolvedAt - createdAt))/3600) as avg_resolution_hours
@@ -62,7 +61,7 @@ FROM tickets
 WHERE createdAt >= CURRENT_DATE - INTERVAL '30 days'
 GROUP BY status
 ORDER BY ticket_count DESC`,
-    'Top 10 Services': `SELECT 
+    'Top 10 Services': `SELECT
   s.name as service_name,
   COUNT(t.id) as ticket_count,
   AVG(t.priority) as avg_priority
@@ -72,7 +71,7 @@ WHERE t.createdAt >= CURRENT_DATE - INTERVAL '30 days'
 GROUP BY s.id, s.name
 ORDER BY ticket_count DESC
 LIMIT 10`,
-    'SLA Performance': `SELECT 
+    'SLA Performance': `SELECT
   DATE(createdAt) as date,
   COUNT(*) as total_tickets,
   COUNT(CASE WHEN responseTime <= s.responseHours THEN 1 END) as within_response_sla,
@@ -84,7 +83,7 @@ GROUP BY DATE(createdAt)
 ORDER BY date DESC`
   },
   TIME_SPENT: {
-    'Time by User': `SELECT 
+    'Time by User': `SELECT
   u.name as user_name,
   COUNT(DISTINCT w.ticketId) as tickets_worked,
   SUM(w.duration) as total_minutes,
@@ -96,7 +95,7 @@ GROUP BY u.id, u.name
 ORDER BY total_minutes DESC`
   },
   TASKS: {
-    'Task Completion Rate': `SELECT 
+    'Task Completion Rate': `SELECT
   u.name as assignee,
   COUNT(*) as total_tasks,
   COUNT(CASE WHEN status = 'COMPLETED' THEN 1 END) as completed_tasks,
@@ -109,6 +108,12 @@ HAVING COUNT(*) > 5
 ORDER BY completion_rate DESC`
   }
 }
+
+const tabConfig = [
+  { id: 'editor', label: 'Query Editor', icon: Code },
+  { id: 'samples', label: 'Sample Queries', icon: FileText },
+  { id: 'schema', label: 'Schema Reference', icon: Table },
+]
 
 export function QueryEditor({ initialQuery, module, onQueryChange }: QueryEditorProps) {
   const [query, setQuery] = useState(initialQuery || '')
@@ -146,10 +151,10 @@ export function QueryEditor({ initialQuery, module, onQueryChange }: QueryEditor
       // In a real implementation, this would call an API to validate the SQL
       // For now, we'll do basic client-side validation
       const lowerQuery = query.toLowerCase()
-      
+
       // Check for dangerous operations
-      if (lowerQuery.includes('drop') || 
-          lowerQuery.includes('delete') || 
+      if (lowerQuery.includes('drop') ||
+          lowerQuery.includes('delete') ||
           lowerQuery.includes('truncate') ||
           lowerQuery.includes('update') ||
           lowerQuery.includes('insert')) {
@@ -207,7 +212,7 @@ export function QueryEditor({ initialQuery, module, onQueryChange }: QueryEditor
       .replace(/\sRIGHT JOIN\s/gi, '\nRIGHT JOIN ')
       .replace(/\sINNER JOIN\s/gi, '\nINNER JOIN ')
       .replace(/\sON\s/gi, ' ON ')
-    
+
     handleQueryChange(formatted)
   }
 
@@ -241,16 +246,33 @@ export function QueryEditor({ initialQuery, module, onQueryChange }: QueryEditor
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <div className="overflow-x-auto -mx-1 px-1">
-          <TabsList className="inline-flex h-10 min-w-full sm:min-w-0 p-1 bg-muted/50 rounded-lg">
-            <TabsTrigger value="editor" className="flex-shrink-0 text-xs sm:text-sm">Query Editor</TabsTrigger>
-            <TabsTrigger value="samples" className="flex-shrink-0 text-xs sm:text-sm">Sample Queries</TabsTrigger>
-            <TabsTrigger value="schema" className="flex-shrink-0 text-xs sm:text-sm">Schema Reference</TabsTrigger>
-          </TabsList>
-        </div>
+      <div className="border-b mb-6">
+        <nav className="flex gap-6 overflow-x-auto" aria-label="Tabs">
+          {tabConfig.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`
+                  flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors
+                  ${isActive
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+                  }
+                `}
+              >
+                <Icon className="h-4 w-4" />
+                {tab.label}
+              </button>
+            );
+          })}
+        </nav>
+      </div>
 
-        <TabsContent value="editor" className="space-y-4">
+      {activeTab === 'editor' && (
+        <div className="space-y-4">
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
@@ -316,9 +338,11 @@ export function QueryEditor({ initialQuery, module, onQueryChange }: QueryEditor
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
+        </div>
+      )}
 
-        <TabsContent value="samples" className="space-y-4">
+      {activeTab === 'samples' && (
+        <div className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Sample Queries</CardTitle>
@@ -345,9 +369,11 @@ export function QueryEditor({ initialQuery, module, onQueryChange }: QueryEditor
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
+        </div>
+      )}
 
-        <TabsContent value="schema" className="space-y-4">
+      {activeTab === 'schema' && (
+        <div className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Database Schema Reference</CardTitle>
@@ -396,13 +422,13 @@ export function QueryEditor({ initialQuery, module, onQueryChange }: QueryEditor
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+        </div>
+      )}
     </div>
   )
 }
 
-function SchemaTable({ name, columns }: { 
+function SchemaTable({ name, columns }: {
   name: string
   columns: Array<{ name: string; type: string; key?: string }>
 }) {

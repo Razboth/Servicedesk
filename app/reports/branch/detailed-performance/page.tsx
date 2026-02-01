@@ -3,17 +3,16 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { 
+import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, PieChart, Pie, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
   AreaChart, Area
 } from 'recharts';
-import { 
-  Building, Users, Clock, CheckCircle, AlertTriangle, Download, 
-  TrendingUp, MapPin, Phone, CreditCard 
+import {
+  Building, Users, Clock, CheckCircle, AlertTriangle, Download,
+  TrendingUp, MapPin, Phone, CreditCard, BarChart3
 } from 'lucide-react';
 
 interface BranchPerformance {
@@ -71,10 +70,19 @@ interface ReportData {
 
 const COLORS = ['#f59e0b', '#d97706', '#b45309', '#92400e', '#78350f', '#451a03'];
 
+const tabConfig = [
+  { id: 'overview', label: 'Overview', icon: BarChart3 },
+  { id: 'individual', label: 'Branch Details', icon: Building },
+  { id: 'regional', label: 'Regional', icon: MapPin },
+  { id: 'performance', label: 'Performance', icon: TrendingUp },
+  { id: 'trends', label: 'Trends', icon: Clock },
+];
+
 export default function BranchDetailedPerformancePage() {
   const [data, setData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
     fetchData();
@@ -271,256 +279,281 @@ export default function BranchDetailedPerformancePage() {
         </Card>
       </div>
 
-      <Tabs defaultValue="overview" className="w-full">
-        <div className="overflow-x-auto -mx-1 px-1">
-          <TabsList className="inline-flex h-10 min-w-full sm:min-w-0 p-1 bg-muted/50 rounded-lg">
-            <TabsTrigger value="overview" className="flex-shrink-0 text-xs sm:text-sm">Overview</TabsTrigger>
-            <TabsTrigger value="individual" className="flex-shrink-0 text-xs sm:text-sm">Branch Details</TabsTrigger>
-            <TabsTrigger value="regional" className="flex-shrink-0 text-xs sm:text-sm">Regional</TabsTrigger>
-            <TabsTrigger value="performance" className="flex-shrink-0 text-xs sm:text-sm">Performance</TabsTrigger>
-            <TabsTrigger value="trends" className="flex-shrink-0 text-xs sm:text-sm">Trends</TabsTrigger>
-          </TabsList>
+      <div className="w-full">
+        <div className="border-b mb-6">
+          <nav className="flex gap-6 overflow-x-auto" aria-label="Tabs">
+            {tabConfig.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`
+                    flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors
+                    ${isActive
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+                    }
+                  `}
+                >
+                  <Icon className="h-4 w-4" />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </nav>
         </div>
 
-        <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {activeTab === 'overview' && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Top 10 Performing Branches</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={data.topPerformers.slice(0, 10)}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="code" />
+                      <YAxis />
+                      <Tooltip
+                        formatter={(value, name) => [
+                          name === 'resolutionRate' ? `${value}%` : value,
+                          name === 'resolutionRate' ? 'Resolution Rate' : 'Total Tickets'
+                        ]}
+                      />
+                      <Bar dataKey="resolutionRate" fill="#f59e0b" name="Resolution Rate" />
+                      <Bar dataKey="totalTickets" fill="#d97706" name="Total Tickets" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Regional Distribution</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={regionalChartData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ region, branches }) => `${region} (${branches})`}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="branches"
+                      >
+                        {regionalChartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'individual' && (
+          <div className="space-y-6">
+            <div className="grid gap-4">
+              {data.branches.map((branch) => (
+                <Card key={branch.id}>
+                  <CardContent className="p-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center space-x-4">
+                        <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-brown-500 rounded-lg flex items-center justify-center">
+                          <Building className="h-6 w-6 text-white" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-lg">{branch.name}</h3>
+                          <p className="text-sm text-muted-foreground">Code: {branch.code}</p>
+                          {branch.address && (
+                            <div className="flex items-center gap-1 mt-1">
+                              <MapPin className="h-3 w-3 text-muted-foreground" />
+                              <p className="text-xs text-muted-foreground">{branch.address}</p>
+                            </div>
+                          )}
+                          {branch.phone && (
+                            <div className="flex items-center gap-1 mt-1">
+                              <Phone className="h-3 w-3 text-muted-foreground" />
+                              <p className="text-xs text-muted-foreground">{branch.phone}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <Badge variant={branch.resolutionRate >= 80 ? "default" : "destructive"}>
+                          {branch.resolutionRate.toFixed(1)}% Resolution Rate
+                        </Badge>
+                        <div className="mt-2">
+                          <Badge variant="outline">
+                            {branch.slaCompliance.toFixed(1)}% SLA
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Staff Information */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                      <div className="text-center p-3 bg-muted rounded-lg">
+                        <div className="text-lg font-semibold text-blue-600">{branch.totalUsers}</div>
+                        <div className="text-xs text-muted-foreground">Total Users</div>
+                      </div>
+                      <div className="text-center p-3 bg-muted rounded-lg">
+                        <div className="text-lg font-semibold text-green-600">{branch.technicians}</div>
+                        <div className="text-xs text-muted-foreground">Technicians</div>
+                      </div>
+                      <div className="text-center p-3 bg-muted rounded-lg">
+                        <div className="text-lg font-semibold text-purple-600">{branch.managers}</div>
+                        <div className="text-xs text-muted-foreground">Managers</div>
+                      </div>
+                      <div className="text-center p-3 bg-muted rounded-lg">
+                        <div className="text-lg font-semibold text-orange-600">{branch.atmCount}</div>
+                        <div className="text-xs text-muted-foreground">ATMs</div>
+                      </div>
+                    </div>
+
+                    {/* Ticket Metrics */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-4">
+                      <div className="text-center">
+                        <div className="text-lg font-semibold">{branch.totalTickets}</div>
+                        <div className="text-xs text-muted-foreground">Total</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-semibold text-green-600">{branch.resolvedTickets}</div>
+                        <div className="text-xs text-muted-foreground">Resolved</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-semibold text-blue-600">{branch.openTickets}</div>
+                        <div className="text-xs text-muted-foreground">Open</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-semibold text-red-600">{branch.overdueTickets}</div>
+                        <div className="text-xs text-muted-foreground">Overdue</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-semibold text-yellow-600">{branch.criticalTickets}</div>
+                        <div className="text-xs text-muted-foreground">Critical</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-semibold text-purple-600">{branch.atmTickets}</div>
+                        <div className="text-xs text-muted-foreground">ATM Issues</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-semibold">{branch.avgResolutionHours}h</div>
+                        <div className="text-xs text-muted-foreground">Avg Resolution</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-semibold">{branch.performance.last7Days}</div>
+                        <div className="text-xs text-muted-foreground">Last 7 Days</div>
+                      </div>
+                    </div>
+
+                    {/* Technician Performance */}
+                    {branch.technicianMetrics.length > 0 && (
+                      <div className="mt-4">
+                        <h4 className="font-medium mb-2">Technician Performance</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                          {branch.technicianMetrics.map((tech, index) => (
+                            <div key={index} className="text-sm p-2 bg-muted rounded">
+                              <div className="font-medium">{tech.name}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {tech.resolvedTickets}/{tech.totalTickets} tickets ({tech.resolutionRate.toFixed(1)}%)
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'regional' && (
+          <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Top 10 Performing Branches</CardTitle>
+                <CardTitle>Regional Performance Comparison</CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={data.topPerformers.slice(0, 10)}>
+                <ResponsiveContainer width="100%" height={400}>
+                  <BarChart data={regionalChartData}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="code" />
+                    <XAxis dataKey="region" />
                     <YAxis />
-                    <Tooltip 
-                      formatter={(value, name) => [
-                        name === 'resolutionRate' ? `${value}%` : value,
-                        name === 'resolutionRate' ? 'Resolution Rate' : 'Total Tickets'
-                      ]}
-                    />
-                    <Bar dataKey="resolutionRate" fill="#f59e0b" name="Resolution Rate" />
+                    <Tooltip />
+                    <Bar dataKey="branches" fill="#f59e0b" name="Branches" />
                     <Bar dataKey="totalTickets" fill="#d97706" name="Total Tickets" />
+                    <Bar dataKey="totalUsers" fill="#b45309" name="Total Users" />
+                    <Bar dataKey="totalAtms" fill="#92400e" name="Total ATMs" />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
+          </div>
+        )}
 
+        {activeTab === 'performance' && (
+          <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Regional Distribution</CardTitle>
+                <CardTitle>Resolution Rate vs SLA Compliance</CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={regionalChartData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ region, branches }) => `${region} (${branches})`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="branches"
-                    >
-                      {regionalChartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
+                <ResponsiveContainer width="100%" height={400}>
+                  <LineChart data={performanceChartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip
+                      labelFormatter={(label) => {
+                        const branch = performanceChartData.find(b => b.name === label);
+                        return branch?.fullName || label;
+                      }}
+                    />
+                    <Line type="monotone" dataKey="resolutionRate" stroke="#f59e0b" name="Resolution Rate %" />
+                    <Line type="monotone" dataKey="slaCompliance" stroke="#d97706" name="SLA Compliance %" />
+                  </LineChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
+        )}
 
-        <TabsContent value="individual" className="space-y-6">
-          <div className="grid gap-4">
-            {data.branches.map((branch) => (
-              <Card key={branch.id}>
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-brown-500 rounded-lg flex items-center justify-center">
-                        <Building className="h-6 w-6 text-white" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-lg">{branch.name}</h3>
-                        <p className="text-sm text-muted-foreground">Code: {branch.code}</p>
-                        {branch.address && (
-                          <div className="flex items-center gap-1 mt-1">
-                            <MapPin className="h-3 w-3 text-muted-foreground" />
-                            <p className="text-xs text-muted-foreground">{branch.address}</p>
-                          </div>
-                        )}
-                        {branch.phone && (
-                          <div className="flex items-center gap-1 mt-1">
-                            <Phone className="h-3 w-3 text-muted-foreground" />
-                            <p className="text-xs text-muted-foreground">{branch.phone}</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <Badge variant={branch.resolutionRate >= 80 ? "default" : "destructive"}>
-                        {branch.resolutionRate.toFixed(1)}% Resolution Rate
-                      </Badge>
-                      <div className="mt-2">
-                        <Badge variant="outline">
-                          {branch.slaCompliance.toFixed(1)}% SLA
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Staff Information */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                    <div className="text-center p-3 bg-muted rounded-lg">
-                      <div className="text-lg font-semibold text-blue-600">{branch.totalUsers}</div>
-                      <div className="text-xs text-muted-foreground">Total Users</div>
-                    </div>
-                    <div className="text-center p-3 bg-muted rounded-lg">
-                      <div className="text-lg font-semibold text-green-600">{branch.technicians}</div>
-                      <div className="text-xs text-muted-foreground">Technicians</div>
-                    </div>
-                    <div className="text-center p-3 bg-muted rounded-lg">
-                      <div className="text-lg font-semibold text-purple-600">{branch.managers}</div>
-                      <div className="text-xs text-muted-foreground">Managers</div>
-                    </div>
-                    <div className="text-center p-3 bg-muted rounded-lg">
-                      <div className="text-lg font-semibold text-orange-600">{branch.atmCount}</div>
-                      <div className="text-xs text-muted-foreground">ATMs</div>
-                    </div>
-                  </div>
-
-                  {/* Ticket Metrics */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-4">
-                    <div className="text-center">
-                      <div className="text-lg font-semibold">{branch.totalTickets}</div>
-                      <div className="text-xs text-muted-foreground">Total</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-lg font-semibold text-green-600">{branch.resolvedTickets}</div>
-                      <div className="text-xs text-muted-foreground">Resolved</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-lg font-semibold text-blue-600">{branch.openTickets}</div>
-                      <div className="text-xs text-muted-foreground">Open</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-lg font-semibold text-red-600">{branch.overdueTickets}</div>
-                      <div className="text-xs text-muted-foreground">Overdue</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-lg font-semibold text-yellow-600">{branch.criticalTickets}</div>
-                      <div className="text-xs text-muted-foreground">Critical</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-lg font-semibold text-purple-600">{branch.atmTickets}</div>
-                      <div className="text-xs text-muted-foreground">ATM Issues</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-lg font-semibold">{branch.avgResolutionHours}h</div>
-                      <div className="text-xs text-muted-foreground">Avg Resolution</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-lg font-semibold">{branch.performance.last7Days}</div>
-                      <div className="text-xs text-muted-foreground">Last 7 Days</div>
-                    </div>
-                  </div>
-
-                  {/* Technician Performance */}
-                  {branch.technicianMetrics.length > 0 && (
-                    <div className="mt-4">
-                      <h4 className="font-medium mb-2">Technician Performance</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                        {branch.technicianMetrics.map((tech, index) => (
-                          <div key={index} className="text-sm p-2 bg-muted rounded">
-                            <div className="font-medium">{tech.name}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {tech.resolvedTickets}/{tech.totalTickets} tickets ({tech.resolutionRate.toFixed(1)}%)
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
+        {activeTab === 'trends' && (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Weekly Ticket Trends (Sample Branch)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {data.branches[0] && (
+                  <ResponsiveContainer width="100%" height={400}>
+                    <AreaChart data={data.branches[0].performance.weeklyTrend}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis />
+                      <Tooltip />
+                      <Area type="monotone" dataKey="count" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.6} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
           </div>
-        </TabsContent>
-
-        <TabsContent value="regional" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Regional Performance Comparison</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={400}>
-                <BarChart data={regionalChartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="region" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="branches" fill="#f59e0b" name="Branches" />
-                  <Bar dataKey="totalTickets" fill="#d97706" name="Total Tickets" />
-                  <Bar dataKey="totalUsers" fill="#b45309" name="Total Users" />
-                  <Bar dataKey="totalAtms" fill="#92400e" name="Total ATMs" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="performance" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Resolution Rate vs SLA Compliance</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={400}>
-                <LineChart data={performanceChartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip 
-                    labelFormatter={(label) => {
-                      const branch = performanceChartData.find(b => b.name === label);
-                      return branch?.fullName || label;
-                    }}
-                  />
-                  <Line type="monotone" dataKey="resolutionRate" stroke="#f59e0b" name="Resolution Rate %" />
-                  <Line type="monotone" dataKey="slaCompliance" stroke="#d97706" name="SLA Compliance %" />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="trends" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Weekly Ticket Trends (Sample Branch)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {data.branches[0] && (
-                <ResponsiveContainer width="100%" height={400}>
-                  <AreaChart data={data.branches[0].performance.weeklyTrend}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis />
-                    <Tooltip />
-                    <Area type="monotone" dataKey="count" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.6} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+        )}
+      </div>
     </div>
   );
 }

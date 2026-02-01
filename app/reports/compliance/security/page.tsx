@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table,
   TableBody,
@@ -17,7 +16,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { formatDateTimeWITA } from '@/lib/export-utils';
-import { Shield, AlertTriangle, Lock, Users, Calendar, Activity, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
+import { Shield, AlertTriangle, Lock, Users, Calendar, Activity, CheckCircle, XCircle, RefreshCw, ShieldAlert, ClipboardCheck, UserCog, History } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 
 interface SecurityData {
@@ -93,6 +92,14 @@ export default function SecurityComplianceReport() {
   const [endDate, setEndDate] = useState(
     new Date().toISOString().split('T')[0]
   );
+  const [activeTab, setActiveTab] = useState('incidents');
+
+  const tabConfig = [
+    { id: 'incidents', label: 'Security Incidents', icon: ShieldAlert },
+    { id: 'compliance', label: 'Compliance Scores', icon: ClipboardCheck },
+    { id: 'access', label: 'Access Management', icon: UserCog },
+    { id: 'recent', label: 'Recent Incidents', icon: History },
+  ];
 
   const fetchData = async () => {
     try {
@@ -388,276 +395,292 @@ export default function SecurityComplianceReport() {
         </Card>
       </div>
 
-      <Tabs defaultValue="incidents" className="space-y-4">
-        <div className="w-full overflow-x-auto pb-2">
-          <TabsList className="inline-flex h-auto min-w-full sm:min-w-0 p-1 bg-muted/50 rounded-lg">
-            <TabsTrigger value="incidents" className="flex-shrink-0 px-4 py-2.5 text-sm font-medium rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              Security Incidents
-            </TabsTrigger>
-            <TabsTrigger value="compliance" className="flex-shrink-0 px-4 py-2.5 text-sm font-medium rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              Compliance Scores
-            </TabsTrigger>
-            <TabsTrigger value="access" className="flex-shrink-0 px-4 py-2.5 text-sm font-medium rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              Access Management
-            </TabsTrigger>
-            <TabsTrigger value="recent" className="flex-shrink-0 px-4 py-2.5 text-sm font-medium rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              Recent Incidents
-            </TabsTrigger>
-          </TabsList>
+      <div className="space-y-4">
+        <div className="border-b mb-6">
+          <nav className="flex gap-6 overflow-x-auto" aria-label="Tabs">
+            {tabConfig.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`
+                    flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors
+                    ${isActive
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+                    }
+                  `}
+                >
+                  <Icon className="h-4 w-4" />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </nav>
         </div>
 
-        <TabsContent value="incidents" className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {activeTab === 'incidents' && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Incident Trends</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={incidentTrendsData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="date" fontSize={12} />
+                        <YAxis fontSize={12} />
+                        <Tooltip />
+                        <Line type="monotone" dataKey="incidents" stroke="#ef4444" strokeWidth={2} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Severity Distribution</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={severityData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                          outerRadius={100}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {severityData.map((_, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
             <Card>
               <CardHeader>
-                <CardTitle>Incident Trends</CardTitle>
+                <CardTitle>Incidents by Type</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={incidentTrendsData}>
+                    <BarChart data={incidentTypeData} layout="vertical">
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" fontSize={12} />
-                      <YAxis fontSize={12} />
+                      <XAxis type="number" fontSize={12} />
+                      <YAxis dataKey="name" type="category" fontSize={12} width={100} />
                       <Tooltip />
-                      <Line type="monotone" dataKey="incidents" stroke="#ef4444" strokeWidth={2} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Severity Distribution</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={severityData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                        outerRadius={100}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {severityData.map((_, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
+                      <Bar dataKey="value" fill="#ef4444" />
+                    </BarChart>
                   </ResponsiveContainer>
                 </div>
               </CardContent>
             </Card>
           </div>
+        )}
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Incidents by Type</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={incidentTypeData} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" fontSize={12} />
-                    <YAxis dataKey="name" type="category" fontSize={12} width={100} />
-                    <Tooltip />
-                    <Bar dataKey="value" fill="#ef4444" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="compliance" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Compliance Score Breakdown</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {Object.entries(data.compliance.scores).map(([key, score]) => (
-                  <div key={key} className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
-                      <span className={`font-bold ${getScoreColor(score)}`}>{score.toFixed(1)}%</span>
+        {activeTab === 'compliance' && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Compliance Score Breakdown</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {Object.entries(data.compliance.scores).map(([key, score]) => (
+                    <div key={key} className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
+                        <span className={`font-bold ${getScoreColor(score)}`}>{score.toFixed(1)}%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full ${score >= 90 ? 'bg-green-500' : score >= 70 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                          style={{ width: `${Math.min(100, score)}%` }}
+                        />
+                      </div>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className={`h-2 rounded-full ${score >= 90 ? 'bg-green-500' : score >= 70 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                        style={{ width: `${Math.min(100, score)}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Change Management</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-3 gap-4 text-center">
-                  <div>
-                    <div className="text-2xl font-bold">{data.compliance.changeManagement.totalRequests}</div>
-                    <div className="text-sm text-gray-500">Total Requests</div>
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold text-green-600">{data.compliance.changeManagement.approvedChanges}</div>
-                    <div className="text-sm text-gray-500">Approved</div>
-                  </div>
-                  <div>
-                    <div className={`text-2xl font-bold ${getScoreColor(data.compliance.changeManagement.approvalRate)}`}>
-                      {data.compliance.changeManagement.approvalRate}%
-                    </div>
-                    <div className="text-sm text-gray-500">Approval Rate</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {data.recommendations && data.recommendations.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Recommendations</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2">
-                  {data.recommendations.map((rec, i) => (
-                    <li key={i} className="flex items-start gap-2">
-                      <AlertTriangle className="h-4 w-4 text-yellow-500 mt-0.5 flex-shrink-0" />
-                      <span>{rec}</span>
-                    </li>
                   ))}
-                </ul>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
+                </CardContent>
+              </Card>
 
-        <TabsContent value="access" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>User Access Statistics</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="text-center p-4 bg-gray-50 rounded">
-                    <div className="text-2xl font-bold">{data.compliance.accessManagement.totalUsers}</div>
-                    <div className="text-sm text-gray-500">Total Users</div>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Change Management</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-3 gap-4 text-center">
+                    <div>
+                      <div className="text-2xl font-bold">{data.compliance.changeManagement.totalRequests}</div>
+                      <div className="text-sm text-gray-500">Total Requests</div>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-green-600">{data.compliance.changeManagement.approvedChanges}</div>
+                      <div className="text-sm text-gray-500">Approved</div>
+                    </div>
+                    <div>
+                      <div className={`text-2xl font-bold ${getScoreColor(data.compliance.changeManagement.approvalRate)}`}>
+                        {data.compliance.changeManagement.approvalRate}%
+                      </div>
+                      <div className="text-sm text-gray-500">Approval Rate</div>
+                    </div>
                   </div>
-                  <div className="text-center p-4 bg-green-50 rounded">
-                    <div className="text-2xl font-bold text-green-600">{data.compliance.accessManagement.activeUsers}</div>
-                    <div className="text-sm text-gray-500">Active Users</div>
-                  </div>
-                  <div className="text-center p-4 bg-yellow-50 rounded">
-                    <div className="text-2xl font-bold text-yellow-600">{data.compliance.accessManagement.inactiveUsers}</div>
-                    <div className="text-sm text-gray-500">Inactive Users</div>
-                  </div>
-                  <div className="text-center p-4 bg-blue-50 rounded">
-                    <div className="text-2xl font-bold text-blue-600">{data.compliance.accessManagement.newUsers}</div>
-                    <div className="text-sm text-gray-500">New Users (30d)</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Role Distribution</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[250px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={roleData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, value }) => `${name}: ${value}`}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {roleData.map((_, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
+            {data.recommendations && data.recommendations.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Recommendations</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-2">
+                    {data.recommendations.map((rec, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <AlertTriangle className="h-4 w-4 text-yellow-500 mt-0.5 flex-shrink-0" />
+                        <span>{rec}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            )}
           </div>
-        </TabsContent>
+        )}
 
-        <TabsContent value="recent" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Security Incidents</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Priority</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Branch</TableHead>
-                    <TableHead>Assigned To</TableHead>
-                    <TableHead>Created</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.recentIncidents.length === 0 ? (
+        {activeTab === 'access' && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>User Access Statistics</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="text-center p-4 bg-gray-50 rounded">
+                      <div className="text-2xl font-bold">{data.compliance.accessManagement.totalUsers}</div>
+                      <div className="text-sm text-gray-500">Total Users</div>
+                    </div>
+                    <div className="text-center p-4 bg-green-50 rounded">
+                      <div className="text-2xl font-bold text-green-600">{data.compliance.accessManagement.activeUsers}</div>
+                      <div className="text-sm text-gray-500">Active Users</div>
+                    </div>
+                    <div className="text-center p-4 bg-yellow-50 rounded">
+                      <div className="text-2xl font-bold text-yellow-600">{data.compliance.accessManagement.inactiveUsers}</div>
+                      <div className="text-sm text-gray-500">Inactive Users</div>
+                    </div>
+                    <div className="text-center p-4 bg-blue-50 rounded">
+                      <div className="text-2xl font-bold text-blue-600">{data.compliance.accessManagement.newUsers}</div>
+                      <div className="text-sm text-gray-500">New Users (30d)</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Role Distribution</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[250px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={roleData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, value }) => `${name}: ${value}`}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {roleData.map((_, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'recent' && (
+          <div className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Security Incidents</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                        No security incidents found in this period
-                      </TableCell>
+                      <TableHead>Title</TableHead>
+                      <TableHead>Priority</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Branch</TableHead>
+                      <TableHead>Assigned To</TableHead>
+                      <TableHead>Created</TableHead>
                     </TableRow>
-                  ) : (
-                    data.recentIncidents.map((incident) => (
-                      <TableRow key={incident.id}>
-                        <TableCell className="font-medium max-w-[300px] truncate">
-                          {incident.title}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={getPriorityBadge(incident.priority)}>
-                            {incident.priority}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={getStatusBadge(incident.status)}>
-                            {incident.status.replace('_', ' ')}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{incident.branch || '-'}</TableCell>
-                        <TableCell>{incident.assignedTo || '-'}</TableCell>
-                        <TableCell className="text-sm text-gray-500">
-                          {formatDateTimeWITA(incident.createdAt)}
+                  </TableHeader>
+                  <TableBody>
+                    {data.recentIncidents.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                          No security incidents found in this period
                         </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                    ) : (
+                      data.recentIncidents.map((incident) => (
+                        <TableRow key={incident.id}>
+                          <TableCell className="font-medium max-w-[300px] truncate">
+                            {incident.title}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={getPriorityBadge(incident.priority)}>
+                              {incident.priority}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={getStatusBadge(incident.status)}>
+                              {incident.status.replace('_', ' ')}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{incident.branch || '-'}</TableCell>
+                          <TableCell>{incident.assignedTo || '-'}</TableCell>
+                          <TableCell className="text-sm text-gray-500">
+                            {formatDateTimeWITA(incident.createdAt)}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

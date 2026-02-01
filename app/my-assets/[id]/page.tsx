@@ -6,7 +6,6 @@ import { useSession } from 'next-auth/react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import {
   Accordion,
@@ -131,12 +130,20 @@ interface PCAsset {
   }>;
 }
 
+const tabConfig = [
+  { id: 'info', label: 'Information', icon: Info },
+  { id: 'service', label: 'Service History', icon: Wrench },
+  { id: 'hardening', label: 'Hardening', icon: Shield },
+  { id: 'qr', label: 'QR Code', icon: QrCode },
+];
+
 export default function MyAssetDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { data: session, status } = useSession();
   const [asset, setAsset] = useState<PCAsset | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('info');
 
   useEffect(() => {
     if (status === 'authenticated') {
@@ -235,36 +242,42 @@ export default function MyAssetDetailPage() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="info" className="space-y-6">
-        <div className="overflow-x-auto -mx-1 px-1">
-          <TabsList className="inline-flex h-10 min-w-full sm:min-w-0 p-1 bg-muted/50 rounded-lg">
-            <TabsTrigger value="info" className="flex-shrink-0 flex items-center gap-2 text-xs sm:text-sm">
-              <Info className="h-4 w-4" />
-              <span className="hidden sm:inline">Information</span>
-              <span className="sm:hidden">Info</span>
-            </TabsTrigger>
-            <TabsTrigger value="service" className="flex-shrink-0 flex items-center gap-2 text-xs sm:text-sm">
-              <Wrench className="h-4 w-4" />
-              <span className="hidden sm:inline">Service History</span>
-              <span className="sm:hidden">Service</span>
-              {asset.serviceLogs.length > 0 && (
-                <Badge variant="secondary" className="ml-1">{asset.serviceLogs.length}</Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="hardening" className="flex-shrink-0 flex items-center gap-2 text-xs sm:text-sm">
-              <Shield className="h-4 w-4" />
-              Hardening
-            </TabsTrigger>
-            <TabsTrigger value="qr" className="flex-shrink-0 flex items-center gap-2 text-xs sm:text-sm">
-              <QrCode className="h-4 w-4" />
-              <span className="hidden sm:inline">QR Code</span>
-              <span className="sm:hidden">QR</span>
-            </TabsTrigger>
-          </TabsList>
+      <div className="space-y-6">
+        <div className="border-b mb-6">
+          <nav className="flex gap-6 overflow-x-auto" aria-label="Tabs">
+            {tabConfig.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              let badgeCount = 0;
+              if (tab.id === 'service') badgeCount = asset.serviceLogs.length;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`
+                    flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors
+                    ${isActive
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+                    }
+                  `}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span className="hidden sm:inline">{tab.label}</span>
+                  <span className="sm:hidden">
+                    {tab.id === 'info' ? 'Info' : tab.id === 'service' ? 'Service' : tab.id === 'qr' ? 'QR' : tab.label}
+                  </span>
+                  {badgeCount > 0 && (
+                    <Badge variant="secondary" className="ml-1">{badgeCount}</Badge>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
         </div>
 
         {/* Information Tab */}
-        <TabsContent value="info">
+        {activeTab === 'info' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Device Info */}
             <Card>
@@ -451,10 +464,10 @@ export default function MyAssetDetailPage() {
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
+        )}
 
         {/* Service History Tab */}
-        <TabsContent value="service">
+        {activeTab === 'service' && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -505,10 +518,10 @@ export default function MyAssetDetailPage() {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
+        )}
 
         {/* Hardening Tab */}
-        <TabsContent value="hardening">
+        {activeTab === 'hardening' && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -616,10 +629,10 @@ export default function MyAssetDetailPage() {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
+        )}
 
         {/* QR Code Tab */}
-        <TabsContent value="qr">
+        {activeTab === 'qr' && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -653,8 +666,8 @@ export default function MyAssetDetailPage() {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+        )}
+      </div>
     </div>
   );
 }
