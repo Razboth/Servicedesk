@@ -377,8 +377,46 @@ CREATE TABLE IF NOT EXISTS "server_metrics" (
     CONSTRAINT "server_metrics_pkey" PRIMARY KEY ("id")
 );
 
-CREATE INDEX IF NOT EXISTS "server_metrics_collectedAt_idx" ON server_metrics ("collectedAt");
-CREATE INDEX IF NOT EXISTS "server_metrics_serverId_collectedAt_idx" ON server_metrics ("serverId", "collectedAt");
+-- Add collectedAt column if missing (table may exist with different schema)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                   WHERE table_name = 'server_metrics' AND column_name = 'collectedAt') THEN
+        ALTER TABLE server_metrics ADD COLUMN "collectedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+        RAISE NOTICE 'Added column: server_metrics.collectedAt';
+    END IF;
+END $$;
+
+-- Add serverId column if missing
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                   WHERE table_name = 'server_metrics' AND column_name = 'serverId') THEN
+        ALTER TABLE server_metrics ADD COLUMN "serverId" TEXT NOT NULL DEFAULT '';
+        RAISE NOTICE 'Added column: server_metrics.serverId';
+    END IF;
+END $$;
+
+-- Create indexes only if columns exist
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_name = 'server_metrics' AND column_name = 'collectedAt') THEN
+        CREATE INDEX IF NOT EXISTS "server_metrics_collectedAt_idx" ON server_metrics ("collectedAt");
+        RAISE NOTICE 'Created index: server_metrics_collectedAt_idx';
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_name = 'server_metrics' AND column_name = 'collectedAt')
+       AND EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_name = 'server_metrics' AND column_name = 'serverId') THEN
+        CREATE INDEX IF NOT EXISTS "server_metrics_serverId_collectedAt_idx" ON server_metrics ("serverId", "collectedAt");
+        RAISE NOTICE 'Created index: server_metrics_serverId_collectedAt_idx';
+    END IF;
+END $$;
 
 -- ============================================
 -- TICKETS TABLE - Add firstResponseAt if missing
