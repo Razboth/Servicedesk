@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ExportButton } from '@/components/reports/export-button';
 import { ReportCharts } from '@/components/reports/report-charts';
+import { formatDateTimeWITA } from '@/lib/export-utils';
 import { Shield, AlertTriangle, Lock, Users, Calendar, MapPin } from 'lucide-react';
 
 interface SecurityComplianceData {
@@ -132,7 +133,7 @@ export default function SecurityComplianceReport() {
       const rows = [
         ['Security & Compliance Report'],
         [`Date Range: ${startDate} to ${endDate}`],
-        [`Generated: ${new Date().toISOString()}`],
+        [`Generated: ${formatDateTimeWITA(new Date())}`],
         [''],
         ['Summary'],
         ['Metric', 'Value'],

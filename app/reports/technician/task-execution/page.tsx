@@ -10,11 +10,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ReportFilters, type ReportFilters as ReportFiltersType } from '@/components/reports/report-filters';
 import { MetricCard, BarChart, PieChart, TimelineChart } from '@/components/reports/report-charts';
 import { ExportButton, exportUtils } from '@/components/reports/export-button';
-import { 
-  ArrowLeft, 
-  CheckCircle, 
-  Clock, 
-  Target, 
+import {
+  ArrowLeft,
+  CheckCircle,
+  Clock,
+  Target,
   TrendingUp,
   AlertTriangle,
   Zap,
@@ -25,6 +25,7 @@ import {
   Timer,
   Activity
 } from 'lucide-react';
+import { formatDateTimeWITA } from '@/lib/export-utils';
 
 interface TaskExecutionData {
   summary: {
@@ -168,7 +169,7 @@ export default function TaskExecutionPage() {
       'Estimated (min)': task.estimatedMinutes,
       'Actual (min)': task.actualMinutes,
       'Efficiency': `${task.efficiency}%`,
-      'Completed': new Date(task.completedAt).toLocaleDateString()
+      'Completed': formatDateTimeWITA(task.completedAt)
     }));
 
     const filename = exportUtils.generateFilename('task-execution', format === 'xlsx' ? 'xlsx' : 'csv');

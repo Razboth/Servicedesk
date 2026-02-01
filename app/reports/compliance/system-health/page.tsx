@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ExportButton } from '@/components/reports/export-button';
 import { ReportCharts } from '@/components/reports/report-charts';
+import { formatDateTimeWITA } from '@/lib/export-utils';
 import { Activity, Database, Server, TrendingUp, Calendar, MapPin } from 'lucide-react';
 
 interface SystemHealthData {
@@ -142,7 +143,7 @@ export default function SystemHealthReport() {
       const rows = [
         ['System Health & Data Quality Report'],
         [`Date Range: ${startDate} to ${endDate}`],
-        [`Generated: ${new Date().toISOString()}`],
+        [`Generated: ${formatDateTimeWITA(new Date())}`],
         [''],
         ['Summary'],
         ['Metric', 'Value'],

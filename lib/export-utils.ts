@@ -3,6 +3,41 @@
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { format } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
+
+// WITA timezone (GMT+8)
+const WITA_TIMEZONE = 'Asia/Makassar';
+
+// Helper function to format date in WITA timezone
+export const formatDateWITA = (date: string | Date, formatStr: string = 'dd MMM yyyy, HH:mm'): string => {
+  try {
+    const zonedDate = toZonedTime(new Date(date), WITA_TIMEZONE);
+    return format(zonedDate, formatStr) + ' WITA';
+  } catch {
+    return String(date);
+  }
+};
+
+// Helper function to format date only (without time) in WITA timezone
+export const formatDateOnlyWITA = (date: string | Date): string => {
+  try {
+    const zonedDate = toZonedTime(new Date(date), WITA_TIMEZONE);
+    return format(zonedDate, 'dd MMM yyyy');
+  } catch {
+    return String(date);
+  }
+};
+
+// Helper function to format datetime in WITA timezone for exports
+export const formatDateTimeWITA = (date: string | Date): string => {
+  try {
+    const zonedDate = toZonedTime(new Date(date), WITA_TIMEZONE);
+    return format(zonedDate, 'dd/MM/yyyy HH:mm') + ' WITA';
+  } catch {
+    return String(date);
+  }
+};
 
 export interface ExportData {
   data: any[];
@@ -35,7 +70,7 @@ export const exportToCSV = (exportData: ExportData) => {
         
         // Format dates
         if (value instanceof Date) {
-          return value.toLocaleDateString();
+          return formatDateTimeWITA(value);
         }
         
         return String(value);
@@ -71,7 +106,7 @@ export const exportToExcel = (exportData: ExportData) => {
       ...data.map(row => finalHeaders.map(header => {
         const value = row[header];
         if (value instanceof Date) {
-          return value.toLocaleDateString();
+          return formatDateTimeWITA(value);
         }
         return value;
       }))
@@ -83,7 +118,7 @@ export const exportToExcel = (exportData: ExportData) => {
       ...data.map(row => finalHeaders.map(header => {
         const value = row[header];
         if (value instanceof Date) {
-          return value.toLocaleDateString();
+          return formatDateTimeWITA(value);
         }
         return value;
       }))
@@ -116,7 +151,7 @@ export const exportToPDF = async (exportData: ExportData & {
 
   // Add generation date
   pdf.setFontSize(10);
-  pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, yPosition);
+  pdf.text(`Generated on: ${formatDateTimeWITA(new Date())}`, 20, yPosition);
   yPosition += 20;
 
   // Include chart if specified
@@ -166,7 +201,7 @@ export const exportToPDF = async (exportData: ExportData & {
         if (xPosition > 190) return;
         const value = row[header];
         const displayValue = value instanceof Date 
-          ? value.toLocaleDateString() 
+          ? formatDateTimeWITA(value) 
           : String(value || '').substring(0, 12);
         pdf.text(displayValue, xPosition, yPosition);
         xPosition += 35;
@@ -266,12 +301,12 @@ export const formatDataForExport = (
       }
       // Format dates
       else if (value instanceof Date) {
-        formattedRow[key] = value.toLocaleDateString();
+        formattedRow[key] = formatDateTimeWITA(value);
       }
       // Format date strings (ISO format)
       else if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value)) {
         try {
-          formattedRow[key] = new Date(value).toLocaleDateString();
+          formattedRow[key] = formatDateTimeWITA(value);
         } catch {
           formattedRow[key] = value;
         }
@@ -328,10 +363,10 @@ export const flattenNestedData = (data: any[], columns: string[]) => {
 
 // Ticket-specific export utilities
 export const ticketExportFormatters = {
-  createdAt: (date: string | Date) => new Date(date).toLocaleDateString(),
-  updatedAt: (date: string | Date) => new Date(date).toLocaleDateString(),
-  resolvedAt: (date: string | Date) => date ? new Date(date).toLocaleDateString() : 'Not resolved',
-  closedAt: (date: string | Date) => date ? new Date(date).toLocaleDateString() : 'Not closed',
+  createdAt: (date: string | Date) => formatDateTimeWITA(date),
+  updatedAt: (date: string | Date) => formatDateTimeWITA(date),
+  resolvedAt: (date: string | Date) => date ? formatDateTimeWITA(date) : 'Not resolved',
+  closedAt: (date: string | Date) => date ? formatDateTimeWITA(date) : 'Not closed',
   priority: (priority: string) => priority?.toUpperCase() || 'NONE',
   status: (status: string) => status?.replace('_', ' ').toUpperCase() || 'UNKNOWN'
 };
@@ -361,14 +396,14 @@ export const customFieldExportFormatters = {
 
       case 'DATE':
         try {
-          return new Date(value).toLocaleDateString();
+          return formatDateOnlyWITA(value);
         } catch {
           return String(value);
         }
 
       case 'DATETIME':
         try {
-          return new Date(value).toLocaleString();
+          return formatDateTimeWITA(value);
         } catch {
           return String(value);
         }

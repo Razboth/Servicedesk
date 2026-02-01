@@ -6,11 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { 
-  FileText, 
-  Play, 
-  Edit, 
-  Copy, 
+import {
+  FileText,
+  Play,
+  Edit,
+  Copy,
   ArrowLeft,
   Database,
   Filter,
@@ -18,6 +18,7 @@ import {
   Info,
   Loader2
 } from 'lucide-react'
+import { formatDateOnlyWITA } from '@/lib/export-utils'
 
 interface ReportTemplate {
   id: string
@@ -71,7 +72,7 @@ export default function ReportTemplatePage() {
       
       // Create a new report based on the template
       const reportData = {
-        title: `${template.name} - ${new Date().toLocaleDateString()}`,
+        title: `${template.name} - ${formatDateOnlyWITA(new Date())}`,
         description: template.description,
         type: 'QUERY',
         module: 'CUSTOM',

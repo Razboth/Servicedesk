@@ -6,12 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { 
+import { formatDateTimeWITA } from '@/lib/export-utils';
+import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts';
-import { 
-  Clock, AlertTriangle, CheckCircle, XCircle, Download, 
+import {
+  Clock, AlertTriangle, CheckCircle, XCircle, Download,
   TrendingDown, Target, Timer, Activity, FileText, AlertCircle
 } from 'lucide-react';
 
@@ -169,7 +170,7 @@ export default function SlaBreachAnalysisPage() {
           'Response Breached': breach.responseBreached ? 'Yes' : 'No',
           'Resolution Breached': breach.resolutionBreached ? 'Yes' : 'No',
           'Breach Severity': breach.breachSeverity,
-          'Created At': new Date(breach.createdAt).toLocaleDateString()
+          'Created At': formatDateTimeWITA(breach.createdAt)
         }));
         filename = `sla-current-breaches-${new Date().toISOString().split('T')[0]}.csv`;
         break;

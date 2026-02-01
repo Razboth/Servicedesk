@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AlertTriangle, TrendingDown, TrendingUp, Target, RefreshCw, FileDown } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LineChart, Line, Area, AreaChart } from 'recharts';
 import { format } from 'date-fns';
+import { formatDateTimeWITA } from '@/lib/export-utils';
 
 interface PriorityData {
   priority: string;
@@ -110,7 +111,7 @@ export default function PriorityHealthReport() {
     
     const csvContent = [
       ['Priority Health Report', '', '', ''],
-      ['Generated', new Date().toLocaleString(), '', ''],
+      ['Generated', formatDateTimeWITA(new Date()), '', ''],
       ['Health Score', data.summary.healthScore.toString(), '', ''],
       ['', '', '', ''],
       ['Priority', 'Count', 'Percentage', 'Ideal %'],

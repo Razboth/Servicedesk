@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { formatDateTimeWITA } from '@/lib/export-utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -120,7 +121,7 @@ export default function UserActivityReportPage() {
       'Days Since Last Activity': user.daysSinceLastActivity,
       'Avg Tickets Per Week': user.avgTicketsPerWeek,
       'Avg Comments Per Ticket': user.avgCommentsPerTicket,
-      'Last Login': user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never'
+      'Last Login': user.lastLogin ? formatDateTimeWITA(user.lastLogin) : 'Never'
     }));
 
     const headers = Object.keys(csvData[0]);

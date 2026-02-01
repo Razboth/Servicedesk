@@ -7,12 +7,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { 
+import { formatDateTimeWITA } from '@/lib/export-utils';
+import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts';
-import { 
-  Clock, CheckCircle, XCircle, AlertCircle, Download, 
+import {
+  Clock, CheckCircle, XCircle, AlertCircle, Download,
   TrendingUp, Users, FileText, Building, AlertTriangle
 } from 'lucide-react';
 
@@ -187,7 +188,7 @@ export default function ApprovalWorkflowAnalysisPage() {
           'Approver Email': approval.approverEmail,
           'Priority': approval.priority,
           'Days Pending': approval.daysPending,
-          'Created At': new Date(approval.createdAt).toLocaleDateString(),
+          'Created At': formatDateTimeWITA(approval.createdAt),
           'Comments': approval.comments || ''
         }));
         filename = `pending-approvals-${new Date().toISOString().split('T')[0]}.csv`;

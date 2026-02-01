@@ -38,6 +38,7 @@ import {
 } from 'recharts';
 import { Download, RefreshCw, FileSpreadsheet, AlertTriangle, DollarSign, Clock, TrendingUp, Building2, CreditCard } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { formatDateTimeWITA } from '@/lib/export-utils';
 
 interface ReportData {
   summary: {
@@ -137,11 +138,7 @@ export default function ATMDiscrepancyReportPage() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('id-ID', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    });
+    return formatDateTimeWITA(dateString);
   };
 
   const getStatusBadgeVariant = (status: string) => {

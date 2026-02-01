@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ExportButton } from '@/components/reports/export-button';
 import { ReportCharts } from '@/components/reports/report-charts';
+import { formatDateTimeWITA } from '@/lib/export-utils';
 import { Users, Activity, TrendingUp, Shield, Calendar, Download } from 'lucide-react';
 
 interface UserAnalyticsData {
@@ -97,7 +98,7 @@ export default function UserAnalyticsReport() {
       const summaryRows = [
         ['User Analytics Report'],
         [`Date Range: ${startDate} to ${endDate}`],
-        [`Generated: ${new Date().toISOString()}`],
+        [`Generated: ${formatDateTimeWITA(new Date())}`],
         [''],
         ['Summary'],
         ['Metric', 'Value'],
