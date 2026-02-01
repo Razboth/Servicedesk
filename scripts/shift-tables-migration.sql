@@ -357,66 +357,126 @@ CREATE INDEX IF NOT EXISTS "shift_issues_shiftReportId_status_idx" ON shift_issu
 CREATE INDEX IF NOT EXISTS "shift_issues_ticketId_idx" ON shift_issues ("ticketId");
 
 -- ============================================
--- SERVER_METRICS TABLE
+-- SERVER_METRICS TABLE (matches Prisma schema)
 -- ============================================
 CREATE TABLE IF NOT EXISTS "server_metrics" (
     "id" TEXT NOT NULL,
-    "serverId" TEXT NOT NULL,
+    "serverId" TEXT,
+    "serverName" TEXT,
+
+    -- CPU metrics
+    "cpuUsagePercent" DOUBLE PRECISION,
+    "cpuCores" INTEGER,
+    "cpuLoadAvg1m" DOUBLE PRECISION,
+    "cpuLoadAvg5m" DOUBLE PRECISION,
+    "cpuLoadAvg15m" DOUBLE PRECISION,
+
+    -- RAM metrics
+    "ramTotalGB" DOUBLE PRECISION,
+    "ramUsedGB" DOUBLE PRECISION,
+    "ramUsagePercent" DOUBLE PRECISION,
+
+    -- Disk metrics
+    "diskTotalGB" DOUBLE PRECISION,
+    "diskUsedGB" DOUBLE PRECISION,
+    "diskUsagePercent" DOUBLE PRECISION,
+
+    -- Network metrics
+    "networkInBytesPerSec" DOUBLE PRECISION,
+    "networkOutBytesPerSec" DOUBLE PRECISION,
+
+    -- Uptime metrics
+    "uptimeSeconds" INTEGER,
+    "lastBootTime" TIMESTAMP,
+
+    -- Additional flexible metrics
+    "additionalMetrics" JSONB,
+
+    -- Metadata
     "collectedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "cpuUsage" DOUBLE PRECISION,
-    "memoryUsage" DOUBLE PRECISION,
-    "diskUsage" DOUBLE PRECISION,
-    "networkIn" BIGINT,
-    "networkOut" BIGINT,
-    "activeConnections" INTEGER,
-    "uptime" BIGINT,
-    "status" TEXT NOT NULL DEFAULT 'HEALTHY',
-    "notes" TEXT,
-    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "sourceIp" TEXT,
 
     CONSTRAINT "server_metrics_pkey" PRIMARY KEY ("id")
 );
 
--- Add collectedAt column if missing (table may exist with different schema)
+-- Add missing columns if table exists with old schema
 DO $$
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
-                   WHERE table_name = 'server_metrics' AND column_name = 'collectedAt') THEN
+    -- CPU metrics
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'server_metrics' AND column_name = 'cpuUsagePercent') THEN
+        ALTER TABLE server_metrics ADD COLUMN "cpuUsagePercent" DOUBLE PRECISION;
+        RAISE NOTICE 'Added column: server_metrics.cpuUsagePercent';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'server_metrics' AND column_name = 'cpuCores') THEN
+        ALTER TABLE server_metrics ADD COLUMN "cpuCores" INTEGER;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'server_metrics' AND column_name = 'cpuLoadAvg1m') THEN
+        ALTER TABLE server_metrics ADD COLUMN "cpuLoadAvg1m" DOUBLE PRECISION;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'server_metrics' AND column_name = 'cpuLoadAvg5m') THEN
+        ALTER TABLE server_metrics ADD COLUMN "cpuLoadAvg5m" DOUBLE PRECISION;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'server_metrics' AND column_name = 'cpuLoadAvg15m') THEN
+        ALTER TABLE server_metrics ADD COLUMN "cpuLoadAvg15m" DOUBLE PRECISION;
+    END IF;
+
+    -- RAM metrics
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'server_metrics' AND column_name = 'ramTotalGB') THEN
+        ALTER TABLE server_metrics ADD COLUMN "ramTotalGB" DOUBLE PRECISION;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'server_metrics' AND column_name = 'ramUsedGB') THEN
+        ALTER TABLE server_metrics ADD COLUMN "ramUsedGB" DOUBLE PRECISION;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'server_metrics' AND column_name = 'ramUsagePercent') THEN
+        ALTER TABLE server_metrics ADD COLUMN "ramUsagePercent" DOUBLE PRECISION;
+    END IF;
+
+    -- Disk metrics
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'server_metrics' AND column_name = 'diskTotalGB') THEN
+        ALTER TABLE server_metrics ADD COLUMN "diskTotalGB" DOUBLE PRECISION;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'server_metrics' AND column_name = 'diskUsedGB') THEN
+        ALTER TABLE server_metrics ADD COLUMN "diskUsedGB" DOUBLE PRECISION;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'server_metrics' AND column_name = 'diskUsagePercent') THEN
+        ALTER TABLE server_metrics ADD COLUMN "diskUsagePercent" DOUBLE PRECISION;
+    END IF;
+
+    -- Network metrics
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'server_metrics' AND column_name = 'networkInBytesPerSec') THEN
+        ALTER TABLE server_metrics ADD COLUMN "networkInBytesPerSec" DOUBLE PRECISION;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'server_metrics' AND column_name = 'networkOutBytesPerSec') THEN
+        ALTER TABLE server_metrics ADD COLUMN "networkOutBytesPerSec" DOUBLE PRECISION;
+    END IF;
+
+    -- Uptime metrics
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'server_metrics' AND column_name = 'uptimeSeconds') THEN
+        ALTER TABLE server_metrics ADD COLUMN "uptimeSeconds" INTEGER;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'server_metrics' AND column_name = 'lastBootTime') THEN
+        ALTER TABLE server_metrics ADD COLUMN "lastBootTime" TIMESTAMP;
+    END IF;
+
+    -- Additional
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'server_metrics' AND column_name = 'additionalMetrics') THEN
+        ALTER TABLE server_metrics ADD COLUMN "additionalMetrics" JSONB;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'server_metrics' AND column_name = 'serverName') THEN
+        ALTER TABLE server_metrics ADD COLUMN "serverName" TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'server_metrics' AND column_name = 'sourceIp') THEN
+        ALTER TABLE server_metrics ADD COLUMN "sourceIp" TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'server_metrics' AND column_name = 'collectedAt') THEN
         ALTER TABLE server_metrics ADD COLUMN "collectedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
-        RAISE NOTICE 'Added column: server_metrics.collectedAt';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'server_metrics' AND column_name = 'serverId') THEN
+        ALTER TABLE server_metrics ADD COLUMN "serverId" TEXT;
     END IF;
 END $$;
 
--- Add serverId column if missing
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
-                   WHERE table_name = 'server_metrics' AND column_name = 'serverId') THEN
-        ALTER TABLE server_metrics ADD COLUMN "serverId" TEXT NOT NULL DEFAULT '';
-        RAISE NOTICE 'Added column: server_metrics.serverId';
-    END IF;
-END $$;
-
--- Create indexes only if columns exist
-DO $$
-BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.columns
-               WHERE table_name = 'server_metrics' AND column_name = 'collectedAt') THEN
-        CREATE INDEX IF NOT EXISTS "server_metrics_collectedAt_idx" ON server_metrics ("collectedAt");
-        RAISE NOTICE 'Created index: server_metrics_collectedAt_idx';
-    END IF;
-END $$;
-
-DO $$
-BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.columns
-               WHERE table_name = 'server_metrics' AND column_name = 'collectedAt')
-       AND EXISTS (SELECT 1 FROM information_schema.columns
-               WHERE table_name = 'server_metrics' AND column_name = 'serverId') THEN
-        CREATE INDEX IF NOT EXISTS "server_metrics_serverId_collectedAt_idx" ON server_metrics ("serverId", "collectedAt");
-        RAISE NOTICE 'Created index: server_metrics_serverId_collectedAt_idx';
-    END IF;
-END $$;
+CREATE INDEX IF NOT EXISTS "server_metrics_collectedAt_idx" ON server_metrics ("collectedAt");
 
 -- ============================================
 -- TICKETS TABLE - Add firstResponseAt if missing
