@@ -9,14 +9,13 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/ui/page-header'
-import { Plus, Pencil, Trash2, Search, Filter, Copy, FileDown, FileUp, FileText } from 'lucide-react'
+import { Plus, Pencil, Trash2, Search, Filter, Copy, FileDown, FileUp, FileText, Layers } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 
 const FIELD_TYPES = [
@@ -547,14 +546,38 @@ export default function FieldTemplatesPage() {
           }
         />
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="templates">Field Templates ({templates.length})</TabsTrigger>
-          <TabsTrigger value="custom">Custom Fields ({customFields.length})</TabsTrigger>
-        </TabsList>
+      {/* Tab Navigation */}
+      <div className="border-b mb-6">
+        <nav className="flex gap-6 overflow-x-auto" aria-label="Tabs">
+          {[
+            { id: 'templates', label: `Field Templates (${templates.length})`, icon: FileText },
+            { id: 'custom', label: `Custom Fields (${customFields.length})`, icon: Layers },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`
+                  flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors
+                  ${isActive
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+                  }
+                `}
+              >
+                <Icon className="h-4 w-4" />
+                {tab.label}
+              </button>
+            );
+          })}
+        </nav>
+      </div>
 
-        <TabsContent value="templates">
-          <Card>
+      {/* Templates Tab Content */}
+      {activeTab === 'templates' && (
+        <Card>
             <CardHeader>
               <div className="flex items-center gap-4">
                 <div className="flex-1">
@@ -659,10 +682,11 @@ export default function FieldTemplatesPage() {
               </Table>
             </CardContent>
           </Card>
-        </TabsContent>
+      )}
 
-        <TabsContent value="custom">
-          <Card>
+      {/* Custom Fields Tab Content */}
+      {activeTab === 'custom' && (
+        <Card>
             <CardHeader>
               <div className="flex items-center gap-4">
                 <div className="flex-1">
@@ -763,8 +787,7 @@ export default function FieldTemplatesPage() {
               </Table>
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+      )}
 
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         {renderFieldDialog()}
