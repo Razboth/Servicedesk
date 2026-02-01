@@ -118,6 +118,21 @@ interface ReportData {
   ongoingIssues: ShiftIssue[];
   resolvedIssues: ShiftIssue[];
   serverMetrics: ServerMetrics | null;
+  multiServerMetrics: {
+    collectionId: string;
+    fetchedAt: string;
+    reportTimestamp: string;
+    totalServers: number;
+    avgCpu: number | null;
+    avgMemory: number | null;
+    healthyCount: number;
+    warningCount: number;
+    criticalCount: number;
+    topCpuServers: { ipAddress: string; serverName: string | null; cpuPercent: number }[];
+    topMemoryServers: { ipAddress: string; serverName: string | null; memoryPercent: number }[];
+    storageAlertsCount: number;
+    storageAlerts: { ipAddress: string; serverName: string | null; partition: string; usagePercent: number }[];
+  } | null;
   metricsAvailable: boolean;
   metricsStale: boolean;
   stats: {
@@ -791,7 +806,7 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
     );
   }
 
-  const { report, checklistItems, backupChecklist, ongoingIssues, resolvedIssues, serverMetrics, metricsAvailable, metricsStale, stats, backupStats } = reportData;
+  const { report, checklistItems, backupChecklist, ongoingIssues, resolvedIssues, serverMetrics, multiServerMetrics, metricsAvailable, metricsStale, stats, backupStats } = reportData;
   const isCompleted = report.status === 'COMPLETED';
   const progressPercentage = Math.round(((stats.completed + stats.skipped) / stats.total) * 100);
   const statusInfo = statusLabels[report.status] || statusLabels.DRAFT;
@@ -849,6 +864,7 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
               <div className="mt-4">
                 <ServerMetricsDisplay
                   metrics={serverMetrics}
+                  multiServerMetrics={multiServerMetrics}
                   available={metricsAvailable}
                   isStale={metricsStale}
                 />

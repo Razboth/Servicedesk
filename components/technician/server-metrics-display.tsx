@@ -1,8 +1,10 @@
 'use client';
 
+import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Cpu,
   HardDrive,
@@ -11,6 +13,9 @@ import {
   Clock,
   AlertCircle,
   Server,
+  CheckCircle2,
+  AlertTriangle,
+  ExternalLink,
 } from 'lucide-react';
 
 interface ServerMetrics {
@@ -32,8 +37,25 @@ interface ServerMetrics {
   collectedAt: string;
 }
 
+interface MultiServerMetrics {
+  collectionId: string;
+  fetchedAt: string;
+  reportTimestamp: string;
+  totalServers: number;
+  avgCpu: number | null;
+  avgMemory: number | null;
+  healthyCount: number;
+  warningCount: number;
+  criticalCount: number;
+  topCpuServers: { ipAddress: string; serverName: string | null; cpuPercent: number }[];
+  topMemoryServers: { ipAddress: string; serverName: string | null; memoryPercent: number }[];
+  storageAlertsCount: number;
+  storageAlerts: { ipAddress: string; serverName: string | null; partition: string; usagePercent: number }[];
+}
+
 interface ServerMetricsDisplayProps {
   metrics: ServerMetrics | null;
+  multiServerMetrics?: MultiServerMetrics | null;
   available: boolean;
   isStale?: boolean;
 }
@@ -76,9 +98,143 @@ function getUsageStatus(percentage: number | null): { label: string; variant: 'd
 
 export function ServerMetricsDisplay({
   metrics,
+  multiServerMetrics,
   available,
   isStale = false,
 }: ServerMetricsDisplayProps) {
+  // Prioritize multi-server metrics if available
+  if (multiServerMetrics) {
+    return (
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Server className="h-4 w-4" />
+              Metrik Server ({multiServerMetrics.totalServers} Server)
+            </CardTitle>
+            <Link href="/reports/server-metrics">
+              <Button variant="ghost" size="sm" className="text-xs">
+                <ExternalLink className="h-3 w-3 mr-1" />
+                Detail
+              </Button>
+            </Link>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Terakhir diperbarui:{' '}
+            {new Date(multiServerMetrics.reportTimestamp).toLocaleString('id-ID', {
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+            })}
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Status Summary */}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1.5">
+              <CheckCircle2 className="h-4 w-4 text-green-500" />
+              <span className="text-sm font-medium">{multiServerMetrics.healthyCount}</span>
+              <span className="text-xs text-muted-foreground">Sehat</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <AlertCircle className="h-4 w-4 text-yellow-500" />
+              <span className="text-sm font-medium">{multiServerMetrics.warningCount}</span>
+              <span className="text-xs text-muted-foreground">Peringatan</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <AlertTriangle className="h-4 w-4 text-red-500" />
+              <span className="text-sm font-medium">{multiServerMetrics.criticalCount}</span>
+              <span className="text-xs text-muted-foreground">Kritis</span>
+            </div>
+          </div>
+
+          {/* Average CPU & Memory */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Cpu className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Rata-rata CPU</span>
+                </div>
+                <span className="text-sm font-medium">
+                  {multiServerMetrics.avgCpu?.toFixed(1) || '-'}%
+                </span>
+              </div>
+              <Progress
+                value={multiServerMetrics.avgCpu || 0}
+                className="h-2"
+              />
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <MemoryStick className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Rata-rata Memory</span>
+                </div>
+                <span className="text-sm font-medium">
+                  {multiServerMetrics.avgMemory?.toFixed(1) || '-'}%
+                </span>
+              </div>
+              <Progress
+                value={multiServerMetrics.avgMemory || 0}
+                className="h-2"
+              />
+            </div>
+          </div>
+
+          {/* Top Issues */}
+          {(multiServerMetrics.criticalCount > 0 || multiServerMetrics.storageAlertsCount > 0) && (
+            <div className="pt-2 border-t">
+              <p className="text-xs font-medium text-muted-foreground mb-2">Perhatian:</p>
+              <div className="space-y-1.5">
+                {multiServerMetrics.topCpuServers
+                  .filter((s) => s.cpuPercent >= 80)
+                  .slice(0, 3)
+                  .map((server) => (
+                    <div key={`cpu-${server.ipAddress}`} className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">
+                        {server.serverName || server.ipAddress}
+                      </span>
+                      <Badge variant="outline" className="text-red-600 border-red-200">
+                        CPU {server.cpuPercent.toFixed(1)}%
+                      </Badge>
+                    </div>
+                  ))}
+                {multiServerMetrics.topMemoryServers
+                  .filter((s) => s.memoryPercent >= 80)
+                  .slice(0, 3)
+                  .map((server) => (
+                    <div key={`mem-${server.ipAddress}`} className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">
+                        {server.serverName || server.ipAddress}
+                      </span>
+                      <Badge variant="outline" className="text-yellow-600 border-yellow-200">
+                        Memory {server.memoryPercent.toFixed(1)}%
+                      </Badge>
+                    </div>
+                  ))}
+                {multiServerMetrics.storageAlertsCount > 0 && (
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground flex items-center gap-1">
+                      <HardDrive className="h-3 w-3" />
+                      Peringatan Storage
+                    </span>
+                    <Badge variant="outline" className="text-orange-600 border-orange-200">
+                      {multiServerMetrics.storageAlertsCount} partisi
+                    </Badge>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Fall back to single server metrics
   if (!available || !metrics) {
     return (
       <Card className="bg-muted/50">

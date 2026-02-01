@@ -177,11 +177,117 @@ export async function GET(
       }
     });
 
-    // Check metrics availability
+    // Check metrics availability (old single-server metrics)
     const metricsAvailable = report.serverMetrics !== null;
     const metricsStale = report.serverMetrics
       ? new Date().getTime() - new Date(report.serverMetrics.collectedAt).getTime() > 24 * 60 * 60 * 1000
       : false;
+
+    // Fetch new multi-server metrics summary
+    const latestCollection = await prisma.metricCollection.findFirst({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        snapshots: {
+          include: {
+            server: {
+              select: {
+                id: true,
+                ipAddress: true,
+                serverName: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // Calculate multi-server metrics summary
+    let multiServerMetrics = null;
+    if (latestCollection) {
+      const snapshots = latestCollection.snapshots;
+      let totalCpu = 0;
+      let totalMemory = 0;
+      let cpuCount = 0;
+      let memoryCount = 0;
+      let healthyCount = 0;
+      let warningCount = 0;
+      let criticalCount = 0;
+
+      const topCpuServers: { ipAddress: string; serverName: string | null; cpuPercent: number }[] = [];
+      const topMemoryServers: { ipAddress: string; serverName: string | null; memoryPercent: number }[] = [];
+      const storageAlerts: { ipAddress: string; serverName: string | null; partition: string; usagePercent: number }[] = [];
+
+      for (const snapshot of snapshots) {
+        if (snapshot.cpuPercent !== null) {
+          totalCpu += snapshot.cpuPercent;
+          cpuCount++;
+          topCpuServers.push({
+            ipAddress: snapshot.server.ipAddress,
+            serverName: snapshot.server.serverName,
+            cpuPercent: snapshot.cpuPercent,
+          });
+        }
+        if (snapshot.memoryPercent !== null) {
+          totalMemory += snapshot.memoryPercent;
+          memoryCount++;
+          topMemoryServers.push({
+            ipAddress: snapshot.server.ipAddress,
+            serverName: snapshot.server.serverName,
+            memoryPercent: snapshot.memoryPercent,
+          });
+        }
+
+        // Calculate status
+        let maxStorageUsage = 0;
+        if (snapshot.storage && Array.isArray(snapshot.storage)) {
+          for (const item of snapshot.storage as { partition: string; usagePercent: number }[]) {
+            if (item.usagePercent > maxStorageUsage) {
+              maxStorageUsage = item.usagePercent;
+            }
+            if (item.usagePercent >= 80) {
+              storageAlerts.push({
+                ipAddress: snapshot.server.ipAddress,
+                serverName: snapshot.server.serverName,
+                partition: item.partition,
+                usagePercent: item.usagePercent,
+              });
+            }
+          }
+        }
+
+        const isCritical = (snapshot.cpuPercent && snapshot.cpuPercent >= 90) ||
+          (snapshot.memoryPercent && snapshot.memoryPercent >= 90) ||
+          maxStorageUsage >= 90;
+        const isWarning = (snapshot.cpuPercent && snapshot.cpuPercent >= 75) ||
+          (snapshot.memoryPercent && snapshot.memoryPercent >= 75) ||
+          maxStorageUsage >= 75;
+
+        if (isCritical) criticalCount++;
+        else if (isWarning) warningCount++;
+        else healthyCount++;
+      }
+
+      // Sort and limit
+      topCpuServers.sort((a, b) => b.cpuPercent - a.cpuPercent);
+      topMemoryServers.sort((a, b) => b.memoryPercent - a.memoryPercent);
+      storageAlerts.sort((a, b) => b.usagePercent - a.usagePercent);
+
+      multiServerMetrics = {
+        collectionId: latestCollection.id,
+        fetchedAt: latestCollection.fetchedAt,
+        reportTimestamp: latestCollection.reportTimestamp,
+        totalServers: snapshots.length,
+        avgCpu: cpuCount > 0 ? totalCpu / cpuCount : null,
+        avgMemory: memoryCount > 0 ? totalMemory / memoryCount : null,
+        healthyCount,
+        warningCount,
+        criticalCount,
+        topCpuServers: topCpuServers.slice(0, 5),
+        topMemoryServers: topMemoryServers.slice(0, 5),
+        storageAlertsCount: storageAlerts.length,
+        storageAlerts: storageAlerts.slice(0, 5),
+      };
+    }
 
     // Calculate backup stats
     const backupStats = {
@@ -213,9 +319,10 @@ export async function GET(
         ongoingIssues,
         resolvedIssues,
         serverMetrics: report.serverMetrics,
-        metricsAvailable,
+        multiServerMetrics,
+        metricsAvailable: metricsAvailable || multiServerMetrics !== null,
         metricsStale,
-        metricsMessage: !metricsAvailable
+        metricsMessage: !metricsAvailable && !multiServerMetrics
           ? 'Laporan metrik tidak tersedia'
           : metricsStale
           ? 'Data metrik sudah tidak aktual'

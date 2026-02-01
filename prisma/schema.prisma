@@ -2944,6 +2944,62 @@ model ServerMetrics {
   @@map("server_metrics")
 }
 
+// Server registry - stores server identification info for monitoring
+model MonitoredServer {
+  id            String   @id @default(cuid())
+  ipAddress     String   @unique
+  serverName    String?
+  description   String?  @db.Text
+  category      String?  // e.g., "Production", "Development", "Database"
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  metricSnapshots ServerMetricSnapshot[]
+
+  @@index([ipAddress])
+  @@index([category])
+  @@map("monitored_servers")
+}
+
+// Individual metric snapshot per server per collection
+model ServerMetricSnapshot {
+  id              String   @id @default(cuid())
+  serverId        String
+  collectionId    String   // Groups snapshots from same API call
+
+  cpuPercent      Float?
+  memoryPercent   Float?
+  storage         Json?    // Array of {partition, usage}
+
+  timestamp       DateTime // From external system
+  collectedAt     DateTime @default(now()) // When we received it
+
+  // Relations
+  server          MonitoredServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  collection      MetricCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  @@index([serverId, collectedAt])
+  @@index([collectionId])
+  @@map("server_metric_snapshots")
+}
+
+// Collection metadata - groups snapshots from single API call
+model MetricCollection {
+  id              String   @id @default(cuid())
+  fetchedAt       DateTime // fetched_at from payload
+  reportTimestamp DateTime // report_timestamp from payload
+  totalIps        Int
+  createdAt       DateTime @default(now())
+
+  // Relations
+  snapshots       ServerMetricSnapshot[]
+
+  @@index([createdAt])
+  @@map("metric_collections")
+}
+
 // Shift report container (one per shift assignment)
 model ShiftReport {
   id                    String              @id @default(cuid())
