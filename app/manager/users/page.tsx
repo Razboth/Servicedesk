@@ -238,15 +238,7 @@ export default function ManagerUsersPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Roles</SelectItem>
-                <SelectItem value="MANAGER">Manager</SelectItem>
-                <SelectItem value="MANAGER_IT">IT Manager</SelectItem>
-                {/* High-privilege roles can only be managed by admins */}
-                {session?.user.role === 'ADMIN' && (
-                  <>
-                    <SelectItem value="TECHNICIAN">Technician</SelectItem>
-                    <SelectItem value="SECURITY_ANALYST">Security Analyst</SelectItem>
-                  </>
-                )}
+                <SelectItem value="TECHNICIAN">Technician</SelectItem>
                 <SelectItem value="AGENT">Agent</SelectItem>
                 <SelectItem value="USER">User</SelectItem>
               </SelectContent>
@@ -427,25 +419,18 @@ export default function ManagerUsersPage() {
               <Label htmlFor="edit-role" className="text-right">
                 Role
               </Label>
-              <Select 
-                value={editUserData.role} 
+              <Select
+                value={editUserData.role}
                 onValueChange={(value) => setEditUserData({ ...editUserData, role: value })}
               >
                 <SelectTrigger className="col-span-3">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  {/* Managers can only assign roles lower than their own */}
                   <SelectItem value="USER">User</SelectItem>
                   <SelectItem value="AGENT">Agent</SelectItem>
-                  {/* High-privilege roles can only be managed by admins */}
-                  {session?.user.role === 'ADMIN' && (
-                    <>
-                      <SelectItem value="TECHNICIAN">Technician</SelectItem>
-                      <SelectItem value="SECURITY_ANALYST">Security Analyst</SelectItem>
-                    </>
-                  )}
-                  <SelectItem value="MANAGER">Manager</SelectItem>
-                  <SelectItem value="MANAGER_IT">IT Manager</SelectItem>
+                  <SelectItem value="TECHNICIAN">Technician</SelectItem>
                 </SelectContent>
               </Select>
             </div>
