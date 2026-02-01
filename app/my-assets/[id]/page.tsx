@@ -72,22 +72,22 @@ interface PCAsset {
     version: string | null;
     type: string;
   } | null;
-  osLicense: {
+  osLicenses: Array<{
     licenseKey: string;
     licenseType: string;
     expiryDate: string | null;
-  } | null;
-  officeLicense: {
+  }>;
+  officeLicenses: Array<{
     licenseKey: string;
     licenseType: string;
     expiryDate: string | null;
-  } | null;
-  antivirusLicense: {
+  }>;
+  antivirusLicenses: Array<{
     productName: string;
     licenseKey: string;
     expiryDate: string | null;
     isActive: boolean;
-  } | null;
+  }>;
   serviceLogs: Array<{
     id: string;
     serviceType: string;
@@ -413,13 +413,13 @@ export default function MyAssetDetailPage() {
                       : 'N/A'}
                   </p>
                 </div>
-                {asset.antivirusLicense && (
+                {asset.antivirusLicenses && asset.antivirusLicenses[0] && (
                   <div>
                     <p className="text-sm text-gray-500">Antivirus</p>
-                    <p className="font-medium">{asset.antivirusLicense.productName}</p>
-                    {asset.antivirusLicense.expiryDate && (
+                    <p className="font-medium">{asset.antivirusLicenses[0].productName}</p>
+                    {asset.antivirusLicenses[0].expiryDate && (
                       <p className="text-xs text-gray-400">
-                        Expires: {format(new Date(asset.antivirusLicense.expiryDate), 'dd MMM yyyy', { locale: id })}
+                        Expires: {format(new Date(asset.antivirusLicenses[0].expiryDate), 'dd MMM yyyy', { locale: id })}
                       </p>
                     )}
                   </div>
