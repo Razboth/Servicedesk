@@ -124,7 +124,7 @@ export async function POST(
     const updatedTicket = await prisma.ticket.update({
       where: { id: ticketId },
       data: {
-        assignedToId: session.user.id,
+        assignedTo: { connect: { id: session.user.id } },
         status: newStatus,
         claimedAt: now,
         updatedAt: now
@@ -287,7 +287,7 @@ export async function DELETE(
     const updatedTicket = await prisma.ticket.update({
       where: { id: ticketId },
       data: {
-        assignedToId: null,
+        assignedTo: { disconnect: true },
         status: newStatus,
         updatedAt: new Date()
       },
