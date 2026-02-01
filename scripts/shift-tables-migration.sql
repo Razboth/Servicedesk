@@ -56,6 +56,15 @@ BEGIN
     END IF;
 END $$;
 
+-- ShiftType enum (required for shift_checklist_templates)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'ShiftType') THEN
+        CREATE TYPE "ShiftType" AS ENUM ('NIGHT_WEEKDAY', 'DAY_WEEKEND', 'NIGHT_WEEKEND', 'STANDBY_ONCALL');
+        RAISE NOTICE 'Created enum: ShiftType';
+    END IF;
+END $$;
+
 -- ============================================
 -- SHIFT_REPORTS TABLE - Add missing columns
 -- ============================================
@@ -261,6 +270,45 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'shift_checklist_templates' AND column_name = 'category') THEN
         ALTER TABLE shift_checklist_templates ADD COLUMN "category" "ShiftChecklistCategory";
     END IF;
+END $$;
+
+-- Fix shiftType column type if it's TEXT instead of ShiftType enum
+DO $$
+DECLARE
+    col_type TEXT;
+BEGIN
+    SELECT data_type INTO col_type
+    FROM information_schema.columns
+    WHERE table_name = 'shift_checklist_templates' AND column_name = 'shiftType';
+
+    IF col_type = 'text' OR col_type = 'character varying' THEN
+        -- Drop the text column and recreate as enum
+        ALTER TABLE shift_checklist_templates DROP COLUMN IF EXISTS "shiftType";
+        ALTER TABLE shift_checklist_templates ADD COLUMN "shiftType" "ShiftType";
+        RAISE NOTICE 'Converted shift_checklist_templates.shiftType from TEXT to ShiftType enum';
+    END IF;
+END $$;
+
+-- Fix category column type if it's TEXT instead of ShiftChecklistCategory enum
+DO $$
+DECLARE
+    col_type TEXT;
+BEGIN
+    SELECT data_type INTO col_type
+    FROM information_schema.columns
+    WHERE table_name = 'shift_checklist_templates' AND column_name = 'category';
+
+    IF col_type = 'text' OR col_type = 'character varying' THEN
+        -- Drop the text column and recreate as enum
+        ALTER TABLE shift_checklist_templates DROP COLUMN IF EXISTS "category";
+        ALTER TABLE shift_checklist_templates ADD COLUMN "category" "ShiftChecklistCategory";
+        RAISE NOTICE 'Converted shift_checklist_templates.category from TEXT to ShiftChecklistCategory enum';
+    END IF;
+END $$;
+
+-- Continue adding other columns
+DO $$
+BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'shift_checklist_templates' AND column_name = 'createdAt') THEN
         ALTER TABLE shift_checklist_templates ADD COLUMN "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
     END IF;
