@@ -389,12 +389,22 @@ export default function SecurityComplianceReport() {
       </div>
 
       <Tabs defaultValue="incidents" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="incidents">Security Incidents</TabsTrigger>
-          <TabsTrigger value="compliance">Compliance Scores</TabsTrigger>
-          <TabsTrigger value="access">Access Management</TabsTrigger>
-          <TabsTrigger value="recent">Recent Incidents</TabsTrigger>
-        </TabsList>
+        <div className="w-full overflow-x-auto pb-2">
+          <TabsList className="inline-flex h-auto min-w-full sm:min-w-0 p-1 bg-muted/50 rounded-lg">
+            <TabsTrigger value="incidents" className="flex-shrink-0 px-4 py-2.5 text-sm font-medium rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              Security Incidents
+            </TabsTrigger>
+            <TabsTrigger value="compliance" className="flex-shrink-0 px-4 py-2.5 text-sm font-medium rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              Compliance Scores
+            </TabsTrigger>
+            <TabsTrigger value="access" className="flex-shrink-0 px-4 py-2.5 text-sm font-medium rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              Access Management
+            </TabsTrigger>
+            <TabsTrigger value="recent" className="flex-shrink-0 px-4 py-2.5 text-sm font-medium rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              Recent Incidents
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="incidents" className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

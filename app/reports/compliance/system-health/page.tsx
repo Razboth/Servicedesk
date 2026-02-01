@@ -420,12 +420,22 @@ export default function SystemHealthReport() {
       </div>
 
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="overview">Health Overview</TabsTrigger>
-          <TabsTrigger value="data">Data Quality</TabsTrigger>
-          <TabsTrigger value="components">Components</TabsTrigger>
-          <TabsTrigger value="recent">Recent Issues</TabsTrigger>
-        </TabsList>
+        <div className="w-full overflow-x-auto pb-2">
+          <TabsList className="inline-flex h-auto min-w-full sm:min-w-0 p-1 bg-muted/50 rounded-lg">
+            <TabsTrigger value="overview" className="flex-shrink-0 px-4 py-2.5 text-sm font-medium rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              Health Overview
+            </TabsTrigger>
+            <TabsTrigger value="data" className="flex-shrink-0 px-4 py-2.5 text-sm font-medium rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              Data Quality
+            </TabsTrigger>
+            <TabsTrigger value="components" className="flex-shrink-0 px-4 py-2.5 text-sm font-medium rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              Components
+            </TabsTrigger>
+            <TabsTrigger value="recent" className="flex-shrink-0 px-4 py-2.5 text-sm font-medium rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              Recent Issues
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="overview" className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

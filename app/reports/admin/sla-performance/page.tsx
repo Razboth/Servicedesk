@@ -244,13 +244,25 @@ export default function SLAPerformancePage() {
 
       {data && (
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="technicians">Technician Performance</TabsTrigger>
-            <TabsTrigger value="branch-category">Branch & Category</TabsTrigger>
-            <TabsTrigger value="trends">Trends</TabsTrigger>
-            <TabsTrigger value="insights">Insights</TabsTrigger>
-          </TabsList>
+          <div className="w-full overflow-x-auto pb-2">
+            <TabsList className="inline-flex h-auto min-w-full sm:min-w-0 p-1 bg-muted/50 rounded-lg">
+              <TabsTrigger value="overview" className="flex-shrink-0 px-4 py-2.5 text-sm font-medium rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                Overview
+              </TabsTrigger>
+              <TabsTrigger value="technicians" className="flex-shrink-0 px-4 py-2.5 text-sm font-medium rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                Technician Performance
+              </TabsTrigger>
+              <TabsTrigger value="branch-category" className="flex-shrink-0 px-4 py-2.5 text-sm font-medium rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                Branch & Category
+              </TabsTrigger>
+              <TabsTrigger value="trends" className="flex-shrink-0 px-4 py-2.5 text-sm font-medium rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                Trends
+              </TabsTrigger>
+              <TabsTrigger value="insights" className="flex-shrink-0 px-4 py-2.5 text-sm font-medium rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                Insights
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* ====== TAB 1: OVERVIEW ====== */}
           <TabsContent value="overview" className="space-y-6">

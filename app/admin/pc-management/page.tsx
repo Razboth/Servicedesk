@@ -443,24 +443,26 @@ export default function PCManagementPage() {
         )}
 
         <Tabs defaultValue="inventory" className="space-y-6">
-          <TabsList className="bg-muted/50">
-            <TabsTrigger value="inventory" className="flex items-center gap-2">
-              <LayoutDashboard className="h-4 w-4" />
-              Inventory
-            </TabsTrigger>
-            <TabsTrigger value="os-types" className="flex items-center gap-2">
-              <Shield className="h-4 w-4" />
-              OS Types
-            </TabsTrigger>
-            <TabsTrigger value="office-types" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              Office Products
-            </TabsTrigger>
-            <TabsTrigger value="service-logs" className="flex items-center gap-2">
-              <Activity className="h-4 w-4" />
-              Recent Services
-            </TabsTrigger>
-          </TabsList>
+          <div className="w-full overflow-x-auto pb-2">
+            <TabsList className="inline-flex h-auto min-w-full sm:min-w-0 p-1 bg-muted/50 rounded-lg">
+              <TabsTrigger value="inventory" className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                <LayoutDashboard className="h-4 w-4" />
+                Inventory
+              </TabsTrigger>
+              <TabsTrigger value="os-types" className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                <Shield className="h-4 w-4" />
+                OS Types
+              </TabsTrigger>
+              <TabsTrigger value="office-types" className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                <FileText className="h-4 w-4" />
+                Office Products
+              </TabsTrigger>
+              <TabsTrigger value="service-logs" className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                <Activity className="h-4 w-4" />
+                Recent Services
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="inventory" className="space-y-6">
             {/* Filters Card */}
