@@ -529,14 +529,14 @@ export default function ServerDetailPage() {
               <div className="space-y-2">
                 <Label htmlFor="category">Kategori</Label>
                 <Select
-                  value={formData.category}
-                  onValueChange={(value) => setFormData((prev) => ({ ...prev, category: value }))}
+                  value={formData.category || '_none'}
+                  onValueChange={(value) => setFormData((prev) => ({ ...prev, category: value === '_none' ? '' : value }))}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Pilih kategori" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Tidak ada kategori</SelectItem>
+                    <SelectItem value="_none">Tidak ada kategori</SelectItem>
                     {defaultCategories.map((cat) => (
                       <SelectItem key={cat} value={cat}>
                         {cat}
