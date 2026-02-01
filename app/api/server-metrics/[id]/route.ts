@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { auth } from '@/lib/auth';
 
 // GET /api/server-metrics/[id] - Get server details with metric history
 export async function GET(
@@ -9,8 +8,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
+    const session = await auth();
+    if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -123,13 +122,13 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
+    const session = await auth();
+    if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Check for admin/manager role
-    const userRole = (session.user as any)?.role;
+    const userRole = session.user.role;
     if (!['SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(userRole)) {
       return NextResponse.json(
         { error: 'Forbidden', message: 'Insufficient permissions' },
@@ -182,13 +181,13 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
+    const session = await auth();
+    if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Check for admin role
-    const userRole = (session.user as any)?.role;
+    const userRole = session.user.role;
     if (!['SUPER_ADMIN', 'ADMIN'].includes(userRole)) {
       return NextResponse.json(
         { error: 'Forbidden', message: 'Insufficient permissions' },

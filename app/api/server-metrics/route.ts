@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { auth } from '@/lib/auth';
 
 // Helper to determine status based on metrics
 function getServerStatus(cpuPercent: number | null, memoryPercent: number | null, storage: any): 'healthy' | 'warning' | 'critical' {
@@ -31,8 +30,8 @@ function getServerStatus(cpuPercent: number | null, memoryPercent: number | null
 // GET /api/server-metrics - List all monitored servers with latest metrics
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
+    const session = await auth();
+    if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
