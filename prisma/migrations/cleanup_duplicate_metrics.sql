@@ -1,7 +1,7 @@
 -- Cleanup duplicate server metrics (keep only 1 per server per hour)
 -- PostgreSQL version
 
--- First, let's see how many duplicates we have (preview)
+-- Step 1: Preview duplicates (run this first to see what we have)
 SELECT
     "serverId",
     DATE_TRUNC('hour', "collectedAt") as hour_bucket,
@@ -11,37 +11,25 @@ GROUP BY "serverId", DATE_TRUNC('hour', "collectedAt")
 HAVING COUNT(*) > 1
 ORDER BY metric_count DESC;
 
--- Delete duplicates, keeping the earliest record per server per hour
+-- Step 2: Preview what will be KEPT (one per server per hour - the earliest)
+SELECT DISTINCT ON ("serverId", DATE_TRUNC('hour', "collectedAt"))
+    id,
+    "serverId",
+    "collectedAt",
+    DATE_TRUNC('hour', "collectedAt") as hour_bucket
+FROM server_metric_snapshots
+ORDER BY "serverId", DATE_TRUNC('hour', "collectedAt"), "collectedAt" ASC;
+
+-- Step 3: Delete duplicates - keep only the earliest record per server per hour
+-- Using DISTINCT ON to identify records to keep
 DELETE FROM server_metric_snapshots
-WHERE id IN (
-    SELECT id FROM (
-        SELECT
-            id,
-            ROW_NUMBER() OVER (
-                PARTITION BY "serverId", DATE_TRUNC('hour', "collectedAt")
-                ORDER BY "collectedAt" ASC
-            ) as rn
-        FROM server_metric_snapshots
-    ) ranked
-    WHERE rn > 1
+WHERE id NOT IN (
+    SELECT DISTINCT ON ("serverId", DATE_TRUNC('hour', "collectedAt")) id
+    FROM server_metric_snapshots
+    ORDER BY "serverId", DATE_TRUNC('hour', "collectedAt"), "collectedAt" ASC
 );
 
--- Alternative: Delete duplicates keeping the LATEST record per server per hour
--- DELETE FROM server_metric_snapshots
--- WHERE id IN (
---     SELECT id FROM (
---         SELECT
---             id,
---             ROW_NUMBER() OVER (
---                 PARTITION BY "serverId", DATE_TRUNC('hour', "collectedAt")
---                 ORDER BY "collectedAt" DESC
---             ) as rn
---         FROM server_metric_snapshots
---     ) ranked
---     WHERE rn > 1
--- );
-
--- Verify cleanup (should return empty or fewer rows)
+-- Step 4: Verify cleanup (should return no rows if successful)
 SELECT
     "serverId",
     DATE_TRUNC('hour', "collectedAt") as hour_bucket,
@@ -50,6 +38,6 @@ FROM server_metric_snapshots
 GROUP BY "serverId", DATE_TRUNC('hour', "collectedAt")
 HAVING COUNT(*) > 1;
 
--- Also clean up orphaned metric collections (collections with no snapshots)
+-- Step 5: Clean up orphaned metric collections (collections with no snapshots)
 DELETE FROM metric_collections
 WHERE id NOT IN (SELECT DISTINCT "collectionId" FROM server_metric_snapshots);
