@@ -64,6 +64,10 @@ const AVAILABLE_PERMISSIONS = [
   { value: 'monitoring:*', label: 'Monitoring (All)', description: 'Full network monitoring access' },
   { value: 'monitoring:read', label: 'Read Monitoring', description: 'Fetch entities to monitor' },
   { value: 'monitoring:write', label: 'Write Monitoring', description: 'Submit ping results' },
+  { value: 'server-metrics:*', label: 'Server Metrics (All)', description: 'Full server metrics access' },
+  { value: 'server-metrics:read', label: 'Read Server Metrics', description: 'View server metrics and analytics' },
+  { value: 'server-metrics:write', label: 'Write Server Metrics', description: 'Submit/ingest server metrics' },
+  { value: 'server-metrics:admin', label: 'Admin Server Metrics', description: 'Update server info (name, description)' },
 ];
 
 export default function ApiKeysPage() {

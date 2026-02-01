@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { authenticateApiKey } from '@/lib/auth-api';
+import { authenticateApiKey, checkApiPermission } from '@/lib/auth-api';
 
 interface StorageItem {
   partition: string;
@@ -47,8 +47,16 @@ export async function POST(request: NextRequest) {
     const authResult = await authenticateApiKey(request);
     if (!authResult.authenticated) {
       return NextResponse.json(
-        { error: 'Unauthorized', message: 'Invalid or missing API key' },
+        { error: 'Unauthorized', message: authResult.error || 'Invalid or missing API key' },
         { status: 401 }
+      );
+    }
+
+    // Check for server-metrics:write permission
+    if (!checkApiPermission(authResult.apiKey!, 'server-metrics:write')) {
+      return NextResponse.json(
+        { error: 'Forbidden', message: 'API key does not have server-metrics:write permission' },
+        { status: 403 }
       );
     }
 
