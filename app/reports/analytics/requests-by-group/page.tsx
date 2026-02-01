@@ -259,31 +259,63 @@ export default function RequestsByGroupReport() {
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Ticket Distribution */}
+        {/* Ticket Distribution - changes based on metric */}
         <Card>
           <CardHeader>
-            <CardTitle>Ticket Distribution by Group</CardTitle>
-            <CardDescription>Breakdown of ticket statuses across support groups</CardDescription>
+            <CardTitle>
+              {metric === 'tickets' && 'Ticket Distribution by Group'}
+              {metric === 'resolution' && 'Resolution Time by Group'}
+              {metric === 'sla' && 'SLA Compliance by Group'}
+              {metric === 'workload' && 'Team Workload Distribution'}
+            </CardTitle>
+            <CardDescription>
+              {metric === 'tickets' && 'Breakdown of ticket statuses across support groups'}
+              {metric === 'resolution' && 'Average resolution time in hours'}
+              {metric === 'sla' && 'SLA compliance percentage by group'}
+              {metric === 'workload' && 'Tickets per technician ratio'}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={400}>
-              <BarChart data={groupData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="name" 
-                  angle={-45}
-                  textAnchor="end"
-                  height={80}
-                  fontSize={12}
-                />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="openTickets" stackId="a" fill="#ef4444" name="Open" />
-                <Bar dataKey="inProgressTickets" stackId="a" fill="#f59e0b" name="In Progress" />
-                <Bar dataKey="resolvedTickets" stackId="a" fill="#10b981" name="Resolved" />
-                <Bar dataKey="closedTickets" stackId="a" fill="#6b7280" name="Closed" />
-              </BarChart>
+              {metric === 'tickets' ? (
+                <BarChart data={groupData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} fontSize={12} />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="openTickets" stackId="a" fill="#ef4444" name="Open" />
+                  <Bar dataKey="inProgressTickets" stackId="a" fill="#f59e0b" name="In Progress" />
+                  <Bar dataKey="resolvedTickets" stackId="a" fill="#10b981" name="Resolved" />
+                  <Bar dataKey="closedTickets" stackId="a" fill="#6b7280" name="Closed" />
+                </BarChart>
+              ) : metric === 'resolution' ? (
+                <BarChart data={groupData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} fontSize={12} />
+                  <YAxis label={{ value: 'Hours', angle: -90, position: 'insideLeft' }} />
+                  <Tooltip formatter={(value: number) => `${value.toFixed(1)}h`} />
+                  <Bar dataKey="avgResolutionTime" fill="#3b82f6" name="Avg Resolution Time (hours)" />
+                </BarChart>
+              ) : metric === 'sla' ? (
+                <BarChart data={groupData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} fontSize={12} />
+                  <YAxis domain={[0, 100]} label={{ value: '%', angle: -90, position: 'insideLeft' }} />
+                  <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
+                  <Bar dataKey="slaCompliance" fill="#10b981" name="SLA Compliance %" />
+                </BarChart>
+              ) : (
+                <BarChart data={groupData.map(g => ({ ...g, ticketsPerTech: g.technicians > 0 ? Math.round(g.totalTickets / g.technicians) : 0 }))}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} fontSize={12} />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="ticketsPerTech" fill="#8b5cf6" name="Tickets per Technician" />
+                  <Bar dataKey="technicians" fill="#06b6d4" name="Team Size" />
+                </BarChart>
+              )}
             </ResponsiveContainer>
           </CardContent>
         </Card>

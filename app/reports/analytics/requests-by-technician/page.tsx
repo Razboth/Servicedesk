@@ -60,12 +60,16 @@ export default function RequestsByTechnicianReport() {
 
   useEffect(() => {
     fetchData()
-  }, [period, department])
+  }, [period, department, sortBy])
 
   const fetchData = async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/reports/analytics/requests-by-technician')
+      const params = new URLSearchParams({ period })
+      if (department !== 'all') {
+        params.append('department', department)
+      }
+      const response = await fetch(`/api/reports/analytics/requests-by-technician?${params}`)
       if (!response.ok) {
         throw new Error('Failed to fetch technician data')
       }
@@ -152,7 +156,26 @@ export default function RequestsByTechnicianReport() {
         })
       }
       
-      setTechnicianData(transformedTechnicianData)
+      // Sort technicians based on sortBy
+      const sortedData = [...transformedTechnicianData].sort((a, b) => {
+        switch (sortBy) {
+          case 'performance':
+            return b.slaCompliance - a.slaCompliance
+          case 'satisfaction':
+            return b.customerSatisfaction - a.customerSatisfaction
+          case 'sla':
+            return b.slaCompliance - a.slaCompliance
+          case 'totalTickets':
+          default:
+            return b.totalTickets - a.totalTickets
+        }
+      })
+      // Update ranks after sorting
+      sortedData.forEach((tech, index) => {
+        tech.rank = index + 1
+      })
+
+      setTechnicianData(sortedData)
       setWorkloadData(transformedWorkloadData)
       setProductivityTrend(transformedProductivityTrend)
     } catch (error) {
