@@ -236,27 +236,32 @@ export default function MyAssetDetailPage() {
 
       {/* Tabs */}
       <Tabs defaultValue="info" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="info" className="flex items-center gap-2">
-            <Info className="h-4 w-4" />
-            Information
-          </TabsTrigger>
-          <TabsTrigger value="service" className="flex items-center gap-2">
-            <Wrench className="h-4 w-4" />
-            Service History
-            {asset.serviceLogs.length > 0 && (
-              <Badge variant="secondary" className="ml-1">{asset.serviceLogs.length}</Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="hardening" className="flex items-center gap-2">
-            <Shield className="h-4 w-4" />
-            Hardening
-          </TabsTrigger>
-          <TabsTrigger value="qr" className="flex items-center gap-2">
-            <QrCode className="h-4 w-4" />
-            QR Code
-          </TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-1 px-1">
+          <TabsList className="inline-flex h-10 min-w-full sm:min-w-0 p-1 bg-muted/50 rounded-lg">
+            <TabsTrigger value="info" className="flex-shrink-0 flex items-center gap-2 text-xs sm:text-sm">
+              <Info className="h-4 w-4" />
+              <span className="hidden sm:inline">Information</span>
+              <span className="sm:hidden">Info</span>
+            </TabsTrigger>
+            <TabsTrigger value="service" className="flex-shrink-0 flex items-center gap-2 text-xs sm:text-sm">
+              <Wrench className="h-4 w-4" />
+              <span className="hidden sm:inline">Service History</span>
+              <span className="sm:hidden">Service</span>
+              {asset.serviceLogs.length > 0 && (
+                <Badge variant="secondary" className="ml-1">{asset.serviceLogs.length}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="hardening" className="flex-shrink-0 flex items-center gap-2 text-xs sm:text-sm">
+              <Shield className="h-4 w-4" />
+              Hardening
+            </TabsTrigger>
+            <TabsTrigger value="qr" className="flex-shrink-0 flex items-center gap-2 text-xs sm:text-sm">
+              <QrCode className="h-4 w-4" />
+              <span className="hidden sm:inline">QR Code</span>
+              <span className="sm:hidden">QR</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Information Tab */}
         <TabsContent value="info">

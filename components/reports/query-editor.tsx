@@ -242,11 +242,13 @@ export function QueryEditor({ initialQuery, module, onQueryChange }: QueryEditor
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="editor">Query Editor</TabsTrigger>
-          <TabsTrigger value="samples">Sample Queries</TabsTrigger>
-          <TabsTrigger value="schema">Schema Reference</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-1 px-1">
+          <TabsList className="inline-flex h-10 min-w-full sm:min-w-0 p-1 bg-muted/50 rounded-lg">
+            <TabsTrigger value="editor" className="flex-shrink-0 text-xs sm:text-sm">Query Editor</TabsTrigger>
+            <TabsTrigger value="samples" className="flex-shrink-0 text-xs sm:text-sm">Sample Queries</TabsTrigger>
+            <TabsTrigger value="schema" className="flex-shrink-0 text-xs sm:text-sm">Schema Reference</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="editor" className="space-y-4">
           <Card>

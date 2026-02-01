@@ -349,12 +349,14 @@ export default function AboutPage() {
 
       {/* Tabs */}
       <Tabs defaultValue="features" className="space-y-6">
-        <TabsList className="grid grid-cols-4 w-full max-w-2xl mx-auto">
-          <TabsTrigger value="features">Features</TabsTrigger>
-          <TabsTrigger value="commits">Recent Changes</TabsTrigger>
-          <TabsTrigger value="contributors">Contributors</TabsTrigger>
-          <TabsTrigger value="tech">Tech Stack</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-1 px-1 flex justify-center">
+          <TabsList className="inline-flex h-10 min-w-full sm:min-w-0 sm:max-w-2xl p-1 bg-muted/50 rounded-lg">
+            <TabsTrigger value="features" className="flex-1 flex-shrink-0 text-xs sm:text-sm">Features</TabsTrigger>
+            <TabsTrigger value="commits" className="flex-1 flex-shrink-0 text-xs sm:text-sm">Changes</TabsTrigger>
+            <TabsTrigger value="contributors" className="flex-1 flex-shrink-0 text-xs sm:text-sm">Contributors</TabsTrigger>
+            <TabsTrigger value="tech" className="flex-1 flex-shrink-0 text-xs sm:text-sm">Tech Stack</TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Features Tab */}
         <TabsContent value="features" className="space-y-6">

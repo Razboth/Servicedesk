@@ -391,13 +391,15 @@ export default function WorklogDetailedAnalysisPage() {
       </div>
 
       <Tabs defaultValue="technician" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="technician">Technician Analysis</TabsTrigger>
-          <TabsTrigger value="tasktype">Task Type Analysis</TabsTrigger>
-          <TabsTrigger value="productivity">Productivity Metrics</TabsTrigger>
-          <TabsTrigger value="efficiency">Efficiency Analysis</TabsTrigger>
-          <TabsTrigger value="trends">Trends & Patterns</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-1 px-1">
+          <TabsList className="inline-flex h-10 min-w-full sm:min-w-0 p-1 bg-muted/50 rounded-lg">
+            <TabsTrigger value="technician" className="flex-shrink-0 text-xs sm:text-sm">Technician</TabsTrigger>
+            <TabsTrigger value="tasktype" className="flex-shrink-0 text-xs sm:text-sm">Task Type</TabsTrigger>
+            <TabsTrigger value="productivity" className="flex-shrink-0 text-xs sm:text-sm">Productivity</TabsTrigger>
+            <TabsTrigger value="efficiency" className="flex-shrink-0 text-xs sm:text-sm">Efficiency</TabsTrigger>
+            <TabsTrigger value="trends" className="flex-shrink-0 text-xs sm:text-sm">Trends</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="technician" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -266,13 +266,15 @@ export default function TechnicianDetailedPerformancePage() {
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="individual">Individual Performance</TabsTrigger>
-          <TabsTrigger value="branches">Branch Analysis</TabsTrigger>
-          <TabsTrigger value="workload">Workload Distribution</TabsTrigger>
-          <TabsTrigger value="trends">Performance Trends</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-1 px-1">
+          <TabsList className="inline-flex h-10 min-w-full sm:min-w-0 p-1 bg-muted/50 rounded-lg">
+            <TabsTrigger value="overview" className="flex-shrink-0 text-xs sm:text-sm">Overview</TabsTrigger>
+            <TabsTrigger value="individual" className="flex-shrink-0 text-xs sm:text-sm">Individual</TabsTrigger>
+            <TabsTrigger value="branches" className="flex-shrink-0 text-xs sm:text-sm">Branches</TabsTrigger>
+            <TabsTrigger value="workload" className="flex-shrink-0 text-xs sm:text-sm">Workload</TabsTrigger>
+            <TabsTrigger value="trends" className="flex-shrink-0 text-xs sm:text-sm">Trends</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

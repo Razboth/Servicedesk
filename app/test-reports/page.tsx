@@ -410,13 +410,15 @@ export default function TestReportsPage() {
 
       {/* Test Suites */}
       <Tabs defaultValue={testSuites[0]?.name} className="w-full">
-        <TabsList className="grid grid-cols-4 lg:grid-cols-8 h-auto">
-          {testSuites.map((suite) => (
-            <TabsTrigger key={suite.name} value={suite.name} className="text-xs">
-              {suite.name}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+        <div className="overflow-x-auto -mx-1 px-1">
+          <TabsList className="inline-flex h-10 min-w-full sm:min-w-0 p-1 bg-muted/50 rounded-lg">
+            {testSuites.map((suite) => (
+              <TabsTrigger key={suite.name} value={suite.name} className="flex-shrink-0 text-xs sm:text-sm">
+                {suite.name}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
 
         {testSuites.map((suite, suiteIndex) => (
           <TabsContent key={suite.name} value={suite.name}>

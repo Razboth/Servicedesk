@@ -401,14 +401,16 @@ export default function SlaBreachAnalysisPage() {
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="services">Service Analysis</TabsTrigger>
-          <TabsTrigger value="priority">Priority Analysis</TabsTrigger>
-          <TabsTrigger value="breaches">Current Breaches</TabsTrigger>
-          <TabsTrigger value="trends">Trends</TabsTrigger>
-          <TabsTrigger value="targets">SLA Targets</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-1 px-1">
+          <TabsList className="inline-flex h-10 min-w-full sm:min-w-0 p-1 bg-muted/50 rounded-lg">
+            <TabsTrigger value="overview" className="flex-shrink-0 text-xs sm:text-sm">Overview</TabsTrigger>
+            <TabsTrigger value="services" className="flex-shrink-0 text-xs sm:text-sm">Services</TabsTrigger>
+            <TabsTrigger value="priority" className="flex-shrink-0 text-xs sm:text-sm">Priority</TabsTrigger>
+            <TabsTrigger value="breaches" className="flex-shrink-0 text-xs sm:text-sm">Breaches</TabsTrigger>
+            <TabsTrigger value="trends" className="flex-shrink-0 text-xs sm:text-sm">Trends</TabsTrigger>
+            <TabsTrigger value="targets" className="flex-shrink-0 text-xs sm:text-sm">Targets</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

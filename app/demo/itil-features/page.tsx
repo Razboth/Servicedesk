@@ -187,13 +187,15 @@ export default function ITILFeaturesDemo() {
         </div>
 
         <Tabs defaultValue="categories" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="categories">ITIL Categories</TabsTrigger>
-            <TabsTrigger value="classifications">Issue Classifications</TabsTrigger>
-            <TabsTrigger value="hierarchy">3-Tier Structure</TabsTrigger>
-            <TabsTrigger value="sla">SLA Management</TabsTrigger>
-            <TabsTrigger value="attachments">Attachments</TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto -mx-1 px-1">
+            <TabsList className="inline-flex h-10 min-w-full sm:min-w-0 p-1 bg-muted/50 rounded-lg">
+              <TabsTrigger value="categories" className="flex-shrink-0 text-xs sm:text-sm">ITIL Categories</TabsTrigger>
+              <TabsTrigger value="classifications" className="flex-shrink-0 text-xs sm:text-sm">Classifications</TabsTrigger>
+              <TabsTrigger value="hierarchy" className="flex-shrink-0 text-xs sm:text-sm">3-Tier</TabsTrigger>
+              <TabsTrigger value="sla" className="flex-shrink-0 text-xs sm:text-sm">SLA</TabsTrigger>
+              <TabsTrigger value="attachments" className="flex-shrink-0 text-xs sm:text-sm">Attachments</TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="categories" className="space-y-6">
             <Card>

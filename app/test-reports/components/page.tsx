@@ -108,13 +108,15 @@ export default function ComponentTestPage() {
       </div>
 
       <Tabs defaultValue="columns" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="columns">Columns</TabsTrigger>
-          <TabsTrigger value="filters">Filters</TabsTrigger>
-          <TabsTrigger value="query">Query</TabsTrigger>
-          <TabsTrigger value="charts">Charts</TabsTrigger>
-          <TabsTrigger value="schedule">Schedule</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-1 px-1">
+          <TabsList className="inline-flex h-10 min-w-full sm:min-w-0 p-1 bg-muted/50 rounded-lg">
+            <TabsTrigger value="columns" className="flex-shrink-0 text-xs sm:text-sm">Columns</TabsTrigger>
+            <TabsTrigger value="filters" className="flex-shrink-0 text-xs sm:text-sm">Filters</TabsTrigger>
+            <TabsTrigger value="query" className="flex-shrink-0 text-xs sm:text-sm">Query</TabsTrigger>
+            <TabsTrigger value="charts" className="flex-shrink-0 text-xs sm:text-sm">Charts</TabsTrigger>
+            <TabsTrigger value="schedule" className="flex-shrink-0 text-xs sm:text-sm">Schedule</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="columns" className="space-y-4">
           <Card>

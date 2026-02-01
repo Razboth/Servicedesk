@@ -401,14 +401,16 @@ export default function ApprovalWorkflowAnalysisPage() {
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="approvers">Approver Performance</TabsTrigger>
-          <TabsTrigger value="services">Service Analysis</TabsTrigger>
-          <TabsTrigger value="pending">Pending Approvals</TabsTrigger>
-          <TabsTrigger value="trends">Trends & Patterns</TabsTrigger>
-          <TabsTrigger value="branches">Branch Analysis</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-1 px-1">
+          <TabsList className="inline-flex h-10 min-w-full sm:min-w-0 p-1 bg-muted/50 rounded-lg">
+            <TabsTrigger value="overview" className="flex-shrink-0 text-xs sm:text-sm">Overview</TabsTrigger>
+            <TabsTrigger value="approvers" className="flex-shrink-0 text-xs sm:text-sm">Approvers</TabsTrigger>
+            <TabsTrigger value="services" className="flex-shrink-0 text-xs sm:text-sm">Services</TabsTrigger>
+            <TabsTrigger value="pending" className="flex-shrink-0 text-xs sm:text-sm">Pending</TabsTrigger>
+            <TabsTrigger value="trends" className="flex-shrink-0 text-xs sm:text-sm">Trends</TabsTrigger>
+            <TabsTrigger value="branches" className="flex-shrink-0 text-xs sm:text-sm">Branches</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

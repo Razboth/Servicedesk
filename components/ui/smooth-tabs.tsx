@@ -190,15 +190,18 @@ export function TabsList({ className, children }: { className?: string; children
     }
   }, [value, children])
 
+  // Detect if grid layout is being used
   const isGrid = className?.includes('grid')
+
+  // Base classes - use flex for non-grid, avoid inline-flex for grid layouts
+  const baseClasses = isGrid
+    ? "relative h-auto items-center rounded-lg bg-muted/50 p-1 text-muted-foreground overflow-x-auto"
+    : "relative inline-flex h-10 items-center justify-center rounded-lg bg-muted/50 p-1 text-muted-foreground overflow-x-auto"
 
   return (
     <div
       ref={listRef}
-      className={cn(
-        "relative inline-flex h-10 items-center justify-center rounded-lg bg-muted/50 p-1 text-muted-foreground",
-        className
-      )}
+      className={cn(baseClasses, className)}
     >
       {indicatorStyle.width > 0 && (
         <motion.div

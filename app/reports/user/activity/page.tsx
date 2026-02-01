@@ -322,14 +322,16 @@ export default function UserActivityReportPage() {
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="individual">Individual Users</TabsTrigger>
-          <TabsTrigger value="roles">Role Analysis</TabsTrigger>
-          <TabsTrigger value="branches">Branch Analysis</TabsTrigger>
-          <TabsTrigger value="engagement">Engagement Patterns</TabsTrigger>
-          <TabsTrigger value="alerts">Alerts & Issues</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-1 px-1">
+          <TabsList className="inline-flex h-10 min-w-full sm:min-w-0 p-1 bg-muted/50 rounded-lg">
+            <TabsTrigger value="overview" className="flex-shrink-0 text-xs sm:text-sm">Overview</TabsTrigger>
+            <TabsTrigger value="individual" className="flex-shrink-0 text-xs sm:text-sm">Users</TabsTrigger>
+            <TabsTrigger value="roles" className="flex-shrink-0 text-xs sm:text-sm">Roles</TabsTrigger>
+            <TabsTrigger value="branches" className="flex-shrink-0 text-xs sm:text-sm">Branches</TabsTrigger>
+            <TabsTrigger value="engagement" className="flex-shrink-0 text-xs sm:text-sm">Engagement</TabsTrigger>
+            <TabsTrigger value="alerts" className="flex-shrink-0 text-xs sm:text-sm">Alerts</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

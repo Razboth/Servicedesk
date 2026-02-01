@@ -489,20 +489,22 @@ export default function NetworkOverviewPage() {
 
       {/* Data Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3 max-w-md">
-          <TabsTrigger value="all" className="gap-2">
-            <Activity className="h-4 w-4" />
-            All ({filteredBranches.length + filteredAtms.length})
-          </TabsTrigger>
-          <TabsTrigger value="branches" className="gap-2">
-            <Building2 className="h-4 w-4" />
-            Branches ({filteredBranches.length})
-          </TabsTrigger>
-          <TabsTrigger value="atms" className="gap-2">
-            <Server className="h-4 w-4" />
-            ATMs ({filteredAtms.length})
-          </TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-1 px-1">
+          <TabsList className="inline-flex h-10 min-w-full sm:min-w-0 sm:max-w-md p-1 bg-muted/50 rounded-lg">
+            <TabsTrigger value="all" className="flex-shrink-0 flex items-center gap-2 text-xs sm:text-sm">
+              <Activity className="h-4 w-4" />
+              All ({filteredBranches.length + filteredAtms.length})
+            </TabsTrigger>
+            <TabsTrigger value="branches" className="flex-shrink-0 flex items-center gap-2 text-xs sm:text-sm">
+              <Building2 className="h-4 w-4" />
+              Branches ({filteredBranches.length})
+            </TabsTrigger>
+            <TabsTrigger value="atms" className="flex-shrink-0 flex items-center gap-2 text-xs sm:text-sm">
+              <Server className="h-4 w-4" />
+              ATMs ({filteredAtms.length})
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* All Tab */}
         <TabsContent value="all" className="space-y-4 mt-4">

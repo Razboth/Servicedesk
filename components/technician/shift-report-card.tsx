@@ -810,28 +810,35 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
         <CardContent className="space-y-6">
           {/* Tabs for different sections */}
           <Tabs defaultValue="metrics" className="w-full">
-            <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="metrics" className="text-xs">
-                <Server className="h-3 w-3 mr-1" />
-                Metrik
-              </TabsTrigger>
-              <TabsTrigger value="backup" className="text-xs">
-                <Database className="h-3 w-3 mr-1" />
-                Backup
-              </TabsTrigger>
-              <TabsTrigger value="issues" className="text-xs">
-                <AlertTriangle className="h-3 w-3 mr-1" />
-                Masalah
-              </TabsTrigger>
-              <TabsTrigger value="checklist" className="text-xs">
-                <FileText className="h-3 w-3 mr-1" />
-                Checklist
-              </TabsTrigger>
-              <TabsTrigger value="notes" className="text-xs">
-                <MessageSquare className="h-3 w-3 mr-1" />
-                Catatan
-              </TabsTrigger>
-            </TabsList>
+            <div className="overflow-x-auto -mx-1 px-1">
+              <TabsList className="inline-flex h-10 min-w-full sm:min-w-0 p-1 bg-muted/50 rounded-lg">
+                <TabsTrigger value="metrics" className="flex-shrink-0 text-xs sm:text-sm px-2 sm:px-3">
+                  <Server className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                  <span className="hidden xs:inline">Metrik</span>
+                  <span className="xs:hidden">M</span>
+                </TabsTrigger>
+                <TabsTrigger value="backup" className="flex-shrink-0 text-xs sm:text-sm px-2 sm:px-3">
+                  <Database className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                  <span className="hidden xs:inline">Backup</span>
+                  <span className="xs:hidden">B</span>
+                </TabsTrigger>
+                <TabsTrigger value="issues" className="flex-shrink-0 text-xs sm:text-sm px-2 sm:px-3">
+                  <AlertTriangle className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                  <span className="hidden xs:inline">Masalah</span>
+                  <span className="xs:hidden">I</span>
+                </TabsTrigger>
+                <TabsTrigger value="checklist" className="flex-shrink-0 text-xs sm:text-sm px-2 sm:px-3">
+                  <FileText className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                  <span className="hidden xs:inline">Checklist</span>
+                  <span className="xs:hidden">C</span>
+                </TabsTrigger>
+                <TabsTrigger value="notes" className="flex-shrink-0 text-xs sm:text-sm px-2 sm:px-3">
+                  <MessageSquare className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                  <span className="hidden xs:inline">Catatan</span>
+                  <span className="xs:hidden">N</span>
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
             {/* Server Metrics Tab */}
             <TabsContent value="metrics" className="mt-4">

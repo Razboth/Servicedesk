@@ -190,20 +190,25 @@ export default function PCAssetsPage() {
       </div>
 
       <Tabs defaultValue="assets" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="assets" className="flex items-center gap-2">
-            <Monitor className="h-4 w-4" />
-            PC Assets
-          </TabsTrigger>
-          <TabsTrigger value="os-types" className="flex items-center gap-2">
-            <Shield className="h-4 w-4" />
-            Operating Systems
-          </TabsTrigger>
-          <TabsTrigger value="office-types" className="flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            Office Products
-          </TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-1 px-1">
+          <TabsList className="inline-flex h-10 min-w-full sm:min-w-0 p-1 bg-muted/50 rounded-lg">
+            <TabsTrigger value="assets" className="flex-shrink-0 flex items-center gap-2 text-xs sm:text-sm">
+              <Monitor className="h-4 w-4" />
+              <span className="hidden sm:inline">PC Assets</span>
+              <span className="sm:hidden">PCs</span>
+            </TabsTrigger>
+            <TabsTrigger value="os-types" className="flex-shrink-0 flex items-center gap-2 text-xs sm:text-sm">
+              <Shield className="h-4 w-4" />
+              <span className="hidden sm:inline">Operating Systems</span>
+              <span className="sm:hidden">OS</span>
+            </TabsTrigger>
+            <TabsTrigger value="office-types" className="flex-shrink-0 flex items-center gap-2 text-xs sm:text-sm">
+              <FileText className="h-4 w-4" />
+              <span className="hidden sm:inline">Office Products</span>
+              <span className="sm:hidden">Office</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="assets" className="space-y-6">
           <div className="flex justify-end gap-2">

@@ -272,13 +272,15 @@ export default function BranchDetailedPerformancePage() {
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="individual">Branch Details</TabsTrigger>
-          <TabsTrigger value="regional">Regional Analysis</TabsTrigger>
-          <TabsTrigger value="performance">Performance Metrics</TabsTrigger>
-          <TabsTrigger value="trends">Trends & Patterns</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-1 px-1">
+          <TabsList className="inline-flex h-10 min-w-full sm:min-w-0 p-1 bg-muted/50 rounded-lg">
+            <TabsTrigger value="overview" className="flex-shrink-0 text-xs sm:text-sm">Overview</TabsTrigger>
+            <TabsTrigger value="individual" className="flex-shrink-0 text-xs sm:text-sm">Branch Details</TabsTrigger>
+            <TabsTrigger value="regional" className="flex-shrink-0 text-xs sm:text-sm">Regional</TabsTrigger>
+            <TabsTrigger value="performance" className="flex-shrink-0 text-xs sm:text-sm">Performance</TabsTrigger>
+            <TabsTrigger value="trends" className="flex-shrink-0 text-xs sm:text-sm">Trends</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

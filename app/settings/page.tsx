@@ -130,12 +130,14 @@ export default function SettingsPage() {
         />
 
         <Tabs defaultValue="general" className="space-y-6">
-          <TabsList className="grid w-full max-w-md grid-cols-4 bg-cream-200 dark:bg-warm-dark-200">
-            <TabsTrigger value="general">General</TabsTrigger>
-            <TabsTrigger value="notifications">Notifications</TabsTrigger>
-            <TabsTrigger value="display">Display</TabsTrigger>
-            <TabsTrigger value="privacy">Privacy</TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto -mx-1 px-1">
+            <TabsList className="inline-flex h-10 min-w-full sm:min-w-0 sm:max-w-md p-1 bg-cream-200 dark:bg-warm-dark-200 rounded-lg">
+              <TabsTrigger value="general" className="flex-shrink-0 text-xs sm:text-sm">General</TabsTrigger>
+              <TabsTrigger value="notifications" className="flex-shrink-0 text-xs sm:text-sm">Notifications</TabsTrigger>
+              <TabsTrigger value="display" className="flex-shrink-0 text-xs sm:text-sm">Display</TabsTrigger>
+              <TabsTrigger value="privacy" className="flex-shrink-0 text-xs sm:text-sm">Privacy</TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* General Settings */}
           <TabsContent value="general">

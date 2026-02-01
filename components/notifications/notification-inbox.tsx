@@ -274,9 +274,9 @@ export function NotificationInbox({ trigger, open: controlledOpen, onOpenChange 
 
         <div className="mt-6">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="unread">
+            <TabsList className="inline-flex h-10 w-full p-1 bg-muted/50 rounded-lg">
+              <TabsTrigger value="all" className="flex-1">All</TabsTrigger>
+              <TabsTrigger value="unread" className="flex-1">
                 Unread {unreadCount > 0 && `(${unreadCount})`}
               </TabsTrigger>
             </TabsList>
