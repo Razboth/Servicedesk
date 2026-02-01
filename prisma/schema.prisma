@@ -348,6 +348,7 @@ model Ticket {
   resolvedAt             DateTime?
   closedAt               DateTime?
   claimedAt              DateTime?             // When ticket was claimed by technician
+  firstResponseAt        DateTime?             // When first response was made by technician
   slaStartAt             DateTime?             // SLA starts from approval or creation (for non-approval tickets)
   slaPausedAt            DateTime?             // When SLA was paused (PENDING_VENDOR)
   slaPausedTotal         Int                   @default(0) // Total paused milliseconds
