@@ -1264,7 +1264,7 @@ export default function TicketDetailPage() {
 
   if (status === 'loading' || loading) {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen bg-card">
         <div className="flex items-center justify-center h-64">
           <Card className="max-w-md mx-4">
             <CardContent className="p-12 text-center">
@@ -1286,7 +1286,7 @@ export default function TicketDetailPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen bg-card">
         <main className="w-full px-responsive py-6">
           <Card className="max-w-2xl mx-auto">
             <CardContent className="p-12 text-center">
@@ -1313,7 +1313,7 @@ export default function TicketDetailPage() {
   // Check if user can view this ticket after it's loaded
   if (!canViewTicket()) {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen bg-card">
         <main className="w-full px-responsive py-6">
           <Card className="max-w-2xl mx-auto border-[hsl(var(--warning)/0.5)]">
             <CardContent className="p-12 text-center">
@@ -1346,9 +1346,9 @@ export default function TicketDetailPage() {
   // ============================================
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-card">
       <main className="w-full px-responsive py-6">
-        <div className="space-y-6 max-w-7xl mx-auto">
+        <div className="space-y-6">
 
           {/* ============================================ */}
           {/* HEADER SECTION */}
