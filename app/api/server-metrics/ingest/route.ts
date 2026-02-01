@@ -93,6 +93,11 @@ export async function POST(request: NextRequest) {
     // Process each server's metrics
     let processedCount = 0;
     let newServersCount = 0;
+    let skippedDuplicates = 0;
+
+    // Calculate 1 hour ago for duplicate check
+    const oneHourAgo = new Date();
+    oneHourAgo.setHours(oneHourAgo.getHours() - 1);
 
     for (const metric of metricsEntries) {
       const ipAddress = metric.ip_address;
@@ -111,6 +116,21 @@ export async function POST(request: NextRequest) {
           },
         });
         newServersCount++;
+      }
+
+      // Check for existing metric within the last hour
+      const existingMetric = await prisma.serverMetricSnapshot.findFirst({
+        where: {
+          serverId: server.id,
+          collectedAt: { gte: oneHourAgo },
+        },
+        orderBy: { collectedAt: 'desc' },
+      });
+
+      if (existingMetric) {
+        // Skip this server - already has a metric within the last hour
+        skippedDuplicates++;
+        continue;
       }
 
       // Create metric snapshot
@@ -142,6 +162,7 @@ export async function POST(request: NextRequest) {
         reportTimestamp: collection.reportTimestamp,
         totalServers: processedCount,
         newServers: newServersCount,
+        skippedDuplicates,
       },
     });
   } catch (error) {
