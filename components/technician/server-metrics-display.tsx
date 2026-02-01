@@ -184,8 +184,9 @@ export function ServerMetricsDisplay({
             </div>
           </div>
 
-          {/* Top Issues */}
-          {(multiServerMetrics.criticalCount > 0 || multiServerMetrics.storageAlertsCount > 0) && (
+          {/* Top Issues - CPU & Memory */}
+          {(multiServerMetrics.topCpuServers.some(s => s.cpuPercent >= 80) ||
+            multiServerMetrics.topMemoryServers.some(s => s.memoryPercent >= 80)) && (
             <div className="pt-2 border-t">
               <p className="text-xs font-medium text-muted-foreground mb-2">Perhatian:</p>
               <div className="space-y-1.5">
@@ -215,28 +216,69 @@ export function ServerMetricsDisplay({
                       </Badge>
                     </div>
                   ))}
-                {multiServerMetrics.storageAlerts && multiServerMetrics.storageAlerts.length > 0 && (
-                  <>
-                    {multiServerMetrics.storageAlerts.slice(0, 5).map((alert, idx) => (
-                      <div key={`storage-${alert.ipAddress}-${alert.partition}-${idx}`} className="flex items-center justify-between text-xs">
-                        <span className="text-muted-foreground flex items-center gap-1">
-                          <HardDrive className="h-3 w-3" />
-                          {alert.serverName || alert.ipAddress}
-                          <span className="font-mono text-[10px] opacity-70">({alert.partition})</span>
-                        </span>
-                        <Badge variant="outline" className={alert.usagePercent >= 90 ? "text-red-600 border-red-200" : "text-orange-600 border-orange-200"}>
-                          Storage {alert.usagePercent.toFixed(1)}%
-                        </Badge>
-                      </div>
-                    ))}
-                    {multiServerMetrics.storageAlerts.length > 5 && (
-                      <div className="text-xs text-muted-foreground text-center pt-1">
-                        +{multiServerMetrics.storageAlerts.length - 5} partisi lainnya
-                      </div>
-                    )}
-                  </>
-                )}
               </div>
+            </div>
+          )}
+
+          {/* Storage Alerts - Card Mode */}
+          {multiServerMetrics.storageAlerts && multiServerMetrics.storageAlerts.length > 0 && (
+            <div className="pt-3 border-t">
+              <div className="flex items-center gap-2 mb-3">
+                <HardDrive className="h-4 w-4 text-muted-foreground" />
+                <p className="text-xs font-medium text-muted-foreground">Top 5 Penggunaan Storage Tertinggi</p>
+              </div>
+              <div className="grid grid-cols-1 gap-2">
+                {[...multiServerMetrics.storageAlerts]
+                  .sort((a, b) => b.usagePercent - a.usagePercent)
+                  .slice(0, 5)
+                  .map((alert, idx) => (
+                    <div
+                      key={`storage-${alert.ipAddress}-${alert.partition}-${idx}`}
+                      className={`p-2.5 rounded-lg border ${
+                        alert.usagePercent >= 90
+                          ? 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800'
+                          : alert.usagePercent >= 80
+                          ? 'bg-orange-50 border-orange-200 dark:bg-orange-950/30 dark:border-orange-800'
+                          : 'bg-yellow-50 border-yellow-200 dark:bg-yellow-950/30 dark:border-yellow-800'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium">
+                            {alert.serverName || alert.ipAddress}
+                          </span>
+                          <span className="text-[10px] font-mono text-muted-foreground">
+                            {alert.partition}
+                          </span>
+                        </div>
+                        <span className={`text-xs font-bold ${
+                          alert.usagePercent >= 90
+                            ? 'text-red-600 dark:text-red-400'
+                            : alert.usagePercent >= 80
+                            ? 'text-orange-600 dark:text-orange-400'
+                            : 'text-yellow-600 dark:text-yellow-400'
+                        }`}>
+                          {alert.usagePercent.toFixed(1)}%
+                        </span>
+                      </div>
+                      <Progress
+                        value={alert.usagePercent}
+                        className={`h-1.5 ${
+                          alert.usagePercent >= 90
+                            ? '[&>div]:bg-red-500'
+                            : alert.usagePercent >= 80
+                            ? '[&>div]:bg-orange-500'
+                            : '[&>div]:bg-yellow-500'
+                        }`}
+                      />
+                    </div>
+                  ))}
+              </div>
+              {multiServerMetrics.storageAlerts.length > 5 && (
+                <p className="text-[10px] text-muted-foreground text-center mt-2">
+                  +{multiServerMetrics.storageAlerts.length - 5} partisi lainnya dengan penggunaan tinggi
+                </p>
+              )}
             </div>
           )}
         </CardContent>
