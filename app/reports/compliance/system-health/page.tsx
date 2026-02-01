@@ -7,96 +7,98 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ExportButton } from '@/components/reports/export-button';
-import { ReportCharts } from '@/components/reports/report-charts';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { formatDateTimeWITA } from '@/lib/export-utils';
-import { Activity, Database, Server, TrendingUp, Calendar, MapPin } from 'lucide-react';
+import { Activity, Database, Server, AlertTriangle, Calendar, CheckCircle, XCircle, RefreshCw, HardDrive, Cpu, Users } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 
 interface SystemHealthData {
   summary: {
-    totalSystemTickets: number;
+    overallHealthScore: number;
+    systemAvailability: number;
+    totalSystemIssues: number;
     criticalIssues: number;
-    systemUptime: number;
+    avgResolutionHours: number;
     dataQualityScore: number;
-    performanceScore: number;
-    healthScore: number;
   };
-  systemPerformance: {
-    uptime: number;
-    availability: number;
-    responseTime: number;
-    throughput: number;
-    errorRate: number;
-    performanceTrends: Array<{ date: string; uptime: number; responseTime: number; errorRate: number }>;
+  systemHealth: {
+    reliability: {
+      totalSystemIssues: number;
+      criticalSystemIssues: number;
+      resolvedSystemIssues: number;
+      openSystemIssues: number;
+    };
+    uptime: {
+      incidentFrequency: number;
+      avgResolutionTime: number;
+      mttr: number;
+      systemAvailability: number;
+    };
+    componentHealth: Record<string, number>;
+    regionalHealth: Record<string, {
+      issues: number;
+      critical: number;
+      resolved: number;
+      resolutionRate: number;
+      avgResolutionTime: number;
+    }>;
   };
   dataQuality: {
-    completeness: number;
-    accuracy: number;
-    consistency: number;
-    timeliness: number;
-    validity: number;
-    qualityBySource: Record<string, {
-      completeness: number;
-      accuracy: number;
-      consistency: number;
-      issues: number;
-    }>;
-    dataIssues: Array<{
-      source: string;
-      issue: string;
-      severity: string;
-      count: number;
-      impact: string;
-    }>;
+    metrics: {
+      ticketsWithoutDescription: number;
+      unassignedTickets: number;
+      uncategorizedTickets: number;
+      usersWithoutBranch: number;
+    };
+    integrity: {
+      orphanedTickets: number;
+      invalidServiceReferences: number;
+    };
+    recordCounts: {
+      tickets: number;
+      users: number;
+      services: number;
+      branches: number;
+    };
+    qualityScore: number;
   };
-  systemReliability: {
-    mtbf: number; // Mean Time Between Failures
-    mttr: number; // Mean Time To Recovery
-    availability: number;
-    reliabilityScore: number;
-    failuresByComponent: Record<string, number>;
-    recoveryTimes: Array<{ component: string; avgRecoveryTime: number; incidents: number }>;
+  performance: {
+    trends: Record<string, Record<string, number>>;
+    resolutionTimes: number[];
+    healthScores: {
+      dataQuality: number;
+      systemReliability: number;
+      performance: number;
+      dataIntegrity: number;
+    };
   };
-  databaseHealth: {
-    connectionHealth: number;
-    queryPerformance: number;
-    storageUtilization: number;
-    backupStatus: number;
-    indexHealth: number;
-    databaseMetrics: Record<string, {
-      size: number;
-      connections: number;
-      queryTime: number;
-      health: number;
-    }>;
-  };
-  systemComponents: Record<string, {
-    status: string;
-    uptime: number;
-    performance: number;
-    lastIncident: string;
-    incidentCount: number;
-    healthScore: number;
-  }>;
-  regionalHealth: Record<string, {
-    uptime: number;
-    performance: number;
-    incidents: number;
-    dataQuality: number;
-    healthScore: number;
-  }>;
   insights: {
-    performanceBottlenecks: Array<{ component: string; impact: string; severity: string; recommendation: string }>;
-    dataQualityIssues: Array<{ area: string; currentScore: number; targetScore: number; priority: string }>;
-    systemTrends: Array<{ metric: string; trend: string; change: number; prediction: string }>;
+    topSystemIssues: Array<{ component: string; count: number }>;
+    mostAffectedRegions: Array<{ region: string; issues: number; critical: number; resolutionRate: number }>;
   };
-  recommendations: {
-    performance: string[];
-    dataQuality: string[];
-    reliability: string[];
-    monitoring: string[];
-  };
+  recentIssues: Array<{
+    id: string;
+    title: string;
+    priority: string;
+    status: string;
+    branch: string;
+    region: string;
+    createdAt: string;
+    resolvedAt: string | null;
+    category: string;
+  }>;
+  recommendations: string[];
 }
+
+const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6'];
 
 export default function SystemHealthReport() {
   const { data: session } = useSession();
@@ -114,18 +116,18 @@ export default function SystemHealthReport() {
     try {
       setLoading(true);
       setError(null);
-      
+
       const params = new URLSearchParams({
         startDate: new Date(startDate).toISOString(),
         endDate: new Date(endDate).toISOString()
       });
-      
+
       const response = await fetch(`/api/reports/compliance/system-health?${params}`);
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const result = await response.json();
       setData(result);
     } catch (err) {
@@ -136,87 +138,63 @@ export default function SystemHealthReport() {
     }
   };
 
-  const handleExport = async (format: string) => {
+  const handleExport = async () => {
     if (!data) return;
 
-    if (format === 'csv') {
-      const rows = [
-        ['System Health & Data Quality Report'],
-        [`Date Range: ${startDate} to ${endDate}`],
-        [`Generated: ${formatDateTimeWITA(new Date())}`],
-        [''],
-        ['Summary'],
-        ['Metric', 'Value'],
-        ['Total System Tickets', data.summary.totalSystemTickets.toString()],
-        ['Critical Issues', data.summary.criticalIssues.toString()],
-        ['System Uptime', `${data.summary.systemUptime.toFixed(2)}%`],
-        ['Data Quality Score', `${data.summary.dataQualityScore.toFixed(1)}%`],
-        ['Performance Score', `${data.summary.performanceScore.toFixed(1)}%`],
-        ['Overall Health Score', `${data.summary.healthScore.toFixed(1)}%`],
-        [''],
-        ['System Performance'],
-        ['Metric', 'Value'],
-        ['Uptime', `${data.systemPerformance.uptime.toFixed(2)}%`],
-        ['Availability', `${data.systemPerformance.availability.toFixed(2)}%`],
-        ['Response Time (ms)', data.systemPerformance.responseTime.toFixed(0)],
-        ['Throughput/sec', data.systemPerformance.throughput.toFixed(0)],
-        ['Error Rate', `${data.systemPerformance.errorRate.toFixed(2)}%`],
-        [''],
-        ['Data Quality Metrics'],
-        ['Metric', 'Score'],
-        ['Completeness', `${data.dataQuality.completeness.toFixed(1)}%`],
-        ['Accuracy', `${data.dataQuality.accuracy.toFixed(1)}%`],
-        ['Consistency', `${data.dataQuality.consistency.toFixed(1)}%`],
-        ['Timeliness', `${data.dataQuality.timeliness.toFixed(1)}%`],
-        ['Validity', `${data.dataQuality.validity.toFixed(1)}%`],
-        [''],
-        ['System Reliability'],
-        ['Metric', 'Value'],
-        ['MTBF (hours)', data.systemReliability.mtbf.toFixed(1)],
-        ['MTTR (hours)', data.systemReliability.mttr.toFixed(1)],
-        ['Availability', `${data.systemReliability.availability.toFixed(2)}%`],
-        ['Reliability Score', data.systemReliability.reliabilityScore.toFixed(1)],
-        [''],
-        ['Database Health'],
-        ['Metric', 'Value'],
-        ['Connection Health', `${data.databaseHealth.connectionHealth.toFixed(1)}%`],
-        ['Query Performance', `${data.databaseHealth.queryPerformance.toFixed(1)}%`],
-        ['Storage Utilization', `${data.databaseHealth.storageUtilization.toFixed(1)}%`],
-        ['Backup Status', `${data.databaseHealth.backupStatus.toFixed(1)}%`],
-        ['Index Health', `${data.databaseHealth.indexHealth.toFixed(1)}%`],
-        [''],
-        ['System Components'],
-        ['Component', 'Status', 'Uptime', 'Performance', 'Incidents', 'Health Score'],
-        ...Object.entries(data.systemComponents).map(([component, status]) => [
-          component, status.status, `${status.uptime.toFixed(1)}%`, `${status.performance.toFixed(1)}%`,
-          status.incidentCount.toString(), status.healthScore.toFixed(1)
-        ]),
-        [''],
-        ['Regional Health'],
-        ['Region', 'Uptime', 'Performance', 'Incidents', 'Data Quality', 'Health Score'],
-        ...Object.entries(data.regionalHealth).map(([region, health]) => [
-          region, `${health.uptime.toFixed(1)}%`, `${health.performance.toFixed(1)}%`,
-          health.incidents.toString(), `${health.dataQuality.toFixed(1)}%`, health.healthScore.toFixed(1)
-        ])
-      ];
+    const rows = [
+      ['System Health & Data Quality Report'],
+      [`Date Range: ${startDate} to ${endDate}`],
+      [`Generated: ${formatDateTimeWITA(new Date())}`],
+      [''],
+      ['Summary'],
+      ['Metric', 'Value'],
+      ['Overall Health Score', `${data.summary.overallHealthScore}%`],
+      ['System Availability', `${data.summary.systemAvailability}%`],
+      ['Total System Issues', data.summary.totalSystemIssues.toString()],
+      ['Critical Issues', data.summary.criticalIssues.toString()],
+      ['Avg Resolution Time (hrs)', data.summary.avgResolutionHours.toString()],
+      ['Data Quality Score', `${data.summary.dataQualityScore}%`],
+      [''],
+      ['Data Quality Metrics'],
+      ['Metric', 'Count'],
+      ['Tickets Without Description', data.dataQuality.metrics.ticketsWithoutDescription.toString()],
+      ['Unassigned Tickets', data.dataQuality.metrics.unassignedTickets.toString()],
+      ['Uncategorized Tickets', data.dataQuality.metrics.uncategorizedTickets.toString()],
+      ['Users Without Branch', data.dataQuality.metrics.usersWithoutBranch.toString()],
+      [''],
+      ['Database Record Counts'],
+      ['Table', 'Count'],
+      ['Tickets', data.dataQuality.recordCounts.tickets.toString()],
+      ['Users', data.dataQuality.recordCounts.users.toString()],
+      ['Services', data.dataQuality.recordCounts.services.toString()],
+      ['Branches', data.dataQuality.recordCounts.branches.toString()],
+      [''],
+      ['Recent System Issues'],
+      ['Title', 'Priority', 'Status', 'Branch', 'Created At', 'Resolved At'],
+      ...data.recentIssues.map(issue => [
+        issue.title,
+        issue.priority,
+        issue.status,
+        issue.branch || '-',
+        formatDateTimeWITA(issue.createdAt),
+        issue.resolvedAt ? formatDateTimeWITA(issue.resolvedAt) : 'Not resolved'
+      ])
+    ];
 
-      const csvContent = rows.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `system-health-${startDate}-to-${endDate}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } else if (format === 'xlsx' || format === 'pdf') {
-      alert(`${format.toUpperCase()} export coming soon. Please use CSV export for now.`);
-    }
+    const csvContent = rows.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `system-health-${startDate}-to-${endDate}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   useEffect(() => {
-    if (session?.user && session.user.role === 'ADMIN') {
+    if (session?.user) {
       fetchData();
     }
   }, [session, startDate, endDate]);
@@ -225,11 +203,11 @@ export default function SystemHealthReport() {
     return <div className="p-6">Please log in to view this report.</div>;
   }
 
-  if (session.user.role !== 'ADMIN') {
+  if (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN') {
     return (
       <div className="p-6">
         <div className="text-center">
-          <Activity className="mx-auto h-12 w-12 text-gray-400" />
+          <Server className="mx-auto h-12 w-12 text-gray-400" />
           <h3 className="mt-2 text-sm font-medium text-gray-900">Access Denied</h3>
           <p className="mt-1 text-sm text-gray-500">
             Only administrators can view system health reports.
@@ -269,75 +247,77 @@ export default function SystemHealthReport() {
     return <div className="p-6">No data available</div>;
   }
 
-  const chartData = {
-    performanceTrends: data.systemPerformance.performanceTrends.map(item => ({
-      date: item.date,
-      uptime: item.uptime,
-      responseTime: item.responseTime,
-      errorRate: item.errorRate
-    })),
-    failuresByComponent: Object.entries(data.systemReliability.failuresByComponent).map(([component, failures]) => ({
-      name: component,
-      value: failures
-    })),
-    dataQualityMetrics: [
-      { name: 'Completeness', value: data.dataQuality.completeness },
-      { name: 'Accuracy', value: data.dataQuality.accuracy },
-      { name: 'Consistency', value: data.dataQuality.consistency },
-      { name: 'Timeliness', value: data.dataQuality.timeliness },
-      { name: 'Validity', value: data.dataQuality.validity }
-    ]
-  };
-
-  const getHealthColor = (score: number) => {
-    if (score >= 95) return 'text-green-600';
-    if (score >= 85) return 'text-yellow-600';
-    if (score >= 70) return 'text-orange-600';
+  const getScoreColor = (score: number) => {
+    if (score >= 90) return 'text-green-600';
+    if (score >= 70) return 'text-yellow-600';
     return 'text-red-600';
   };
 
-  const getHealthBadge = (score: number) => {
-    if (score >= 95) return 'default';
-    if (score >= 85) return 'secondary';
-    if (score >= 70) return 'default';
-    return 'destructive';
+  const getScoreBg = (score: number) => {
+    if (score >= 90) return 'bg-green-500';
+    if (score >= 70) return 'bg-yellow-500';
+    return 'bg-red-500';
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'healthy': return 'text-green-600';
-      case 'warning': return 'text-yellow-600';
-      case 'critical': return 'text-red-600';
-      case 'down': return 'text-red-600';
-      default: return 'text-gray-600';
+  const getPriorityBadge = (priority: string) => {
+    switch (priority) {
+      case 'CRITICAL': return 'destructive';
+      case 'HIGH': return 'destructive';
+      case 'MEDIUM': return 'default';
+      case 'LOW': return 'secondary';
+      default: return 'secondary';
     }
   };
 
   const getStatusBadge = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'healthy': return 'default';
-      case 'warning': return 'secondary';
-      case 'critical': return 'destructive';
-      case 'down': return 'destructive';
+    switch (status) {
+      case 'RESOLVED':
+      case 'CLOSED': return 'default';
+      case 'IN_PROGRESS': return 'secondary';
+      case 'OPEN': return 'destructive';
       default: return 'secondary';
     }
   };
+
+  // Prepare chart data
+  const componentData = Object.entries(data.systemHealth.componentHealth || {})
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value);
+
+  const healthScoreData = Object.entries(data.performance.healthScores || {})
+    .map(([name, value]) => ({
+      name: name.replace(/([A-Z])/g, ' $1').trim(),
+      value
+    }));
+
+  const regionalData = Object.entries(data.systemHealth.regionalHealth || {})
+    .map(([region, info]) => ({
+      region,
+      issues: info.issues,
+      critical: info.critical,
+      resolutionRate: info.resolutionRate
+    }))
+    .sort((a, b) => b.issues - a.issues)
+    .slice(0, 10);
 
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">System Health & Data Quality Report</h1>
+          <h1 className="text-3xl font-bold text-gray-900">System Health & Data Quality</h1>
           <p className="text-gray-600 mt-1">
-            System performance, data quality metrics, and infrastructure health monitoring
+            Monitor system performance, data quality, and infrastructure health
           </p>
         </div>
-        <div className="flex items-center space-x-4">
-          <ExportButton 
-            onExport={handleExport} 
-            reportName="System Health & Data Quality Report"
-            disabled={!data} />
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={fetchData}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+          <Button onClick={handleExport}>
+            Export CSV
+          </Button>
         </div>
       </div>
 
@@ -382,13 +362,41 @@ export default function SystemHealthReport() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">System Uptime</CardTitle>
+            <CardTitle className="text-sm font-medium">Health Score</CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${getHealthColor(data.summary.systemUptime)}`}>
-              {data.summary.systemUptime.toFixed(2)}%
+            <div className={`text-2xl font-bold ${getScoreColor(data.summary.overallHealthScore)}`}>
+              {data.summary.overallHealthScore}%
             </div>
+            <p className="text-xs text-muted-foreground">
+              Overall system health
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">System Availability</CardTitle>
+            <Server className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${getScoreColor(data.summary.systemAvailability)}`}>
+              {data.summary.systemAvailability}%
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Uptime percentage
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">System Issues</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{data.summary.totalSystemIssues}</div>
             <p className="text-xs text-muted-foreground">
               {data.summary.criticalIssues} critical issues
             </p>
@@ -397,535 +405,361 @@ export default function SystemHealthReport() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Data Quality Score</CardTitle>
+            <CardTitle className="text-sm font-medium">Data Quality</CardTitle>
             <Database className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${getHealthColor(data.summary.dataQualityScore)}`}>
-              {data.summary.dataQualityScore.toFixed(1)}%
+            <div className={`text-2xl font-bold ${getScoreColor(data.summary.dataQualityScore)}`}>
+              {data.summary.dataQualityScore}%
             </div>
             <p className="text-xs text-muted-foreground">
-              Data integrity rating
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Performance Score</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${getHealthColor(data.summary.performanceScore)}`}>
-              {data.summary.performanceScore.toFixed(1)}%
-            </div>
-            <p className="text-xs text-muted-foreground">
-              System performance rating
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Overall Health</CardTitle>
-            <Server className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${getHealthColor(data.summary.healthScore)}`}>
-              {data.summary.healthScore.toFixed(1)}%
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Composite health index
+              Data integrity score
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* System Performance Metrics */}
-      <Card>
-        <CardHeader>
-          <CardTitle>System Performance Metrics</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-6">
-            <div className="text-center">
-              <div className={`text-2xl font-bold ${getHealthColor(data.systemPerformance.uptime)}`}>
-                {data.systemPerformance.uptime.toFixed(2)}%
-              </div>
-              <div className="text-sm text-gray-500">Uptime</div>
-            </div>
-            <div className="text-center">
-              <div className={`text-2xl font-bold ${getHealthColor(data.systemPerformance.availability)}`}>
-                {data.systemPerformance.availability.toFixed(2)}%
-              </div>
-              <div className="text-sm text-gray-500">Availability</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold">{data.systemPerformance.responseTime.toFixed(0)}ms</div>
-              <div className="text-sm text-gray-500">Response Time</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold">{data.systemPerformance.throughput.toFixed(0)}</div>
-              <div className="text-sm text-gray-500">Throughput/sec</div>
-            </div>
-            <div className="text-center">
-              <div className={`text-2xl font-bold ${data.systemPerformance.errorRate > 1 ? 'text-red-600' : 'text-green-600'}`}>
-                {data.systemPerformance.errorRate.toFixed(2)}%
-              </div>
-              <div className="text-sm text-gray-500">Error Rate</div>
-            </div>
-          </div>
-          
-          <ReportCharts 
-            data={chartData.performanceTrends}
-            type="line"
-            title="Performance Trends Over Time"
-          />
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="overview" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="overview">Health Overview</TabsTrigger>
+          <TabsTrigger value="data">Data Quality</TabsTrigger>
+          <TabsTrigger value="components">Components</TabsTrigger>
+          <TabsTrigger value="recent">Recent Issues</TabsTrigger>
+        </TabsList>
 
-      {/* Data Quality Analysis */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Data Quality Metrics</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ReportCharts 
-              data={chartData.dataQualityMetrics}
-              type="bar"
-              title="Data Quality Dimensions"
-            />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Data Quality by Source</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {Object.entries(data.dataQuality.qualityBySource).slice(0, 5).map(([source, quality], index) => (
-                <div key={index} className="p-3 border rounded">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="font-medium">{source}</div>
-                    <Badge variant={getHealthBadge((quality.completeness + quality.accuracy + quality.consistency) / 3)}>
-                      {((quality.completeness + quality.accuracy + quality.consistency) / 3).toFixed(1)}% Quality
-                    </Badge>
-                  </div>
-                  <div className="grid grid-cols-3 gap-4 text-sm">
-                    <div className="text-center">
-                      <div className="font-bold">{quality.completeness.toFixed(1)}%</div>
-                      <div className="text-gray-500">completeness</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="font-bold">{quality.accuracy.toFixed(1)}%</div>
-                      <div className="text-gray-500">accuracy</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="font-bold">{quality.consistency.toFixed(1)}%</div>
-                      <div className="text-gray-500">consistency</div>
-                    </div>
-                  </div>
-                  {quality.issues > 0 && (
-                    <div className="text-xs text-red-600 mt-2">
-                      {quality.issues} data quality issues detected
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* System Reliability */}
-      <Card>
-        <CardHeader>
-          <CardTitle>System Reliability Metrics</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-            <div className="text-center">
-              <div className="text-2xl font-bold">{data.systemReliability.mtbf.toFixed(1)}h</div>
-              <div className="text-sm text-gray-500">MTBF (Mean Time Between Failures)</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold">{data.systemReliability.mttr.toFixed(1)}h</div>
-              <div className="text-sm text-gray-500">MTTR (Mean Time To Recovery)</div>
-            </div>
-            <div className="text-center">
-              <div className={`text-2xl font-bold ${getHealthColor(data.systemReliability.availability)}`}>
-                {data.systemReliability.availability.toFixed(2)}%
-              </div>
-              <div className="text-sm text-gray-500">Availability</div>
-            </div>
-            <div className="text-center">
-              <div className={`text-2xl font-bold ${getHealthColor(data.systemReliability.reliabilityScore)}`}>
-                {data.systemReliability.reliabilityScore.toFixed(1)}
-              </div>
-              <div className="text-sm text-gray-500">Reliability Score</div>
-            </div>
-          </div>
-
+        <TabsContent value="overview" className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div>
-              <h4 className="font-medium mb-3">Failures by Component</h4>
-              <ReportCharts 
-                data={chartData.failuresByComponent}
-                type="pie"
-                title="Component Failure Distribution"
-              />
-            </div>
-            <div>
-              <h4 className="font-medium mb-3">Recovery Times</h4>
-              <div className="space-y-2">
-                {data.systemReliability.recoveryTimes.slice(0, 5).map((recovery, index) => (
-                  <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                    <div>
-                      <div className="font-medium">{recovery.component}</div>
-                      <div className="text-sm text-gray-500">{recovery.incidents} incidents</div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Health Score Breakdown</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {healthScoreData.map((item) => (
+                  <div key={item.name} className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="capitalize">{item.name}</span>
+                      <span className={`font-bold ${getScoreColor(item.value)}`}>{item.value.toFixed(1)}%</span>
                     </div>
-                    <div className="text-right">
-                      <div className="font-bold">{recovery.avgRecoveryTime.toFixed(1)}h</div>
-                      <div className="text-xs text-gray-500">avg recovery</div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full ${getScoreBg(item.value)}`}
+                        style={{ width: `${Math.min(100, item.value)}%` }}
+                      />
                     </div>
                   </div>
                 ))}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+              </CardContent>
+            </Card>
 
-      {/* Database Health */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Database Health Analysis</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-6">
-            <div className="text-center">
-              <div className={`text-2xl font-bold ${getHealthColor(data.databaseHealth.connectionHealth)}`}>
-                {data.databaseHealth.connectionHealth.toFixed(1)}%
-              </div>
-              <div className="text-sm text-gray-500">Connection Health</div>
-            </div>
-            <div className="text-center">
-              <div className={`text-2xl font-bold ${getHealthColor(data.databaseHealth.queryPerformance)}`}>
-                {data.databaseHealth.queryPerformance.toFixed(1)}%
-              </div>
-              <div className="text-sm text-gray-500">Query Performance</div>
-            </div>
-            <div className="text-center">
-              <div className={`text-2xl font-bold ${data.databaseHealth.storageUtilization > 80 ? 'text-red-600' : 'text-green-600'}`}>
-                {data.databaseHealth.storageUtilization.toFixed(1)}%
-              </div>
-              <div className="text-sm text-gray-500">Storage Utilization</div>
-            </div>
-            <div className="text-center">
-              <div className={`text-2xl font-bold ${getHealthColor(data.databaseHealth.backupStatus)}`}>
-                {data.databaseHealth.backupStatus.toFixed(1)}%
-              </div>
-              <div className="text-sm text-gray-500">Backup Status</div>
-            </div>
-            <div className="text-center">
-              <div className={`text-2xl font-bold ${getHealthColor(data.databaseHealth.indexHealth)}`}>
-                {data.databaseHealth.indexHealth.toFixed(1)}%
-              </div>
-              <div className="text-sm text-gray-500">Index Health</div>
-            </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>System Reliability Metrics</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-center p-4 bg-gray-50 rounded">
+                    <div className="text-2xl font-bold">{data.systemHealth.reliability.totalSystemIssues}</div>
+                    <div className="text-sm text-gray-500">Total Issues</div>
+                  </div>
+                  <div className="text-center p-4 bg-red-50 rounded">
+                    <div className="text-2xl font-bold text-red-600">{data.systemHealth.reliability.criticalSystemIssues}</div>
+                    <div className="text-sm text-gray-500">Critical</div>
+                  </div>
+                  <div className="text-center p-4 bg-green-50 rounded">
+                    <div className="text-2xl font-bold text-green-600">{data.systemHealth.reliability.resolvedSystemIssues}</div>
+                    <div className="text-sm text-gray-500">Resolved</div>
+                  </div>
+                  <div className="text-center p-4 bg-yellow-50 rounded">
+                    <div className="text-2xl font-bold text-yellow-600">{data.systemHealth.reliability.openSystemIssues}</div>
+                    <div className="text-sm text-gray-500">Open</div>
+                  </div>
+                </div>
+                <div className="mt-4 pt-4 border-t">
+                  <div className="flex justify-between text-sm">
+                    <span>MTTR (Mean Time To Resolution)</span>
+                    <span className="font-bold">{data.systemHealth.uptime.mttr.toFixed(1)} hours</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
-          <div className="space-y-3">
-            <h4 className="font-medium">Database Metrics</h4>
-            {Object.entries(data.databaseHealth.databaseMetrics).slice(0, 5).map(([database, metrics], index) => (
-              <div key={index} className="p-3 border rounded">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="font-medium">{database}</div>
-                  <Badge variant={getHealthBadge(metrics.health)}>
-                    {metrics.health.toFixed(1)}% Health
-                  </Badge>
-                </div>
-                <div className="grid grid-cols-3 gap-4 text-sm">
-                  <div className="text-center">
-                    <div className="font-bold">{(metrics.size / 1024).toFixed(1)}GB</div>
-                    <div className="text-gray-500">size</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="font-bold">{metrics.connections}</div>
-                    <div className="text-gray-500">connections</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="font-bold">{metrics.queryTime.toFixed(0)}ms</div>
-                    <div className="text-gray-500">avg query time</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+          {data.recommendations && data.recommendations.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Recommendations</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-2">
+                  {data.recommendations.map((rec, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <AlertTriangle className="h-4 w-4 text-yellow-500 mt-0.5 flex-shrink-0" />
+                      <span>{rec}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
 
-      {/* System Components Status */}
-      <Card>
-        <CardHeader>
-          <CardTitle>System Components Status</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {Object.entries(data.systemComponents).slice(0, 10).map(([component, status], index) => (
-              <div key={index} className="p-4 border rounded">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <Server className="h-4 w-4" />
-                    <span className="font-medium">{component}</span>
-                  </div>
-                  <Badge variant={getStatusBadge(status.status)}>
-                    {status.status}
-                  </Badge>
-                </div>
-                <div className="grid grid-cols-4 gap-4 text-sm">
-                  <div className="text-center">
-                    <div className={`font-bold ${getHealthColor(status.uptime)}`}>
-                      {status.uptime.toFixed(1)}%
-                    </div>
-                    <div className="text-gray-500">uptime</div>
-                  </div>
-                  <div className="text-center">
-                    <div className={`font-bold ${getHealthColor(status.performance)}`}>
-                      {status.performance.toFixed(1)}%
-                    </div>
-                    <div className="text-gray-500">performance</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="font-bold">{status.incidentCount}</div>
-                    <div className="text-gray-500">incidents</div>
-                  </div>
-                  <div className="text-center">
-                    <div className={`font-bold ${getHealthColor(status.healthScore)}`}>
-                      {status.healthScore.toFixed(1)}
-                    </div>
-                    <div className="text-gray-500">health score</div>
-                  </div>
-                </div>
-                {status.lastIncident && (
-                  <div className="text-xs text-gray-500 mt-2">
-                    Last incident: {status.lastIncident}
-                  </div>
-                )}
+          {/* Regional Health */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Regional System Health</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={regionalData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="region" fontSize={12} />
+                    <YAxis fontSize={12} />
+                    <Tooltip />
+                    <Bar dataKey="issues" fill="#3b82f6" name="Total Issues" />
+                    <Bar dataKey="critical" fill="#ef4444" name="Critical" />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      {/* Regional Health Analysis */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Regional Health Analysis</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {Object.entries(data.regionalHealth).slice(0, 8).map(([region, health], index) => (
-              <div key={index} className="p-4 border rounded">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4" />
-                    <span className="font-medium">{region}</span>
-                  </div>
-                  <Badge variant={getHealthBadge(health.healthScore)}>
-                    {health.healthScore.toFixed(1)} Health Score
-                  </Badge>
-                </div>
-                <div className="grid grid-cols-4 gap-4 text-sm">
-                  <div className="text-center">
-                    <div className={`font-bold ${getHealthColor(health.uptime)}`}>
-                      {health.uptime.toFixed(1)}%
-                    </div>
-                    <div className="text-gray-500">uptime</div>
-                  </div>
-                  <div className="text-center">
-                    <div className={`font-bold ${getHealthColor(health.performance)}`}>
-                      {health.performance.toFixed(1)}%
-                    </div>
-                    <div className="text-gray-500">performance</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="font-bold">{health.incidents}</div>
-                    <div className="text-gray-500">incidents</div>
-                  </div>
-                  <div className="text-center">
-                    <div className={`font-bold ${getHealthColor(health.dataQuality)}`}>
-                      {health.dataQuality.toFixed(1)}%
-                    </div>
-                    <div className="text-gray-500">data quality</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Data Quality Issues */}
-      {data.dataQuality.dataIssues.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Data Quality Issues</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {data.dataQuality.dataIssues.slice(0, 8).map((issue, index) => (
-                <div key={index} className="p-3 border rounded">
-                  <div className="flex items-center justify-between mb-2">
-                    <div>
-                      <div className="font-medium">{issue.source}</div>
-                      <div className="text-sm text-gray-600">{issue.issue}</div>
-                    </div>
-                    <Badge variant={issue.severity === 'Critical' ? 'destructive' : 
-                                  issue.severity === 'High' ? 'destructive' : 
-                                  issue.severity === 'Medium' ? 'default' : 'secondary'}>
-                      {issue.severity}
+        <TabsContent value="data" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Data Quality Issues</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                    <span>Tickets Without Description</span>
+                    <Badge variant={data.dataQuality.metrics.ticketsWithoutDescription > 0 ? 'destructive' : 'secondary'}>
+                      {data.dataQuality.metrics.ticketsWithoutDescription}
                     </Badge>
                   </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <div>
-                      Count: <span className="font-bold">{issue.count}</span>
-                    </div>
-                    <div>
-                      Impact: <span className="font-bold">{issue.impact}</span>
-                    </div>
+                  <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                    <span>Unassigned Active Tickets</span>
+                    <Badge variant={data.dataQuality.metrics.unassignedTickets > 0 ? 'destructive' : 'secondary'}>
+                      {data.dataQuality.metrics.unassignedTickets}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                    <span>Uncategorized Tickets</span>
+                    <Badge variant={data.dataQuality.metrics.uncategorizedTickets > 0 ? 'destructive' : 'secondary'}>
+                      {data.dataQuality.metrics.uncategorizedTickets}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                    <span>Users Without Branch</span>
+                    <Badge variant={data.dataQuality.metrics.usersWithoutBranch > 0 ? 'destructive' : 'secondary'}>
+                      {data.dataQuality.metrics.usersWithoutBranch}
+                    </Badge>
                   </div>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+              </CardContent>
+            </Card>
 
-      {/* Performance Bottlenecks */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Performance Bottlenecks</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {data.insights.performanceBottlenecks.map((bottleneck, index) => (
-              <div key={index} className="p-4 border rounded">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="font-medium">{bottleneck.component}</div>
-                  <Badge variant={bottleneck.severity === 'Critical' ? 'destructive' : 
-                                bottleneck.severity === 'High' ? 'destructive' : 
-                                bottleneck.severity === 'Medium' ? 'default' : 'secondary'}>
-                    {bottleneck.severity} Impact
-                  </Badge>
-                </div>
-                <div className="text-sm text-gray-600 mb-2">
-                  Impact: {bottleneck.impact}
-                </div>
-                <div className="text-sm text-blue-600">
-                  Recommendation: {bottleneck.recommendation}
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* System Trends */}
-      <Card>
-        <CardHeader>
-          <CardTitle>System Health Trends</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {data.insights.systemTrends.map((trend, index) => (
-              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded">
-                <div>
-                  <div className="font-medium">{trend.metric}</div>
-                  <div className="text-sm text-gray-500">{trend.trend} trend</div>
-                </div>
-                <div className="text-right">
-                  <div className={`font-bold ${
-                    trend.change > 0 ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {trend.change > 0 ? '+' : ''}{trend.change.toFixed(1)}%
+            <Card>
+              <CardHeader>
+                <CardTitle>Data Integrity</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                    <span>Orphaned Tickets</span>
+                    <Badge variant={data.dataQuality.integrity.orphanedTickets > 0 ? 'destructive' : 'secondary'}>
+                      {data.dataQuality.integrity.orphanedTickets}
+                    </Badge>
                   </div>
-                  <div className="text-xs text-gray-500">{trend.prediction}</div>
+                  <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                    <span>Invalid Service References</span>
+                    <Badge variant={data.dataQuality.integrity.invalidServiceReferences > 0 ? 'destructive' : 'secondary'}>
+                      {data.dataQuality.integrity.invalidServiceReferences}
+                    </Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Database Record Counts</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center p-4 bg-blue-50 rounded">
+                  <HardDrive className="h-6 w-6 mx-auto mb-2 text-blue-600" />
+                  <div className="text-2xl font-bold">{data.dataQuality.recordCounts.tickets.toLocaleString()}</div>
+                  <div className="text-sm text-gray-500">Tickets</div>
+                </div>
+                <div className="text-center p-4 bg-green-50 rounded">
+                  <Users className="h-6 w-6 mx-auto mb-2 text-green-600" />
+                  <div className="text-2xl font-bold">{data.dataQuality.recordCounts.users.toLocaleString()}</div>
+                  <div className="text-sm text-gray-500">Users</div>
+                </div>
+                <div className="text-center p-4 bg-purple-50 rounded">
+                  <Cpu className="h-6 w-6 mx-auto mb-2 text-purple-600" />
+                  <div className="text-2xl font-bold">{data.dataQuality.recordCounts.services.toLocaleString()}</div>
+                  <div className="text-sm text-gray-500">Services</div>
+                </div>
+                <div className="text-center p-4 bg-orange-50 rounded">
+                  <Server className="h-6 w-6 mx-auto mb-2 text-orange-600" />
+                  <div className="text-2xl font-bold">{data.dataQuality.recordCounts.branches.toLocaleString()}</div>
+                  <div className="text-sm text-gray-500">Branches</div>
                 </div>
               </div>
-            ))}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="components" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Issues by Component</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={componentData} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" fontSize={12} />
+                      <YAxis dataKey="name" type="category" fontSize={12} width={100} />
+                      <Tooltip />
+                      <Bar dataKey="value" fill="#3b82f6" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Top Affected Components</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {data.insights.topSystemIssues.map((item, i) => (
+                    <div key={i} className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                      <span className="capitalize font-medium">{item.component}</span>
+                      <Badge>{item.count} issues</Badge>
+                    </div>
+                  ))}
+                  {data.insights.topSystemIssues.length === 0 && (
+                    <div className="text-center py-4 text-gray-500">
+                      No component issues found
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Recommendations */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-blue-600">Performance</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-2">
-              {data.recommendations.performance.map((recommendation, index) => (
-                <li key={index} className="flex items-start gap-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                  <span className="text-sm">{recommendation}</span>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Most Affected Regions</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Region</TableHead>
+                    <TableHead>Total Issues</TableHead>
+                    <TableHead>Critical</TableHead>
+                    <TableHead>Resolution Rate</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {data.insights.mostAffectedRegions.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                        No regional issues found
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    data.insights.mostAffectedRegions.map((region, i) => (
+                      <TableRow key={i}>
+                        <TableCell className="font-medium">{region.region}</TableCell>
+                        <TableCell>{region.issues}</TableCell>
+                        <TableCell>
+                          <Badge variant={region.critical > 0 ? 'destructive' : 'secondary'}>
+                            {region.critical}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <span className={getScoreColor(region.resolutionRate)}>
+                            {region.resolutionRate.toFixed(1)}%
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-green-600">Data Quality</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-2">
-              {data.recommendations.dataQuality.map((recommendation, index) => (
-                <li key={index} className="flex items-start gap-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
-                  <span className="text-sm">{recommendation}</span>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-orange-600">Reliability</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-2">
-              {data.recommendations.reliability.map((recommendation, index) => (
-                <li key={index} className="flex items-start gap-2">
-                  <div className="w-2 h-2 bg-orange-500 rounded-full mt-2 flex-shrink-0"></div>
-                  <span className="text-sm">{recommendation}</span>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-purple-600">Monitoring</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-2">
-              {data.recommendations.monitoring.map((recommendation, index) => (
-                <li key={index} className="flex items-start gap-2">
-                  <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
-                  <span className="text-sm">{recommendation}</span>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      </div>
+        <TabsContent value="recent" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent System Issues</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Priority</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Branch</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead>Resolved</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {data.recentIssues.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                        No system issues found in this period
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    data.recentIssues.map((issue) => (
+                      <TableRow key={issue.id}>
+                        <TableCell className="font-medium max-w-[300px] truncate">
+                          {issue.title}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={getPriorityBadge(issue.priority)}>
+                            {issue.priority}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={getStatusBadge(issue.status)}>
+                            {issue.status.replace('_', ' ')}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{issue.branch || '-'}</TableCell>
+                        <TableCell className="text-sm text-gray-500">
+                          {formatDateTimeWITA(issue.createdAt)}
+                        </TableCell>
+                        <TableCell className="text-sm text-gray-500">
+                          {issue.resolvedAt ? formatDateTimeWITA(issue.resolvedAt) : (
+                            <span className="text-yellow-600">Not resolved</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
