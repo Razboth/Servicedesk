@@ -238,9 +238,10 @@ export default function ManagerUsersPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Roles</SelectItem>
-                <SelectItem value="TECHNICIAN">Technician</SelectItem>
-                <SelectItem value="AGENT">Agent</SelectItem>
                 <SelectItem value="USER">User</SelectItem>
+                <SelectItem value="TECHNICIAN">Technician</SelectItem>
+                <SelectItem value="MANAGER">Manager</SelectItem>
+                <SelectItem value="MANAGER_IT">IT Manager</SelectItem>
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -427,10 +428,10 @@ export default function ManagerUsersPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {/* Managers can only assign roles lower than their own */}
                   <SelectItem value="USER">User</SelectItem>
-                  <SelectItem value="AGENT">Agent</SelectItem>
                   <SelectItem value="TECHNICIAN">Technician</SelectItem>
+                  <SelectItem value="MANAGER">Manager</SelectItem>
+                  <SelectItem value="MANAGER_IT">IT Manager</SelectItem>
                 </SelectContent>
               </Select>
             </div>
