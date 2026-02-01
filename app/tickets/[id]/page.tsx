@@ -1264,7 +1264,7 @@ export default function TicketDetailPage() {
 
   if (status === 'loading' || loading) {
     return (
-      <div className="min-h-screen bg-card">
+      <div className="w-full px-responsive py-6">
         <div className="flex items-center justify-center h-64">
           <Card className="max-w-md mx-4">
             <CardContent className="p-12 text-center">
@@ -1286,22 +1286,20 @@ export default function TicketDetailPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-card">
-        <main className="w-full px-responsive py-6">
-          <Card className="max-w-2xl mx-auto">
-            <CardContent className="p-12 text-center">
-              <div className="mx-auto w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
-                <AlertCircle className="h-8 w-8 text-destructive" />
-              </div>
-              <h1 className="text-2xl font-bold text-foreground mb-2">Error</h1>
-              <p className="text-muted-foreground mb-6">{error}</p>
-              <Button onClick={() => router.back()} variant="outline" size="lg">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Go Back
-              </Button>
-            </CardContent>
-          </Card>
-        </main>
+      <div className="w-full px-responsive py-6">
+        <Card className="max-w-2xl mx-auto">
+          <CardContent className="p-12 text-center">
+            <div className="mx-auto w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
+              <AlertCircle className="h-8 w-8 text-destructive" />
+            </div>
+            <h1 className="text-2xl font-bold text-foreground mb-2">Error</h1>
+            <p className="text-muted-foreground mb-6">{error}</p>
+            <Button onClick={() => router.back()} variant="outline" size="lg">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Go Back
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -1313,30 +1311,28 @@ export default function TicketDetailPage() {
   // Check if user can view this ticket after it's loaded
   if (!canViewTicket()) {
     return (
-      <div className="min-h-screen bg-card">
-        <main className="w-full px-responsive py-6">
-          <Card className="max-w-2xl mx-auto border-[hsl(var(--warning)/0.5)]">
-            <CardContent className="p-12 text-center">
-              <div className="mx-auto w-16 h-16 rounded-full bg-[hsl(var(--warning)/0.1)] flex items-center justify-center mb-4">
-                <Shield className="h-8 w-8 text-[hsl(var(--warning))]" />
-              </div>
-              <h1 className="text-2xl font-bold text-foreground mb-2">Access Denied</h1>
-              <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                {ticket.service?.requiresApproval && !getLatestApproval()
-                  ? 'This ticket requires manager approval before it can be viewed by technicians.'
-                  : ticket.service?.requiresApproval && getLatestApproval()?.status === 'PENDING'
-                  ? 'This ticket is pending approval from a manager.'
-                  : ticket.service?.requiresApproval && getLatestApproval()?.status === 'REJECTED'
-                  ? 'This ticket has been rejected by a manager.'
-                  : 'You do not have permission to view this ticket.'}
-              </p>
-              <Button onClick={() => router.back()} variant="outline" size="lg">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Go Back
-              </Button>
-            </CardContent>
-          </Card>
-        </main>
+      <div className="w-full px-responsive py-6">
+        <Card className="max-w-2xl mx-auto border-[hsl(var(--warning)/0.5)]">
+          <CardContent className="p-12 text-center">
+            <div className="mx-auto w-16 h-16 rounded-full bg-[hsl(var(--warning)/0.1)] flex items-center justify-center mb-4">
+              <Shield className="h-8 w-8 text-[hsl(var(--warning))]" />
+            </div>
+            <h1 className="text-2xl font-bold text-foreground mb-2">Access Denied</h1>
+            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+              {ticket.service?.requiresApproval && !getLatestApproval()
+                ? 'This ticket requires manager approval before it can be viewed by technicians.'
+                : ticket.service?.requiresApproval && getLatestApproval()?.status === 'PENDING'
+                ? 'This ticket is pending approval from a manager.'
+                : ticket.service?.requiresApproval && getLatestApproval()?.status === 'REJECTED'
+                ? 'This ticket has been rejected by a manager.'
+                : 'You do not have permission to view this ticket.'}
+            </p>
+            <Button onClick={() => router.back()} variant="outline" size="lg">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Go Back
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -1346,9 +1342,8 @@ export default function TicketDetailPage() {
   // ============================================
 
   return (
-    <div className="min-h-screen bg-card">
-      <main className="w-full px-responsive py-6">
-        <div className="space-y-6">
+    <div className="w-full px-responsive py-6">
+      <div className="space-y-6">
 
           {/* ============================================ */}
           {/* HEADER SECTION */}
@@ -2732,7 +2727,6 @@ export default function TicketDetailPage() {
             </div>
           </div>
         </div>
-      </main>
 
       {/* ============================================ */}
       {/* MODALS */}
