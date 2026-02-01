@@ -215,16 +215,26 @@ export function ServerMetricsDisplay({
                       </Badge>
                     </div>
                   ))}
-                {multiServerMetrics.storageAlertsCount > 0 && (
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground flex items-center gap-1">
-                      <HardDrive className="h-3 w-3" />
-                      Peringatan Storage
-                    </span>
-                    <Badge variant="outline" className="text-orange-600 border-orange-200">
-                      {multiServerMetrics.storageAlertsCount} partisi
-                    </Badge>
-                  </div>
+                {multiServerMetrics.storageAlerts && multiServerMetrics.storageAlerts.length > 0 && (
+                  <>
+                    {multiServerMetrics.storageAlerts.slice(0, 5).map((alert, idx) => (
+                      <div key={`storage-${alert.ipAddress}-${alert.partition}-${idx}`} className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground flex items-center gap-1">
+                          <HardDrive className="h-3 w-3" />
+                          {alert.serverName || alert.ipAddress}
+                          <span className="font-mono text-[10px] opacity-70">({alert.partition})</span>
+                        </span>
+                        <Badge variant="outline" className={alert.usagePercent >= 90 ? "text-red-600 border-red-200" : "text-orange-600 border-orange-200"}>
+                          Storage {alert.usagePercent.toFixed(1)}%
+                        </Badge>
+                      </div>
+                    ))}
+                    {multiServerMetrics.storageAlerts.length > 5 && (
+                      <div className="text-xs text-muted-foreground text-center pt-1">
+                        +{multiServerMetrics.storageAlerts.length - 5} partisi lainnya
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>
