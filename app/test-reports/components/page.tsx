@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { ColumnSelector } from '@/components/reports/column-selector'
 import { FilterBuilder } from '@/components/reports/filter-builder'
@@ -10,9 +9,19 @@ import { QueryEditor } from '@/components/reports/query-editor'
 import { ReportScheduler } from '@/components/reports/report-scheduler'
 import { ChartConfiguration } from '@/components/reports/chart-configuration'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Code } from 'lucide-react'
+import { Code, Columns, Filter, FileCode, BarChart3, Calendar } from 'lucide-react'
 
 export default function ComponentTestPage() {
+  const [activeTab, setActiveTab] = useState('columns')
+
+  const tabConfig = [
+    { id: 'columns', label: 'Columns', icon: Columns },
+    { id: 'filters', label: 'Filters', icon: Filter },
+    { id: 'query', label: 'Query', icon: FileCode },
+    { id: 'charts', label: 'Charts', icon: BarChart3 },
+    { id: 'schedule', label: 'Schedule', icon: Calendar },
+  ]
+
   // Column Selector State
   const [selectedColumns, setSelectedColumns] = useState<string[]>(['id', 'title'])
   const [availableColumns] = useState([
@@ -107,18 +116,34 @@ export default function ComponentTestPage() {
         </p>
       </div>
 
-      <Tabs defaultValue="columns" className="w-full">
-        <div className="overflow-x-auto -mx-1 px-1">
-          <TabsList className="inline-flex h-10 min-w-full sm:min-w-0 p-1 bg-muted/50 rounded-lg">
-            <TabsTrigger value="columns" className="flex-shrink-0 text-xs sm:text-sm">Columns</TabsTrigger>
-            <TabsTrigger value="filters" className="flex-shrink-0 text-xs sm:text-sm">Filters</TabsTrigger>
-            <TabsTrigger value="query" className="flex-shrink-0 text-xs sm:text-sm">Query</TabsTrigger>
-            <TabsTrigger value="charts" className="flex-shrink-0 text-xs sm:text-sm">Charts</TabsTrigger>
-            <TabsTrigger value="schedule" className="flex-shrink-0 text-xs sm:text-sm">Schedule</TabsTrigger>
-          </TabsList>
-        </div>
+      <div className="border-b mb-6">
+        <nav className="flex gap-6 overflow-x-auto" aria-label="Tabs">
+          {tabConfig.map((tab) => {
+            const Icon = tab.icon
+            const isActive = activeTab === tab.id
 
-        <TabsContent value="columns" className="space-y-4">
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`
+                  flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors
+                  ${isActive
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+                  }
+                `}
+              >
+                <Icon className="h-4 w-4" />
+                {tab.label}
+              </button>
+            )
+          })}
+        </nav>
+      </div>
+
+      {activeTab === 'columns' && (
+        <div className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>Column Selector Component</CardTitle>
@@ -150,9 +175,11 @@ export default function ComponentTestPage() {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
+        </div>
+      )}
 
-        <TabsContent value="filters" className="space-y-4">
+      {activeTab === 'filters' && (
+        <div className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>Filter Builder Component</CardTitle>
@@ -184,9 +211,11 @@ export default function ComponentTestPage() {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
+        </div>
+      )}
 
-        <TabsContent value="query" className="space-y-4">
+      {activeTab === 'query' && (
+        <div className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>Query Editor Component</CardTitle>
@@ -218,9 +247,11 @@ export default function ComponentTestPage() {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
+        </div>
+      )}
 
-        <TabsContent value="charts" className="space-y-4">
+      {activeTab === 'charts' && (
+        <div className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>Chart Configuration Component</CardTitle>
@@ -247,9 +278,11 @@ export default function ComponentTestPage() {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
+        </div>
+      )}
 
-        <TabsContent value="schedule" className="space-y-4">
+      {activeTab === 'schedule' && (
+        <div className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>Report Scheduler Component</CardTitle>
@@ -280,8 +313,8 @@ export default function ComponentTestPage() {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+        </div>
+      )}
 
       {/* Overall State Display */}
       <Card className="mt-6">

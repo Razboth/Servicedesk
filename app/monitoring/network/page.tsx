@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Wifi,
   WifiOff,
@@ -488,112 +487,141 @@ export default function NetworkOverviewPage() {
       </Card>
 
       {/* Data Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <div className="overflow-x-auto -mx-1 px-1">
-          <TabsList className="inline-flex h-10 min-w-full sm:min-w-0 sm:max-w-md p-1 bg-muted/50 rounded-lg">
-            <TabsTrigger value="all" className="flex-shrink-0 flex items-center gap-2 text-xs sm:text-sm">
+      <div>
+        <div className="border-b border-border mb-4">
+          <nav className="flex gap-6 overflow-x-auto" aria-label="Tabs">
+            <button
+              onClick={() => setActiveTab('all')}
+              className={`
+                flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors
+                ${activeTab === 'all'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+                }
+              `}
+            >
               <Activity className="h-4 w-4" />
               All ({filteredBranches.length + filteredAtms.length})
-            </TabsTrigger>
-            <TabsTrigger value="branches" className="flex-shrink-0 flex items-center gap-2 text-xs sm:text-sm">
+            </button>
+            <button
+              onClick={() => setActiveTab('branches')}
+              className={`
+                flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors
+                ${activeTab === 'branches'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+                }
+              `}
+            >
               <Building2 className="h-4 w-4" />
               Branches ({filteredBranches.length})
-            </TabsTrigger>
-            <TabsTrigger value="atms" className="flex-shrink-0 flex items-center gap-2 text-xs sm:text-sm">
+            </button>
+            <button
+              onClick={() => setActiveTab('atms')}
+              className={`
+                flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors
+                ${activeTab === 'atms'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+                }
+              `}
+            >
               <Server className="h-4 w-4" />
               ATMs ({filteredAtms.length})
-            </TabsTrigger>
-          </TabsList>
+            </button>
+          </nav>
         </div>
 
         {/* All Tab */}
-        <TabsContent value="all" className="space-y-4 mt-4">
-          {/* Branches Section */}
-          {filteredBranches.length > 0 && (
-            <Card>
-              <CardHeader className="py-3 px-4 border-b border-border">
-                <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-primary" />
-                  <CardTitle className="text-base">Branches</CardTitle>
-                  <Badge variant="secondary" className="text-xs">{filteredBranches.length}</Badge>
+        {activeTab === 'all' && (
+          <div className="space-y-4">
+            {/* Branches Section */}
+            {filteredBranches.length > 0 && (
+              <Card>
+                <CardHeader className="py-3 px-4 border-b border-border">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-primary" />
+                    <CardTitle className="text-base">Branches</CardTitle>
+                    <Badge variant="secondary" className="text-xs">{filteredBranches.length}</Badge>
+                  </div>
+                </CardHeader>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-muted/50 border-b border-border">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Name</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">IP Address</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Status</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Response</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Checked</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Incident</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paginatedBranches.map(renderRow)}
+                    </tbody>
+                  </table>
                 </div>
-              </CardHeader>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-muted/50 border-b border-border">
-                    <tr>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Name</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">IP Address</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Status</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Response</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Checked</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Incident</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paginatedBranches.map(renderRow)}
-                  </tbody>
-                </table>
-              </div>
-              <Pagination
-                currentPage={branchPage}
-                totalPages={totalBranchPages}
-                onPageChange={setBranchPage}
-                totalItems={filteredBranches.length}
-              />
-            </Card>
-          )}
+                <Pagination
+                  currentPage={branchPage}
+                  totalPages={totalBranchPages}
+                  onPageChange={setBranchPage}
+                  totalItems={filteredBranches.length}
+                />
+              </Card>
+            )}
 
-          {/* ATMs Section */}
-          {filteredAtms.length > 0 && (
-            <Card>
-              <CardHeader className="py-3 px-4 border-b border-border">
-                <div className="flex items-center gap-2">
-                  <Server className="h-4 w-4 text-chart-2" />
-                  <CardTitle className="text-base">ATMs</CardTitle>
-                  <Badge variant="secondary" className="text-xs">{filteredAtms.length}</Badge>
+            {/* ATMs Section */}
+            {filteredAtms.length > 0 && (
+              <Card>
+                <CardHeader className="py-3 px-4 border-b border-border">
+                  <div className="flex items-center gap-2">
+                    <Server className="h-4 w-4 text-chart-2" />
+                    <CardTitle className="text-base">ATMs</CardTitle>
+                    <Badge variant="secondary" className="text-xs">{filteredAtms.length}</Badge>
+                  </div>
+                </CardHeader>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-muted/50 border-b border-border">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Name</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">IP Address</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Status</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Response</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Checked</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Incident</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paginatedAtms.map(renderRow)}
+                    </tbody>
+                  </table>
                 </div>
-              </CardHeader>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-muted/50 border-b border-border">
-                    <tr>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Name</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">IP Address</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Status</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Response</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Checked</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase">Incident</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paginatedAtms.map(renderRow)}
-                  </tbody>
-                </table>
-              </div>
-              <Pagination
-                currentPage={atmPage}
-                totalPages={totalAtmPages}
-                onPageChange={setAtmPage}
-                totalItems={filteredAtms.length}
-              />
-            </Card>
-          )}
+                <Pagination
+                  currentPage={atmPage}
+                  totalPages={totalAtmPages}
+                  onPageChange={setAtmPage}
+                  totalItems={filteredAtms.length}
+                />
+              </Card>
+            )}
 
-          {filteredBranches.length === 0 && filteredAtms.length === 0 && (
-            <Card>
-              <CardContent className="py-12">
-                <div className="text-center text-muted-foreground">
-                  <Activity className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                  <p>No network endpoints found matching your criteria</p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
+            {filteredBranches.length === 0 && filteredAtms.length === 0 && (
+              <Card>
+                <CardContent className="py-12">
+                  <div className="text-center text-muted-foreground">
+                    <Activity className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                    <p>No network endpoints found matching your criteria</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
 
         {/* Branches Tab */}
-        <TabsContent value="branches" className="mt-4">
+        {activeTab === 'branches' && (
           <Card>
             <CardHeader className="py-3 px-4 border-b border-border">
               <div className="flex items-center gap-2">
@@ -637,10 +665,10 @@ export default function NetworkOverviewPage() {
               </CardContent>
             )}
           </Card>
-        </TabsContent>
+        )}
 
         {/* ATMs Tab */}
-        <TabsContent value="atms" className="mt-4">
+        {activeTab === 'atms' && (
           <Card>
             <CardHeader className="py-3 px-4 border-b border-border">
               <div className="flex items-center gap-2">
@@ -684,8 +712,8 @@ export default function NetworkOverviewPage() {
               </CardContent>
             )}
           </Card>
-        </TabsContent>
-      </Tabs>
+        )}
+      </div>
 
       {/* Incident Details Modal */}
       <Dialog open={isIncidentModalOpen} onOpenChange={setIsIncidentModalOpen}>

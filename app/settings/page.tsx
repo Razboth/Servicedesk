@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/ui/page-header'
@@ -35,6 +34,14 @@ export default function SettingsPage() {
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [activeTab, setActiveTab] = useState('general')
+
+  const tabConfig = [
+    { id: 'general', label: 'General', icon: Settings },
+    { id: 'notifications', label: 'Notifications', icon: Bell },
+    { id: 'display', label: 'Display', icon: Monitor },
+    { id: 'privacy', label: 'Privacy', icon: Shield },
+  ]
   
   const [preferences, setPreferences] = useState({
     notifications: {
@@ -129,18 +136,35 @@ export default function SettingsPage() {
           icon={<Settings className="h-6 w-6" />}
         />
 
-        <Tabs defaultValue="general" className="space-y-6">
-          <div className="overflow-x-auto -mx-1 px-1">
-            <TabsList className="inline-flex h-10 min-w-full sm:min-w-0 sm:max-w-md p-1 bg-cream-200 dark:bg-warm-dark-200 rounded-lg">
-              <TabsTrigger value="general" className="flex-shrink-0 text-xs sm:text-sm">General</TabsTrigger>
-              <TabsTrigger value="notifications" className="flex-shrink-0 text-xs sm:text-sm">Notifications</TabsTrigger>
-              <TabsTrigger value="display" className="flex-shrink-0 text-xs sm:text-sm">Display</TabsTrigger>
-              <TabsTrigger value="privacy" className="flex-shrink-0 text-xs sm:text-sm">Privacy</TabsTrigger>
-            </TabsList>
+        <div className="space-y-6">
+          <div className="border-b border-cream-500 dark:border-warm-dark-200">
+            <nav className="flex gap-6 overflow-x-auto" aria-label="Tabs">
+              {tabConfig.map((tab) => {
+                const Icon = tab.icon
+                const isActive = activeTab === tab.id
+
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`
+                      flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors
+                      ${isActive
+                        ? 'border-primary text-primary'
+                        : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+                      }
+                    `}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {tab.label}
+                  </button>
+                )
+              })}
+            </nav>
           </div>
 
           {/* General Settings */}
-          <TabsContent value="general">
+          {activeTab === 'general' && (
             <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-lg">
               <CardHeader>
                 <CardTitle>General Preferences</CardTitle>
@@ -227,10 +251,10 @@ export default function SettingsPage() {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
+          )}
 
           {/* Notifications Settings */}
-          <TabsContent value="notifications">
+          {activeTab === 'notifications' && (
             <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-lg">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -341,10 +365,10 @@ export default function SettingsPage() {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
+          )}
 
           {/* Display Settings */}
-          <TabsContent value="display">
+          {activeTab === 'display' && (
             <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-lg">
               <CardHeader>
                 <CardTitle>Display Preferences</CardTitle>
@@ -396,10 +420,10 @@ export default function SettingsPage() {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
+          )}
 
           {/* Privacy Settings */}
-          <TabsContent value="privacy">
+          {activeTab === 'privacy' && (
             <Card className="bg-cream-50 dark:bg-warm-dark-300 backdrop-blur-sm border-cream-500 dark:border-warm-dark-200 shadow-lg">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -477,8 +501,8 @@ export default function SettingsPage() {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
+          )}
+        </div>
 
         {/* Save Button */}
         <div className="mt-6 flex justify-end">

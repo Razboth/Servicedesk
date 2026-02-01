@@ -23,7 +23,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { BranchSelect } from '@/components/ui/branch-select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { 
   Monitor, 
@@ -95,6 +94,13 @@ export default function PCAssetsPage() {
   const [filterBranch, setFilterBranch] = useState('');
   const [filterStatus, setFilterStatus] = useState('active');
   const [branches, setBranches] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState('assets');
+
+  const tabConfig = [
+    { id: 'assets', label: 'PC Assets', shortLabel: 'PCs', icon: Monitor },
+    { id: 'os-types', label: 'Operating Systems', shortLabel: 'OS', icon: Shield },
+    { id: 'office-types', label: 'Office Products', shortLabel: 'Office', icon: FileText },
+  ];
 
   useEffect(() => {
     fetchBranches();
@@ -189,28 +195,36 @@ export default function PCAssetsPage() {
         </h1>
       </div>
 
-      <Tabs defaultValue="assets" className="space-y-6">
-        <div className="overflow-x-auto -mx-1 px-1">
-          <TabsList className="inline-flex h-10 min-w-full sm:min-w-0 p-1 bg-muted/50 rounded-lg">
-            <TabsTrigger value="assets" className="flex-shrink-0 flex items-center gap-2 text-xs sm:text-sm">
-              <Monitor className="h-4 w-4" />
-              <span className="hidden sm:inline">PC Assets</span>
-              <span className="sm:hidden">PCs</span>
-            </TabsTrigger>
-            <TabsTrigger value="os-types" className="flex-shrink-0 flex items-center gap-2 text-xs sm:text-sm">
-              <Shield className="h-4 w-4" />
-              <span className="hidden sm:inline">Operating Systems</span>
-              <span className="sm:hidden">OS</span>
-            </TabsTrigger>
-            <TabsTrigger value="office-types" className="flex-shrink-0 flex items-center gap-2 text-xs sm:text-sm">
-              <FileText className="h-4 w-4" />
-              <span className="hidden sm:inline">Office Products</span>
-              <span className="sm:hidden">Office</span>
-            </TabsTrigger>
-          </TabsList>
+      <div className="space-y-6">
+        <div className="border-b">
+          <nav className="flex gap-6 overflow-x-auto" aria-label="Tabs">
+            {tabConfig.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`
+                    flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors
+                    ${isActive
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+                    }
+                  `}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span className="hidden sm:inline">{tab.label}</span>
+                  <span className="sm:hidden">{tab.shortLabel}</span>
+                </button>
+              );
+            })}
+          </nav>
         </div>
 
-        <TabsContent value="assets" className="space-y-6">
+        {activeTab === 'assets' && (
+          <div className="space-y-6">
           <div className="flex justify-end gap-2">
             <Button
               variant="outline"
@@ -420,16 +434,17 @@ export default function PCAssetsPage() {
           </Table>
         </CardContent>
       </Card>
-        </TabsContent>
+          </div>
+        )}
 
-        <TabsContent value="os-types">
+        {activeTab === 'os-types' && (
           <OSTypesTab />
-        </TabsContent>
+        )}
 
-        <TabsContent value="office-types">
+        {activeTab === 'office-types' && (
           <OfficeTypesTab />
-        </TabsContent>
-      </Tabs>
+        )}
+      </div>
     </div>
   );
 }

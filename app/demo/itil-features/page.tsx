@@ -4,8 +4,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CheckCircle, Clock, AlertTriangle, XCircle, FileText, Paperclip, Users, Settings } from 'lucide-react';
+import { CheckCircle, Clock, AlertTriangle, XCircle, FileText, Paperclip, Users, Settings, Layers, Timer, FolderTree } from 'lucide-react';
 import Link from 'next/link';
 
 interface Category {
@@ -148,6 +147,15 @@ const SLA_EXAMPLES = [
 export default function ITILFeaturesDemo() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('categories');
+
+  const tabConfig = [
+    { id: 'categories', label: 'ITIL Categories', icon: Layers },
+    { id: 'classifications', label: 'Classifications', icon: FileText },
+    { id: 'hierarchy', label: '3-Tier', icon: FolderTree },
+    { id: 'sla', label: 'SLA', icon: Timer },
+    { id: 'attachments', label: 'Attachments', icon: Paperclip },
+  ];
 
   useEffect(() => {
     fetchCategories();
@@ -186,18 +194,35 @@ export default function ITILFeaturesDemo() {
           </div>
         </div>
 
-        <Tabs defaultValue="categories" className="space-y-6">
-          <div className="overflow-x-auto -mx-1 px-1">
-            <TabsList className="inline-flex h-10 min-w-full sm:min-w-0 p-1 bg-muted/50 rounded-lg">
-              <TabsTrigger value="categories" className="flex-shrink-0 text-xs sm:text-sm">ITIL Categories</TabsTrigger>
-              <TabsTrigger value="classifications" className="flex-shrink-0 text-xs sm:text-sm">Classifications</TabsTrigger>
-              <TabsTrigger value="hierarchy" className="flex-shrink-0 text-xs sm:text-sm">3-Tier</TabsTrigger>
-              <TabsTrigger value="sla" className="flex-shrink-0 text-xs sm:text-sm">SLA</TabsTrigger>
-              <TabsTrigger value="attachments" className="flex-shrink-0 text-xs sm:text-sm">Attachments</TabsTrigger>
-            </TabsList>
+        <div className="space-y-6">
+          <div className="border-b">
+            <nav className="flex gap-6 overflow-x-auto" aria-label="Tabs">
+              {tabConfig.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`
+                      flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors
+                      ${isActive
+                        ? 'border-primary text-primary'
+                        : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+                      }
+                    `}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </nav>
           </div>
 
-          <TabsContent value="categories" className="space-y-6">
+          {activeTab === 'categories' && (
+            <div className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -246,9 +271,11 @@ export default function ITILFeaturesDemo() {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
+            </div>
+          )}
 
-          <TabsContent value="classifications" className="space-y-6">
+          {activeTab === 'classifications' && (
+            <div className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -281,9 +308,11 @@ export default function ITILFeaturesDemo() {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
+            </div>
+          )}
 
-          <TabsContent value="hierarchy" className="space-y-6">
+          {activeTab === 'hierarchy' && (
+            <div className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -341,9 +370,11 @@ export default function ITILFeaturesDemo() {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
+            </div>
+          )}
 
-          <TabsContent value="sla" className="space-y-6">
+          {activeTab === 'sla' && (
+            <div className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -383,9 +414,11 @@ export default function ITILFeaturesDemo() {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
+            </div>
+          )}
 
-          <TabsContent value="attachments" className="space-y-6">
+          {activeTab === 'attachments' && (
+            <div className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -498,8 +531,9 @@ export default function ITILFeaturesDemo() {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
+            </div>
+          )}
+        </div>
 
         <Card className="mt-8">
           <CardHeader>

@@ -3,9 +3,8 @@
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { CheckCircle, XCircle, AlertCircle, Play, Loader2 } from 'lucide-react'
+import { CheckCircle, XCircle, AlertCircle, Play, Loader2, FileText, Columns, Filter, Settings, BarChart3, Calendar, Zap, FolderOpen } from 'lucide-react'
 
 interface TestResult {
   name: string
@@ -105,6 +104,18 @@ export default function TestReportsPage() {
 
   const [isRunning, setIsRunning] = useState(false)
   const [currentTest, setCurrentTest] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState('Report Creation')
+
+  const tabConfig = [
+    { id: 'Report Creation', label: 'Report Creation', icon: FileText },
+    { id: 'Column Selection', label: 'Column Selection', icon: Columns },
+    { id: 'Filter Builder', label: 'Filter Builder', icon: Filter },
+    { id: 'Advanced Filtering', label: 'Advanced Filtering', icon: Settings },
+    { id: 'Charts', label: 'Charts', icon: BarChart3 },
+    { id: 'Scheduling', label: 'Scheduling', icon: Calendar },
+    { id: 'Report Execution', label: 'Report Execution', icon: Zap },
+    { id: 'Report Management', label: 'Report Management', icon: FolderOpen },
+  ]
 
   // Test implementations
   const runTest = async (suiteName: string, testName: string): Promise<TestResult> => {
@@ -409,72 +420,94 @@ export default function TestReportsPage() {
       </div>
 
       {/* Test Suites */}
-      <Tabs defaultValue={testSuites[0]?.name} className="w-full">
-        <div className="overflow-x-auto -mx-1 px-1">
-          <TabsList className="inline-flex h-10 min-w-full sm:min-w-0 p-1 bg-muted/50 rounded-lg">
-            {testSuites.map((suite) => (
-              <TabsTrigger key={suite.name} value={suite.name} className="flex-shrink-0 text-xs sm:text-sm">
-                {suite.name}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </div>
+      <div className="border-b mb-6">
+        <nav className="flex gap-6 overflow-x-auto" aria-label="Tabs">
+          {tabConfig.map((tab) => {
+            const Icon = tab.icon
+            const isActive = activeTab === tab.id
+            const suite = testSuites.find(s => s.name === tab.id)
+            const passedCount = suite?.tests.filter(t => t.status === 'passed').length || 0
+            const totalCount = suite?.tests.length || 0
 
-        {testSuites.map((suite, suiteIndex) => (
-          <TabsContent key={suite.name} value={suite.name}>
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <CardTitle>{suite.name}</CardTitle>
-                    <CardDescription>
-                      {suite.tests.length} tests in this suite
-                    </CardDescription>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => runSingleSuite(suiteIndex)}
-                    disabled={isRunning}
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`
+                  flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors
+                  ${isActive
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+                  }
+                `}
+              >
+                <Icon className="h-4 w-4" />
+                {tab.label}
+                {totalCount > 0 && (
+                  <span className={`ml-1 text-xs ${passedCount === totalCount && passedCount > 0 ? 'text-green-500' : ''}`}>
+                    ({passedCount}/{totalCount})
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </nav>
+      </div>
+
+      {testSuites.map((suite, suiteIndex) => (
+        activeTab === suite.name && (
+          <Card key={suite.name}>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle>{suite.name}</CardTitle>
+                  <CardDescription>
+                    {suite.tests.length} tests in this suite
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => runSingleSuite(suiteIndex)}
+                  disabled={isRunning}
+                >
+                  Run Suite
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {suite.tests.map((test, testIndex) => (
+                  <div
+                    key={testIndex}
+                    className={`flex items-start gap-3 p-3 rounded-lg border ${
+                      test.status === 'running' ? 'bg-blue-50 border-blue-200' :
+                      test.status === 'passed' ? 'bg-green-50 border-green-200' :
+                      test.status === 'failed' ? 'bg-red-50 border-red-200' :
+                      'bg-gray-50 border-gray-200'
+                    }`}
                   >
-                    Run Suite
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {suite.tests.map((test, testIndex) => (
-                    <div
-                      key={testIndex}
-                      className={`flex items-start gap-3 p-3 rounded-lg border ${
-                        test.status === 'running' ? 'bg-blue-50 border-blue-200' :
-                        test.status === 'passed' ? 'bg-green-50 border-green-200' :
-                        test.status === 'failed' ? 'bg-red-50 border-red-200' :
-                        'bg-gray-50 border-gray-200'
-                      }`}
-                    >
-                      {getTestIcon(test.status)}
-                      <div className="flex-1">
-                        <div className="font-medium">{test.name}</div>
-                        {test.message && (
-                          <div className="text-sm text-muted-foreground mt-1">
-                            {test.message}
-                          </div>
-                        )}
-                        {test.details && (
-                          <pre className="text-xs bg-white p-2 rounded mt-2 overflow-x-auto">
-                            {JSON.stringify(test.details, null, 2)}
-                          </pre>
-                        )}
-                      </div>
+                    {getTestIcon(test.status)}
+                    <div className="flex-1">
+                      <div className="font-medium">{test.name}</div>
+                      {test.message && (
+                        <div className="text-sm text-muted-foreground mt-1">
+                          {test.message}
+                        </div>
+                      )}
+                      {test.details && (
+                        <pre className="text-xs bg-white p-2 rounded mt-2 overflow-x-auto">
+                          {JSON.stringify(test.details, null, 2)}
+                        </pre>
+                      )}
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        ))}
-      </Tabs>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )
+      ))}
     </div>
   )
 }

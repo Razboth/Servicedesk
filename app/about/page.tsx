@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Tooltip,
   TooltipContent,
@@ -69,6 +68,14 @@ export default function AboutPage() {
   const [contributors, setContributors] = useState<GitHubContributor[]>([]);
   const [recentCommits, setRecentCommits] = useState<GitHubCommit[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('features');
+
+  const tabConfig = [
+    { id: 'features', label: 'Features', icon: Activity },
+    { id: 'commits', label: 'Changes', icon: GitCommit },
+    { id: 'contributors', label: 'Contributors', icon: Users },
+    { id: 'tech', label: 'Tech Stack', icon: Code },
+  ];
 
   // Check if user is admin (ADMIN or SUPER_ADMIN)
   const isAdmin = session?.user?.role === 'ADMIN' || session?.user?.role === 'SUPER_ADMIN';
@@ -348,180 +355,205 @@ export default function AboutPage() {
       </Card>
 
       {/* Tabs */}
-      <Tabs defaultValue="features" className="space-y-6">
-        <div className="overflow-x-auto -mx-1 px-1 flex justify-center">
-          <TabsList className="inline-flex h-10 min-w-full sm:min-w-0 sm:max-w-2xl p-1 bg-muted/50 rounded-lg">
-            <TabsTrigger value="features" className="flex-1 flex-shrink-0 text-xs sm:text-sm">Features</TabsTrigger>
-            <TabsTrigger value="commits" className="flex-1 flex-shrink-0 text-xs sm:text-sm">Changes</TabsTrigger>
-            <TabsTrigger value="contributors" className="flex-1 flex-shrink-0 text-xs sm:text-sm">Contributors</TabsTrigger>
-            <TabsTrigger value="tech" className="flex-1 flex-shrink-0 text-xs sm:text-sm">Tech Stack</TabsTrigger>
-          </TabsList>
+      <div className="space-y-6">
+        <div className="border-b">
+          <nav className="flex gap-6 overflow-x-auto justify-center" aria-label="Tabs">
+            {tabConfig.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`
+                    flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors
+                    ${isActive
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+                    }
+                  `}
+                >
+                  <Icon className="h-4 w-4" />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </nav>
         </div>
 
         {/* Features Tab */}
-        <TabsContent value="features" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {systemFeatures.map((category) => (
-              <Card key={category.category} className="p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                    <category.icon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                  </div>
-                  <h3 className="font-semibold text-lg">{category.category}</h3>
-                </div>
-                <ul className="space-y-2">
-                  {category.features.map((feature, idx) => (
-                    <li key={idx} className="flex items-start gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                      <span className="text-sm text-gray-600 dark:text-gray-400">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-
-        {/* Recent Changes Tab */}
-        <TabsContent value="commits" className="space-y-4">
-          {loading ? (
-            <div className="text-center py-8">
-              <Clock className="w-8 h-8 animate-spin mx-auto mb-4 text-gray-400" />
-              <p className="text-gray-500">Loading commits...</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {recentCommits.map((commit) => (
-                <Card key={commit.sha} className="p-4 hover:shadow-md transition-shadow">
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm">
-                      {commit.commit.author.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)}
+        {activeTab === 'features' && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {systemFeatures.map((category) => (
+                <Card key={category.category} className="p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                      <category.icon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        {getCommitTypeIcon(commit.commit.message)}
-                        <span className="font-mono text-xs text-gray-500">
-                          {commit.sha.substring(0, 7)}
-                        </span>
-                        {getCommitTypeBadge(commit.commit.message)}
-                        <span className="text-xs text-gray-500">
-                          {formatDate(commit.commit.author.date)}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-700 dark:text-gray-300">
-                        {commit.commit.message.split('\n')[0]}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        by {commit.commit.author.name}
-                      </p>
-                    </div>
+                    <h3 className="font-semibold text-lg">{category.category}</h3>
                   </div>
+                  <ul className="space-y-2">
+                    {category.features.map((feature, idx) => (
+                      <li key={idx} className="flex items-start gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm text-gray-600 dark:text-gray-400">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </Card>
               ))}
             </div>
-          )}
-        </TabsContent>
+          </div>
+        )}
 
-        {/* Contributors Tab */}
-        <TabsContent value="contributors" className="space-y-6">
-          {loading ? (
-            <div className="text-center py-8">
-              <Users className="w-8 h-8 animate-pulse mx-auto mb-4 text-gray-400" />
-              <p className="text-gray-500">Loading contributors...</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-              {contributors.map((contributor) => (
-                <a
-                  key={contributor.login}
-                  href={contributor.html_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group"
-                >
-                  <Card className="p-4 text-center hover:shadow-lg transition-all hover:-translate-y-1">
-                    <img
-                      src={contributor.avatar_url}
-                      alt={contributor.login}
-                      className="w-20 h-20 rounded-full mx-auto mb-3 group-hover:ring-4 ring-blue-200 dark:ring-blue-800 transition-all"
-                    />
-                    <p className="font-medium text-sm truncate">{contributor.login}</p>
-                    <div className="flex items-center justify-center gap-1 mt-2">
-                      <Star className="w-3 h-3 text-yellow-500" />
-                      <span className="text-xs text-gray-500">{contributor.contributions} commits</span>
+        {/* Recent Changes Tab */}
+        {activeTab === 'commits' && (
+          <div className="space-y-4">
+            {loading ? (
+              <div className="text-center py-8">
+                <Clock className="w-8 h-8 animate-spin mx-auto mb-4 text-gray-400" />
+                <p className="text-gray-500">Loading commits...</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {recentCommits.map((commit) => (
+                  <Card key={commit.sha} className="p-4 hover:shadow-md transition-shadow">
+                    <div className="flex items-start gap-4">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm">
+                        {commit.commit.author.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          {getCommitTypeIcon(commit.commit.message)}
+                          <span className="font-mono text-xs text-gray-500">
+                            {commit.sha.substring(0, 7)}
+                          </span>
+                          {getCommitTypeBadge(commit.commit.message)}
+                          <span className="text-xs text-gray-500">
+                            {formatDate(commit.commit.author.date)}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-700 dark:text-gray-300">
+                          {commit.commit.message.split('\n')[0]}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          by {commit.commit.author.name}
+                        </p>
+                      </div>
                     </div>
                   </Card>
-                </a>
-              ))}
-            </div>
-          )}
-        </TabsContent>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Contributors Tab */}
+        {activeTab === 'contributors' && (
+          <div className="space-y-6">
+            {loading ? (
+              <div className="text-center py-8">
+                <Users className="w-8 h-8 animate-pulse mx-auto mb-4 text-gray-400" />
+                <p className="text-gray-500">Loading contributors...</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                {contributors.map((contributor) => (
+                  <a
+                    key={contributor.login}
+                    href={contributor.html_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group"
+                  >
+                    <Card className="p-4 text-center hover:shadow-lg transition-all hover:-translate-y-1">
+                      <img
+                        src={contributor.avatar_url}
+                        alt={contributor.login}
+                        className="w-20 h-20 rounded-full mx-auto mb-3 group-hover:ring-4 ring-blue-200 dark:ring-blue-800 transition-all"
+                      />
+                      <p className="font-medium text-sm truncate">{contributor.login}</p>
+                      <div className="flex items-center justify-center gap-1 mt-2">
+                        <Star className="w-3 h-3 text-yellow-500" />
+                        <span className="text-xs text-gray-500">{contributor.contributions} commits</span>
+                      </div>
+                    </Card>
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Tech Stack Tab */}
-        <TabsContent value="tech" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="p-6">
-              <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                <Code className="w-5 h-5 text-blue-600" />
-                Frontend Stack
-              </h3>
-              <div className="space-y-2">
-                {['Next.js 15 (App Router)', 'React 18', 'TypeScript', 'Tailwind CSS', 'Radix UI', 'React Hook Form', 'Zod Validation', 'React Query', 'Zustand'].map((tech) => (
-                  <div key={tech} className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full" />
-                    <span className="text-sm text-gray-600 dark:text-gray-400">{tech}</span>
-                  </div>
-                ))}
-              </div>
-            </Card>
+        {activeTab === 'tech' && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card className="p-6">
+                <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                  <Code className="w-5 h-5 text-blue-600" />
+                  Frontend Stack
+                </h3>
+                <div className="space-y-2">
+                  {['Next.js 15 (App Router)', 'React 18', 'TypeScript', 'Tailwind CSS', 'Radix UI', 'React Hook Form', 'Zod Validation', 'React Query', 'Zustand'].map((tech) => (
+                    <div key={tech} className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                      <span className="text-sm text-gray-600 dark:text-gray-400">{tech}</span>
+                    </div>
+                  ))}
+                </div>
+              </Card>
 
-            <Card className="p-6">
-              <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                <Package className="w-5 h-5 text-green-600" />
-                Backend Stack
-              </h3>
-              <div className="space-y-2">
-                {['Next.js API Routes', 'PostgreSQL', 'Prisma ORM', 'NextAuth.js v5', 'Nodemailer', 'Socket.io', 'PM2', 'Node.js 20+'].map((tech) => (
-                  <div key={tech} className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full" />
-                    <span className="text-sm text-gray-600 dark:text-gray-400">{tech}</span>
-                  </div>
-                ))}
-              </div>
-            </Card>
+              <Card className="p-6">
+                <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                  <Package className="w-5 h-5 text-green-600" />
+                  Backend Stack
+                </h3>
+                <div className="space-y-2">
+                  {['Next.js API Routes', 'PostgreSQL', 'Prisma ORM', 'NextAuth.js v5', 'Nodemailer', 'Socket.io', 'PM2', 'Node.js 20+'].map((tech) => (
+                    <div key={tech} className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full" />
+                      <span className="text-sm text-gray-600 dark:text-gray-400">{tech}</span>
+                    </div>
+                  ))}
+                </div>
+              </Card>
 
-            <Card className="p-6">
-              <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                <FileText className="w-5 h-5 text-purple-600" />
-                Reporting & Visualization
-              </h3>
-              <div className="space-y-2">
-                {['Chart.js', 'Recharts', 'jsPDF', 'XLSX Export', 'React PDF', 'Data Tables'].map((tech) => (
-                  <div key={tech} className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-purple-500 rounded-full" />
-                    <span className="text-sm text-gray-600 dark:text-gray-400">{tech}</span>
-                  </div>
-                ))}
-              </div>
-            </Card>
+              <Card className="p-6">
+                <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-purple-600" />
+                  Reporting & Visualization
+                </h3>
+                <div className="space-y-2">
+                  {['Chart.js', 'Recharts', 'jsPDF', 'XLSX Export', 'React PDF', 'Data Tables'].map((tech) => (
+                    <div key={tech} className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-purple-500 rounded-full" />
+                      <span className="text-sm text-gray-600 dark:text-gray-400">{tech}</span>
+                    </div>
+                  ))}
+                </div>
+              </Card>
 
-            <Card className="p-6">
-              <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                <GitBranch className="w-5 h-5 text-orange-600" />
-                Development Tools
-              </h3>
-              <div className="space-y-2">
-                {['Git Version Control', 'GitHub Repository', 'ESLint', 'Prettier', 'TypeScript Compiler', 'Prisma Studio', 'PM2 Process Manager'].map((tech) => (
-                  <div key={tech} className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-orange-500 rounded-full" />
-                    <span className="text-sm text-gray-600 dark:text-gray-400">{tech}</span>
-                  </div>
-                ))}
-              </div>
-            </Card>
+              <Card className="p-6">
+                <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                  <GitBranch className="w-5 h-5 text-orange-600" />
+                  Development Tools
+                </h3>
+                <div className="space-y-2">
+                  {['Git Version Control', 'GitHub Repository', 'ESLint', 'Prettier', 'TypeScript Compiler', 'Prisma Studio', 'PM2 Process Manager'].map((tech) => (
+                    <div key={tech} className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-orange-500 rounded-full" />
+                      <span className="text-sm text-gray-600 dark:text-gray-400">{tech}</span>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
           </div>
-        </TabsContent>
-      </Tabs>
+        )}
+      </div>
 
       {/* Footer */}
       <div className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-800">
