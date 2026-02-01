@@ -49,14 +49,15 @@ export async function middleware(request: NextRequest) {
       return NextResponse.next();
     }
 
-    // Allow monitoring API endpoints with API key authentication
+    // Allow API endpoints with API key authentication
     // These endpoints have their own API key authentication
-    const monitoringApiRoutes = [
+    const apiKeyAuthRoutes = [
       '/api/monitoring/',
-      '/api/omnichannel/'
+      '/api/omnichannel/',
+      '/api/server-metrics/'
     ];
-    const isMonitoringApi = monitoringApiRoutes.some(route => pathname.startsWith(route));
-    if (isMonitoringApi) {
+    const isApiKeyAuthRoute = apiKeyAuthRoutes.some(route => pathname.startsWith(route));
+    if (isApiKeyAuthRoute) {
       // Check if request has API key in headers
       const apiKey = request.headers.get('x-api-key') || request.headers.get('authorization');
       if (apiKey) {
