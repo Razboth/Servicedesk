@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import {
   Table,
   TableBody,
@@ -176,11 +177,23 @@ export function ServerTable({ servers, onUpdate, categories }: ServerTableProps)
             ) : (
               paginatedServers.map((server) => (
                 <TableRow key={server.id}>
-                  <TableCell className="font-mono text-sm">{server.ipAddress}</TableCell>
+                  <TableCell className="font-mono text-sm">
+                    <Link
+                      href={`/reports/server-metrics/${server.id}`}
+                      className="hover:text-primary hover:underline"
+                    >
+                      {server.ipAddress}
+                    </Link>
+                  </TableCell>
                   <TableCell>
-                    {server.serverName || (
-                      <span className="text-muted-foreground italic">Belum dinamai</span>
-                    )}
+                    <Link
+                      href={`/reports/server-metrics/${server.id}`}
+                      className="hover:text-primary hover:underline"
+                    >
+                      {server.serverName || (
+                        <span className="text-muted-foreground italic">Belum dinamai</span>
+                      )}
+                    </Link>
                   </TableCell>
                   <TableCell>
                     {server.category || (
