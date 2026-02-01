@@ -127,9 +127,9 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check for admin/manager role
+    // Check for allowed roles (admin, manager, or technician can update server info)
     const userRole = session.user.role;
-    if (!['SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(userRole)) {
+    if (!['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'TECHNICIAN'].includes(userRole)) {
       return NextResponse.json(
         { error: 'Forbidden', message: 'Insufficient permissions' },
         { status: 403 }

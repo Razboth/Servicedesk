@@ -155,7 +155,16 @@ export default function ServerDetailPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Gagal menyimpan');
+        const errorData = await response.json().catch(() => ({}));
+        if (response.status === 401) {
+          toast.error('Sesi telah berakhir. Silakan login kembali.');
+          return;
+        }
+        if (response.status === 403) {
+          toast.error('Anda tidak memiliki izin untuk mengubah pengaturan server.');
+          return;
+        }
+        throw new Error(errorData.message || 'Gagal menyimpan');
       }
 
       toast.success('Server berhasil diperbarui');
