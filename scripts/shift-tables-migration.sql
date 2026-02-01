@@ -352,6 +352,36 @@ END $$;
 
 CREATE INDEX IF NOT EXISTS "shift_backup_checklist_shiftReportId_idx" ON shift_backup_checklist ("shiftReportId");
 
+-- Add missing columns to shift_backup_checklist if table exists with old schema
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'shift_backup_checklist' AND column_name = 'description') THEN
+        ALTER TABLE shift_backup_checklist ADD COLUMN "description" TEXT;
+        RAISE NOTICE 'Added column: shift_backup_checklist.description';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'shift_backup_checklist' AND column_name = 'isChecked') THEN
+        ALTER TABLE shift_backup_checklist ADD COLUMN "isChecked" BOOLEAN NOT NULL DEFAULT false;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'shift_backup_checklist' AND column_name = 'checkedAt') THEN
+        ALTER TABLE shift_backup_checklist ADD COLUMN "checkedAt" TIMESTAMP;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'shift_backup_checklist' AND column_name = 'notes') THEN
+        ALTER TABLE shift_backup_checklist ADD COLUMN "notes" TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'shift_backup_checklist' AND column_name = 'order') THEN
+        ALTER TABLE shift_backup_checklist ADD COLUMN "order" INTEGER NOT NULL DEFAULT 0;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'shift_backup_checklist' AND column_name = 'databaseName') THEN
+        ALTER TABLE shift_backup_checklist ADD COLUMN "databaseName" TEXT NOT NULL DEFAULT '';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'shift_backup_checklist' AND column_name = 'createdAt') THEN
+        ALTER TABLE shift_backup_checklist ADD COLUMN "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'shift_backup_checklist' AND column_name = 'updatedAt') THEN
+        ALTER TABLE shift_backup_checklist ADD COLUMN "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+    END IF;
+END $$;
+
 -- ============================================
 -- SHIFT_BACKUP_TEMPLATES TABLE
 -- ============================================
