@@ -370,12 +370,14 @@ export default function ServerDetailPage() {
         <div className="space-y-6">
           {/* Chart */}
           <UsageChart
-            data={metrics.history.map((m) => ({
-              date: m.timestamp,
-              avgCpu: m.cpuPercent,
-              avgMemory: m.memoryPercent,
-              serverCount: 1,
-            })).reverse()}
+            data={metrics.history
+              .map((m) => ({
+                date: m.timestamp,
+                avgCpu: m.cpuPercent,
+                avgMemory: m.memoryPercent,
+                serverCount: 1,
+              }))
+              .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())}
             title="Tren Penggunaan"
             description={`Data ${periodDays} hari terakhir`}
           />
