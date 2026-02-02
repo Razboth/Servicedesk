@@ -45,6 +45,11 @@ const Popup = dynamic(
   { ssr: false }
 );
 
+const MarkerClusterGroup = dynamic(
+  () => import('react-leaflet-cluster').then((mod) => mod.default),
+  { ssr: false }
+);
+
 interface NetworkEntity {
   id: string;
   name: string;
@@ -264,8 +269,65 @@ export default function NetworkMapPage() {
     return `${diffHours}h ago`;
   };
 
+  // Create custom cluster icon
+  const createClusterCustomIcon = (cluster: any) => {
+    if (!leafletIcon) return undefined;
+
+    const markers = cluster.getAllChildMarkers();
+    const count = markers.length;
+
+    // Count by type and status
+    let branchCount = 0;
+    let atmCount = 0;
+    let onlineCount = 0;
+    let offlineCount = 0;
+
+    markers.forEach((marker: any) => {
+      const data = marker.options.data;
+      if (data) {
+        if (data.type === 'BRANCH') branchCount++;
+        else atmCount++;
+        if (data.status === 'ONLINE') onlineCount++;
+        else if (data.status === 'OFFLINE') offlineCount++;
+      }
+    });
+
+    // Determine cluster color based on status
+    const hasOffline = offlineCount > 0;
+    const allOnline = onlineCount === count;
+    const bgColor = hasOffline ? '#ef4444' : allOnline ? '#22c55e' : '#eab308';
+
+    const size = count < 10 ? 40 : count < 100 ? 50 : 60;
+
+    return new leafletIcon.DivIcon({
+      html: `
+        <div style="
+          background: ${bgColor};
+          width: ${size}px;
+          height: ${size}px;
+          border-radius: 50%;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          font-weight: bold;
+          font-size: ${count < 100 ? '14px' : '12px'};
+          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+          border: 3px solid white;
+        ">
+          <div>${count}</div>
+          <div style="font-size: 8px; opacity: 0.9;">${branchCount}B/${atmCount}A</div>
+        </div>
+      `,
+      className: 'custom-cluster-icon',
+      iconSize: [size, size],
+      iconAnchor: [size / 2, size / 2],
+    });
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto py-6 space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
           <MapPin className="h-8 w-8" />
@@ -461,12 +523,20 @@ export default function NetworkMapPage() {
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
 
-                {entitiesWithCoordinates.map((entity) => (
-                  <Marker
-                    key={`${entity.type}-${entity.id}`}
-                    position={[entity.latitude!, entity.longitude!]}
-                    icon={getMarkerIcon(entity.status, entity.type)}
-                  >
+                <MarkerClusterGroup
+                  chunkedLoading
+                  iconCreateFunction={createClusterCustomIcon}
+                  maxClusterRadius={60}
+                  spiderfyOnMaxZoom={true}
+                  showCoverageOnHover={false}
+                >
+                  {entitiesWithCoordinates.map((entity) => (
+                    <Marker
+                      key={`${entity.type}-${entity.id}`}
+                      position={[entity.latitude!, entity.longitude!]}
+                      icon={getMarkerIcon(entity.status, entity.type)}
+                      data={{ type: entity.type, status: entity.status }}
+                    >
                     <Popup maxWidth={300}>
                       <div className="p-2">
                         <div className="flex items-center gap-2 mb-2">
@@ -569,7 +639,8 @@ export default function NetworkMapPage() {
                       </div>
                     </Popup>
                   </Marker>
-                ))}
+                  ))}
+                </MarkerClusterGroup>
               </MapContainer>
             </div>
           )}
