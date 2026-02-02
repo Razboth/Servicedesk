@@ -34,6 +34,13 @@ EXCEPTION
 END $$;
 
 -- =============================================
+-- TABLE FIXES
+-- =============================================
+
+-- Add missing createdAt column to knowledge_visible_branches
+ALTER TABLE knowledge_visible_branches ADD COLUMN IF NOT EXISTS "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+-- =============================================
 -- Verify enums created
 -- =============================================
 SELECT typname FROM pg_type WHERE typname IN ('KnowledgeStatus', 'KnowledgeVisibility', 'CollaboratorRole', 'AccessType');
