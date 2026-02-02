@@ -153,7 +153,23 @@ export function TodayReportsList({ currentUserId, onViewOwnReport }: TodayReport
   }
 
   if (reports.length === 0) {
-    return null; // Don't show if no other reports
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+              <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <CardTitle className="text-lg">Laporan Teknisi Lain Hari Ini</CardTitle>
+              <CardDescription>
+                Belum ada laporan dari teknisi lain hari ini
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+      </Card>
+    );
   }
 
   return (
