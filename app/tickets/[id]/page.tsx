@@ -31,9 +31,16 @@ import { RelatedArticles } from '@/components/knowledge/related-articles';
 const WITA_TIMEZONE = 'Asia/Makassar';
 
 // Helper function to format date in WITA timezone
-const formatWITA = (date: string | Date, formatStr: string = 'dd MMM yyyy, HH:mm') => {
-  const zonedDate = toZonedTime(new Date(date), WITA_TIMEZONE);
-  return format(zonedDate, formatStr) + ' WITA';
+const formatWITA = (date: string | Date | null | undefined, formatStr: string = 'dd MMM yyyy, HH:mm') => {
+  if (!date) return '-';
+  try {
+    const parsedDate = new Date(date);
+    if (isNaN(parsedDate.getTime())) return '-';
+    const zonedDate = toZonedTime(parsedDate, WITA_TIMEZONE);
+    return format(zonedDate, formatStr) + ' WITA';
+  } catch {
+    return '-';
+  }
 };
 import { AttachmentPreview } from '@/components/ui/attachment-preview';
 import { getAvatarById } from '@/components/ui/avatar-presets';
