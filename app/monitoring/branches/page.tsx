@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import dynamic from 'next/dynamic';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Building2,
   WifiOff,
@@ -20,7 +22,9 @@ import {
   Phone,
   Router,
   Activity,
-  CreditCard
+  CreditCard,
+  Search,
+  ExternalLink
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -83,6 +87,10 @@ export default function NetworkMapPage() {
   const [leafletIcon, setLeafletIcon] = useState<any>(null);
   const [showBranches, setShowBranches] = useState(true);
   const [showATMs, setShowATMs] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
+  const mapRef = useRef<any>(null);
+  const markersRef = useRef<Map<string, any>>(new Map());
 
   // Initialize Leaflet icon only on client side
   useEffect(() => {
@@ -280,17 +288,13 @@ export default function NetworkMapPage() {
     const markers = cluster.getAllChildMarkers();
     const count = markers.length;
 
-    // Count by type and status
-    let branchCount = 0;
-    let atmCount = 0;
+    // Count by status
     let onlineCount = 0;
     let offlineCount = 0;
 
     markers.forEach((marker: any) => {
       const data = marker.options.data;
       if (data) {
-        if (data.type === 'BRANCH') branchCount++;
-        else atmCount++;
         if (data.status === 'ONLINE') onlineCount++;
         else if (data.status === 'OFFLINE') offlineCount++;
       }
@@ -311,17 +315,15 @@ export default function NetworkMapPage() {
           height: ${size}px;
           border-radius: 50%;
           display: flex;
-          flex-direction: column;
           align-items: center;
           justify-content: center;
           color: white;
           font-weight: bold;
-          font-size: ${count < 100 ? '14px' : '12px'};
+          font-size: ${count < 100 ? '16px' : '14px'};
           box-shadow: 0 2px 8px rgba(0,0,0,0.3);
           border: 3px solid white;
         ">
-          <div>${count}</div>
-          <div style="font-size: 8px; opacity: 0.9;">${branchCount}B/${atmCount}A</div>
+          ${count}
         </div>
       `,
       className: 'custom-cluster-icon',
@@ -329,6 +331,40 @@ export default function NetworkMapPage() {
       iconAnchor: [size / 2, size / 2],
     });
   };
+
+  // Handle entity click from list - zoom to marker and open popup
+  const handleEntityClick = (entity: NetworkEntity) => {
+    if (!entity.latitude || !entity.longitude || !mapRef.current) return;
+
+    setSelectedEntityId(`${entity.type}-${entity.id}`);
+
+    // Zoom to the entity location
+    mapRef.current.setView([entity.latitude, entity.longitude], 15, {
+      animate: true,
+      duration: 0.5
+    });
+
+    // Open the marker popup
+    setTimeout(() => {
+      const marker = markersRef.current.get(`${entity.type}-${entity.id}`);
+      if (marker) {
+        marker.openPopup();
+      }
+    }, 600);
+  };
+
+  // Filter entities for the list based on search
+  const filteredEntities = useMemo(() => {
+    if (!searchQuery.trim()) return entitiesWithCoordinates;
+    const query = searchQuery.toLowerCase();
+    return entitiesWithCoordinates.filter(e =>
+      e.name.toLowerCase().includes(query) ||
+      e.code.toLowerCase().includes(query) ||
+      e.ipAddress?.toLowerCase().includes(query) ||
+      e.city?.toLowerCase().includes(query) ||
+      e.location?.toLowerCase().includes(query)
+    );
+  }, [entitiesWithCoordinates, searchQuery]);
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -521,6 +557,7 @@ export default function NetworkMapPage() {
                 center={mapCenter}
                 zoom={9}
                 style={{ height: '100%', width: '100%', borderRadius: '0.5rem' }}
+                ref={mapRef}
               >
                 <TileLayer
                   attribution=""
@@ -540,6 +577,11 @@ export default function NetworkMapPage() {
                       position={[entity.latitude!, entity.longitude!]}
                       icon={getMarkerIcon(entity.status, entity.type)}
                       data={{ type: entity.type, status: entity.status }}
+                      ref={(ref: any) => {
+                        if (ref) {
+                          markersRef.current.set(`${entity.type}-${entity.id}`, ref);
+                        }
+                      }}
                     >
                     <Popup maxWidth={300}>
                       <div className="p-2">
@@ -651,58 +693,141 @@ export default function NetworkMapPage() {
         </CardContent>
       </Card>
 
-      {/* Legend */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Legend</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div>
-              <h4 className="text-xs font-semibold mb-2 text-muted-foreground">Entity Types</h4>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-blue-600" />
-                  <span className="text-sm">Branch</span>
+      {/* Entity List and Legend - Side by Side */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Entity List - 2/3 width */}
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm">Entity List</CardTitle>
+              <Badge variant="outline">{filteredEntities.length} items</Badge>
+            </div>
+            <div className="relative mt-2">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name, code, IP, or location..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <ScrollArea className="h-[300px]">
+              <div className="space-y-1">
+                {filteredEntities.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <MapPin className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No entities found</p>
+                  </div>
+                ) : (
+                  filteredEntities.map((entity) => (
+                    <div
+                      key={`list-${entity.type}-${entity.id}`}
+                      onClick={() => handleEntityClick(entity)}
+                      className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors hover:bg-gray-100 ${
+                        selectedEntityId === `${entity.type}-${entity.id}` ? 'bg-blue-50 border border-blue-200' : ''
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`p-1.5 rounded-full ${
+                          entity.status === 'ONLINE' ? 'bg-green-100' :
+                          entity.status === 'OFFLINE' ? 'bg-red-100' :
+                          entity.status === 'SLOW' ? 'bg-yellow-100' :
+                          'bg-gray-100'
+                        }`}>
+                          {entity.type === 'BRANCH' ? (
+                            <Building2 className={`h-4 w-4 ${
+                              entity.status === 'ONLINE' ? 'text-green-600' :
+                              entity.status === 'OFFLINE' ? 'text-red-600' :
+                              entity.status === 'SLOW' ? 'text-yellow-600' :
+                              'text-gray-600'
+                            }`} />
+                          ) : (
+                            <CreditCard className={`h-4 w-4 ${
+                              entity.status === 'ONLINE' ? 'text-green-600' :
+                              entity.status === 'OFFLINE' ? 'text-red-600' :
+                              entity.status === 'SLOW' ? 'text-yellow-600' :
+                              'text-gray-600'
+                            }`} />
+                          )}
+                        </div>
+                        <div>
+                          <div className="font-medium text-sm">{entity.name}</div>
+                          <div className="text-xs text-muted-foreground flex items-center gap-2">
+                            <span>{entity.code}</span>
+                            {entity.ipAddress && (
+                              <>
+                                <span>•</span>
+                                <span className="font-mono">{entity.ipAddress}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className={`text-xs ${getStatusColor(entity.status)}`}>
+                          {entity.status}
+                        </Badge>
+                        <ExternalLink className="h-3 w-3 text-muted-foreground" />
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+
+        {/* Legend - 1/3 width */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Legend</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-xs font-semibold mb-2 text-muted-foreground">Entity Types</h4>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-blue-600" />
+                    <span className="text-sm">Branch</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="h-4 w-4 text-purple-600" />
+                    <span className="text-sm">ATM</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <CreditCard className="h-4 w-4 text-purple-600" />
-                  <span className="text-sm">ATM</span>
+              </div>
+              <div>
+                <h4 className="text-xs font-semibold mb-2 text-muted-foreground">Status</h4>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded-full bg-green-500"></div>
+                    <span className="text-sm">Online</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded-full bg-yellow-500"></div>
+                    <span className="text-sm">Slow</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded-full bg-red-500"></div>
+                    <span className="text-sm">Offline</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded-full bg-orange-500"></div>
+                    <span className="text-sm">Stale</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded-full bg-gray-400"></div>
+                    <span className="text-sm">Unknown</span>
+                  </div>
                 </div>
               </div>
             </div>
-            <div>
-              <h4 className="text-xs font-semibold mb-2 text-muted-foreground">Status</h4>
-              <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-full bg-green-500"></div>
-                  <span className="text-sm">Online</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-full bg-yellow-500"></div>
-                  <span className="text-sm">Slow</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-full bg-red-500"></div>
-                  <span className="text-sm">Offline</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-full bg-orange-500"></div>
-                  <span className="text-sm">Stale</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-full bg-gray-400"></div>
-                  <span className="text-sm">Unknown</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-full bg-red-500"></div>
-                  <span className="text-sm">Error</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
