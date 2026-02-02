@@ -203,23 +203,27 @@ export default function NetworkMapPage() {
 
     const color = colors[status] || colors.UNKNOWN;
 
-    // Different SVG icons for branches and ATMs
+    // Different SVG icons for branches and ATMs - larger size for better visibility
     const iconSVG = entityType === 'BRANCH'
-      ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32" height="32">
-          <path fill="${color}" stroke="#fff" stroke-width="2" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
-          <path fill="#fff" d="M12 6h-1v2H9v1h2v2h1v-2h2V8h-2V6z M9 12h6v1H9v-1z M9 14h6v1H9v-1z"/>
+      ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
+          <path fill="${color}" stroke="#fff" stroke-width="1.5" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+          <path fill="#fff" d="M12 5.5L8 8v1h1v4h6V9h1V8l-4-2.5zM10 12v-2h1.5v2H10zm2.5 0v-2H14v2h-1.5z"/>
         </svg>`
-      : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32" height="32">
-          <path fill="${color}" stroke="#fff" stroke-width="2" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
-          <rect x="8" y="7" width="8" height="5" rx="1" fill="#fff"/>
-          <rect x="10" y="13" width="4" height="2" fill="#fff"/>
+      : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
+          <path fill="${color}" stroke="#fff" stroke-width="1.5" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+          <rect x="8.5" y="6" width="7" height="5" rx="0.5" fill="#fff"/>
+          <rect x="9.5" y="7" width="5" height="2.5" rx="0.3" fill="${color}" opacity="0.3"/>
+          <rect x="10" y="12" width="4" height="2" rx="0.3" fill="#fff"/>
+          <circle cx="11" cy="13" r="0.4" fill="${color}"/>
+          <circle cx="12" cy="13" r="0.4" fill="${color}"/>
+          <circle cx="13" cy="13" r="0.4" fill="${color}"/>
         </svg>`;
 
     return new leafletIcon.Icon({
       iconUrl: `data:image/svg+xml;base64,${btoa(iconSVG)}`,
-      iconSize: [32, 32],
-      iconAnchor: [16, 32],
-      popupAnchor: [0, -32],
+      iconSize: [48, 48],
+      iconAnchor: [24, 48],
+      popupAnchor: [0, -48],
     });
   };
 
@@ -519,7 +523,7 @@ export default function NetworkMapPage() {
                 style={{ height: '100%', width: '100%', borderRadius: '0.5rem' }}
               >
                 <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  attribution=""
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
 
