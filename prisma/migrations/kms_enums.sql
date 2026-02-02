@@ -41,14 +41,19 @@ END $$;
 ALTER TABLE knowledge_visible_branches ADD COLUMN IF NOT EXISTS "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
 
 -- Convert visibility column from text to KnowledgeVisibility enum
+-- Step 1: Drop default, Step 2: Convert type, Step 3: Set new default
+ALTER TABLE knowledge_articles ALTER COLUMN visibility DROP DEFAULT;
 ALTER TABLE knowledge_articles
 ALTER COLUMN visibility TYPE "KnowledgeVisibility"
 USING visibility::"KnowledgeVisibility";
+ALTER TABLE knowledge_articles ALTER COLUMN visibility SET DEFAULT 'EVERYONE'::"KnowledgeVisibility";
 
 -- Convert status column from text to KnowledgeStatus enum
+ALTER TABLE knowledge_articles ALTER COLUMN status DROP DEFAULT;
 ALTER TABLE knowledge_articles
 ALTER COLUMN status TYPE "KnowledgeStatus"
 USING status::"KnowledgeStatus";
+ALTER TABLE knowledge_articles ALTER COLUMN status SET DEFAULT 'DRAFT'::"KnowledgeStatus";
 
 -- =============================================
 -- Verify enums created
