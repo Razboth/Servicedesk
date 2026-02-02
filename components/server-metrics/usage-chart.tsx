@@ -35,23 +35,26 @@ export function UsageChart({ data, title = 'Tren Penggunaan', description }: Usa
       return dateA - dateB;
     });
 
-    return sortedData.map((item) => ({
-      date: new Date(item.date).toLocaleDateString('id-ID', {
-        day: 'numeric',
-        month: 'short',
-      }),
-      fullDate: new Date(item.date).toLocaleString('id-ID', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      }),
-      timestamp: new Date(item.date).getTime(), // Keep for sorting reference
-      cpu: item.avgCpu !== null ? parseFloat(item.avgCpu.toFixed(1)) : null,
-      memory: item.avgMemory !== null ? parseFloat(item.avgMemory.toFixed(1)) : null,
-      serverCount: item.serverCount,
-    }));
+    return sortedData.map((item) => {
+      const timestamp = new Date(item.date).getTime();
+      return {
+        timestamp, // Use timestamp as the primary key for X-axis ordering
+        dateLabel: new Date(item.date).toLocaleDateString('id-ID', {
+          day: 'numeric',
+          month: 'short',
+        }),
+        fullDate: new Date(item.date).toLocaleString('id-ID', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+        cpu: item.avgCpu !== null ? parseFloat(item.avgCpu.toFixed(1)) : null,
+        memory: item.avgMemory !== null ? parseFloat(item.avgMemory.toFixed(1)) : null,
+        serverCount: item.serverCount,
+      };
+    });
   }, [data]);
 
   if (chartData.length === 0) {
@@ -81,9 +84,20 @@ export function UsageChart({ data, title = 'Tren Penggunaan', description }: Usa
           <LineChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
             <XAxis
-              dataKey="date"
+              dataKey="timestamp"
+              type="number"
+              scale="time"
+              domain={['dataMin', 'dataMax']}
               tick={{ fontSize: 12 }}
+              tickCount={7}
               className="text-muted-foreground"
+              tickFormatter={(value) => {
+                const date = new Date(value);
+                return date.toLocaleDateString('id-ID', {
+                  day: 'numeric',
+                  month: 'short',
+                });
+              }}
             />
             <YAxis
               domain={[0, 100]}
@@ -127,6 +141,7 @@ export function UsageChart({ data, title = 'Tren Penggunaan', description }: Usa
               strokeWidth={2}
               dot={false}
               activeDot={{ r: 4 }}
+              connectNulls
             />
             <Line
               type="monotone"
@@ -136,6 +151,7 @@ export function UsageChart({ data, title = 'Tren Penggunaan', description }: Usa
               strokeWidth={2}
               dot={false}
               activeDot={{ r: 4 }}
+              connectNulls
             />
           </LineChart>
         </ResponsiveContainer>
