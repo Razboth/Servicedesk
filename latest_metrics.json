@@ -1,0 +1,951 @@
+{
+  "fetched_at": "2026-02-01T21:48:16.969698",
+  "report_timestamp": "2026-01-31T20:00:04+00:00",
+  "total_ips": 58,
+  "metrics": {
+    "10.10.1.201": {
+      "ip_address": "10.10.1.201",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "6.40%",
+      "memory": "17.41%",
+      "storage": [
+        {
+          "partition": "/dev/vda15",
+          "usage": "5.78%"
+        },
+        {
+          "partition": "/dev/vda1",
+          "usage": "2.50%"
+        }
+      ]
+    },
+    "10.10.2.192": {
+      "ip_address": "10.10.2.192",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "10.14%",
+      "memory": "65.12%",
+      "storage": [
+        {
+          "partition": "/dev/vda1",
+          "usage": "21.60%"
+        },
+        {
+          "partition": "/dev/vda15",
+          "usage": "5.79%"
+        }
+      ]
+    },
+    "172.29.254.244": {
+      "ip_address": "172.29.254.244",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "0.15%",
+      "memory": "9.02%",
+      "storage": [
+        {
+          "partition": "/dev/vda1",
+          "usage": "27.93%"
+        },
+        {
+          "partition": "/dev/vda16",
+          "usage": "19.97%"
+        },
+        {
+          "partition": "/dev/vda15",
+          "usage": "5.84%"
+        }
+      ]
+    },
+    "172.29.69.5": {
+      "ip_address": "172.29.69.5",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "3.73%",
+      "memory": "24.29%",
+      "storage": [
+        {
+          "partition": "/dev/vda1",
+          "usage": "79.77%"
+        },
+        {
+          "partition": "/dev/vda15",
+          "usage": "5.79%"
+        }
+      ]
+    },
+    "172.29.69.6": {
+      "ip_address": "172.29.69.6",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "0.52%",
+      "memory": "6.90%",
+      "storage": [
+        {
+          "partition": "/dev/vda1",
+          "usage": "19.49%"
+        },
+        {
+          "partition": "/dev/vda15",
+          "usage": "5.79%"
+        }
+      ]
+    },
+    "172.29.69.7": {
+      "ip_address": "172.29.69.7",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "0.13%",
+      "memory": "4.60%",
+      "storage": [
+        {
+          "partition": "/dev/vda15",
+          "usage": "5.79%"
+        },
+        {
+          "partition": "/dev/vda1",
+          "usage": "4.61%"
+        }
+      ]
+    },
+    "172.29.69.8": {
+      "ip_address": "172.29.69.8",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "0.09%",
+      "memory": "5.91%",
+      "storage": [
+        {
+          "partition": "/dev/vda15",
+          "usage": "5.79%"
+        },
+        {
+          "partition": "/dev/vda1",
+          "usage": "3.20%"
+        }
+      ]
+    },
+    "178.10.1.15": {
+      "ip_address": "178.10.1.15",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "0.97%",
+      "memory": "42.09%",
+      "storage": [
+        {
+          "partition": "/dev/vda1",
+          "usage": "23.47%"
+        },
+        {
+          "partition": "/dev/vda15",
+          "usage": "5.79%"
+        }
+      ]
+    },
+    "178.10.1.16": {
+      "ip_address": "178.10.1.16",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "5.06%",
+      "memory": "22.48%",
+      "storage": [
+        {
+          "partition": "/dev/vda1",
+          "usage": "60.50%"
+        },
+        {
+          "partition": "/dev/vda15",
+          "usage": "5.79%"
+        }
+      ]
+    },
+    "178.10.1.171": {
+      "ip_address": "178.10.1.171",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "0.36%",
+      "memory": "16.75%",
+      "storage": [
+        {
+          "partition": "C:",
+          "usage": "73.11%"
+        }
+      ]
+    },
+    "178.10.1.189": {
+      "ip_address": "178.10.1.189",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "0.07%",
+      "memory": "17.64%",
+      "storage": [
+        {
+          "partition": "/dev/vda1",
+          "usage": "8.24%"
+        },
+        {
+          "partition": "/dev/vda15",
+          "usage": "5.79%"
+        }
+      ]
+    },
+    "178.10.1.231": {
+      "ip_address": "178.10.1.231",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "0.17%",
+      "memory": "18.53%",
+      "storage": [
+        {
+          "partition": "/dev/vda1",
+          "usage": "38.99%"
+        },
+        {
+          "partition": "/dev/vda15",
+          "usage": "5.79%"
+        }
+      ]
+    },
+    "178.10.1.43": {
+      "ip_address": "178.10.1.43",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "0.21%",
+      "memory": "34.13%",
+      "storage": [
+        {
+          "partition": "/dev/vda1",
+          "usage": "16.24%"
+        },
+        {
+          "partition": "/dev/vda15",
+          "usage": "5.79%"
+        }
+      ]
+    },
+    "178.10.1.48": {
+      "ip_address": "178.10.1.48",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "0.18%",
+      "memory": "10.00%",
+      "storage": [
+        {
+          "partition": "/dev/vda1",
+          "usage": "76.26%"
+        },
+        {
+          "partition": "/dev/vda15",
+          "usage": "5.76%"
+        }
+      ]
+    },
+    "199.90.10.112": {
+      "ip_address": "199.90.10.112",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "0.27%",
+      "memory": "31.11%",
+      "storage": [
+        {
+          "partition": "/dev/vda1",
+          "usage": "45.67%"
+        },
+        {
+          "partition": "/dev/vda15",
+          "usage": "5.79%"
+        }
+      ]
+    },
+    "199.90.10.13": {
+      "ip_address": "199.90.10.13",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "0.57%",
+      "memory": "6.01%",
+      "storage": [
+        {
+          "partition": "/dev/vda5",
+          "usage": "46.65%"
+        },
+        {
+          "partition": "/dev/vda3",
+          "usage": "15.59%"
+        },
+        {
+          "partition": "/dev/vda4",
+          "usage": "8.43%"
+        }
+      ]
+    },
+    "199.90.10.14": {
+      "ip_address": "199.90.10.14",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "1.38%",
+      "memory": "7.36%",
+      "storage": [
+        {
+          "partition": "/dev/vda1",
+          "usage": "70.45%"
+        },
+        {
+          "partition": "/dev/vda15",
+          "usage": "5.78%"
+        }
+      ]
+    },
+    "199.90.10.215": {
+      "ip_address": "199.90.10.215",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "5.54%",
+      "memory": "34.15%",
+      "storage": [
+        {
+          "partition": "C:",
+          "usage": "49.16%"
+        }
+      ]
+    },
+    "199.90.10.26": {
+      "ip_address": "199.90.10.26",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "2.37%",
+      "memory": "73.35%",
+      "storage": [
+        {
+          "partition": "/dev/vda5",
+          "usage": "54.58%"
+        },
+        {
+          "partition": "/dev/vda3",
+          "usage": "22.24%"
+        },
+        {
+          "partition": "/dev/vda3",
+          "usage": "22.24%"
+        },
+        {
+          "partition": "/dev/vda4",
+          "usage": "9.83%"
+        }
+      ]
+    },
+    "199.90.10.31": {
+      "ip_address": "199.90.10.31",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "0.29%",
+      "memory": "6.76%",
+      "storage": [
+        {
+          "partition": "/dev/vda15",
+          "usage": "5.78%"
+        },
+        {
+          "partition": "/dev/vda1",
+          "usage": "4.69%"
+        }
+      ]
+    },
+    "199.90.10.41": {
+      "ip_address": "199.90.10.41",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "0.83%",
+      "memory": "25.74%",
+      "storage": [
+        {
+          "partition": "/dev/vda5",
+          "usage": "33.84%"
+        },
+        {
+          "partition": "/dev/vda3",
+          "usage": "14.76%"
+        },
+        {
+          "partition": "/dev/vda3",
+          "usage": "14.76%"
+        },
+        {
+          "partition": "/dev/vda4",
+          "usage": "9.60%"
+        }
+      ]
+    },
+    "199.90.10.42": {
+      "ip_address": "199.90.10.42",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "0.20%",
+      "memory": "10.46%",
+      "storage": [
+        {
+          "partition": "/dev/vda4",
+          "usage": "63.94%"
+        },
+        {
+          "partition": "/dev/vda2",
+          "usage": "43.50%"
+        }
+      ]
+    },
+    "199.90.10.43": {
+      "ip_address": "199.90.10.43",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "6.47%",
+      "memory": "12.27%",
+      "storage": [
+        {
+          "partition": "/dev/vda5",
+          "usage": "29.99%"
+        },
+        {
+          "partition": "/dev/vda3",
+          "usage": "14.36%"
+        },
+        {
+          "partition": "/dev/vda3",
+          "usage": "14.36%"
+        },
+        {
+          "partition": "/dev/vda4",
+          "usage": "7.15%"
+        }
+      ]
+    },
+    "199.90.10.44": {
+      "ip_address": "199.90.10.44",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "0.27%",
+      "memory": "21.61%",
+      "storage": [
+        {
+          "partition": "/dev/vda5",
+          "usage": "39.10%"
+        },
+        {
+          "partition": "/dev/vda3",
+          "usage": "15.00%"
+        },
+        {
+          "partition": "/dev/vda3",
+          "usage": "15.00%"
+        },
+        {
+          "partition": "/dev/vda4",
+          "usage": "13.32%"
+        }
+      ]
+    },
+    "199.90.10.46": {
+      "ip_address": "199.90.10.46",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "25.84%",
+      "memory": "33.15%",
+      "storage": [
+        {
+          "partition": "C:",
+          "usage": "23.77%"
+        },
+        {
+          "partition": "D:",
+          "usage": "74.15%"
+        }
+      ]
+    },
+    "199.90.10.48": {
+      "ip_address": "199.90.10.48",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "13.40%",
+      "memory": "37.42%",
+      "storage": [
+        {
+          "partition": "/dev/vda1",
+          "usage": "75.01%"
+        },
+        {
+          "partition": "/dev/vda15",
+          "usage": "5.78%"
+        }
+      ]
+    },
+    "199.90.10.78": {
+      "ip_address": "199.90.10.78",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "0.28%",
+      "memory": "11.18%",
+      "storage": [
+        {
+          "partition": "/dev/vda1",
+          "usage": "44.69%"
+        },
+        {
+          "partition": "/dev/vda15",
+          "usage": "4.98%"
+        }
+      ]
+    },
+    "199.97.19.102": {
+      "ip_address": "199.97.19.102",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "1.52%",
+      "memory": "20.52%",
+      "storage": [
+        {
+          "partition": "C:",
+          "usage": "17.26%"
+        },
+        {
+          "partition": "D:",
+          "usage": "14.71%"
+        }
+      ]
+    },
+    "199.97.19.103": {
+      "ip_address": "199.97.19.103",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "1.23%",
+      "memory": "87.93%",
+      "storage": [
+        {
+          "partition": "C:",
+          "usage": "6.04%"
+        },
+        {
+          "partition": "D:",
+          "usage": "30.53%"
+        }
+      ]
+    },
+    "199.97.19.104": {
+      "ip_address": "199.97.19.104",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "1.83%",
+      "memory": "83.44%",
+      "storage": [
+        {
+          "partition": "C:",
+          "usage": "31.95%"
+        },
+        {
+          "partition": "D:",
+          "usage": "39.81%"
+        }
+      ]
+    },
+    "199.97.19.105": {
+      "ip_address": "199.97.19.105",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "17.99%",
+      "memory": "10.25%",
+      "storage": [
+        {
+          "partition": "C:",
+          "usage": "13.49%"
+        }
+      ]
+    },
+    "199.97.19.106": {
+      "ip_address": "199.97.19.106",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "4.49%",
+      "memory": "68.43%",
+      "storage": [
+        {
+          "partition": "C:",
+          "usage": "29.97%"
+        },
+        {
+          "partition": "D:",
+          "usage": "55.26%"
+        }
+      ]
+    },
+    "199.97.19.131": {
+      "ip_address": "199.97.19.131",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "1.12%",
+      "memory": null,
+      "storage": [
+        {
+          "partition": "C:",
+          "usage": "81.34%"
+        }
+      ]
+    },
+    "199.97.19.155": {
+      "ip_address": "199.97.19.155",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "11.05%",
+      "memory": "25.33%",
+      "storage": [
+        {
+          "partition": "C:",
+          "usage": "89.85%"
+        },
+        {
+          "partition": "D:",
+          "usage": "86.27%"
+        },
+        {
+          "partition": "E:",
+          "usage": "87.06%"
+        }
+      ]
+    },
+    "199.97.19.156": {
+      "ip_address": "199.97.19.156",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "2.41%",
+      "memory": "70.78%",
+      "storage": [
+        {
+          "partition": "C:",
+          "usage": "30.27%"
+        }
+      ]
+    },
+    "199.97.19.157": {
+      "ip_address": "199.97.19.157",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "3.09%",
+      "memory": "63.15%",
+      "storage": [
+        {
+          "partition": "C:",
+          "usage": "51.82%"
+        }
+      ]
+    },
+    "199.97.19.158": {
+      "ip_address": "199.97.19.158",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "2.85%",
+      "memory": "67.26%",
+      "storage": [
+        {
+          "partition": "C:",
+          "usage": "24.43%"
+        }
+      ]
+    },
+    "199.97.19.213": {
+      "ip_address": "199.97.19.213",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "0.36%",
+      "memory": null,
+      "storage": [
+        {
+          "partition": "/dev/sdb6",
+          "usage": "64.95%"
+        },
+        {
+          "partition": "/dev/sdb4",
+          "usage": "6.99%"
+        }
+      ]
+    },
+    "199.97.19.216": {
+      "ip_address": "199.97.19.216",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "0.18%",
+      "memory": null,
+      "storage": [
+        {
+          "partition": "/dev/sda3",
+          "usage": "32.42%"
+        },
+        {
+          "partition": "/dev/sda4",
+          "usage": "20.68%"
+        },
+        {
+          "partition": "/dev/sda1",
+          "usage": "7.28%"
+        }
+      ]
+    },
+    "199.97.19.220": {
+      "ip_address": "199.97.19.220",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "1.90%",
+      "memory": "70.46%",
+      "storage": [
+        {
+          "partition": "C:",
+          "usage": "22.54%"
+        }
+      ]
+    },
+    "199.97.98.11": {
+      "ip_address": "199.97.98.11",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "1.64%",
+      "memory": "16.44%",
+      "storage": [
+        {
+          "partition": "C:",
+          "usage": "55.38%"
+        }
+      ]
+    },
+    "199.97.98.13": {
+      "ip_address": "199.97.98.13",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "15.05%",
+      "memory": "35.41%",
+      "storage": [
+        {
+          "partition": "/dev/vda1",
+          "usage": "41.95%"
+        },
+        {
+          "partition": "/dev/vda15",
+          "usage": "5.76%"
+        }
+      ]
+    },
+    "199.97.98.131": {
+      "ip_address": "199.97.98.131",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "2.09%",
+      "memory": "8.38%",
+      "storage": [
+        {
+          "partition": "/dev/vda15",
+          "usage": "4.98%"
+        },
+        {
+          "partition": "/dev/vda1",
+          "usage": "4.34%"
+        }
+      ]
+    },
+    "199.97.98.14": {
+      "ip_address": "199.97.98.14",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "0.09%",
+      "memory": "3.37%",
+      "storage": [
+        {
+          "partition": "/dev/vda15",
+          "usage": "5.79%"
+        },
+        {
+          "partition": "/dev/vda1",
+          "usage": "0.40%"
+        }
+      ]
+    },
+    "199.97.98.3": {
+      "ip_address": "199.97.98.3",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "1.22%",
+      "memory": "18.53%",
+      "storage": [
+        {
+          "partition": "/dev/vda1",
+          "usage": "64.86%"
+        },
+        {
+          "partition": "/dev/vda15",
+          "usage": "5.78%"
+        }
+      ]
+    },
+    "199.97.98.4": {
+      "ip_address": "199.97.98.4",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "25.78%",
+      "memory": "30.55%",
+      "storage": [
+        {
+          "partition": "/dev/vda1",
+          "usage": "56.85%"
+        },
+        {
+          "partition": "/dev/vda15",
+          "usage": "5.78%"
+        }
+      ]
+    },
+    "199.97.98.5": {
+      "ip_address": "199.97.98.5",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "2.02%",
+      "memory": "10.60%",
+      "storage": [
+        {
+          "partition": "/dev/vda1",
+          "usage": "44.28%"
+        }
+      ]
+    },
+    "199.97.98.6": {
+      "ip_address": "199.97.98.6",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "0.97%",
+      "memory": "25.01%",
+      "storage": [
+        {
+          "partition": "/dev/vda1",
+          "usage": "77.80%"
+        },
+        {
+          "partition": "/dev/vda15",
+          "usage": "5.79%"
+        }
+      ]
+    },
+    "199.97.98.7": {
+      "ip_address": "199.97.98.7",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "5.16%",
+      "memory": "29.73%",
+      "storage": [
+        {
+          "partition": "/dev/vda1",
+          "usage": "56.75%"
+        },
+        {
+          "partition": "/dev/vda15",
+          "usage": "5.79%"
+        }
+      ]
+    },
+    "199.97.98.8": {
+      "ip_address": "199.97.98.8",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "0.08%",
+      "memory": "4.77%",
+      "storage": [
+        {
+          "partition": "/dev/vda15",
+          "usage": "4.98%"
+        },
+        {
+          "partition": "/dev/vda1",
+          "usage": "0.41%"
+        }
+      ]
+    },
+    "199.97.98.9": {
+      "ip_address": "199.97.98.9",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "12.87%",
+      "memory": "12.93%",
+      "storage": [
+        {
+          "partition": "/dev/vda1",
+          "usage": "35.18%"
+        },
+        {
+          "partition": "/dev/vda15",
+          "usage": "5.76%"
+        }
+      ]
+    },
+    "199.97.99.10": {
+      "ip_address": "199.97.99.10",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "3.63%",
+      "memory": "53.78%",
+      "storage": [
+        {
+          "partition": "/dev/vda1",
+          "usage": "62.57%"
+        },
+        {
+          "partition": "/dev/mapper/vg--data-xlog",
+          "usage": "44.36%"
+        },
+        {
+          "partition": "/dev/mapper/vg--data-mlog",
+          "usage": "17.15%"
+        },
+        {
+          "partition": "/dev/vda15",
+          "usage": "5.78%"
+        }
+      ]
+    },
+    "199.97.99.15": {
+      "ip_address": "199.97.99.15",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "0.05%",
+      "memory": "1.40%",
+      "storage": [
+        {
+          "partition": "/dev/vda15",
+          "usage": "5.76%"
+        },
+        {
+          "partition": "/dev/vda1",
+          "usage": "0.32%"
+        }
+      ]
+    },
+    "199.97.99.18": {
+      "ip_address": "199.97.99.18",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "5.73%",
+      "memory": "79.28%",
+      "storage": [
+        {
+          "partition": "/dev/mapper/vg--data-backup",
+          "usage": "48.76%"
+        },
+        {
+          "partition": "/dev/vda1",
+          "usage": "48.45%"
+        },
+        {
+          "partition": "/dev/mapper/vg--data-data",
+          "usage": "41.24%"
+        },
+        {
+          "partition": "/dev/mapper/vg--data-log",
+          "usage": "6.09%"
+        },
+        {
+          "partition": "/dev/vda15",
+          "usage": "5.78%"
+        },
+        {
+          "partition": "/dev/mapper/vg--data-dbtemp",
+          "usage": "5.25%"
+        }
+      ]
+    },
+    "199.97.99.38": {
+      "ip_address": "199.97.99.38",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "0.49%",
+      "memory": "32.15%",
+      "storage": [
+        {
+          "partition": "C:",
+          "usage": "3.93%"
+        }
+      ]
+    },
+    "199.97.99.5": {
+      "ip_address": "199.97.99.5",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "3.23%",
+      "memory": "21.05%",
+      "storage": [
+        {
+          "partition": "C:",
+          "usage": "35.66%"
+        }
+      ]
+    },
+    "199.97.99.62": {
+      "ip_address": "199.97.99.62",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "0.67%",
+      "memory": "23.25%",
+      "storage": [
+        {
+          "partition": "C:",
+          "usage": "3.30%"
+        }
+      ]
+    },
+    "199.97.99.71": {
+      "ip_address": "199.97.99.71",
+      "timestamp": "2026-01-31T20:00:04+00:00",
+      "cpu": "2.54%",
+      "memory": "91.49%",
+      "storage": [
+        {
+          "partition": "C:",
+          "usage": "73.64%"
+        }
+      ]
+    }
+  }
+}

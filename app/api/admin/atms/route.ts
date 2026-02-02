@@ -150,12 +150,33 @@ export async function GET(request: NextRequest) {
           select: {
             incidents: true
           }
+        },
+        // Include active network incidents
+        networkIncidents: {
+          where: {
+            status: { in: ['OPEN', 'INVESTIGATING', 'IDENTIFIED'] }
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: {
+            id: true,
+            title: true,
+            status: true,
+            severity: true,
+            createdAt: true,
+            acknowledgedAt: true,
+            resolvedAt: true
+          }
         }
       }
     });
 
-    // If includeNetworkStatus, fetch latest network status for each ATM
-    let atmsWithStatus = atms;
+    // Add hasActiveIncident and activeIncident to all ATMs
+    let atmsWithStatus = atms.map(atm => ({
+      ...atm,
+      hasActiveIncident: atm.networkIncidents.length > 0,
+      activeIncident: atm.networkIncidents[0] || null
+    }));
     if (includeNetworkStatus || problemsOnly) {
       const atmIds = atms.map(atm => atm.id);
 
@@ -186,7 +207,9 @@ export async function GET(request: NextRequest) {
 
         atmsWithStatus = atms.map(atm => ({
           ...atm,
-          networkStatus: statusMap.get(atm.id) || null
+          networkStatus: statusMap.get(atm.id) || null,
+          hasActiveIncident: atm.networkIncidents.length > 0,
+          activeIncident: atm.networkIncidents[0] || null
         }));
       }
     }

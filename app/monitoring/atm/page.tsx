@@ -51,6 +51,16 @@ interface NetworkStatus {
   downSince: string | null;
 }
 
+interface ActiveIncident {
+  id: string;
+  title: string;
+  status: string;
+  severity: string;
+  createdAt: string;
+  acknowledgedAt: string | null;
+  resolvedAt: string | null;
+}
+
 interface ATM {
   id: string;
   code: string;
@@ -67,6 +77,8 @@ interface ATM {
     incidents: number;
   };
   networkStatus?: NetworkStatus | null;
+  hasActiveIncident?: boolean;
+  activeIncident?: ActiveIncident | null;
 }
 
 interface Branch {
@@ -486,6 +498,22 @@ export default function ATMStatusPage() {
                       </div>
                     )}
 
+                    {/* Active Incident */}
+                    {atm.hasActiveIncident && atm.activeIncident && (
+                      <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-orange-100 rounded-lg border border-orange-200">
+                        <AlertTriangle className="h-4 w-4 text-orange-600" />
+                        <div className="flex-1">
+                          <p className="text-xs text-orange-600 font-medium">Active Incident</p>
+                          <p className="text-sm font-semibold text-orange-800 line-clamp-1">
+                            {atm.activeIncident.title}
+                          </p>
+                          <p className="text-xs text-orange-600">
+                            {atm.activeIncident.severity} • {atm.activeIncident.status}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Metrics */}
                     <div className="grid grid-cols-2 gap-2 pt-3 border-t border-gray-200">
                       <div>
@@ -691,7 +719,64 @@ export default function ATMStatusPage() {
                         </div>
                       </div>
                     )}
+                  </>
+                )}
 
+                {/* Active Incident */}
+                {selectedATM.hasActiveIncident && selectedATM.activeIncident && (
+                  <div className="p-4 bg-orange-50 border-2 border-orange-200 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <AlertTriangle className="h-5 w-5 text-orange-600" />
+                      <h4 className="font-semibold text-orange-700">Active Network Incident</h4>
+                    </div>
+                    <div className="space-y-3 mt-3">
+                      <div>
+                        <p className="text-xs text-orange-600 font-medium">Incident Title</p>
+                        <p className="text-sm font-semibold text-orange-900">
+                          {selectedATM.activeIncident.title}
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-xs text-orange-600 font-medium">Severity</p>
+                          <Badge className={`mt-1 ${
+                            selectedATM.activeIncident.severity === 'CRITICAL' ? 'bg-red-100 text-red-700 border-red-200' :
+                            selectedATM.activeIncident.severity === 'HIGH' ? 'bg-orange-100 text-orange-700 border-orange-200' :
+                            selectedATM.activeIncident.severity === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
+                            'bg-blue-100 text-blue-700 border-blue-200'
+                          }`}>
+                            {selectedATM.activeIncident.severity}
+                          </Badge>
+                        </div>
+                        <div>
+                          <p className="text-xs text-orange-600 font-medium">Status</p>
+                          <Badge className="mt-1 bg-orange-100 text-orange-700 border-orange-200">
+                            {selectedATM.activeIncident.status}
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-xs text-orange-600 font-medium">Created</p>
+                          <p className="text-sm font-semibold text-orange-800">
+                            {formatTime(selectedATM.activeIncident.createdAt)}
+                          </p>
+                        </div>
+                        {selectedATM.activeIncident.acknowledgedAt && (
+                          <div>
+                            <p className="text-xs text-orange-600 font-medium">Acknowledged</p>
+                            <p className="text-sm font-semibold text-orange-800">
+                              {formatTime(selectedATM.activeIncident.acknowledgedAt)}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {selectedATM.networkStatus && (
+                  <>
                     {/* Error Message */}
                     {selectedATM.networkStatus.errorMessage && (
                       <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
