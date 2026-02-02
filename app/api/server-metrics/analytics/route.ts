@@ -21,24 +21,53 @@ export async function GET(request: NextRequest) {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
-    // Get latest collection
-    const latestCollection = await prisma.metricCollection.findFirst({
+    // Get latest collection ID only first
+    const latestCollectionMeta = await prisma.metricCollection.findFirst({
       orderBy: { createdAt: 'desc' },
+      select: { id: true, fetchedAt: true, reportTimestamp: true, totalIps: true },
+    });
+
+    if (!latestCollectionMeta) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          summary: {
+            totalServers: 0,
+            avgCpu: null,
+            avgMemory: null,
+            healthyCount: 0,
+            warningCount: 0,
+            criticalCount: 0,
+          },
+          topCpuServers: [],
+          topMemoryServers: [],
+          storageAlerts: [],
+          historicalTrends: [],
+          latestCollection: null,
+        },
+      });
+    }
+
+    // Get snapshots for latest collection with limit
+    const latestSnapshots = await prisma.serverMetricSnapshot.findMany({
+      where: { collectionId: latestCollectionMeta.id },
+      take: 200, // Limit to prevent memory issues
       include: {
-        snapshots: {
-          include: {
-            server: {
-              select: {
-                id: true,
-                ipAddress: true,
-                serverName: true,
-                category: true,
-              },
-            },
+        server: {
+          select: {
+            id: true,
+            ipAddress: true,
+            serverName: true,
+            category: true,
           },
         },
       },
     });
+
+    const latestCollection = {
+      ...latestCollectionMeta,
+      snapshots: latestSnapshots,
+    };
 
     if (!latestCollection) {
       return NextResponse.json({
@@ -62,7 +91,6 @@ export async function GET(request: NextRequest) {
     }
 
     // Calculate summary statistics from latest collection
-    const latestSnapshots = latestCollection.snapshots;
     let totalCpu = 0;
     let totalMemory = 0;
     let cpuCount = 0;
@@ -161,44 +189,38 @@ export async function GET(request: NextRequest) {
     // Sort storage alerts by usage (highest first)
     storageAlerts.sort((a, b) => b.usagePercent - a.usagePercent);
 
-    // Get historical trends (average CPU and memory per day)
+    // Get historical trends - limit to recent collections only
     const collections = await prisma.metricCollection.findMany({
       where: { createdAt: { gte: startDate } },
       orderBy: { createdAt: 'asc' },
-      include: {
-        snapshots: {
-          select: {
-            cpuPercent: true,
-            memoryPercent: true,
-          },
-        },
+      take: 50, // Limit collections to prevent memory issues
+      select: {
+        id: true,
+        reportTimestamp: true,
+        totalIps: true,
       },
     });
 
-    const historicalTrends = collections.map((collection) => {
-      let collectionTotalCpu = 0;
-      let collectionTotalMemory = 0;
-      let collectionCpuCount = 0;
-      let collectionMemoryCount = 0;
+    // For each collection, calculate averages using aggregation
+    const historicalTrends = await Promise.all(
+      collections.map(async (collection) => {
+        const aggregation = await prisma.serverMetricSnapshot.aggregate({
+          where: { collectionId: collection.id },
+          _avg: {
+            cpuPercent: true,
+            memoryPercent: true,
+          },
+          _count: true,
+        });
 
-      for (const snapshot of collection.snapshots) {
-        if (snapshot.cpuPercent !== null) {
-          collectionTotalCpu += snapshot.cpuPercent;
-          collectionCpuCount++;
-        }
-        if (snapshot.memoryPercent !== null) {
-          collectionTotalMemory += snapshot.memoryPercent;
-          collectionMemoryCount++;
-        }
-      }
-
-      return {
-        date: collection.reportTimestamp,
-        avgCpu: collectionCpuCount > 0 ? collectionTotalCpu / collectionCpuCount : null,
-        avgMemory: collectionMemoryCount > 0 ? collectionTotalMemory / collectionMemoryCount : null,
-        serverCount: collection.snapshots.length,
-      };
-    });
+        return {
+          date: collection.reportTimestamp,
+          avgCpu: aggregation._avg.cpuPercent,
+          avgMemory: aggregation._avg.memoryPercent,
+          serverCount: aggregation._count,
+        };
+      })
+    );
 
     return NextResponse.json({
       success: true,
