@@ -40,6 +40,16 @@ END $$;
 -- Add missing createdAt column to knowledge_visible_branches
 ALTER TABLE knowledge_visible_branches ADD COLUMN IF NOT EXISTS "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
 
+-- Convert visibility column from text to KnowledgeVisibility enum
+ALTER TABLE knowledge_articles
+ALTER COLUMN visibility TYPE "KnowledgeVisibility"
+USING visibility::"KnowledgeVisibility";
+
+-- Convert status column from text to KnowledgeStatus enum
+ALTER TABLE knowledge_articles
+ALTER COLUMN status TYPE "KnowledgeStatus"
+USING status::"KnowledgeStatus";
+
 -- =============================================
 -- Verify enums created
 -- =============================================
