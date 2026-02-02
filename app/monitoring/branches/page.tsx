@@ -89,6 +89,8 @@ export default function NetworkMapPage() {
   const [showATMs, setShowATMs] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
+  const [listTypeFilter, setListTypeFilter] = useState<'ALL' | 'BRANCH' | 'ATM'>('ALL');
+  const [listStatusFilter, setListStatusFilter] = useState<'ALL' | 'ONLINE' | 'OFFLINE' | 'SLOW' | 'OTHER'>('ALL');
   const mapRef = useRef<any>(null);
   const markersRef = useRef<Map<string, any>>(new Map());
 
@@ -353,18 +355,36 @@ export default function NetworkMapPage() {
     }, 600);
   };
 
-  // Filter entities for the list based on search
+  // Filter entities for the list based on search, type, and status
   const filteredEntities = useMemo(() => {
-    if (!searchQuery.trim()) return entitiesWithCoordinates;
-    const query = searchQuery.toLowerCase();
-    return entitiesWithCoordinates.filter(e =>
-      e.name.toLowerCase().includes(query) ||
-      e.code.toLowerCase().includes(query) ||
-      e.ipAddress?.toLowerCase().includes(query) ||
-      e.city?.toLowerCase().includes(query) ||
-      e.location?.toLowerCase().includes(query)
-    );
-  }, [entitiesWithCoordinates, searchQuery]);
+    return entitiesWithCoordinates.filter(e => {
+      // Type filter
+      if (listTypeFilter !== 'ALL' && e.type !== listTypeFilter) return false;
+
+      // Status filter
+      if (listStatusFilter !== 'ALL') {
+        if (listStatusFilter === 'OTHER') {
+          if (['ONLINE', 'OFFLINE', 'SLOW'].includes(e.status)) return false;
+        } else if (e.status !== listStatusFilter) {
+          return false;
+        }
+      }
+
+      // Search filter
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        return (
+          e.name.toLowerCase().includes(query) ||
+          e.code.toLowerCase().includes(query) ||
+          e.ipAddress?.toLowerCase().includes(query) ||
+          e.city?.toLowerCase().includes(query) ||
+          e.location?.toLowerCase().includes(query)
+        );
+      }
+
+      return true;
+    });
+  }, [entitiesWithCoordinates, searchQuery, listTypeFilter, listStatusFilter]);
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -702,6 +722,83 @@ export default function NetworkMapPage() {
               <CardTitle className="text-sm">Entity List</CardTitle>
               <Badge variant="outline">{filteredEntities.length} items</Badge>
             </div>
+            {/* Filters */}
+            <div className="flex flex-wrap gap-2 mt-2">
+              {/* Type Filter */}
+              <div className="flex gap-1">
+                <Button
+                  variant={listTypeFilter === 'ALL' ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => setListTypeFilter('ALL')}
+                >
+                  All
+                </Button>
+                <Button
+                  variant={listTypeFilter === 'BRANCH' ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => setListTypeFilter('BRANCH')}
+                >
+                  <Building2 className="h-3 w-3 mr-1" />
+                  Branch
+                </Button>
+                <Button
+                  variant={listTypeFilter === 'ATM' ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => setListTypeFilter('ATM')}
+                >
+                  <CreditCard className="h-3 w-3 mr-1" />
+                  ATM
+                </Button>
+              </div>
+              <div className="border-l mx-1"></div>
+              {/* Status Filter */}
+              <div className="flex gap-1">
+                <Button
+                  variant={listStatusFilter === 'ALL' ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => setListStatusFilter('ALL')}
+                >
+                  All Status
+                </Button>
+                <Button
+                  variant={listStatusFilter === 'ONLINE' ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-7 text-xs text-green-600 border-green-200 hover:bg-green-50"
+                  onClick={() => setListStatusFilter('ONLINE')}
+                >
+                  Online
+                </Button>
+                <Button
+                  variant={listStatusFilter === 'OFFLINE' ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-7 text-xs text-red-600 border-red-200 hover:bg-red-50"
+                  onClick={() => setListStatusFilter('OFFLINE')}
+                >
+                  Offline
+                </Button>
+                <Button
+                  variant={listStatusFilter === 'SLOW' ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-7 text-xs text-yellow-600 border-yellow-200 hover:bg-yellow-50"
+                  onClick={() => setListStatusFilter('SLOW')}
+                >
+                  Slow
+                </Button>
+                <Button
+                  variant={listStatusFilter === 'OTHER' ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => setListStatusFilter('OTHER')}
+                >
+                  Other
+                </Button>
+              </div>
+            </div>
+            {/* Search */}
             <div className="relative mt-2">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
