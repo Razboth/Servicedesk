@@ -21,55 +21,38 @@ export async function GET(request: NextRequest) {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
-    // Get latest collection ID only first
+    // Get latest collection for timestamp info
     const latestCollectionMeta = await prisma.metricCollection.findFirst({
       orderBy: { createdAt: 'desc' },
       select: { id: true, fetchedAt: true, reportTimestamp: true, totalIps: true },
     });
 
-    if (!latestCollectionMeta) {
-      return NextResponse.json({
-        success: true,
-        data: {
-          summary: {
-            totalServers: 0,
-            avgCpu: null,
-            avgMemory: null,
-            healthyCount: 0,
-            warningCount: 0,
-            criticalCount: 0,
-          },
-          topCpuServers: [],
-          topMemoryServers: [],
-          storageAlerts: [],
-          historicalTrends: [],
-          latestCollection: null,
-        },
-      });
-    }
-
-    // Get snapshots for latest collection with limit
-    const latestSnapshots = await prisma.serverMetricSnapshot.findMany({
-      where: { collectionId: latestCollectionMeta.id },
+    // Get all active servers with their most recent metric
+    const serversWithMetrics = await prisma.monitoredServer.findMany({
+      where: { isActive: true },
       take: 200, // Limit to prevent memory issues
       include: {
-        server: {
-          select: {
-            id: true,
-            ipAddress: true,
-            serverName: true,
-            category: true,
-          },
+        metricSnapshots: {
+          take: 1,
+          orderBy: { collectedAt: 'desc' },
         },
       },
     });
 
-    const latestCollection = {
-      ...latestCollectionMeta,
-      snapshots: latestSnapshots,
-    };
+    // Transform to snapshot format for compatibility
+    const latestSnapshots = serversWithMetrics
+      .filter(server => server.metricSnapshots.length > 0)
+      .map(server => ({
+        ...server.metricSnapshots[0],
+        server: {
+          id: server.id,
+          ipAddress: server.ipAddress,
+          serverName: server.serverName,
+          category: server.category,
+        },
+      }));
 
-    if (!latestCollection) {
+    if (latestSnapshots.length === 0) {
       return NextResponse.json({
         success: true,
         data: {
@@ -85,12 +68,17 @@ export async function GET(request: NextRequest) {
           topMemoryServers: [],
           storageAlerts: [],
           historicalTrends: [],
-          latestCollection: null,
+          latestCollection: latestCollectionMeta ? {
+            id: latestCollectionMeta.id,
+            fetchedAt: latestCollectionMeta.fetchedAt,
+            reportTimestamp: latestCollectionMeta.reportTimestamp,
+            totalIps: latestCollectionMeta.totalIps,
+          } : null,
         },
       });
     }
 
-    // Calculate summary statistics from latest collection
+    // Calculate summary statistics from latest snapshots
     let totalCpu = 0;
     let totalMemory = 0;
     let cpuCount = 0;
@@ -237,12 +225,12 @@ export async function GET(request: NextRequest) {
         topMemoryServers,
         storageAlerts: storageAlerts.slice(0, 20), // Limit to 20 alerts
         historicalTrends,
-        latestCollection: {
-          id: latestCollection.id,
-          fetchedAt: latestCollection.fetchedAt,
-          reportTimestamp: latestCollection.reportTimestamp,
-          totalIps: latestCollection.totalIps,
-        },
+        latestCollection: latestCollectionMeta ? {
+          id: latestCollectionMeta.id,
+          fetchedAt: latestCollectionMeta.fetchedAt,
+          reportTimestamp: latestCollectionMeta.reportTimestamp,
+          totalIps: latestCollectionMeta.totalIps,
+        } : null,
         periodDays: days,
       },
     });

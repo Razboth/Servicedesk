@@ -61,23 +61,19 @@ export async function GET(request: NextRequest) {
     // Get total count first (without metrics for speed)
     const totalCount = await prisma.monitoredServer.count({ where });
 
-    // Get latest collection ID
+    // Get latest collection for timestamp info
     const latestCollection = await prisma.metricCollection.findFirst({
       orderBy: { createdAt: 'desc' },
       select: { id: true, fetchedAt: true, reportTimestamp: true },
     });
 
-    // Get paginated servers with their latest metrics
+    // Get paginated servers with their most recent metric (regardless of collection)
     const servers = await prisma.monitoredServer.findMany({
       where,
       skip: offset,
       take: limit,
       include: {
-        metricSnapshots: latestCollection ? {
-          where: { collectionId: latestCollection.id },
-          take: 1,
-          orderBy: { collectedAt: 'desc' },
-        } : {
+        metricSnapshots: {
           take: 1,
           orderBy: { collectedAt: 'desc' },
         },
