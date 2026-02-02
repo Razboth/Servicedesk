@@ -64,21 +64,33 @@ export async function GET(
       );
     }
 
-    // Verify ownership (unless admin)
+    // Check if user is owner or admin
     const isAdmin = ['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'MANAGER_IT'].includes(
       session.user.role
     );
-    if (!isAdmin && shiftAssignment.staffProfile.userId !== session.user.id) {
+    const isOwner = shiftAssignment.staffProfile.userId === session.user.id;
+    const isTechnician = session.user.role === 'TECHNICIAN';
+
+    // Allow admins, owners, and technicians (read-only for non-owners)
+    const canView = isAdmin || isOwner || isTechnician;
+
+    if (!canView) {
       return NextResponse.json(
-        { error: 'You can only access your own shift reports' },
+        { error: 'You do not have permission to view this shift report' },
         { status: 403 }
       );
     }
 
     let report = shiftAssignment.shiftReport;
 
-    // If no report exists, create one
+    // If no report exists, only owner can create one
     if (!report) {
+      if (!isOwner && !isAdmin) {
+        return NextResponse.json(
+          { error: 'Shift report not found', message: 'Laporan shift belum dibuat oleh pemilik' },
+          { status: 404 }
+        );
+      }
       // Get latest server metrics
       const latestMetrics = await prisma.serverMetrics.findFirst({
         orderBy: { collectedAt: 'desc' },
@@ -335,6 +347,10 @@ export async function GET(
           technicianName: shiftAssignment.staffProfile.user.name,
           branchName: shiftAssignment.staffProfile.branch?.name || '-',
         },
+        // Access control flags
+        isOwner,
+        isReadOnly: !isOwner && !isAdmin,
+        canEdit: isOwner || isAdmin,
       },
     });
   } catch (error) {
