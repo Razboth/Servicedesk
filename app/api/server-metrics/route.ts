@@ -37,9 +37,8 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category');
-    const status = searchParams.get('status'); // healthy, warning, critical
     const search = searchParams.get('search');
-    const limit = parseInt(searchParams.get('limit') || '100');
+    const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 100);
     const offset = parseInt(searchParams.get('offset') || '0');
 
     // Build where clause
@@ -59,15 +58,20 @@ export async function GET(request: NextRequest) {
       ];
     }
 
+    // Get total count first (without metrics for speed)
+    const totalCount = await prisma.monitoredServer.count({ where });
+
     // Get latest collection ID
     const latestCollection = await prisma.metricCollection.findFirst({
       orderBy: { createdAt: 'desc' },
       select: { id: true, fetchedAt: true, reportTimestamp: true },
     });
 
-    // Get all servers with their latest metrics
+    // Get paginated servers with their latest metrics
     const servers = await prisma.monitoredServer.findMany({
       where,
+      skip: offset,
+      take: limit,
       include: {
         metricSnapshots: latestCollection ? {
           where: { collectionId: latestCollection.id },
@@ -81,8 +85,8 @@ export async function GET(request: NextRequest) {
       orderBy: { ipAddress: 'asc' },
     });
 
-    // Transform and filter by status if needed
-    let result = servers.map((server) => {
+    // Transform results
+    const result = servers.map((server) => {
       const latestMetric = server.metricSnapshots[0] || null;
       const serverStatus = latestMetric
         ? getServerStatus(latestMetric.cpuPercent, latestMetric.memoryPercent, latestMetric.storage)
@@ -120,30 +124,12 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    // Filter by status if specified
-    if (status) {
-      result = result.filter((s) => s.status === status);
-    }
-
-    // Apply pagination
-    const total = result.length;
-    result = result.slice(offset, offset + limit);
-
-    // Calculate summary stats
+    // Calculate summary stats from current page only (for performance)
     const stats = {
-      total: servers.length,
-      healthy: servers.filter((s) => {
-        const m = s.metricSnapshots[0];
-        return m ? getServerStatus(m.cpuPercent, m.memoryPercent, m.storage) === 'healthy' : true;
-      }).length,
-      warning: servers.filter((s) => {
-        const m = s.metricSnapshots[0];
-        return m ? getServerStatus(m.cpuPercent, m.memoryPercent, m.storage) === 'warning' : false;
-      }).length,
-      critical: servers.filter((s) => {
-        const m = s.metricSnapshots[0];
-        return m ? getServerStatus(m.cpuPercent, m.memoryPercent, m.storage) === 'critical' : false;
-      }).length,
+      total: totalCount,
+      healthy: result.filter((s) => s.status === 'healthy').length,
+      warning: result.filter((s) => s.status === 'warning').length,
+      critical: result.filter((s) => s.status === 'critical').length,
     };
 
     return NextResponse.json({
@@ -151,7 +137,7 @@ export async function GET(request: NextRequest) {
       data: {
         servers: result,
         stats,
-        total,
+        total: totalCount,
         limit,
         offset,
         latestCollection: latestCollection ? {
