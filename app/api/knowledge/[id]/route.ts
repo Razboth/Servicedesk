@@ -173,12 +173,31 @@ export async function GET(
       }
     }
 
-    // Increment view count (but not for the author)
+    // Increment view count and log access (but not for the author)
     if (article.authorId !== session.user.id) {
-      await prisma.knowledgeArticle.update({
-        where: { id: article.id },
-        data: { views: { increment: 1 } }
-      });
+      // Get IP and User Agent from headers
+      const forwardedFor = request.headers.get('x-forwarded-for');
+      const ipAddress = forwardedFor ? forwardedFor.split(',')[0].trim() : request.headers.get('x-real-ip') || null;
+      const userAgent = request.headers.get('user-agent') || null;
+      const referrer = request.headers.get('referer') || null;
+
+      // Increment view count and log access in parallel
+      await Promise.all([
+        prisma.knowledgeArticle.update({
+          where: { id: article.id },
+          data: { views: { increment: 1 } }
+        }),
+        prisma.knowledgeAccessLog.create({
+          data: {
+            articleId: article.id,
+            userId: session.user.id,
+            accessType: 'VIEW',
+            ipAddress,
+            userAgent,
+            referrer,
+          }
+        })
+      ]);
     }
 
     return NextResponse.json({

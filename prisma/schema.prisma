@@ -94,6 +94,13 @@ model User {
   knowledgeCommentAttachments KnowledgeCommentAttachment[]
   knowledgeServiceLinks   KnowledgeServiceLink[]  @relation("KnowledgeLinkUser")
 
+  // KMS Enhanced features
+  knowledgeAccessLogs       KnowledgeAccessLog[]
+  ownedArticles             KnowledgeArticle[]            @relation("ArticleOwner")
+  reviewedArticles          KnowledgeArticle[]            @relation("ArticleReviewer")
+  approvedVersions          KnowledgeVersion[]            @relation("VersionApprover")
+  knowledgePermissionTemplates KnowledgePermissionTemplate[]
+
   // Announcements
   createdAnnouncements   Announcement[]         @relation("AnnouncementCreator")
   updatedAnnouncements   Announcement[]         @relation("AnnouncementUpdater")
@@ -819,13 +826,27 @@ model KnowledgeArticle {
   versions       KnowledgeVersion[]
   relatedTickets TicketKnowledge[]
 
+  // Content Governance
+  ownerId               String?
+  reviewFrequencyDays   Int?
+  nextReviewDate        DateTime?
+  lastReviewedAt        DateTime?
+  lastReviewedBy        String?
+  isStale               Boolean               @default(false)
+
   // Relations
   collaborators    KnowledgeCollaborator[]
   serviceLinks     KnowledgeServiceLink[]
   activities       KnowledgeActivity[]
   visibleBranches  KnowledgeVisibleBranch[]
+  accessLogs       KnowledgeAccessLog[]
+  owner            User?                     @relation("ArticleOwner", fields: [ownerId], references: [id])
+  lastReviewer     User?                     @relation("ArticleReviewer", fields: [lastReviewedBy], references: [id])
 
   @@index([status, isActive])
+  @@index([isStale])
+  @@index([nextReviewDate])
+  @@index([ownerId])
   @@index([categoryId, subcategoryId, itemId])
   @@index([publishedAt])
   @@index([views])
@@ -1120,11 +1141,19 @@ model KnowledgeVersion {
   changeNotes String?
   authorId    String
   createdAt   DateTime         @default(now())
+
+  // Version approval
+  isStable    Boolean          @default(false)
+  approvedBy  String?
+  approvedAt  DateTime?
+
   article     KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
   author      User             @relation(fields: [authorId], references: [id])
+  approver    User?            @relation("VersionApprover", fields: [approvedBy], references: [id])
 
   @@unique([articleId, version])
   @@index([articleId, createdAt])
+  @@index([articleId, isStable])
   @@map("knowledge_versions")
 }
 
@@ -2312,12 +2341,17 @@ model KnowledgeCollaborator {
   invitedAt   DateTime         @default(now())
   acceptedAt  DateTime?
 
+  // Time-limited access
+  expiresAt   DateTime?
+  permissions String[]         // Granular permissions: ['view', 'edit', 'comment', 'manage']
+
   article     KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
   user        User             @relation("CollaboratorUser", fields: [userId], references: [id])
   inviter     User             @relation("InvitedByUser", fields: [invitedBy], references: [id])
 
   @@unique([articleId, userId])
   @@index([userId])
+  @@index([expiresAt])
   @@map("knowledge_collaborators")
 }
 
@@ -2364,6 +2398,49 @@ model KnowledgeActivity {
   @@index([articleId, createdAt])
   @@index([userId])
   @@map("knowledge_activities")
+}
+
+// Access Logs for Knowledge Articles
+model KnowledgeAccessLog {
+  id          String       @id @default(cuid())
+  articleId   String
+  userId      String
+  accessedAt  DateTime     @default(now())
+  accessType  AccessType   @default(VIEW)
+  ipAddress   String?
+  userAgent   String?
+  duration    Int?         // Seconds spent viewing
+  referrer    String?      // Where user came from
+  searchQuery String?      // If accessed via search
+
+  article     KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  user        User             @relation(fields: [userId], references: [id])
+
+  @@index([articleId, accessedAt])
+  @@index([userId, accessedAt])
+  @@map("knowledge_access_logs")
+}
+
+enum AccessType {
+  VIEW
+  DOWNLOAD
+  PRINT
+  SHARE
+}
+
+// Permission Templates for Knowledge Articles
+model KnowledgePermissionTemplate {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  description  String?
+  permissions  Json     // { visibility, roles, permissions, durationDays }
+  isDefault    Boolean  @default(false)
+  createdBy    String
+  createdAt    DateTime @default(now())
+
+  creator      User     @relation(fields: [createdBy], references: [id])
+
+  @@map("knowledge_permission_templates")
 }
 
 // Comment Attachments

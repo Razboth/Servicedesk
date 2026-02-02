@@ -38,6 +38,8 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { AttachmentList } from '@/components/knowledge/attachment-list'
+import { AccessStatsCard } from '@/components/knowledge/access-stats-card'
+import { AccessLogTable } from '@/components/knowledge/access-log-table'
 
 type KnowledgeVisibility = 'EVERYONE' | 'BY_ROLE' | 'BY_BRANCH' | 'PRIVATE';
 
@@ -565,6 +567,23 @@ export default function KnowledgeArticleView({ articleId }: Props) {
                 ))}
               </CardContent>
             </Card>
+          )}
+
+          {/* Access Logs Section - Only visible to author and admins */}
+          {canEdit && (
+            <div className="space-y-6">
+              <Separator />
+              <div>
+                <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                  <Eye className="h-5 w-5" />
+                  Statistik & Log Akses
+                </h2>
+                <div className="space-y-6">
+                  <AccessStatsCard articleId={articleId} />
+                  <AccessLogTable articleId={articleId} />
+                </div>
+              </div>
+            </div>
           )}
         </div>
 
