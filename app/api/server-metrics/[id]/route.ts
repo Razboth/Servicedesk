@@ -37,7 +37,7 @@ export async function GET(
         serverId: id,
         collectedAt: { gte: startDate },
       },
-      orderBy: { collectedAt: 'desc' },
+      orderBy: { collectedAt: 'asc' },
       include: {
         collection: {
           select: {
