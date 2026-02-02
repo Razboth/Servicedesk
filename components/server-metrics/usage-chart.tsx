@@ -28,7 +28,14 @@ interface UsageChartProps {
 
 export function UsageChart({ data, title = 'Tren Penggunaan', description }: UsageChartProps) {
   const chartData = useMemo(() => {
-    return data.map((item) => ({
+    // Sort by date ascending (oldest first) before mapping
+    const sortedData = [...data].sort((a, b) => {
+      const dateA = new Date(a.date).getTime();
+      const dateB = new Date(b.date).getTime();
+      return dateA - dateB;
+    });
+
+    return sortedData.map((item) => ({
       date: new Date(item.date).toLocaleDateString('id-ID', {
         day: 'numeric',
         month: 'short',
@@ -40,6 +47,7 @@ export function UsageChart({ data, title = 'Tren Penggunaan', description }: Usa
         hour: '2-digit',
         minute: '2-digit',
       }),
+      timestamp: new Date(item.date).getTime(), // Keep for sorting reference
       cpu: item.avgCpu !== null ? parseFloat(item.avgCpu.toFixed(1)) : null,
       memory: item.avgMemory !== null ? parseFloat(item.avgMemory.toFixed(1)) : null,
       serverCount: item.serverCount,

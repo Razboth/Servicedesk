@@ -226,7 +226,8 @@ export default function ServerDetailPage() {
   }
 
   const { server, metrics } = data;
-  const latestMetric = metrics.history[0] || null;
+  // History is sorted ascending (oldest first), so latest is the last item
+  const latestMetric = metrics.history.length > 0 ? metrics.history[metrics.history.length - 1] : null;
 
   return (
     <div className="container mx-auto py-6 space-y-6">
