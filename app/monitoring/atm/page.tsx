@@ -266,9 +266,9 @@ export default function ATMMonitoringPage() {
       import('leaflet').then((L) => {
         delete (L.Icon.Default.prototype as any)._getIconUrl;
         L.Icon.Default.mergeOptions({
-          iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-          iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+          iconRetinaUrl: '/leaflet/marker-icon-2x.png',
+          iconUrl: '/leaflet/marker-icon.png',
+          shadowUrl: '/leaflet/marker-shadow.png',
         });
         setLeafletIcon(L);
       });
@@ -713,7 +713,7 @@ export default function ATMMonitoringPage() {
             <div className="relative" style={{ height: '500px' }}>
               <link
                 rel="stylesheet"
-                href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"
+                href="/leaflet/leaflet.css"
                 integrity="sha512-Zcn6bjR/8RZbLEpLIeOwNtzREBAJnUKESxces60Mpoj+2okopSAcSUIUOseddDm0cxnGQzxIR7vJgsLZbdLE3w=="
                 crossOrigin=""
               />
@@ -743,7 +743,7 @@ export default function ATMMonitoringPage() {
               >
                 <TileLayer
                   attribution=""
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  url="/api/tiles/{z}/{x}/{y}.png"
                 />
                 <MarkerClusterGroup
                   chunkedLoading
@@ -1313,7 +1313,7 @@ export default function ATMMonitoringPage() {
                       <div style={{ height: '400px' }} className="rounded-lg overflow-hidden border">
                         <link
                           rel="stylesheet"
-                          href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"
+                          href="/leaflet/leaflet.css"
                           integrity="sha512-Zcn6bjR/8RZbLEpLIeOwNtzREBAJnUKESxces60Mpoj+2okopSAcSUIUOseddDm0cxnGQzxIR7vJgsLZbdLE3w=="
                           crossOrigin=""
                         />
@@ -1325,7 +1325,7 @@ export default function ATMMonitoringPage() {
                           >
                             <TileLayer
                               attribution=""
-                              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                              url="/api/tiles/{z}/{x}/{y}.png"
                             />
                             <Marker position={[selectedATM.latitude, selectedATM.longitude]}>
                               <Popup>

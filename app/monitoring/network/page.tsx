@@ -112,9 +112,9 @@ export default function NetworkMonitoringPage() {
       import('leaflet').then((L) => {
         delete (L.Icon.Default.prototype as any)._getIconUrl;
         L.Icon.Default.mergeOptions({
-          iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-          iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+          iconRetinaUrl: '/leaflet/marker-icon-2x.png',
+          iconUrl: '/leaflet/marker-icon.png',
+          shadowUrl: '/leaflet/marker-shadow.png',
         });
         setLeafletIcon(L);
       });
@@ -502,7 +502,7 @@ export default function NetworkMonitoringPage() {
             </div>
           ) : (
             <div className="relative" style={{ height: '600px' }}>
-              <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+              <link rel="stylesheet" href="/leaflet/leaflet.css" />
 
               {/* Data Source Info Overlay */}
               <div className="absolute top-4 left-4 z-[1000] bg-background/95 backdrop-blur px-4 py-2 rounded-lg shadow-md border space-y-1">
@@ -527,7 +527,7 @@ export default function NetworkMonitoringPage() {
               </div>
 
               <MapContainer center={mapCenter} zoom={8} style={{ height: '100%', width: '100%', borderRadius: '0.5rem' }} ref={mapRef}>
-                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                <TileLayer url="/api/tiles/{z}/{x}/{y}.png" />
                 <MarkerClusterGroup chunkedLoading iconCreateFunction={createClusterCustomIcon} maxClusterRadius={60} spiderfyOnMaxZoom showCoverageOnHover={false}>
                   {entitiesWithCoordinates.map((entity) => (
                     <Marker
