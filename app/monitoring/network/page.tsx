@@ -62,25 +62,29 @@ import {
   AlertCircle,
 } from 'lucide-react';
 
-// Dynamically import map components to avoid SSR issues
-const MapContainer = dynamic(
-  () => import('react-leaflet').then((mod) => mod.MapContainer),
-  { ssr: false }
+// Dynamically import map component to avoid SSR issues
+const NetworkMap = dynamic(
+  () => import('@/components/monitoring/network-map'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[600px] flex items-center justify-center bg-muted/50 rounded-lg">
+        <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
 );
 
-const TileLayer = dynamic(
-  () => import('react-leaflet').then((mod) => mod.TileLayer),
-  { ssr: false }
-);
-
-const Marker = dynamic(
-  () => import('react-leaflet').then((mod) => mod.Marker),
-  { ssr: false }
-);
-
-const Popup = dynamic(
-  () => import('react-leaflet').then((mod) => mod.Popup),
-  { ssr: false }
+const DetailMap = dynamic(
+  () => import('@/components/monitoring/network-map'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[400px] flex items-center justify-center bg-muted/50 rounded-lg">
+        <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
 );
 
 interface CurrentAlarm {
@@ -204,26 +208,8 @@ export default function NetworkMonitoringPage() {
   const [selectedEndpoint, setSelectedEndpoint] = useState<NetworkEndpoint | null>(null);
   const [deviceHistory, setDeviceHistory] = useState<HistoryRecord[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
-  const [leafletReady, setLeafletReady] = useState(false);
-  const [customIcon, setCustomIcon] = useState<any>(null);
 
   const isAdminOrManager = ['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'MANAGER_IT'].includes(session?.user?.role || '');
-
-  // Initialize Leaflet
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      import('leaflet').then((L) => {
-        delete (L.Icon.Default.prototype as any)._getIconUrl;
-        L.Icon.Default.mergeOptions({
-          iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-          iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-        });
-        setCustomIcon(L);
-        setLeafletReady(true);
-      });
-    }
-  }, []);
 
   const fetchData = useCallback(async (silent = false) => {
     try {
@@ -679,66 +665,12 @@ export default function NetworkMonitoringPage() {
           {/* Map View */}
           {viewMode === 'map' && (
             <Card className="mb-6">
-              <CardContent className="p-0">
-                <div style={{ height: '600px' }} className="rounded-lg overflow-hidden">
-                  <link
-                    rel="stylesheet"
-                    href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"
-                  />
-                  {leafletReady && (
-                    <MapContainer
-                      center={[mapCenter.lat, mapCenter.lng]}
-                      zoom={7}
-                      style={{ height: '100%', width: '100%' }}
-                    >
-                      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                      {endpointsWithCoords.map((ep) => (
-                        <Marker
-                          key={ep.id}
-                          position={[ep.latitude!, ep.longitude!]}
-                          eventHandlers={{
-                            click: () => handleEndpointClick(ep),
-                          }}
-                        >
-                          <Popup>
-                            <div className="p-2 min-w-[200px]">
-                              <div className="flex items-center gap-2 mb-2">
-                                {ep.type === 'BRANCH' ? (
-                                  <Building2 className="h-4 w-4 text-primary" />
-                                ) : (
-                                  <CreditCard className="h-4 w-4 text-purple-600" />
-                                )}
-                                <span className="font-semibold">{ep.name}</span>
-                              </div>
-                              <div className="text-sm space-y-1">
-                                <p className="text-muted-foreground">{ep.code}</p>
-                                {ep.location && <p className="text-muted-foreground">{ep.location}</p>}
-                                <div className="flex items-center gap-2 mt-2">
-                                  <Badge className={getConnectionStatusColor(ep.status)}>
-                                    {ep.status}
-                                  </Badge>
-                                  {ep.alarmStatus === 'ALARM' && (
-                                    <Badge className="bg-red-100 text-red-700">ALARM</Badge>
-                                  )}
-                                </div>
-                                {ep.currentAlarms && ep.currentAlarms.length > 0 && (
-                                  <div className="mt-2 pt-2 border-t">
-                                    <p className="text-xs font-medium">Active Alarms:</p>
-                                    {ep.currentAlarms.slice(0, 2).map((alarm) => (
-                                      <p key={alarm.id} className="text-xs text-red-600">
-                                        {alarm.alarmType}
-                                      </p>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </Popup>
-                        </Marker>
-                      ))}
-                    </MapContainer>
-                  )}
-                </div>
+              <CardContent className="p-0 overflow-hidden rounded-lg">
+                <NetworkMap
+                  endpoints={endpointsWithCoords}
+                  center={mapCenter}
+                  onEndpointClick={handleEndpointClick}
+                />
               </CardContent>
             </Card>
           )}
@@ -1145,28 +1077,14 @@ export default function NetworkMonitoringPage() {
                           Coordinates: {selectedEndpoint.latitude.toFixed(6)}, {selectedEndpoint.longitude.toFixed(6)}
                         </span>
                       </div>
-                      <div style={{ height: '400px' }} className="rounded-lg overflow-hidden border">
-                        <link
-                          rel="stylesheet"
-                          href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"
+                      <div className="rounded-lg overflow-hidden border">
+                        <DetailMap
+                          endpoints={[selectedEndpoint]}
+                          center={{ lat: selectedEndpoint.latitude, lng: selectedEndpoint.longitude }}
+                          onEndpointClick={() => {}}
+                          height="400px"
+                          zoom={16}
                         />
-                        {leafletReady && (
-                          <MapContainer
-                            center={[selectedEndpoint.latitude, selectedEndpoint.longitude]}
-                            zoom={16}
-                            style={{ height: '100%', width: '100%' }}
-                          >
-                            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                            <Marker position={[selectedEndpoint.latitude, selectedEndpoint.longitude]}>
-                              <Popup>
-                                <div className="p-2">
-                                  <h3 className="font-semibold">{selectedEndpoint.name}</h3>
-                                  <p className="text-sm text-muted-foreground">{selectedEndpoint.location}</p>
-                                </div>
-                              </Popup>
-                            </Marker>
-                          </MapContainer>
-                        )}
                       </div>
                     </div>
                   ) : (
