@@ -12,7 +12,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { BranchSelect } from '@/components/ui/branch-select';
 import {
   Dialog,
   DialogContent,
@@ -20,172 +19,145 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import {
   AlertTriangle,
   RefreshCw,
-  WifiOff,
-  Clock,
   Search,
-  Building2,
   CheckCircle2,
   XCircle,
-  AlertCircle,
-  Wifi,
-  Activity,
+  Clock,
   MapPin,
-  Network,
-  TrendingDown,
-  Calendar,
+  History,
   ChevronLeft,
   ChevronRight,
+  Wifi,
+  WifiOff,
+  Printer,
+  CreditCard,
+  HardDrive,
+  DoorOpen,
+  AlertCircle,
+  Activity,
 } from 'lucide-react';
 
-interface NetworkStatus {
-  networkStatus: string;
-  responseTimeMs: number | null;
-  packetLoss: number | null;
-  errorMessage: string | null;
-  checkedAt: string;
-  statusChangedAt: string | null;
-  downSince: string | null;
-}
-
-interface ActiveIncident {
+interface CurrentAlarm {
   id: string;
-  title: string;
-  status: string;
-  severity: string;
+  deviceId: string;
+  alarmType: string;
+  location: string;
+  occurredAt: string;
+  timeAgo: string | null;
   createdAt: string;
-  acknowledgedAt: string | null;
-  resolvedAt: string | null;
 }
 
-interface ATM {
+interface AtmDevice {
   id: string;
-  code: string;
-  name: string;
-  location?: string;
-  ipAddress?: string;
-  isActive: boolean;
-  branch: {
-    id: string;
-    name: string;
-    code: string;
-  };
-  _count: {
-    incidents: number;
-  };
-  networkStatus?: NetworkStatus | null;
-  hasActiveIncident?: boolean;
-  activeIncident?: ActiveIncident | null;
+  deviceId: string;
+  location: string | null;
+  status: 'ONLINE' | 'ALARM';
+  lastSeenAt: string;
+  currentAlarms: CurrentAlarm[];
 }
 
-interface Branch {
+interface AlarmTypeBreakdown {
+  alarmType: string;
+  count: number;
+}
+
+interface Summary {
+  totalDevices: number;
+  alarmingDevices: number;
+  onlineDevices: number;
+  alarmTypeBreakdown: AlarmTypeBreakdown[];
+}
+
+interface LastUpdate {
   id: string;
-  name: string;
-  code: string;
+  timestamp: string;
+  receivedAt: string;
+  alarmCount: number;
+  processedCount: number;
+  devicesAlarming: number;
+  devicesCleared: number;
 }
 
-interface PaginationInfo {
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
+interface HistoryRecord {
+  id: string;
+  deviceId: string;
+  alarmType: string;
+  location: string;
+  occurredAt: string;
+  clearedAt: string | null;
+  duration: number | null;
 }
 
-const statusColors: Record<string, { bg: string; text: string; border: string }> = {
-  ONLINE: { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200' },
-  OFFLINE: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
-  SLOW: { bg: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-200' },
-  TIMEOUT: { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200' },
-  ERROR: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
-  WARNING: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
-  MAINTENANCE: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
-};
-
-const StatusIcon = ({ status }: { status: string }) => {
-  switch (status) {
-    case 'ONLINE':
-      return <Wifi className="h-5 w-5 text-green-600" />;
-    case 'OFFLINE':
-      return <WifiOff className="h-5 w-5 text-red-600" />;
-    case 'SLOW':
-      return <Clock className="h-5 w-5 text-yellow-600" />;
-    case 'TIMEOUT':
-      return <XCircle className="h-5 w-5 text-orange-600" />;
-    case 'ERROR':
-      return <AlertCircle className="h-5 w-5 text-red-600" />;
-    case 'WARNING':
-      return <AlertTriangle className="h-5 w-5 text-amber-600" />;
-    case 'MAINTENANCE':
-      return <Activity className="h-5 w-5 text-blue-600" />;
-    default:
-      return <AlertCircle className="h-5 w-5 text-gray-400" />;
+// Map alarm types to icons
+const getAlarmIcon = (alarmType: string) => {
+  const type = alarmType.toLowerCase();
+  if (type.includes('communication') || type.includes('offline')) {
+    return <WifiOff className="h-4 w-4" />;
   }
+  if (type.includes('printer') || type.includes('receipt')) {
+    return <Printer className="h-4 w-4" />;
+  }
+  if (type.includes('cash') || type.includes('cassette')) {
+    return <HardDrive className="h-4 w-4" />;
+  }
+  if (type.includes('mcrw') || type.includes('card')) {
+    return <CreditCard className="h-4 w-4" />;
+  }
+  if (type.includes('door')) {
+    return <DoorOpen className="h-4 w-4" />;
+  }
+  return <AlertCircle className="h-4 w-4" />;
 };
 
-export default function ATMStatusPage() {
-  const [atms, setATMs] = useState<ATM[]>([]);
-  const [branches, setBranches] = useState<Branch[]>([]);
+// Map alarm types to colors
+const getAlarmColor = (alarmType: string) => {
+  const type = alarmType.toLowerCase();
+  if (type.includes('communication') || type.includes('offline')) {
+    return 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800';
+  }
+  if (type.includes('error')) {
+    return 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800';
+  }
+  if (type.includes('warning') || type.includes('low')) {
+    return 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800';
+  }
+  return 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800';
+};
+
+export default function ATMMonitoringPage() {
+  const [devices, setDevices] = useState<AtmDevice[]>([]);
+  const [summary, setSummary] = useState<Summary | null>(null);
+  const [lastUpdate, setLastUpdate] = useState<LastUpdate | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
-  const [selectedBranch, setSelectedBranch] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [alarmTypeFilter, setAlarmTypeFilter] = useState('all');
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [selectedATM, setSelectedATM] = useState<ATM | null>(null);
+  const [selectedDevice, setSelectedDevice] = useState<AtmDevice | null>(null);
+  const [deviceHistory, setDeviceHistory] = useState<HistoryRecord[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
-  const [pagination, setPagination] = useState<PaginationInfo>({
+  const [pagination, setPagination] = useState({
     page: 1,
     limit: 50,
-    total: 0,
+    totalCount: 0,
     totalPages: 0,
   });
 
-  // Stats
-  const [stats, setStats] = useState({
-    total: 0,
-    offline: 0,
-    slow: 0,
-    timeout: 0,
-    error: 0,
-    warning: 0,
-    maintenance: 0,
-  });
-
-  useEffect(() => {
-    fetchBranches();
-  }, []);
-
-  useEffect(() => {
-    fetchATMs();
-  }, [search, selectedBranch, statusFilter, pagination.page]);
-
-  // Auto-refresh every 30 seconds
-  useEffect(() => {
-    if (!autoRefresh) return;
-
-    const interval = setInterval(() => {
-      fetchATMs(true);
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, [autoRefresh, search, selectedBranch, statusFilter, pagination.page]);
-
-  const fetchBranches = async () => {
-    try {
-      const response = await fetch('/api/admin/branches?limit=100&status=active');
-      if (!response.ok) throw new Error('Failed to fetch branches');
-      const data = await response.json();
-      setBranches(data.branches);
-    } catch (error) {
-      console.error('Error fetching branches:', error);
-    }
-  };
-
-  const fetchATMs = useCallback(async (silent = false) => {
+  const fetchDevices = useCallback(async (silent = false) => {
     try {
       if (!silent) setLoading(true);
       setRefreshing(true);
@@ -193,80 +165,70 @@ export default function ATMStatusPage() {
       const params = new URLSearchParams({
         page: pagination.page.toString(),
         limit: pagination.limit.toString(),
-        problemsOnly: 'true',
-        includeNetworkStatus: 'true',
         ...(search && { search }),
-        ...(selectedBranch !== 'all' && { branchId: selectedBranch }),
+        ...(statusFilter !== 'all' && { status: statusFilter }),
+        ...(alarmTypeFilter !== 'all' && { alarmType: alarmTypeFilter }),
       });
 
-      const response = await fetch(`/api/admin/atms?${params}`);
-      if (!response.ok) throw new Error('Failed to fetch ATMs');
+      const response = await fetch(`/api/monitoring/atm?${params}`);
+      if (!response.ok) throw new Error('Failed to fetch ATM data');
 
       const data = await response.json();
-
-      // Filter by specific status if selected
-      let filteredAtms = data.atms;
-      if (statusFilter !== 'all') {
-        filteredAtms = data.atms.filter((atm: ATM) =>
-          atm.networkStatus?.networkStatus === statusFilter
-        );
-      }
-
-      setATMs(filteredAtms);
-      setPagination(data.pagination);
-      setLastUpdated(new Date());
-
-      // Calculate stats from all problem ATMs
-      const newStats = {
-        total: data.pagination.total,
-        offline: data.atms.filter((a: ATM) => a.networkStatus?.networkStatus === 'OFFLINE').length,
-        slow: data.atms.filter((a: ATM) => a.networkStatus?.networkStatus === 'SLOW').length,
-        timeout: data.atms.filter((a: ATM) => a.networkStatus?.networkStatus === 'TIMEOUT').length,
-        error: data.atms.filter((a: ATM) => a.networkStatus?.networkStatus === 'ERROR').length,
-        warning: data.atms.filter((a: ATM) => a.networkStatus?.networkStatus === 'WARNING').length,
-        maintenance: data.atms.filter((a: ATM) => a.networkStatus?.networkStatus === 'MAINTENANCE').length,
-      };
-      setStats(newStats);
-
+      setDevices(data.data.devices);
+      setSummary(data.data.summary);
+      setLastUpdate(data.data.lastUpdate);
+      setPagination(data.data.pagination);
     } catch (error) {
-      console.error('Error fetching ATMs:', error);
+      console.error('Error fetching ATM data:', error);
       if (!silent) {
-        toast.error('Failed to load ATM status data');
+        toast.error('Gagal memuat data ATM');
       }
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [pagination.page, pagination.limit, search, selectedBranch, statusFilter]);
+  }, [pagination.page, pagination.limit, search, statusFilter, alarmTypeFilter]);
+
+  const fetchDeviceHistory = async (deviceId: string) => {
+    try {
+      const response = await fetch(`/api/monitoring/atm/${deviceId}`);
+      if (!response.ok) throw new Error('Failed to fetch device history');
+      const data = await response.json();
+      setDeviceHistory(data.data.recentHistory);
+    } catch (error) {
+      console.error('Error fetching device history:', error);
+      toast.error('Gagal memuat riwayat perangkat');
+    }
+  };
+
+  useEffect(() => {
+    fetchDevices();
+  }, [fetchDevices]);
+
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    if (!autoRefresh) return;
+
+    const interval = setInterval(() => {
+      fetchDevices(true);
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [autoRefresh, fetchDevices]);
 
   const handleManualRefresh = () => {
-    fetchATMs(true);
-    toast.success('Data refreshed');
+    fetchDevices(true);
+    toast.success('Data diperbarui');
   };
 
   const handlePageChange = (newPage: number) => {
-    setPagination(prev => ({ ...prev, page: newPage }));
+    setPagination((prev) => ({ ...prev, page: newPage }));
   };
 
-  const handleCardClick = (atm: ATM) => {
-    setSelectedATM(atm);
+  const handleDeviceClick = async (device: AtmDevice) => {
+    setSelectedDevice(device);
     setModalOpen(true);
-  };
-
-  const formatDuration = (dateString: string | null) => {
-    if (!dateString) return '-';
-    const start = new Date(dateString);
-    const now = new Date();
-    const diff = now.getTime() - start.getTime();
-
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-
-    if (hours > 24) {
-      const days = Math.floor(hours / 24);
-      return `${days}d ${hours % 24}h`;
-    }
-    return `${hours}h ${minutes}m`;
+    await fetchDeviceHistory(device.deviceId);
   };
 
   const formatTime = (dateString: string | null) => {
@@ -280,6 +242,20 @@ export default function ATMStatusPage() {
     });
   };
 
+  const formatDuration = (seconds: number | null) => {
+    if (seconds === null) return '-';
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    if (hours > 24) {
+      const days = Math.floor(hours / 24);
+      return `${days}h ${hours % 24}j ${minutes}m`;
+    }
+    return `${hours}j ${minutes}m`;
+  };
+
+  // Get unique alarm types for filter
+  const alarmTypes = summary?.alarmTypeBreakdown.map((a) => a.alarmType) || [];
+
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-8">
       {/* Header */}
@@ -287,15 +263,15 @@ export default function ATMStatusPage() {
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
             <AlertTriangle className="h-8 w-8 text-orange-500" />
-            ATM Status Monitor
+            ATM Monitoring
           </h1>
-          <p className="text-gray-600 mt-1">
-            Real-time ATM network status - showing only ATMs with problems
+          <p className="text-muted-foreground mt-1">
+            Real-time ATM alarm monitoring
           </p>
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-500">Auto-refresh</span>
+            <span className="text-sm text-muted-foreground">Auto-refresh</span>
             <Button
               variant={autoRefresh ? 'default' : 'outline'}
               size="sm"
@@ -312,134 +288,138 @@ export default function ATMStatusPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <Card>
           <CardContent className="pt-4">
-            <div className="text-2xl font-bold">{stats.total}</div>
-            <p className="text-xs text-gray-500">Total Problems</p>
+            <div className="flex items-center gap-2">
+              <Activity className="h-5 w-5 text-muted-foreground" />
+              <span className="text-2xl font-bold">{summary?.totalDevices || 0}</span>
+            </div>
+            <p className="text-xs text-muted-foreground">Total Perangkat</p>
           </CardContent>
         </Card>
-        <Card className="border-red-200 bg-red-50">
+        <Card className="border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800">
           <CardContent className="pt-4">
             <div className="flex items-center gap-2">
-              <WifiOff className="h-5 w-5 text-red-600" />
-              <span className="text-2xl font-bold text-red-700">{stats.offline}</span>
+              <Wifi className="h-5 w-5 text-green-600 dark:text-green-400" />
+              <span className="text-2xl font-bold text-green-700 dark:text-green-400">
+                {summary?.onlineDevices || 0}
+              </span>
             </div>
-            <p className="text-xs text-red-600">Offline</p>
+            <p className="text-xs text-green-600 dark:text-green-400">Online</p>
           </CardContent>
         </Card>
-        <Card className="border-orange-200 bg-orange-50">
+        <Card className="border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800">
           <CardContent className="pt-4">
             <div className="flex items-center gap-2">
-              <XCircle className="h-5 w-5 text-orange-600" />
-              <span className="text-2xl font-bold text-orange-700">{stats.timeout}</span>
+              <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+              <span className="text-2xl font-bold text-red-700 dark:text-red-400">
+                {summary?.alarmingDevices || 0}
+              </span>
             </div>
-            <p className="text-xs text-orange-600">Timeout</p>
+            <p className="text-xs text-red-600 dark:text-red-400">Alarm Aktif</p>
           </CardContent>
         </Card>
-        <Card className="border-yellow-200 bg-yellow-50">
+        <Card className="border-blue-200 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800">
           <CardContent className="pt-4">
             <div className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-yellow-600" />
-              <span className="text-2xl font-bold text-yellow-700">{stats.slow}</span>
+              <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <span className="text-sm font-medium text-blue-700 dark:text-blue-400">
+                {lastUpdate ? formatTime(lastUpdate.receivedAt) : '-'}
+              </span>
             </div>
-            <p className="text-xs text-yellow-600">Slow</p>
-          </CardContent>
-        </Card>
-        <Card className="border-red-200 bg-red-50">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-red-600" />
-              <span className="text-2xl font-bold text-red-700">{stats.error}</span>
-            </div>
-            <p className="text-xs text-red-600">Error</p>
-          </CardContent>
-        </Card>
-        <Card className="border-amber-200 bg-amber-50">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-amber-600" />
-              <span className="text-2xl font-bold text-amber-700">{stats.warning}</span>
-            </div>
-            <p className="text-xs text-amber-600">Warning</p>
-          </CardContent>
-        </Card>
-        <Card className="border-blue-200 bg-blue-50">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-2">
-              <Activity className="h-5 w-5 text-blue-600" />
-              <span className="text-2xl font-bold text-blue-700">{stats.maintenance}</span>
-            </div>
-            <p className="text-xs text-blue-600">Maintenance</p>
+            <p className="text-xs text-blue-600 dark:text-blue-400">Update Terakhir</p>
           </CardContent>
         </Card>
       </div>
 
+      {/* Alarm Type Breakdown */}
+      {summary && summary.alarmTypeBreakdown.length > 0 && (
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium">Tipe Alarm Aktif</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {summary.alarmTypeBreakdown.map((item) => (
+                <Badge
+                  key={item.alarmType}
+                  className={`${getAlarmColor(item.alarmType)} flex items-center gap-1 cursor-pointer hover:opacity-80`}
+                  onClick={() => setAlarmTypeFilter(item.alarmType)}
+                >
+                  {getAlarmIcon(item.alarmType)}
+                  <span>{item.alarmType}</span>
+                  <span className="ml-1 px-1.5 py-0.5 bg-white/50 dark:bg-black/20 rounded text-xs font-bold">
+                    {item.count}
+                  </span>
+                </Badge>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Filters */}
       <Card className="mb-6">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle>Filters</CardTitle>
-            {lastUpdated && (
-              <span className="text-sm text-gray-500">
-                Last updated: {lastUpdated.toLocaleTimeString('id-ID')}
-              </span>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-4">
-            <div className="flex-1">
+        <CardContent className="pt-4">
+          <div className="flex flex-wrap gap-4">
+            <div className="flex-1 min-w-[200px]">
               <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search by ATM code, name, or location..."
+                  placeholder="Cari device ID atau lokasi..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="pl-10"
                 />
               </div>
             </div>
-            <BranchSelect
-              branches={branches}
-              value={selectedBranch}
-              onValueChange={setSelectedBranch}
-              placeholder="All Branches"
-              allOption={true}
-              className="w-[200px]"
-            />
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="All Status" />
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Problems</SelectItem>
-                <SelectItem value="OFFLINE">Offline</SelectItem>
-                <SelectItem value="TIMEOUT">Timeout</SelectItem>
-                <SelectItem value="SLOW">Slow</SelectItem>
-                <SelectItem value="ERROR">Error</SelectItem>
-                <SelectItem value="WARNING">Warning</SelectItem>
-                <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
+                <SelectItem value="all">Semua Status</SelectItem>
+                <SelectItem value="ALARM">Alarm</SelectItem>
+                <SelectItem value="ONLINE">Online</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={alarmTypeFilter} onValueChange={setAlarmTypeFilter}>
+              <SelectTrigger className="w-[220px]">
+                <SelectValue placeholder="Tipe Alarm" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Tipe</SelectItem>
+                {alarmTypes.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {type}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
         </CardContent>
       </Card>
 
-      {/* Main Content - Card Grid */}
+      {/* Main Content */}
       {loading ? (
         <div className="flex items-center justify-center py-16">
-          <RefreshCw className="h-8 w-8 animate-spin text-gray-400" />
-          <span className="ml-2 text-gray-500">Loading ATM status...</span>
+          <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+          <span className="ml-2 text-muted-foreground">Memuat data ATM...</span>
         </div>
-      ) : atms.length === 0 ? (
+      ) : devices.length === 0 ? (
         <Card>
           <CardContent className="p-16">
             <div className="flex flex-col items-center justify-center">
               <CheckCircle2 className="h-16 w-16 text-green-500 mb-4" />
-              <h3 className="text-xl font-semibold text-green-700">All ATMs Online</h3>
-              <p className="text-gray-500 mt-2">
-                No ATM problems detected. All systems operating normally.
+              <h3 className="text-xl font-semibold text-green-700 dark:text-green-400">
+                {summary?.totalDevices === 0 ? 'Belum Ada Data' : 'Semua ATM Normal'}
+              </h3>
+              <p className="text-muted-foreground mt-2">
+                {summary?.totalDevices === 0
+                  ? 'Belum ada data alarm yang diterima dari sistem eksternal.'
+                  : 'Tidak ada alarm aktif. Semua sistem beroperasi normal.'
+                }
               </p>
             </div>
           </CardContent>
@@ -448,101 +428,80 @@ export default function ATMStatusPage() {
         <>
           {/* ATM Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
-            {atms.map((atm) => {
-              const status = atm.networkStatus?.networkStatus || 'UNKNOWN';
-              const colorScheme = statusColors[status] || statusColors.OFFLINE;
+            {devices.map((device) => {
+              const isAlarming = device.status === 'ALARM';
 
               return (
                 <Card
-                  key={atm.id}
-                  className={`cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] border-2 ${colorScheme.border} ${colorScheme.bg}`}
-                  onClick={() => handleCardClick(atm)}
+                  key={device.id}
+                  className={`cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] border-2 ${
+                    isAlarming
+                      ? 'border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800'
+                      : 'border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800'
+                  }`}
+                  onClick={() => handleDeviceClick(device)}
                 >
                   <CardContent className="p-5">
-                    {/* Header with Status Badge */}
+                    {/* Header */}
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
-                        <h3 className="font-bold text-lg text-gray-900 mb-1">{atm.code}</h3>
-                        <p className="text-sm text-gray-600 line-clamp-1">{atm.name}</p>
+                        <h3 className="font-bold text-lg mb-1">
+                          {device.deviceId}
+                        </h3>
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <MapPin className="h-3 w-3" />
+                          <span className="line-clamp-1">{device.location || '-'}</span>
+                        </div>
                       </div>
-                      <Badge className={`${colorScheme.bg} ${colorScheme.text} border ${colorScheme.border} flex items-center gap-1`}>
-                        <StatusIcon status={status} />
-                        <span className="font-semibold">{status}</span>
+                      <Badge
+                        className={
+                          isAlarming
+                            ? 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800'
+                            : 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800'
+                        }
+                      >
+                        {isAlarming ? (
+                          <>
+                            <XCircle className="h-3 w-3 mr-1" />
+                            ALARM
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                            ONLINE
+                          </>
+                        )}
                       </Badge>
                     </div>
 
-                    {/* Branch */}
-                    <div className="flex items-center gap-2 mb-2 text-sm text-gray-700">
-                      <Building2 className="h-4 w-4 text-gray-500" />
-                      <span className="font-medium">{atm.branch.name}</span>
-                    </div>
-
-                    {/* IP Address */}
-                    {atm.ipAddress && (
-                      <div className="flex items-center gap-2 mb-2 text-sm text-gray-600">
-                        <Network className="h-4 w-4 text-gray-500" />
-                        <span className="font-mono">{atm.ipAddress}</span>
+                    {/* Active Alarms */}
+                    {device.currentAlarms.length > 0 && (
+                      <div className="space-y-2">
+                        {device.currentAlarms.slice(0, 3).map((alarm) => (
+                          <div
+                            key={alarm.id}
+                            className={`flex items-center gap-2 p-2 rounded ${getAlarmColor(
+                              alarm.alarmType
+                            )}`}
+                          >
+                            {getAlarmIcon(alarm.alarmType)}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium truncate">
+                                {alarm.alarmType}
+                              </p>
+                              <p className="text-[10px] opacity-75">
+                                {alarm.timeAgo || formatTime(alarm.occurredAt)}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                        {device.currentAlarms.length > 3 && (
+                          <p className="text-xs text-muted-foreground text-center">
+                            +{device.currentAlarms.length - 3} alarm lainnya
+                          </p>
+                        )}
                       </div>
                     )}
-
-                    {/* Down Duration */}
-                    {atm.networkStatus?.downSince && (
-                      <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-red-100 rounded-lg border border-red-200">
-                        <Clock className="h-4 w-4 text-red-600" />
-                        <div className="flex-1">
-                          <p className="text-xs text-red-600 font-medium">Down for</p>
-                          <p className="text-sm font-bold text-red-700">
-                            {formatDuration(atm.networkStatus.downSince)}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Active Incident */}
-                    {atm.hasActiveIncident && atm.activeIncident && (
-                      <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-orange-100 rounded-lg border border-orange-200">
-                        <AlertTriangle className="h-4 w-4 text-orange-600" />
-                        <div className="flex-1">
-                          <p className="text-xs text-orange-600 font-medium">Active Incident</p>
-                          <p className="text-sm font-semibold text-orange-800 line-clamp-1">
-                            {atm.activeIncident.title}
-                          </p>
-                          <p className="text-xs text-orange-600">
-                            {atm.activeIncident.severity} • {atm.activeIncident.status}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Metrics */}
-                    <div className="grid grid-cols-2 gap-2 pt-3 border-t border-gray-200">
-                      <div>
-                        <p className="text-xs text-gray-500">Response Time</p>
-                        <p className={`text-sm font-bold ${
-                          atm.networkStatus?.responseTimeMs == null ? 'text-gray-400' :
-                          atm.networkStatus.responseTimeMs > 500 ? 'text-red-600' :
-                          atm.networkStatus.responseTimeMs > 200 ? 'text-yellow-600' :
-                          'text-green-600'
-                        }`}>
-                          {atm.networkStatus?.responseTimeMs != null
-                            ? `${atm.networkStatus.responseTimeMs}ms`
-                            : '-'}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Packet Loss</p>
-                        <p className={`text-sm font-bold ${
-                          atm.networkStatus?.packetLoss == null ? 'text-gray-400' :
-                          atm.networkStatus.packetLoss > 50 ? 'text-red-600' :
-                          atm.networkStatus.packetLoss > 10 ? 'text-yellow-600' :
-                          'text-green-600'
-                        }`}>
-                          {atm.networkStatus?.packetLoss != null
-                            ? `${atm.networkStatus.packetLoss}%`
-                            : '-'}
-                        </p>
-                      </div>
-                    </div>
                   </CardContent>
                 </Card>
               );
@@ -554,10 +513,10 @@ export default function ATMStatusPage() {
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
-                  <div className="text-sm text-gray-600">
-                    Showing {(pagination.page - 1) * pagination.limit + 1} to{' '}
-                    {Math.min(pagination.page * pagination.limit, pagination.total)} of{' '}
-                    {pagination.total} ATMs with problems
+                  <div className="text-sm text-muted-foreground">
+                    Menampilkan {(pagination.page - 1) * pagination.limit + 1} -{' '}
+                    {Math.min(pagination.page * pagination.limit, pagination.totalCount)} dari{' '}
+                    {pagination.totalCount} perangkat
                   </div>
                   <div className="flex gap-2">
                     <Button
@@ -567,7 +526,7 @@ export default function ATMStatusPage() {
                       disabled={pagination.page === 1}
                     >
                       <ChevronLeft className="h-4 w-4" />
-                      Previous
+                      Sebelumnya
                     </Button>
                     <Button
                       variant="outline"
@@ -575,7 +534,7 @@ export default function ATMStatusPage() {
                       onClick={() => handlePageChange(pagination.page + 1)}
                       disabled={pagination.page === pagination.totalPages}
                     >
-                      Next
+                      Selanjutnya
                       <ChevronRight className="h-4 w-4" />
                     </Button>
                   </div>
@@ -588,244 +547,149 @@ export default function ATMStatusPage() {
 
       {/* Detail Modal */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-2xl">
-          {selectedATM && (
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          {selectedDevice && (
             <>
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-3">
                   <div className="flex-1">
-                    <div className="text-2xl font-bold">{selectedATM.code}</div>
-                    <div className="text-sm font-normal text-gray-600 mt-1">
-                      {selectedATM.name}
+                    <div className="text-2xl font-bold">{selectedDevice.deviceId}</div>
+                    <div className="text-sm font-normal text-muted-foreground mt-1 flex items-center gap-1">
+                      <MapPin className="h-3 w-3" />
+                      {selectedDevice.location || '-'}
                     </div>
                   </div>
-                  {selectedATM.networkStatus && (
-                    <Badge className={`${statusColors[selectedATM.networkStatus.networkStatus]?.bg || 'bg-gray-100'} ${statusColors[selectedATM.networkStatus.networkStatus]?.text || 'text-gray-800'} border-2 ${statusColors[selectedATM.networkStatus.networkStatus]?.border || 'border-gray-300'} text-base px-4 py-2`}>
-                      <StatusIcon status={selectedATM.networkStatus.networkStatus} />
-                      <span className="ml-2 font-bold">{selectedATM.networkStatus.networkStatus}</span>
-                    </Badge>
-                  )}
+                  <Badge
+                    className={
+                      selectedDevice.status === 'ALARM'
+                        ? 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 text-base px-4 py-2'
+                        : 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 text-base px-4 py-2'
+                    }
+                  >
+                    {selectedDevice.status === 'ALARM' ? (
+                      <>
+                        <XCircle className="h-4 w-4 mr-1" />
+                        ALARM
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="h-4 w-4 mr-1" />
+                        ONLINE
+                      </>
+                    )}
+                  </Badge>
                 </DialogTitle>
                 <DialogDescription>
-                  Complete ATM network status and diagnostic information
+                  Detail perangkat dan riwayat alarm
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="space-y-4 mt-4">
-                {/* Basic Information */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-3">
-                    <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                      <Building2 className="h-5 w-5 text-gray-600 mt-0.5" />
-                      <div>
-                        <p className="text-xs text-gray-500 font-medium">Branch</p>
-                        <p className="text-sm font-semibold text-gray-900">{selectedATM.branch.name}</p>
-                        <p className="text-xs text-gray-500 font-mono">Code: {selectedATM.branch.code}</p>
-                      </div>
+              <Tabs defaultValue="alarms" className="mt-4">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="alarms" className="flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4" />
+                    Alarm Aktif ({selectedDevice.currentAlarms.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="history" className="flex items-center gap-2">
+                    <History className="h-4 w-4" />
+                    Riwayat
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="alarms" className="mt-4">
+                  {selectedDevice.currentAlarms.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-8">
+                      <CheckCircle2 className="h-12 w-12 text-green-500 mb-2" />
+                      <p className="text-muted-foreground">Tidak ada alarm aktif</p>
                     </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                      <Network className="h-5 w-5 text-gray-600 mt-0.5" />
-                      <div>
-                        <p className="text-xs text-gray-500 font-medium">IP Address</p>
-                        <p className="text-sm font-semibold font-mono text-gray-900">
-                          {selectedATM.ipAddress || 'Not available'}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {selectedATM.location && (
-                  <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                    <MapPin className="h-5 w-5 text-gray-600 mt-0.5" />
-                    <div>
-                      <p className="text-xs text-gray-500 font-medium">Location</p>
-                      <p className="text-sm font-semibold text-gray-900">{selectedATM.location}</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Network Status Details */}
-                {selectedATM.networkStatus && (
-                  <>
-                    <div className="border-t pt-4">
-                      <h4 className="font-semibold text-sm text-gray-700 mb-3">Network Metrics</h4>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="p-3 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border border-blue-200">
-                          <p className="text-xs text-blue-600 font-medium mb-1">Response Time</p>
-                          <p className={`text-2xl font-bold ${
-                            selectedATM.networkStatus.responseTimeMs == null ? 'text-gray-400' :
-                            selectedATM.networkStatus.responseTimeMs > 500 ? 'text-red-600' :
-                            selectedATM.networkStatus.responseTimeMs > 200 ? 'text-yellow-600' :
-                            'text-green-600'
-                          }`}>
-                            {selectedATM.networkStatus.responseTimeMs != null
-                              ? `${selectedATM.networkStatus.responseTimeMs}ms`
-                              : 'N/A'}
-                          </p>
-                          {selectedATM.networkStatus.responseTimeMs != null && (
-                            <p className="text-xs text-gray-600 mt-1">
-                              {selectedATM.networkStatus.responseTimeMs > 500 ? 'Very Slow' :
-                               selectedATM.networkStatus.responseTimeMs > 200 ? 'Slow' : 'Good'}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="p-3 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg border border-purple-200">
-                          <p className="text-xs text-purple-600 font-medium mb-1">Packet Loss</p>
-                          <p className={`text-2xl font-bold ${
-                            selectedATM.networkStatus.packetLoss == null ? 'text-gray-400' :
-                            selectedATM.networkStatus.packetLoss > 50 ? 'text-red-600' :
-                            selectedATM.networkStatus.packetLoss > 10 ? 'text-yellow-600' :
-                            'text-green-600'
-                          }`}>
-                            {selectedATM.networkStatus.packetLoss != null
-                              ? `${selectedATM.networkStatus.packetLoss}%`
-                              : 'N/A'}
-                          </p>
-                          {selectedATM.networkStatus.packetLoss != null && (
-                            <p className="text-xs text-gray-600 mt-1">
-                              {selectedATM.networkStatus.packetLoss > 50 ? 'Critical' :
-                               selectedATM.networkStatus.packetLoss > 10 ? 'Warning' : 'Good'}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Downtime Information */}
-                    {selectedATM.networkStatus.downSince && (
-                      <div className="p-4 bg-red-50 border-2 border-red-200 rounded-lg">
-                        <div className="flex items-center gap-2 mb-2">
-                          <TrendingDown className="h-5 w-5 text-red-600" />
-                          <h4 className="font-semibold text-red-700">Downtime Information</h4>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4 mt-3">
-                          <div>
-                            <p className="text-xs text-red-600 font-medium">Down Since</p>
-                            <p className="text-sm font-semibold text-red-800">
-                              {formatTime(selectedATM.networkStatus.downSince)}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-red-600 font-medium">Duration</p>
-                            <p className="text-sm font-bold text-red-800">
-                              {formatDuration(selectedATM.networkStatus.downSince)}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-
-                {/* Active Incident */}
-                {selectedATM.hasActiveIncident && selectedATM.activeIncident && (
-                  <div className="p-4 bg-orange-50 border-2 border-orange-200 rounded-lg">
-                    <div className="flex items-center gap-2 mb-2">
-                      <AlertTriangle className="h-5 w-5 text-orange-600" />
-                      <h4 className="font-semibold text-orange-700">Active Network Incident</h4>
-                    </div>
-                    <div className="space-y-3 mt-3">
-                      <div>
-                        <p className="text-xs text-orange-600 font-medium">Incident Title</p>
-                        <p className="text-sm font-semibold text-orange-900">
-                          {selectedATM.activeIncident.title}
-                        </p>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-xs text-orange-600 font-medium">Severity</p>
-                          <Badge className={`mt-1 ${
-                            selectedATM.activeIncident.severity === 'CRITICAL' ? 'bg-red-100 text-red-700 border-red-200' :
-                            selectedATM.activeIncident.severity === 'HIGH' ? 'bg-orange-100 text-orange-700 border-orange-200' :
-                            selectedATM.activeIncident.severity === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
-                            'bg-blue-100 text-blue-700 border-blue-200'
-                          }`}>
-                            {selectedATM.activeIncident.severity}
-                          </Badge>
-                        </div>
-                        <div>
-                          <p className="text-xs text-orange-600 font-medium">Status</p>
-                          <Badge className="mt-1 bg-orange-100 text-orange-700 border-orange-200">
-                            {selectedATM.activeIncident.status}
-                          </Badge>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-xs text-orange-600 font-medium">Created</p>
-                          <p className="text-sm font-semibold text-orange-800">
-                            {formatTime(selectedATM.activeIncident.createdAt)}
-                          </p>
-                        </div>
-                        {selectedATM.activeIncident.acknowledgedAt && (
-                          <div>
-                            <p className="text-xs text-orange-600 font-medium">Acknowledged</p>
-                            <p className="text-sm font-semibold text-orange-800">
-                              {formatTime(selectedATM.activeIncident.acknowledgedAt)}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {selectedATM.networkStatus && (
-                  <>
-                    {/* Error Message */}
-                    {selectedATM.networkStatus.errorMessage && (
-                      <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                        <div className="flex items-start gap-2">
-                          <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5" />
-                          <div className="flex-1">
-                            <p className="text-xs text-amber-600 font-medium mb-1">Error Message</p>
-                            <p className="text-sm text-amber-900 font-mono">
-                              {selectedATM.networkStatus.errorMessage}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Timestamps */}
-                    <div className="border-t pt-4">
-                      <h4 className="font-semibold text-sm text-gray-700 mb-3">Monitoring Timestamps</h4>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg">
-                          <Calendar className="h-4 w-4 text-gray-500 mt-0.5" />
-                          <div>
-                            <p className="text-xs text-gray-500 font-medium">Last Checked</p>
-                            <p className="text-sm font-semibold text-gray-900">
-                              {formatTime(selectedATM.networkStatus.checkedAt)}
-                            </p>
-                          </div>
-                        </div>
-                        {selectedATM.networkStatus.statusChangedAt && (
-                          <div className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg">
-                            <Calendar className="h-4 w-4 text-gray-500 mt-0.5" />
-                            <div>
-                              <p className="text-xs text-gray-500 font-medium">Status Changed</p>
-                              <p className="text-sm font-semibold text-gray-900">
-                                {formatTime(selectedATM.networkStatus.statusChangedAt)}
+                  ) : (
+                    <div className="space-y-3">
+                      {selectedDevice.currentAlarms.map((alarm) => (
+                        <div
+                          key={alarm.id}
+                          className={`p-4 rounded-lg border-2 ${getAlarmColor(
+                            alarm.alarmType
+                          )}`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="p-2 bg-white/50 dark:bg-black/20 rounded">
+                              {getAlarmIcon(alarm.alarmType)}
+                            </div>
+                            <div className="flex-1">
+                              <p className="font-semibold">{alarm.alarmType}</p>
+                              <p className="text-sm opacity-75">
+                                Lokasi: {alarm.location}
                               </p>
+                              <div className="flex items-center gap-4 mt-2 text-xs">
+                                <span className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  {formatTime(alarm.occurredAt)}
+                                </span>
+                                {alarm.timeAgo && (
+                                  <span className="opacity-75">{alarm.timeAgo}</span>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        )}
-                      </div>
+                        </div>
+                      ))}
                     </div>
-                  </>
-                )}
+                  )}
+                </TabsContent>
 
-                {/* Additional Info */}
-                <div className="flex items-center justify-between pt-3 border-t text-xs text-gray-500">
-                  <span>ATM ID: {selectedATM.id}</span>
-                  <span>Status: {selectedATM.isActive ? 'Active' : 'Inactive'}</span>
-                </div>
+                <TabsContent value="history" className="mt-4">
+                  {deviceHistory.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-8">
+                      <History className="h-12 w-12 text-muted-foreground mb-2" />
+                      <p className="text-muted-foreground">Tidak ada riwayat alarm</p>
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Tipe Alarm</TableHead>
+                          <TableHead>Waktu Mulai</TableHead>
+                          <TableHead>Waktu Selesai</TableHead>
+                          <TableHead>Durasi</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {deviceHistory.map((record) => (
+                          <TableRow key={record.id}>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {getAlarmIcon(record.alarmType)}
+                                <span className="text-sm">{record.alarmType}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {formatTime(record.occurredAt)}
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {record.clearedAt ? (
+                                <span className="text-green-600 dark:text-green-400">
+                                  {formatTime(record.clearedAt)}
+                                </span>
+                              ) : (
+                                <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                                  Aktif
+                                </Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {formatDuration(record.duration)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </TabsContent>
+              </Tabs>
+
+              {/* Footer */}
+              <div className="flex items-center justify-between pt-3 border-t text-xs text-muted-foreground mt-4">
+                <span>Terakhir dilihat: {formatTime(selectedDevice.lastSeenAt)}</span>
               </div>
             </>
           )}

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { verifyApiKey } from '@/lib/api-key';
 
 // Schema for incoming alarm data
 const alarmSchema = z.object({
@@ -35,9 +36,83 @@ function parseTimestamp(timestamp: string): Date {
   return parsed;
 }
 
+// Validate API key with required permission
+async function validateApiKeyWithPermission(
+  request: NextRequest,
+  requiredPermission: string
+): Promise<{ valid: boolean; error?: string; keyRecord?: any }> {
+  const authHeader = request.headers.get('Authorization');
+  const apiKey = authHeader?.replace('Bearer ', '');
+
+  if (!apiKey) {
+    return { valid: false, error: 'API key required. Use Authorization: Bearer <api-key>' };
+  }
+
+  // Find and validate API key
+  const apiKeys = await prisma.apiKey.findMany({
+    where: {
+      isActive: true,
+      OR: [
+        { expiresAt: null },
+        { expiresAt: { gt: new Date() } }
+      ]
+    }
+  });
+
+  let validKey = false;
+  let keyRecord = null;
+
+  for (const key of apiKeys) {
+    if (await verifyApiKey(apiKey, key.hashedKey)) {
+      validKey = true;
+      keyRecord = key;
+      break;
+    }
+  }
+
+  if (!validKey || !keyRecord) {
+    return { valid: false, error: 'Invalid API key' };
+  }
+
+  // Check permissions
+  const perms = keyRecord.permissions as string[] | null;
+  if (!perms || perms.length === 0) {
+    return { valid: false, error: 'API key has no permissions' };
+  }
+
+  // Check if has required permission or full access
+  const hasPermission = perms.includes('*') ||
+    perms.includes('atm-alarms:*') ||
+    perms.includes(requiredPermission);
+
+  if (!hasPermission) {
+    return { valid: false, error: `API key lacks required permission: ${requiredPermission}` };
+  }
+
+  // Update last used
+  await prisma.apiKey.update({
+    where: { id: keyRecord.id },
+    data: {
+      lastUsedAt: new Date(),
+      usageCount: { increment: 1 }
+    }
+  });
+
+  return { valid: true, keyRecord };
+}
+
 // POST /api/monitoring/atm/ingest - Receive alarm data from external system
 export async function POST(request: NextRequest) {
   try {
+    // Validate API key
+    const authResult = await validateApiKeyWithPermission(request, 'atm-alarms:write');
+    if (!authResult.valid) {
+      return NextResponse.json(
+        { error: authResult.error },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
     const validatedData = ingestSchema.parse(body);
 

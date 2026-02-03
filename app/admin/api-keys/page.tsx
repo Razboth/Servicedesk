@@ -68,6 +68,9 @@ const AVAILABLE_PERMISSIONS = [
   { value: 'server-metrics:read', label: 'Read Server Metrics', description: 'View server metrics and analytics' },
   { value: 'server-metrics:write', label: 'Write Server Metrics', description: 'Submit/ingest server metrics' },
   { value: 'server-metrics:admin', label: 'Admin Server Metrics', description: 'Update server info (name, description)' },
+  { value: 'atm-alarms:*', label: 'ATM Alarms (All)', description: 'Full ATM alarm monitoring access' },
+  { value: 'atm-alarms:read', label: 'Read ATM Alarms', description: 'View ATM alarm status and history' },
+  { value: 'atm-alarms:write', label: 'Write ATM Alarms', description: 'Submit/ingest ATM alarm data from external system' },
 ];
 
 export default function ApiKeysPage() {
