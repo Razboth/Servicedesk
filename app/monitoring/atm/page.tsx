@@ -54,7 +54,6 @@ import {
   Signal,
   SignalLow,
   SignalZero,
-  Building2,
 } from 'lucide-react';
 
 // Dynamically import map components to avoid SSR issues
@@ -683,17 +682,9 @@ export default function ATMMonitoringPage() {
                     {/* Header */}
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
-                        <h3 className="font-bold text-lg mb-1">{atm.name}</h3>
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <MapPin className="h-3 w-3" />
-                          <span className="line-clamp-1">{atm.location || '-'}</span>
-                        </div>
-                        {atm.branch && (
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                            <Building2 className="h-3 w-3" />
-                            <span>{atm.branch.name}</span>
-                          </div>
-                        )}
+                        <h3 className="font-bold text-lg mb-1">
+                          {atm.location || atm.name} / {atm.code}
+                        </h3>
                       </div>
                       <div className="flex flex-col gap-1 items-end">
                         {/* Connection Status */}
