@@ -22,7 +22,6 @@ import {
   Phone,
   Router,
   Activity,
-  CreditCard,
   Search,
   ExternalLink
 } from 'lucide-react';
@@ -54,15 +53,13 @@ const MarkerClusterGroup = dynamic(
   { ssr: false }
 );
 
-interface NetworkEntity {
+interface BranchEntity {
   id: string;
   name: string;
   code: string;
-  type: 'BRANCH' | 'ATM';
   city?: string;
   address?: string;
   province?: string;
-  location?: string;
   latitude?: number;
   longitude?: number;
   ipAddress?: string;
@@ -76,20 +73,16 @@ interface NetworkEntity {
   packetLoss?: number;
   hasActiveIncident?: boolean;
   activeIncident?: any;
-  branch?: { name: string; code: string };
 }
 
-export default function NetworkMapPage() {
+export default function BranchMonitoringPage() {
   const { data: session } = useSession();
-  const [entities, setEntities] = useState<NetworkEntity[]>([]);
+  const [branches, setBranches] = useState<BranchEntity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [leafletIcon, setLeafletIcon] = useState<any>(null);
-  const [showBranches, setShowBranches] = useState(true);
-  const [showATMs, setShowATMs] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
-  const [listTypeFilter, setListTypeFilter] = useState<'ALL' | 'BRANCH' | 'ATM'>('ALL');
+  const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null);
   const [listStatusFilter, setListStatusFilter] = useState<'ALL' | 'ONLINE' | 'OFFLINE' | 'SLOW' | 'OTHER'>('ALL');
   const mapRef = useRef<any>(null);
   const markersRef = useRef<Map<string, any>>(new Map());
@@ -109,33 +102,26 @@ export default function NetworkMapPage() {
     }
   }, []);
 
-  // Fetch network data from API
-  const fetchNetworkData = async (): Promise<{ branches: any[], atms: any[] }> => {
-    const response = await fetch('/api/monitoring/network/status');
+  // Fetch branch data from API
+  const fetchBranchData = async (): Promise<BranchEntity[]> => {
+    const response = await fetch('/api/monitoring/network/status?type=BRANCH');
     if (!response.ok) {
-      throw new Error('Failed to fetch network data');
+      throw new Error('Failed to fetch branch data');
     }
 
     const data = await response.json();
-    return { branches: data.branches, atms: data.atms };
+    return data.branches || [];
   };
 
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const { branches, atms } = await fetchNetworkData();
-
-      // Combine branches and ATMs into a single array
-      const combined: NetworkEntity[] = [
-        ...branches.map((b: any) => ({ ...b, type: 'BRANCH' as const })),
-        ...atms.map((a: any) => ({ ...a, type: 'ATM' as const }))
-      ];
-
-      setEntities(combined);
+      const branchData = await fetchBranchData();
+      setBranches(branchData);
       setLastUpdate(new Date());
     } catch (error) {
-      console.error('Failed to load network data:', error);
-      toast.error('Failed to load network data');
+      console.error('Failed to load branch data:', error);
+      toast.error('Failed to load branch data');
     } finally {
       setIsLoading(false);
     }
@@ -149,57 +135,47 @@ export default function NetworkMapPage() {
   }, []);
 
   const stats = useMemo(() => {
-    const branches = entities.filter(e => e.type === 'BRANCH');
-    const atms = entities.filter(e => e.type === 'ATM');
-
     return {
-      total: entities.length,
-      branches: branches.length,
-      atms: atms.length,
-      online: entities.filter(e => e.status === 'ONLINE').length,
-      offline: entities.filter(e => e.status === 'OFFLINE').length,
-      slow: entities.filter(e => e.status === 'SLOW').length,
-      error: entities.filter(e => e.status === 'ERROR').length,
-      stale: entities.filter(e => e.status === 'STALE').length,
-      unstable: entities.filter(e => e.status === 'ERROR' || e.status === 'STALE').length,
-      activeIncidents: entities.filter(e => e.hasActiveIncident).length,
+      total: branches.length,
+      online: branches.filter(b => b.status === 'ONLINE').length,
+      offline: branches.filter(b => b.status === 'OFFLINE').length,
+      slow: branches.filter(b => b.status === 'SLOW').length,
+      error: branches.filter(b => b.status === 'ERROR').length,
+      stale: branches.filter(b => b.status === 'STALE').length,
+      unstable: branches.filter(b => b.status === 'ERROR' || b.status === 'STALE').length,
+      activeIncidents: branches.filter(b => b.hasActiveIncident).length,
       avgResponseTime: Math.round(
-        entities
-          .filter(e => e.responseTime)
-          .reduce((acc, e) => acc + (e.responseTime || 0), 0) /
-        entities.filter(e => e.responseTime).length || 0
+        branches
+          .filter(b => b.responseTime)
+          .reduce((acc, b) => acc + (b.responseTime || 0), 0) /
+        branches.filter(b => b.responseTime).length || 0
       ),
-      avgUptime: entities.length > 0
-        ? Math.round((entities.filter(e => e.status === 'ONLINE').length / entities.length) * 100 * 100) / 100
+      avgUptime: branches.length > 0
+        ? Math.round((branches.filter(b => b.status === 'ONLINE').length / branches.length) * 100 * 100) / 100
         : 0,
     };
-  }, [entities]);
+  }, [branches]);
 
-  // Filter entities that have coordinates and match display filters
-  const entitiesWithCoordinates = useMemo(() => {
-    return entities.filter(e => {
-      if (!e.latitude || !e.longitude) return false;
-      if (e.type === 'BRANCH' && !showBranches) return false;
-      if (e.type === 'ATM' && !showATMs) return false;
-      return true;
-    });
-  }, [entities, showBranches, showATMs]);
+  // Filter branches that have coordinates
+  const branchesWithCoordinates = useMemo(() => {
+    return branches.filter(b => b.latitude && b.longitude);
+  }, [branches]);
 
   // Calculate map center
   const mapCenter: [number, number] = useMemo(() => {
-    if (entitiesWithCoordinates.length === 0) {
+    if (branchesWithCoordinates.length === 0) {
       // Default to Manado, North Sulawesi (Bank SulutGo headquarters)
       return [1.4748, 124.8421];
     }
 
-    const avgLat = entitiesWithCoordinates.reduce((sum, e) => sum + (e.latitude || 0), 0) / entitiesWithCoordinates.length;
-    const avgLng = entitiesWithCoordinates.reduce((sum, e) => sum + (e.longitude || 0), 0) / entitiesWithCoordinates.length;
+    const avgLat = branchesWithCoordinates.reduce((sum, b) => sum + (b.latitude || 0), 0) / branchesWithCoordinates.length;
+    const avgLng = branchesWithCoordinates.reduce((sum, b) => sum + (b.longitude || 0), 0) / branchesWithCoordinates.length;
 
     return [avgLat, avgLng];
-  }, [entitiesWithCoordinates]);
+  }, [branchesWithCoordinates]);
 
-  // Create custom icons for different status and entity types
-  const getMarkerIcon = (status: string, entityType: 'BRANCH' | 'ATM') => {
+  // Create custom icons for different status
+  const getMarkerIcon = (status: string) => {
     if (!leafletIcon) return undefined;
 
     const colors: Record<string, string> = {
@@ -213,20 +189,10 @@ export default function NetworkMapPage() {
 
     const color = colors[status] || colors.UNKNOWN;
 
-    // Different SVG icons for branches and ATMs - larger size for better visibility
-    const iconSVG = entityType === 'BRANCH'
-      ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
+    // Branch icon SVG
+    const iconSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
           <path fill="${color}" stroke="#fff" stroke-width="1.5" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
           <path fill="#fff" d="M12 5.5L8 8v1h1v4h6V9h1V8l-4-2.5zM10 12v-2h1.5v2H10zm2.5 0v-2H14v2h-1.5z"/>
-        </svg>`
-      : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
-          <path fill="${color}" stroke="#fff" stroke-width="1.5" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
-          <rect x="8.5" y="6" width="7" height="5" rx="0.5" fill="#fff"/>
-          <rect x="9.5" y="7" width="5" height="2.5" rx="0.3" fill="${color}" opacity="0.3"/>
-          <rect x="10" y="12" width="4" height="2" rx="0.3" fill="#fff"/>
-          <circle cx="11" cy="13" r="0.4" fill="${color}"/>
-          <circle cx="12" cy="13" r="0.4" fill="${color}"/>
-          <circle cx="13" cy="13" r="0.4" fill="${color}"/>
         </svg>`;
 
     return new leafletIcon.Icon({
@@ -334,38 +300,35 @@ export default function NetworkMapPage() {
     });
   };
 
-  // Handle entity click from list - zoom to marker and open popup
-  const handleEntityClick = (entity: NetworkEntity) => {
-    if (!entity.latitude || !entity.longitude || !mapRef.current) return;
+  // Handle branch click from list - zoom to marker and open popup
+  const handleBranchClick = (branch: BranchEntity) => {
+    if (!branch.latitude || !branch.longitude || !mapRef.current) return;
 
-    setSelectedEntityId(`${entity.type}-${entity.id}`);
+    setSelectedBranchId(branch.id);
 
-    // Zoom to the entity location
-    mapRef.current.setView([entity.latitude, entity.longitude], 15, {
+    // Zoom to the branch location
+    mapRef.current.setView([branch.latitude, branch.longitude], 15, {
       animate: true,
       duration: 0.5
     });
 
     // Open the marker popup
     setTimeout(() => {
-      const marker = markersRef.current.get(`${entity.type}-${entity.id}`);
+      const marker = markersRef.current.get(branch.id);
       if (marker) {
         marker.openPopup();
       }
     }, 600);
   };
 
-  // Filter entities for the list based on search, type, and status
-  const filteredEntities = useMemo(() => {
-    return entitiesWithCoordinates.filter(e => {
-      // Type filter
-      if (listTypeFilter !== 'ALL' && e.type !== listTypeFilter) return false;
-
+  // Filter branches for the list based on search and status
+  const filteredBranches = useMemo(() => {
+    return branchesWithCoordinates.filter(b => {
       // Status filter
       if (listStatusFilter !== 'ALL') {
         if (listStatusFilter === 'OTHER') {
-          if (['ONLINE', 'OFFLINE', 'SLOW'].includes(e.status)) return false;
-        } else if (e.status !== listStatusFilter) {
+          if (['ONLINE', 'OFFLINE', 'SLOW'].includes(b.status)) return false;
+        } else if (b.status !== listStatusFilter) {
           return false;
         }
       }
@@ -374,24 +337,23 @@ export default function NetworkMapPage() {
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
         return (
-          e.name.toLowerCase().includes(query) ||
-          e.code.toLowerCase().includes(query) ||
-          e.ipAddress?.toLowerCase().includes(query) ||
-          e.city?.toLowerCase().includes(query) ||
-          e.location?.toLowerCase().includes(query)
+          b.name.toLowerCase().includes(query) ||
+          b.code.toLowerCase().includes(query) ||
+          b.ipAddress?.toLowerCase().includes(query) ||
+          b.city?.toLowerCase().includes(query)
         );
       }
 
       return true;
     });
-  }, [entitiesWithCoordinates, searchQuery, listTypeFilter, listStatusFilter]);
+  }, [branchesWithCoordinates, searchQuery, listStatusFilter]);
 
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-          <MapPin className="h-8 w-8" />
-          Network Infrastructure Map
+          <Building2 className="h-8 w-8" />
+          Branch Network Monitoring
           {!['ADMIN', 'SUPER_ADMIN', 'MANAGER'].includes(session?.user?.role || '') && session?.user?.branchName && (
             <Badge variant="outline" className="text-sm font-normal">
               {session.user.branchName}
@@ -399,47 +361,21 @@ export default function NetworkMapPage() {
           )}
         </h1>
         <p className="text-muted-foreground">
-          Real-time geographic visualization of all network infrastructure (Branches & ATMs)
+          Real-time geographic visualization and monitoring of all branch locations
         </p>
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Entities</CardTitle>
-            <MapPin className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
-            <p className="text-xs text-muted-foreground">
-              {entitiesWithCoordinates.length} on map
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Branches</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Branches</CardTitle>
             <Building2 className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats.branches}</div>
+            <div className="text-2xl font-bold text-blue-600">{stats.total}</div>
             <p className="text-xs text-muted-foreground">
-              Branch locations
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">ATMs</CardTitle>
-            <CreditCard className="h-4 w-4 text-purple-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-600">{stats.atms}</div>
-            <p className="text-xs text-muted-foreground">
-              ATM locations
+              {branchesWithCoordinates.length} on map
             </p>
           </CardContent>
         </Card>
@@ -485,7 +421,20 @@ export default function NetworkMapPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Uptime</CardTitle>
+            <CardTitle className="text-sm font-medium">Avg Response</CardTitle>
+            <Activity className="h-4 w-4 text-purple-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">{stats.avgResponseTime}ms</div>
+            <p className="text-xs text-muted-foreground">
+              Network latency
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Uptime</CardTitle>
             <TrendingUp className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
@@ -502,51 +451,42 @@ export default function NetworkMapPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Network Infrastructure Map</CardTitle>
+              <CardTitle>Branch Network Map</CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
                 Click on markers to view detailed information and network metrics
               </p>
             </div>
-            <div className="flex gap-2">
-              <Button
-                variant={showBranches ? "default" : "outline"}
-                size="sm"
-                onClick={() => setShowBranches(!showBranches)}
-              >
-                <Building2 className="h-4 w-4 mr-2" />
-                Branches
-              </Button>
-              <Button
-                variant={showATMs ? "default" : "outline"}
-                size="sm"
-                onClick={() => setShowATMs(!showATMs)}
-              >
-                <CreditCard className="h-4 w-4 mr-2" />
-                ATMs
-              </Button>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={loadData}
+              disabled={isLoading}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
           </div>
-          {entitiesWithCoordinates.length < entities.length && (
+          {branchesWithCoordinates.length < branches.length && (
             <Badge variant="outline" className="text-orange-600 mt-2">
-              {entities.length - entitiesWithCoordinates.length} entities without coordinates
+              {branches.length - branchesWithCoordinates.length} branches without coordinates
             </Badge>
           )}
         </CardHeader>
         <CardContent>
-          {isLoading && !entities.length ? (
+          {isLoading && !branches.length ? (
             <div className="flex items-center justify-center py-12 bg-gray-50 rounded-lg" style={{ height: '700px' }}>
               <div className="text-center">
                 <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground mx-auto mb-2" />
-                <p className="text-muted-foreground">Loading network data...</p>
+                <p className="text-muted-foreground">Loading branch data...</p>
               </div>
             </div>
-          ) : entitiesWithCoordinates.length === 0 ? (
+          ) : branchesWithCoordinates.length === 0 ? (
             <div className="flex items-center justify-center py-12 bg-gray-50 rounded-lg" style={{ height: '700px' }}>
               <div className="text-center">
                 <MapPin className="h-12 w-12 mx-auto mb-4 opacity-50 text-muted-foreground" />
-                <p className="text-muted-foreground">No entities with coordinates found</p>
+                <p className="text-muted-foreground">No branches with coordinates found</p>
                 <p className="text-sm text-muted-foreground mt-2">
-                  Add latitude and longitude to records to display them on the map
+                  Add latitude and longitude to branch records to display them on the map
                 </p>
               </div>
             </div>
@@ -591,109 +531,84 @@ export default function NetworkMapPage() {
                   spiderfyOnMaxZoom={true}
                   showCoverageOnHover={false}
                 >
-                  {entitiesWithCoordinates.map((entity) => (
+                  {branchesWithCoordinates.map((branch) => (
                     <Marker
-                      key={`${entity.type}-${entity.id}`}
-                      position={[entity.latitude!, entity.longitude!]}
-                      icon={getMarkerIcon(entity.status, entity.type)}
-                      data={{ type: entity.type, status: entity.status }}
+                      key={branch.id}
+                      position={[branch.latitude!, branch.longitude!]}
+                      icon={getMarkerIcon(branch.status)}
                       ref={(ref: any) => {
                         if (ref) {
-                          markersRef.current.set(`${entity.type}-${entity.id}`, ref);
+                          markersRef.current.set(branch.id, ref);
+                          ref.options.data = { status: branch.status };
                         }
                       }}
                     >
                     <Popup maxWidth={300}>
                       <div className="p-2">
                         <div className="flex items-center gap-2 mb-2">
-                          {entity.type === 'BRANCH' ? (
-                            <Building2 className="h-4 w-4 text-blue-600" />
-                          ) : (
-                            <CreditCard className="h-4 w-4 text-purple-600" />
-                          )}
-                          <h3 className="font-semibold text-sm">{entity.name}</h3>
+                          <Building2 className="h-4 w-4 text-blue-600" />
+                          <h3 className="font-semibold text-sm">{branch.name}</h3>
                         </div>
 
                         <div className="space-y-2 text-xs">
                           <div className="flex items-center justify-between">
-                            <span className="text-muted-foreground">Type:</span>
-                            <Badge variant="outline" className="text-xs">
-                              {entity.type}
-                            </Badge>
-                          </div>
-
-                          <div className="flex items-center justify-between">
                             <span className="text-muted-foreground">Code:</span>
-                            <span className="font-medium">{entity.code}</span>
+                            <span className="font-medium">{branch.code}</span>
                           </div>
 
                           <div className="flex items-center justify-between">
                             <span className="text-muted-foreground">Status:</span>
-                            <Badge variant="outline" className={`text-xs ${getStatusColor(entity.status)}`}>
-                              {entity.status}
+                            <Badge variant="outline" className={`text-xs ${getStatusColor(branch.status)}`}>
+                              {branch.status}
                             </Badge>
                           </div>
 
-                          {entity.ipAddress && (
+                          {branch.ipAddress && (
                             <div className="flex items-center justify-between">
                               <span className="text-muted-foreground">IP Address:</span>
-                              <span className="font-mono text-xs">{entity.ipAddress}</span>
+                              <span className="font-mono text-xs">{branch.ipAddress}</span>
                             </div>
                           )}
 
-                          {entity.networkMedia && (
+                          {branch.networkMedia && (
                             <div className="flex items-center justify-between">
                               <span className="text-muted-foreground">Network:</span>
                               <div className="flex items-center gap-1">
-                                {getMediaIcon(entity.networkMedia)}
-                                <span>{entity.networkMedia}</span>
+                                {getMediaIcon(branch.networkMedia)}
+                                <span>{branch.networkMedia}</span>
                               </div>
                             </div>
                           )}
 
-                          {entity.responseTime !== null && entity.responseTime !== undefined && (
+                          {branch.responseTime !== null && branch.responseTime !== undefined && (
                             <div className="flex items-center justify-between">
                               <span className="text-muted-foreground">Response Time:</span>
-                              <span className={entity.responseTime > 500 ? 'text-orange-600 font-medium' : ''}>
-                                {entity.responseTime}ms
+                              <span className={branch.responseTime > 500 ? 'text-orange-600 font-medium' : ''}>
+                                {branch.responseTime}ms
                               </span>
                             </div>
                           )}
 
-                          {entity.packetLoss !== null && entity.packetLoss !== undefined && entity.packetLoss > 0 && (
+                          {branch.packetLoss !== null && branch.packetLoss !== undefined && branch.packetLoss > 0 && (
                             <div className="flex items-center justify-between">
                               <span className="text-muted-foreground">Packet Loss:</span>
-                              <span className="text-orange-600 font-medium">{entity.packetLoss}%</span>
+                              <span className="text-orange-600 font-medium">{branch.packetLoss}%</span>
                             </div>
                           )}
 
                           <div className="flex items-center justify-between">
                             <span className="text-muted-foreground">Last Checked:</span>
-                            <span>{formatUptime(entity.status, entity.lastChecked)}</span>
+                            <span>{formatUptime(branch.status, branch.lastChecked)}</span>
                           </div>
 
-                          {entity.type === 'ATM' && entity.branch && (
-                            <div className="flex items-center justify-between pt-1 border-t">
-                              <span className="text-muted-foreground">Branch:</span>
-                              <span className="font-medium">{entity.branch.name}</span>
-                            </div>
-                          )}
-
-                          {entity.type === 'BRANCH' && entity.city && (
+                          {branch.city && (
                             <div className="flex items-center justify-between">
                               <span className="text-muted-foreground">City:</span>
-                              <span>{entity.city}</span>
+                              <span>{branch.city}</span>
                             </div>
                           )}
 
-                          {entity.type === 'ATM' && entity.location && (
-                            <div className="flex items-center justify-between">
-                              <span className="text-muted-foreground">Location:</span>
-                              <span className="text-xs">{entity.location}</span>
-                            </div>
-                          )}
-
-                          {entity.hasActiveIncident && (
+                          {branch.hasActiveIncident && (
                             <div className="pt-2 border-t">
                               <div className="flex items-center gap-1 text-red-600">
                                 <AlertTriangle className="h-3 w-3" />
@@ -713,48 +628,17 @@ export default function NetworkMapPage() {
         </CardContent>
       </Card>
 
-      {/* Entity List and Legend - Side by Side */}
+      {/* Branch List and Legend - Side by Side */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Entity List - 2/3 width */}
+        {/* Branch List - 2/3 width */}
         <Card className="lg:col-span-2">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm">Entity List</CardTitle>
-              <Badge variant="outline">{filteredEntities.length} items</Badge>
+              <CardTitle className="text-sm">Branch List</CardTitle>
+              <Badge variant="outline">{filteredBranches.length} branches</Badge>
             </div>
-            {/* Filters */}
+            {/* Status Filter */}
             <div className="flex flex-wrap gap-2 mt-2">
-              {/* Type Filter */}
-              <div className="flex gap-1">
-                <Button
-                  variant={listTypeFilter === 'ALL' ? 'default' : 'outline'}
-                  size="sm"
-                  className="h-7 text-xs"
-                  onClick={() => setListTypeFilter('ALL')}
-                >
-                  All
-                </Button>
-                <Button
-                  variant={listTypeFilter === 'BRANCH' ? 'default' : 'outline'}
-                  size="sm"
-                  className="h-7 text-xs"
-                  onClick={() => setListTypeFilter('BRANCH')}
-                >
-                  <Building2 className="h-3 w-3 mr-1" />
-                  Branch
-                </Button>
-                <Button
-                  variant={listTypeFilter === 'ATM' ? 'default' : 'outline'}
-                  size="sm"
-                  className="h-7 text-xs"
-                  onClick={() => setListTypeFilter('ATM')}
-                >
-                  <CreditCard className="h-3 w-3 mr-1" />
-                  ATM
-                </Button>
-              </div>
-              <div className="border-l mx-1"></div>
-              {/* Status Filter */}
               <div className="flex gap-1">
                 <Button
                   variant={listStatusFilter === 'ALL' ? 'default' : 'outline'}
@@ -812,59 +696,50 @@ export default function NetworkMapPage() {
           <CardContent className="pt-0">
             <ScrollArea className="h-[300px]">
               <div className="space-y-1">
-                {filteredEntities.length === 0 ? (
+                {filteredBranches.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
-                    <MapPin className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">No entities found</p>
+                    <Building2 className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No branches found</p>
                   </div>
                 ) : (
-                  filteredEntities.map((entity) => (
+                  filteredBranches.map((branch) => (
                     <div
-                      key={`list-${entity.type}-${entity.id}`}
-                      onClick={() => handleEntityClick(entity)}
+                      key={`list-${branch.id}`}
+                      onClick={() => handleBranchClick(branch)}
                       className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors hover:bg-gray-100 ${
-                        selectedEntityId === `${entity.type}-${entity.id}` ? 'bg-blue-50 border border-blue-200' : ''
+                        selectedBranchId === branch.id ? 'bg-blue-50 border border-blue-200' : ''
                       }`}
                     >
                       <div className="flex items-center gap-3">
                         <div className={`p-1.5 rounded-full ${
-                          entity.status === 'ONLINE' ? 'bg-green-100' :
-                          entity.status === 'OFFLINE' ? 'bg-red-100' :
-                          entity.status === 'SLOW' ? 'bg-yellow-100' :
+                          branch.status === 'ONLINE' ? 'bg-green-100' :
+                          branch.status === 'OFFLINE' ? 'bg-red-100' :
+                          branch.status === 'SLOW' ? 'bg-yellow-100' :
                           'bg-gray-100'
                         }`}>
-                          {entity.type === 'BRANCH' ? (
-                            <Building2 className={`h-4 w-4 ${
-                              entity.status === 'ONLINE' ? 'text-green-600' :
-                              entity.status === 'OFFLINE' ? 'text-red-600' :
-                              entity.status === 'SLOW' ? 'text-yellow-600' :
-                              'text-gray-600'
-                            }`} />
-                          ) : (
-                            <CreditCard className={`h-4 w-4 ${
-                              entity.status === 'ONLINE' ? 'text-green-600' :
-                              entity.status === 'OFFLINE' ? 'text-red-600' :
-                              entity.status === 'SLOW' ? 'text-yellow-600' :
-                              'text-gray-600'
-                            }`} />
-                          )}
+                          <Building2 className={`h-4 w-4 ${
+                            branch.status === 'ONLINE' ? 'text-green-600' :
+                            branch.status === 'OFFLINE' ? 'text-red-600' :
+                            branch.status === 'SLOW' ? 'text-yellow-600' :
+                            'text-gray-600'
+                          }`} />
                         </div>
                         <div>
-                          <div className="font-medium text-sm">{entity.name}</div>
+                          <div className="font-medium text-sm">{branch.name}</div>
                           <div className="text-xs text-muted-foreground flex items-center gap-2">
-                            <span>{entity.code}</span>
-                            {entity.ipAddress && (
+                            <span>{branch.code}</span>
+                            {branch.ipAddress && (
                               <>
                                 <span>•</span>
-                                <span className="font-mono">{entity.ipAddress}</span>
+                                <span className="font-mono">{branch.ipAddress}</span>
                               </>
                             )}
                           </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline" className={`text-xs ${getStatusColor(entity.status)}`}>
-                          {entity.status}
+                        <Badge variant="outline" className={`text-xs ${getStatusColor(branch.status)}`}>
+                          {branch.status}
                         </Badge>
                         <ExternalLink className="h-3 w-3 text-muted-foreground" />
                       </div>
@@ -884,40 +759,44 @@ export default function NetworkMapPage() {
           <CardContent>
             <div className="space-y-4">
               <div>
-                <h4 className="text-xs font-semibold mb-2 text-muted-foreground">Entity Types</h4>
+                <h4 className="text-xs font-semibold mb-2 text-muted-foreground">Status Colors</h4>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <Building2 className="h-4 w-4 text-blue-600" />
-                    <span className="text-sm">Branch</span>
+                    <div className="w-4 h-4 rounded-full bg-green-500"></div>
+                    <span className="text-sm">Online - Network reachable</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <CreditCard className="h-4 w-4 text-purple-600" />
-                    <span className="text-sm">ATM</span>
+                    <div className="w-4 h-4 rounded-full bg-yellow-500"></div>
+                    <span className="text-sm">Slow - High latency</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded-full bg-red-500"></div>
+                    <span className="text-sm">Offline - No response</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded-full bg-orange-500"></div>
+                    <span className="text-sm">Stale - No recent data</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded-full bg-gray-400"></div>
+                    <span className="text-sm">Unknown - Not monitored</span>
                   </div>
                 </div>
               </div>
               <div>
-                <h4 className="text-xs font-semibold mb-2 text-muted-foreground">Status</h4>
+                <h4 className="text-xs font-semibold mb-2 text-muted-foreground">Network Media</h4>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full bg-green-500"></div>
-                    <span className="text-sm">Online</span>
+                    {getMediaIcon('FO')}
+                    <span className="text-sm">FO - Fiber Optic</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full bg-yellow-500"></div>
-                    <span className="text-sm">Slow</span>
+                    {getMediaIcon('VSAT')}
+                    <span className="text-sm">VSAT - Satellite</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full bg-red-500"></div>
-                    <span className="text-sm">Offline</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full bg-orange-500"></div>
-                    <span className="text-sm">Stale</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full bg-gray-400"></div>
-                    <span className="text-sm">Unknown</span>
+                    {getMediaIcon('M2M')}
+                    <span className="text-sm">M2M - Mobile</span>
                   </div>
                 </div>
               </div>
