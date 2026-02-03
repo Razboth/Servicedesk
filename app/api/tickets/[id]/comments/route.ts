@@ -63,15 +63,15 @@ export async function GET(
 
     // Check access permissions
     let canAccess = false;
-    
-    if (session.user.role === 'ADMIN') {
+
+    if (['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
       // Super admin can see all
       canAccess = true;
-    } else if (session.user.role === 'MANAGER') {
+    } else if (['MANAGER', 'MANAGER_IT'].includes(session.user.role)) {
       // Managers can see comments from tickets in their branch
       canAccess = userWithDetails?.branchId === ticket.branchId;
-    } else if (session.user.role === 'TECHNICIAN') {
-      // Technicians can see comments from tickets they created, are assigned to, or match their support group
+    } else if (['TECHNICIAN', 'SECURITY_ANALYST'].includes(session.user.role)) {
+      // Technicians and Security Analysts can see comments from tickets they created, are assigned to, or match their support group
       const isCreatorOrAssignee = ticket.createdById === session.user.id || ticket.assignedToId === session.user.id;
       const isSupportGroupMatch = !!(userWithDetails?.supportGroupId && ticket.service?.supportGroupId === userWithDetails.supportGroupId);
       canAccess = isCreatorOrAssignee || isSupportGroupMatch;
@@ -168,15 +168,15 @@ export async function POST(
 
     // Check access permissions
     let canComment = false;
-    
-    if (session.user.role === 'ADMIN') {
+
+    if (['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
       // Super admin can comment on all
       canComment = true;
-    } else if (session.user.role === 'MANAGER') {
+    } else if (['MANAGER', 'MANAGER_IT'].includes(session.user.role)) {
       // Managers can comment on tickets in their branch
       canComment = userWithDetails?.branchId === ticket.branchId;
-    } else if (session.user.role === 'TECHNICIAN') {
-      // Technicians can comment on tickets they created, are assigned to, or match their support group
+    } else if (['TECHNICIAN', 'SECURITY_ANALYST'].includes(session.user.role)) {
+      // Technicians and Security Analysts can comment on tickets they created, are assigned to, or match their support group
       const isCreatorOrAssignee = ticket.createdById === session.user.id || ticket.assignedToId === session.user.id;
       const isSupportGroupMatch = !!(userWithDetails?.supportGroupId && ticket.service?.supportGroupId === userWithDetails.supportGroupId);
       canComment = isCreatorOrAssignee || isSupportGroupMatch;
