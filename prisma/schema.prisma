@@ -3297,3 +3297,85 @@ model ImportLog {
   @@index([createdAt])
   @@map("import_logs")
 }
+
+// ==========================================
+// ATM Monitoring System
+// ==========================================
+
+enum AtmMonitorStatus {
+  ONLINE
+  ALARM
+}
+
+model AtmMonitorDevice {
+  id              String             @id @default(cuid())
+  deviceId        String             @unique  // Normalized device ID (e.g., "0126" from "00126")
+  location        String?
+  status          AtmMonitorStatus   @default(ONLINE)
+  lastSeenAt      DateTime           @default(now())
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  currentAlarms   AtmCurrentAlarm[]
+  alarmHistory    AtmAlarmHistory[]
+
+  @@index([status])
+  @@index([lastSeenAt])
+  @@map("atm_monitor_devices")
+}
+
+// Current active alarms (cleared when device goes online)
+model AtmCurrentAlarm {
+  id          String             @id @default(cuid())
+  deviceId    String
+  alarmType   String
+  location    String
+  occurredAt  DateTime
+  timeAgo     String?
+  createdAt   DateTime           @default(now())
+
+  device      AtmMonitorDevice   @relation(fields: [deviceId], references: [deviceId], onDelete: Cascade)
+
+  @@unique([deviceId, alarmType])  // One alarm type per device
+  @@index([alarmType])
+  @@map("atm_current_alarms")
+}
+
+// Historical record of all alarms
+model AtmAlarmHistory {
+  id          String             @id @default(cuid())
+  deviceId    String
+  alarmType   String
+  location    String
+  occurredAt  DateTime
+  clearedAt   DateTime?
+  duration    Int?               // Duration in seconds until cleared
+  snapshotId  String?
+  createdAt   DateTime           @default(now())
+
+  device      AtmMonitorDevice   @relation(fields: [deviceId], references: [deviceId], onDelete: Cascade)
+  snapshot    AtmAlarmSnapshot?  @relation(fields: [snapshotId], references: [id])
+
+  @@index([deviceId, createdAt])
+  @@index([alarmType])
+  @@index([occurredAt])
+  @@index([snapshotId])
+  @@map("atm_alarm_history")
+}
+
+// Track each JSON push/snapshot for auditing
+model AtmAlarmSnapshot {
+  id              String            @id @default(cuid())
+  timestamp       DateTime          // From the JSON timestamp field
+  alarmCount      Int               // Original count from JSON
+  processedCount  Int               // After filtering empty values
+  devicesAlarming Int               // Unique devices with alarms
+  devicesCleared  Int               // Devices that went online
+  receivedAt      DateTime          @default(now())
+
+  alarmHistory    AtmAlarmHistory[]
+
+  @@index([timestamp])
+  @@index([receivedAt])
+  @@map("atm_alarm_snapshots")
+}
