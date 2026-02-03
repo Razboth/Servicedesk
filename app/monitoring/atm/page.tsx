@@ -54,7 +54,6 @@ import {
   Signal,
   SignalLow,
   SignalZero,
-  TrendingUp,
   ExternalLink,
 } from 'lucide-react';
 
@@ -229,7 +228,7 @@ const getConnectionIcon = (status: string) => {
   }
 };
 
-// Helper to get status color for map
+// Helper to get status color for map marker
 const getMapStatusColor = (status: string, hasAlarm: boolean) => {
   if (hasAlarm) return '#f97316'; // orange for alarm
   switch (status) {
@@ -258,7 +257,6 @@ export default function ATMMonitoringPage() {
   const [deviceHistory, setDeviceHistory] = useState<HistoryRecord[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [leafletIcon, setLeafletIcon] = useState<any>(null);
-  const [viewMode, setViewMode] = useState<'cards' | 'map'>('cards');
   const mapRef = React.useRef<any>(null);
   const markersRef = React.useRef<Map<string, any>>(new Map());
 
@@ -346,7 +344,6 @@ export default function ATMMonitoringPage() {
     // Create a map of alarm devices by normalized device ID
     const alarmMap = new Map<string, AlarmDevice>();
     alarmDevices.forEach((device) => {
-      // The alarm device ID is like "0126", ATM code might be "0126" or similar
       alarmMap.set(device.deviceId, device);
     });
 
@@ -417,62 +414,13 @@ export default function ATMMonitoringPage() {
     };
   }, [combinedATMs]);
 
-  const handleManualRefresh = () => {
-    fetchData(true);
-    toast.success('Data diperbarui');
-  };
-
-  const handleATMClick = async (atm: CombinedATM) => {
-    setSelectedATM(atm);
-    setModalOpen(true);
-    if (atm.alarmDeviceId) {
-      await fetchDeviceHistory(atm.alarmDeviceId);
-    } else {
-      setDeviceHistory([]);
-    }
-  };
-
-  const formatTime = (dateString: string | null) => {
-    if (!dateString) return '-';
-    return new Date(dateString).toLocaleString('id-ID', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  const formatDuration = (seconds: number | null) => {
-    if (seconds === null) return '-';
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    if (hours > 24) {
-      const days = Math.floor(hours / 24);
-      return `${days}h ${hours % 24}j ${minutes}m`;
-    }
-    return `${hours}j ${minutes}m`;
-  };
-
-  const formatUptime = (lastChecked: string | null) => {
-    if (!lastChecked) return 'N/A';
-    const now = new Date();
-    const checked = new Date(lastChecked);
-    const diffMinutes = Math.floor((now.getTime() - checked.getTime()) / 60000);
-
-    if (diffMinutes < 1) return 'Just now';
-    if (diffMinutes < 60) return `${diffMinutes}m ago`;
-    const diffHours = Math.floor(diffMinutes / 60);
-    return `${diffHours}h ago`;
-  };
-
   // Get unique alarm types for filter
   const alarmTypes = alarmTypeBreakdown.map((a) => a.alarmType);
 
   // ATMs with coordinates for map display
   const atmsWithCoordinates = useMemo(() => {
-    return filteredATMs.filter(atm => atm.latitude && atm.longitude);
-  }, [filteredATMs]);
+    return combinedATMs.filter(atm => atm.latitude && atm.longitude);
+  }, [combinedATMs]);
 
   // Calculate map center
   const mapCenter: [number, number] = useMemo(() => {
@@ -559,21 +507,53 @@ export default function ATMMonitoringPage() {
     });
   };
 
-  // Handle ATM click from map list
-  const handleMapATMClick = (atm: CombinedATM) => {
-    if (!atm.latitude || !atm.longitude || !mapRef.current) return;
+  const handleManualRefresh = () => {
+    fetchData(true);
+    toast.success('Data diperbarui');
+  };
 
-    mapRef.current.setView([atm.latitude, atm.longitude], 15, {
-      animate: true,
-      duration: 0.5
+  const handleATMClick = async (atm: CombinedATM) => {
+    setSelectedATM(atm);
+    setModalOpen(true);
+    if (atm.alarmDeviceId) {
+      await fetchDeviceHistory(atm.alarmDeviceId);
+    } else {
+      setDeviceHistory([]);
+    }
+  };
+
+  const formatTime = (dateString: string | null) => {
+    if (!dateString) return '-';
+    return new Date(dateString).toLocaleString('id-ID', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
     });
+  };
 
-    setTimeout(() => {
-      const marker = markersRef.current.get(atm.id);
-      if (marker) {
-        marker.openPopup();
-      }
-    }, 600);
+  const formatDuration = (seconds: number | null) => {
+    if (seconds === null) return '-';
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    if (hours > 24) {
+      const days = Math.floor(hours / 24);
+      return `${days}h ${hours % 24}j ${minutes}m`;
+    }
+    return `${hours}j ${minutes}m`;
+  };
+
+  const formatUptime = (lastChecked: string | null) => {
+    if (!lastChecked) return 'N/A';
+    const now = new Date();
+    const checked = new Date(lastChecked);
+    const diffMinutes = Math.floor((now.getTime() - checked.getTime()) / 60000);
+
+    if (diffMinutes < 1) return 'Just now';
+    if (diffMinutes < 60) return `${diffMinutes}m ago`;
+    const diffHours = Math.floor(diffMinutes / 60);
+    return `${diffHours}h ago`;
   };
 
   return (
@@ -590,25 +570,6 @@ export default function ATMMonitoringPage() {
           </p>
         </div>
         <div className="flex items-center gap-4">
-          {/* View Mode Toggle */}
-          <div className="flex gap-1 border rounded-lg p-1">
-            <Button
-              variant={viewMode === 'cards' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('cards')}
-            >
-              <CreditCard className="h-4 w-4 mr-1" />
-              Cards
-            </Button>
-            <Button
-              variant={viewMode === 'map' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('map')}
-            >
-              <MapPin className="h-4 w-4 mr-1" />
-              Map
-            </Button>
-          </div>
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Auto-refresh</span>
             <Button
@@ -705,6 +666,202 @@ export default function ATMMonitoringPage() {
         </Card>
       </div>
 
+      {/* Map Section - Always Visible */}
+      <Card className="mb-6">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="h-5 w-5" />
+                ATM Network Map
+              </CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Click on ATM markers to view details and alarms
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline">
+                {atmsWithCoordinates.length} ATMs on map
+              </Badge>
+              {atmsWithCoordinates.length < combinedATMs.length && (
+                <Badge variant="outline" className="text-orange-600">
+                  {combinedATMs.length - atmsWithCoordinates.length} without coordinates
+                </Badge>
+              )}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loading && !combinedATMs.length ? (
+            <div className="flex items-center justify-center py-12 bg-gray-50 rounded-lg" style={{ height: '500px' }}>
+              <div className="text-center">
+                <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground mx-auto mb-2" />
+                <p className="text-muted-foreground">Loading ATM data...</p>
+              </div>
+            </div>
+          ) : atmsWithCoordinates.length === 0 ? (
+            <div className="flex items-center justify-center py-12 bg-gray-50 rounded-lg" style={{ height: '500px' }}>
+              <div className="text-center">
+                <MapPin className="h-12 w-12 mx-auto mb-4 opacity-50 text-muted-foreground" />
+                <p className="text-muted-foreground">No ATMs with coordinates found</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Add latitude and longitude to ATM records to display them on the map
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="relative" style={{ height: '500px' }}>
+              <link
+                rel="stylesheet"
+                href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"
+                integrity="sha512-Zcn6bjR/8RZbLEpLIeOwNtzREBAJnUKESxces60Mpoj+2okopSAcSUIUOseddDm0cxnGQzxIR7vJgsLZbdLE3w=="
+                crossOrigin=""
+              />
+              {/* Legend overlay */}
+              <div className="absolute top-4 right-4 z-[1000] bg-white px-3 py-2 rounded-lg shadow-md">
+                <p className="text-xs font-semibold mb-2">Legend</p>
+                <div className="flex flex-col gap-1 text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                    <span>Online</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                    <span>Offline</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-orange-500"></div>
+                    <span>Has Alarm</span>
+                  </div>
+                </div>
+              </div>
+              <MapContainer
+                center={mapCenter}
+                zoom={8}
+                style={{ height: '100%', width: '100%', borderRadius: '0.5rem' }}
+                ref={mapRef}
+              >
+                <TileLayer
+                  attribution=""
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                <MarkerClusterGroup
+                  chunkedLoading
+                  iconCreateFunction={createClusterCustomIcon}
+                  maxClusterRadius={60}
+                  spiderfyOnMaxZoom={true}
+                  showCoverageOnHover={false}
+                >
+                  {atmsWithCoordinates.map((atm) => (
+                    <Marker
+                      key={atm.id}
+                      position={[atm.latitude!, atm.longitude!]}
+                      icon={getMarkerIcon(atm.status, atm.alarmStatus === 'ALARM')}
+                      ref={(ref: any) => {
+                        if (ref) {
+                          markersRef.current.set(atm.id, ref);
+                          ref.options.data = { status: atm.status, hasAlarm: atm.alarmStatus === 'ALARM' };
+                        }
+                      }}
+                    >
+                      <Popup maxWidth={350}>
+                        <div className="p-2 min-w-[280px]">
+                          <div className="flex items-center gap-2 mb-3">
+                            <CreditCard className="h-5 w-5 text-purple-600" />
+                            <div>
+                              <h3 className="font-bold text-sm">{atm.location || atm.name}</h3>
+                              <p className="text-xs text-muted-foreground font-mono">{atm.code}</p>
+                            </div>
+                          </div>
+
+                          {/* Status Badges */}
+                          <div className="flex gap-2 mb-3">
+                            <Badge className={`text-xs ${getConnectionStatusColor(atm.status)}`}>
+                              {getConnectionIcon(atm.status)}
+                              <span className="ml-1">{atm.status}</span>
+                            </Badge>
+                            {atm.alarmStatus === 'ALARM' && (
+                              <Badge className="bg-orange-100 text-orange-700 text-xs">
+                                <AlertTriangle className="h-3 w-3 mr-1" />
+                                ALARM
+                              </Badge>
+                            )}
+                          </div>
+
+                          {/* Details */}
+                          <div className="space-y-1 text-xs mb-3">
+                            {atm.ipAddress && (
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">IP:</span>
+                                <span className="font-mono">{atm.ipAddress}</span>
+                              </div>
+                            )}
+                            {atm.responseTime !== null && atm.status === 'ONLINE' && (
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Response:</span>
+                                <span className={atm.responseTime > 500 ? 'text-orange-600 font-medium' : ''}>
+                                  {atm.responseTime}ms
+                                </span>
+                              </div>
+                            )}
+                            {atm.networkMedia && (
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Network:</span>
+                                <span className="flex items-center gap-1">
+                                  {getMediaIcon(atm.networkMedia)}
+                                  {atm.networkMedia}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Active Alarms Section */}
+                          {atm.currentAlarms.length > 0 && (
+                            <div className="border-t pt-2 mb-3">
+                              <p className="text-xs font-semibold mb-2 flex items-center gap-1 text-red-600">
+                                <AlertTriangle className="h-3 w-3" />
+                                Active Alarms ({atm.currentAlarms.length})
+                              </p>
+                              <div className="space-y-1">
+                                {atm.currentAlarms.map((alarm) => (
+                                  <div
+                                    key={alarm.id}
+                                    className={`p-2 rounded text-xs ${getAlarmColor(alarm.alarmType)}`}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      {getAlarmIcon(alarm.alarmType)}
+                                      <span className="font-medium">{alarm.alarmType}</span>
+                                    </div>
+                                    <p className="text-[10px] opacity-75 mt-1">
+                                      {alarm.timeAgo || formatTime(alarm.occurredAt)}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* View Details Button */}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full text-xs"
+                            onClick={() => handleATMClick(atm)}
+                          >
+                            View Full Details
+                            <ExternalLink className="h-3 w-3 ml-1" />
+                          </Button>
+                        </div>
+                      </Popup>
+                    </Marker>
+                  ))}
+                </MarkerClusterGroup>
+              </MapContainer>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Alarm Type Breakdown */}
       {alarmTypeBreakdown.length > 0 && (
         <Card className="mb-6">
@@ -785,7 +942,7 @@ export default function ATMMonitoringPage() {
         </CardContent>
       </Card>
 
-      {/* Main Content */}
+      {/* ATM Cards Grid */}
       {loading ? (
         <div className="flex items-center justify-center py-16">
           <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -807,259 +964,8 @@ export default function ATMMonitoringPage() {
             </div>
           </CardContent>
         </Card>
-      ) : viewMode === 'map' ? (
-        <>
-          {/* Map View */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-            {/* Map Section - 2/3 width */}
-            <Card className="lg:col-span-2">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>ATM Network Map</CardTitle>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {atmsWithCoordinates.length} of {filteredATMs.length} ATMs shown on map
-                    </p>
-                  </div>
-                  {atmsWithCoordinates.length < filteredATMs.length && (
-                    <Badge variant="outline" className="text-orange-600">
-                      {filteredATMs.length - atmsWithCoordinates.length} ATMs without coordinates
-                    </Badge>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent>
-                {atmsWithCoordinates.length === 0 ? (
-                  <div className="flex items-center justify-center py-12 bg-gray-50 rounded-lg" style={{ height: '600px' }}>
-                    <div className="text-center">
-                      <MapPin className="h-12 w-12 mx-auto mb-4 opacity-50 text-muted-foreground" />
-                      <p className="text-muted-foreground">No ATMs with coordinates found</p>
-                      <p className="text-sm text-muted-foreground mt-2">
-                        Add latitude and longitude to ATM records to display them on the map
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="relative" style={{ height: '600px' }}>
-                    <link
-                      rel="stylesheet"
-                      href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"
-                      integrity="sha512-Zcn6bjR/8RZbLEpLIeOwNtzREBAJnUKESxces60Mpoj+2okopSAcSUIUOseddDm0cxnGQzxIR7vJgsLZbdLE3w=="
-                      crossOrigin=""
-                    />
-                    <div className="absolute top-4 left-4 z-[1000] bg-white px-3 py-2 rounded-lg shadow-md flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-gray-600" />
-                      <span className="text-sm font-medium">
-                        Last Update: {lastAlarmUpdate ? formatTime(lastAlarmUpdate) : '--:--'}
-                      </span>
-                    </div>
-                    <MapContainer
-                      center={mapCenter}
-                      zoom={9}
-                      style={{ height: '100%', width: '100%', borderRadius: '0.5rem' }}
-                      ref={mapRef}
-                    >
-                      <TileLayer
-                        attribution=""
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                      />
-                      <MarkerClusterGroup
-                        chunkedLoading
-                        iconCreateFunction={createClusterCustomIcon}
-                        maxClusterRadius={60}
-                        spiderfyOnMaxZoom={true}
-                        showCoverageOnHover={false}
-                      >
-                        {atmsWithCoordinates.map((atm) => (
-                          <Marker
-                            key={atm.id}
-                            position={[atm.latitude!, atm.longitude!]}
-                            icon={getMarkerIcon(atm.status, atm.alarmStatus === 'ALARM')}
-                            ref={(ref: any) => {
-                              if (ref) {
-                                markersRef.current.set(atm.id, ref);
-                                ref.options.data = { status: atm.status, hasAlarm: atm.alarmStatus === 'ALARM' };
-                              }
-                            }}
-                          >
-                            <Popup maxWidth={300}>
-                              <div className="p-2">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <CreditCard className="h-4 w-4 text-purple-600" />
-                                  <h3 className="font-semibold text-sm">{atm.location || atm.name}</h3>
-                                </div>
-                                <div className="space-y-2 text-xs">
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-muted-foreground">Code:</span>
-                                    <span className="font-mono font-medium">{atm.code}</span>
-                                  </div>
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-muted-foreground">Connection:</span>
-                                    <Badge variant="outline" className={`text-xs ${getConnectionStatusColor(atm.status)}`}>
-                                      {atm.status}
-                                    </Badge>
-                                  </div>
-                                  {atm.alarmStatus === 'ALARM' && (
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-muted-foreground">Alarm:</span>
-                                      <Badge className="bg-red-100 text-red-700 text-xs">
-                                        <AlertTriangle className="h-3 w-3 mr-1" />
-                                        {atm.currentAlarms.length} Active
-                                      </Badge>
-                                    </div>
-                                  )}
-                                  {atm.ipAddress && (
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-muted-foreground">IP:</span>
-                                      <span className="font-mono text-xs">{atm.ipAddress}</span>
-                                    </div>
-                                  )}
-                                  {atm.responseTime !== null && (
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-muted-foreground">Response:</span>
-                                      <span className={atm.responseTime > 500 ? 'text-orange-600' : ''}>
-                                        {atm.responseTime}ms
-                                      </span>
-                                    </div>
-                                  )}
-                                  {atm.currentAlarms.length > 0 && (
-                                    <div className="pt-2 border-t mt-2">
-                                      <p className="text-xs font-medium mb-1">Active Alarms:</p>
-                                      {atm.currentAlarms.slice(0, 2).map((alarm) => (
-                                        <p key={alarm.id} className="text-xs text-red-600 flex items-center gap-1">
-                                          {getAlarmIcon(alarm.alarmType)}
-                                          {alarm.alarmType}
-                                        </p>
-                                      ))}
-                                      {atm.currentAlarms.length > 2 && (
-                                        <p className="text-xs text-muted-foreground">
-                                          +{atm.currentAlarms.length - 2} more
-                                        </p>
-                                      )}
-                                    </div>
-                                  )}
-                                  <div className="pt-2 border-t">
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="w-full text-xs"
-                                      onClick={() => handleATMClick(atm)}
-                                    >
-                                      View Details
-                                      <ExternalLink className="h-3 w-3 ml-1" />
-                                    </Button>
-                                  </div>
-                                </div>
-                              </div>
-                            </Popup>
-                          </Marker>
-                        ))}
-                      </MarkerClusterGroup>
-                    </MapContainer>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* ATM List - 1/3 width */}
-            <Card>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm">ATM List</CardTitle>
-                  <Badge variant="outline">{atmsWithCoordinates.length} ATMs</Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <ScrollArea className="h-[550px]">
-                  <div className="space-y-1">
-                    {atmsWithCoordinates.length === 0 ? (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <CreditCard className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">No ATMs with coordinates</p>
-                      </div>
-                    ) : (
-                      atmsWithCoordinates.map((atm) => (
-                        <div
-                          key={`list-${atm.id}`}
-                          onClick={() => handleMapATMClick(atm)}
-                          className="flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors hover:bg-gray-100"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className={`p-1.5 rounded-full ${
-                              atm.alarmStatus === 'ALARM' ? 'bg-orange-100' :
-                              atm.status === 'ONLINE' ? 'bg-green-100' :
-                              atm.status === 'OFFLINE' ? 'bg-red-100' :
-                              atm.status === 'SLOW' ? 'bg-yellow-100' :
-                              'bg-gray-100'
-                            }`}>
-                              <CreditCard className={`h-4 w-4 ${
-                                atm.alarmStatus === 'ALARM' ? 'text-orange-600' :
-                                atm.status === 'ONLINE' ? 'text-green-600' :
-                                atm.status === 'OFFLINE' ? 'text-red-600' :
-                                atm.status === 'SLOW' ? 'text-yellow-600' :
-                                'text-gray-600'
-                              }`} />
-                            </div>
-                            <div>
-                              <div className="font-medium text-sm truncate max-w-[150px]">
-                                {atm.location || atm.name}
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                {atm.code}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex flex-col gap-1 items-end">
-                            <Badge variant="outline" className={`text-xs ${getConnectionStatusColor(atm.status)}`}>
-                              {atm.status}
-                            </Badge>
-                            {atm.alarmStatus === 'ALARM' && (
-                              <Badge className="bg-orange-100 text-orange-700 text-xs">
-                                ALARM
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Legend */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm">Legend</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-6">
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full bg-green-500"></div>
-                    <span className="text-sm">Online</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full bg-yellow-500"></div>
-                    <span className="text-sm">Slow</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full bg-red-500"></div>
-                    <span className="text-sm">Offline</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full bg-orange-500"></div>
-                    <span className="text-sm">Has Alarm</span>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </>
       ) : (
         <>
-          {/* ATM Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
             {filteredATMs.map((atm) => {
               const hasAlarm = atm.alarmStatus === 'ALARM';
