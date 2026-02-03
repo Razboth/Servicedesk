@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -317,26 +317,20 @@ export default function AdminUsersPage() {
     }
   }, [search, roleFilter, branchFilter, supportGroupFilter, statusFilter]);
 
-  // Initialize data on component mount
+  // Track if initial data has been loaded
+  const initializedRef = useRef(false);
+
+  // Initialize data on component mount (branches and support groups only once)
   useEffect(() => {
-    const initializeData = async () => {
-      try {
-        await Promise.all([
-          fetchBranches(),
-          fetchSupportGroups(),
-          fetchUsers()
-        ]);
-      } catch (error) {
+    if (session?.user?.role === 'ADMIN' && !initializedRef.current) {
+      initializedRef.current = true;
+      Promise.all([fetchBranches(), fetchSupportGroups()]).catch((error) => {
         console.error('Error initializing data:', error);
-      }
-    };
-
-    if (session?.user?.role === 'ADMIN') {
-      initializeData();
+      });
     }
-  }, [session?.user?.role, fetchBranches, fetchSupportGroups, fetchUsers]);
+  }, [session?.user?.role, fetchBranches, fetchSupportGroups]);
 
-  // Refetch users when filters change
+  // Fetch users when filters change (includes initial load)
   useEffect(() => {
     if (session?.user?.role === 'ADMIN') {
       fetchUsers();
