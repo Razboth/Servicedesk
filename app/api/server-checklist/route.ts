@@ -120,13 +120,31 @@ export async function GET(request: NextRequest) {
     }
 
     const todayUTC = getTodayUTC();
+    const witaHour = getCurrentTimeWITA().getHours();
+    const isEarlyMorning = witaHour >= 0 && witaHour < 8;
 
-    const currentShift = await prisma.shiftAssignment.findFirst({
+    // Look for shift assignment - during early morning, check previous day too
+    // because night shifts start the evening before (e.g., shift on Feb 4th at 20:00 continues to Feb 5th 08:00)
+    let currentShift = await prisma.shiftAssignment.findFirst({
       where: {
         staffProfileId: staffProfile.id,
         date: todayUTC,
       },
     });
+
+    // If no shift found and it's early morning, check previous day (for night shifts)
+    if (!currentShift && isEarlyMorning) {
+      const yesterdayUTC = new Date(todayUTC);
+      yesterdayUTC.setUTCDate(yesterdayUTC.getUTCDate() - 1);
+
+      currentShift = await prisma.shiftAssignment.findFirst({
+        where: {
+          staffProfileId: staffProfile.id,
+          date: yesterdayUTC,
+          shiftType: { in: NIGHT_STANDBY_SHIFTS },
+        },
+      });
+    }
 
     // Check if user is on night-only shift (NIGHT_WEEKDAY, NIGHT_WEEKEND)
     const isOnNightOnlyShift = currentShift && NIGHT_ONLY_SHIFTS.includes(currentShift.shiftType);
@@ -511,13 +529,30 @@ export async function POST(request: NextRequest) {
     }
 
     const todayUTC = getTodayUTC();
+    const witaHour = getCurrentTimeWITA().getHours();
+    const isEarlyMorning = witaHour >= 0 && witaHour < 8;
 
-    const currentShift = await prisma.shiftAssignment.findFirst({
+    // Look for shift assignment - during early morning, check previous day too
+    let currentShift = await prisma.shiftAssignment.findFirst({
       where: {
         staffProfileId: staffProfile.id,
         date: todayUTC,
       },
     });
+
+    // If no shift found and it's early morning, check previous day (for night shifts)
+    if (!currentShift && isEarlyMorning) {
+      const yesterdayUTC = new Date(todayUTC);
+      yesterdayUTC.setUTCDate(yesterdayUTC.getUTCDate() - 1);
+
+      currentShift = await prisma.shiftAssignment.findFirst({
+        where: {
+          staffProfileId: staffProfile.id,
+          date: yesterdayUTC,
+          shiftType: { in: NIGHT_STANDBY_SHIFTS },
+        },
+      });
+    }
 
     const isOnNightOnlyShift = currentShift && NIGHT_ONLY_SHIFTS.includes(currentShift.shiftType);
     const isOnNightShift = currentShift && NIGHT_STANDBY_SHIFTS.includes(currentShift.shiftType);
@@ -528,7 +563,6 @@ export async function POST(request: NextRequest) {
       checklistType = type;
     } else {
       // Auto-determine based on server access and time
-      const witaHour = getCurrentTimeWITA().getHours();
       const isDayTimeNow = witaHour >= 8 && witaHour < 20;
 
       if (staffProfile.hasServerAccess) {
