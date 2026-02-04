@@ -109,6 +109,7 @@ export async function GET(request: NextRequest) {
     // Parse query parameters
     const { searchParams } = new URL(request.url);
     const typeParam = searchParams.get('type') as DailyChecklistType | null;
+    const dateParam = searchParams.get('date'); // Optional: YYYY-MM-DD format for historical data
 
     // Validate checklist type if provided
     if (typeParam && !VALID_CHECKLIST_TYPES.includes(typeParam)) {
@@ -117,6 +118,9 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Check if viewing historical data
+    const isHistorical = dateParam && dateParam !== new Date().toISOString().split('T')[0];
 
     // Get staff profile with shift info
     const staffProfile = await prisma.staffShiftProfile.findFirst({
@@ -208,7 +212,72 @@ export async function GET(request: NextRequest) {
         break;
     }
 
-    const checklistDate = getChecklistDate(checklistType);
+    // Determine the date to query
+    let checklistDate: Date;
+    if (dateParam) {
+      // Parse provided date for historical query
+      checklistDate = new Date(dateParam + 'T00:00:00.000Z');
+    } else {
+      checklistDate = getChecklistDate(checklistType);
+    }
+
+    // For historical queries, skip access control and just return data (read-only)
+    if (isHistorical) {
+      const historicalChecklist = await prisma.serverAccessDailyChecklist.findFirst({
+        where: {
+          userId: session.user.id,
+          date: checklistDate,
+          ...(typeParam && { checklistType: typeParam }),
+        },
+        include: {
+          items: {
+            orderBy: [{ category: 'asc' }, { order: 'asc' }],
+          },
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+      });
+
+      if (!historicalChecklist) {
+        return NextResponse.json({
+          found: false,
+          historical: true,
+          date: checklistDate,
+          message: 'Tidak ada checklist ditemukan untuk tanggal ini',
+        });
+      }
+
+      // Return historical data without lock status (all unlocked for viewing)
+      const itemsForView = historicalChecklist.items.map((item) => ({
+        ...item,
+        isLocked: false,
+        lockMessage: null,
+      }));
+
+      const stats = {
+        total: historicalChecklist.items.length,
+        completed: historicalChecklist.items.filter((i) => i.status === 'COMPLETED').length,
+        pending: historicalChecklist.items.filter((i) => i.status === 'PENDING').length,
+        inProgress: historicalChecklist.items.filter((i) => i.status === 'IN_PROGRESS').length,
+        skipped: historicalChecklist.items.filter((i) => i.status === 'SKIPPED').length,
+        locked: 0,
+      };
+
+      return NextResponse.json({
+        ...historicalChecklist,
+        items: itemsForView,
+        stats,
+        claimed: true,
+        claimedByUser: true,
+        historical: true,
+        readOnly: true,
+      });
+    }
 
     // Check if user has already claimed this checklist
     const userChecklist = await prisma.serverAccessDailyChecklist.findFirst({

@@ -17,6 +17,14 @@ const statusLabels: Record<string, string> = {
   SKIPPED: 'Dilewati',
 };
 
+// Daily checklist type labels
+const checklistTypeLabels: Record<string, string> = {
+  HARIAN: 'Checklist Harian',
+  SERVER_SIANG: 'Server (Siang)',
+  SERVER_MALAM: 'Server (Malam)',
+  AKHIR_HARI: 'Akhir Hari',
+};
+
 // GET /api/shifts/[assignmentId]/report/export - Export shift report
 export async function GET(
   request: NextRequest,
@@ -84,6 +92,26 @@ export async function GET(
 
     const report = shiftAssignment.shiftReport;
     const metrics = report.serverMetrics;
+
+    // Fetch daily checklists for this user on this date
+    const shiftDate = new Date(shiftAssignment.date);
+    const nextDay = new Date(shiftDate);
+    nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+
+    const dailyChecklists = await prisma.serverAccessDailyChecklist.findMany({
+      where: {
+        userId: shiftAssignment.staffProfile.userId,
+        date: {
+          gte: shiftDate,
+          lt: nextDay,
+        },
+      },
+      include: {
+        items: {
+          orderBy: [{ category: 'asc' }, { order: 'asc' }],
+        },
+      },
+    });
 
     // Build export data
     const exportData = {
@@ -164,6 +192,29 @@ export async function GET(
         pending: report.checklistItems.filter((i) => i.status === 'PENDING').length,
         skipped: report.checklistItems.filter((i) => i.status === 'SKIPPED').length,
       },
+      // Daily checklists (HARIAN, SERVER_SIANG, SERVER_MALAM, AKHIR_HARI)
+      dailyChecklists: dailyChecklists.map((checklist) => ({
+        type: checklist.checklistType,
+        typeLabel: checklistTypeLabels[checklist.checklistType] || checklist.checklistType,
+        status: checklist.status,
+        completedAt: checklist.completedAt,
+        items: checklist.items.map((item) => ({
+          category: item.category,
+          title: item.title,
+          description: item.description,
+          status: statusLabels[item.status] || item.status,
+          isRequired: item.isRequired,
+          completedAt: item.completedAt,
+          notes: item.notes,
+          unlockTime: item.unlockTime,
+        })),
+        stats: {
+          total: checklist.items.length,
+          completed: checklist.items.filter((i) => i.status === 'COMPLETED').length,
+          pending: checklist.items.filter((i) => i.status === 'PENDING').length,
+          skipped: checklist.items.filter((i) => i.status === 'SKIPPED').length,
+        },
+      })),
     };
 
     // Return based on format
@@ -226,6 +277,18 @@ export async function GET(
             ['Tindakan Tertunda', report.pendingActions || '-'],
           ],
         },
+        // Add daily checklists as separate sheets
+        ...dailyChecklists.map((checklist) => ({
+          title: checklistTypeLabels[checklist.checklistType] || checklist.checklistType,
+          headers: ['Waktu', 'Item', 'Status', 'Wajib', 'Catatan'],
+          rows: checklist.items.map((item) => [
+            item.unlockTime || '-',
+            item.title,
+            statusLabels[item.status] || item.status,
+            item.isRequired ? 'Ya' : 'Tidak',
+            item.notes || '-',
+          ]),
+        })),
       ],
     });
   } catch (error) {

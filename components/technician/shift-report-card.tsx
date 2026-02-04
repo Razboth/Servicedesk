@@ -709,6 +709,48 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
           yPos += 5;
         });
 
+        // Daily Checklists Section
+        if (exportData.dailyChecklists && exportData.dailyChecklists.length > 0) {
+          exportData.dailyChecklists.forEach((dailyChecklist: {
+            type: string;
+            typeLabel: string;
+            status: string;
+            items: { title: string; status: string; isRequired: boolean; unlockTime?: string | null }[];
+            stats: { total: number; completed: number };
+          }) => {
+            drawSectionHeader(dailyChecklist.typeLabel.toUpperCase());
+
+            // Stats summary
+            const dailyProgress = dailyChecklist.stats.total > 0
+              ? Math.round((dailyChecklist.stats.completed / dailyChecklist.stats.total) * 100)
+              : 0;
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(...colors.gray);
+            doc.text(`Progress: ${dailyProgress}% (${dailyChecklist.stats.completed}/${dailyChecklist.stats.total})`, margin, yPos);
+            yPos += 6;
+
+            // Items
+            dailyChecklist.items.forEach((item) => {
+              checkPageBreak(10);
+              doc.setFontSize(9);
+              let statusSymbol = '[ ]';
+              if (item.status === 'Selesai') statusSymbol = '[v]';
+              else if (item.status === 'Dilewati') statusSymbol = '[-]';
+              doc.setFont('helvetica', 'normal');
+              doc.setTextColor(...colors.darkGray);
+              doc.text(statusSymbol, margin, yPos);
+              let titleText = item.title;
+              if (item.unlockTime) titleText = `[${item.unlockTime}] ${titleText}`;
+              if (item.isRequired) titleText += ' *';
+              const lines = doc.splitTextToSize(titleText, contentWidth - 15);
+              doc.text(lines, margin + 10, yPos);
+              yPos += lines.length * 4 + 2;
+            });
+            yPos += 5;
+          });
+        }
+
         // Notes Section
         if (exportData.notes) {
           drawSectionHeader('CATATAN');

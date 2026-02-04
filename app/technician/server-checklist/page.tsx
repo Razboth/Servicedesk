@@ -6,6 +6,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { Calendar } from '@/components/ui/calendar';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { ServerAccessChecklist } from '@/components/technician/server-access-checklist';
 import {
   Server,
@@ -19,10 +32,14 @@ import {
   UserCheck,
   Users,
   Hand,
+  History,
+  ChevronLeft,
+  Download,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { format, isSameDay } from 'date-fns';
 import { id } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 interface ServerChecklistItem {
   id: string;
@@ -81,6 +98,28 @@ interface ChecklistStats {
   locked: number;
 }
 
+interface HistoryEntry {
+  date: string;
+  checklists: {
+    id: string;
+    type: string;
+    status: string;
+    completedAt: string | null;
+    stats: {
+      total: number;
+      completed: number;
+      pending: number;
+    };
+  }[];
+}
+
+const checklistTypeLabels: Record<string, string> = {
+  HARIAN: 'Checklist Harian',
+  SERVER_SIANG: 'Server (Siang)',
+  SERVER_MALAM: 'Server (Malam)',
+  AKHIR_HARI: 'Akhir Hari',
+};
+
 export default function ServerChecklistPage() {
   const { data: session, status: sessionStatus } = useSession();
   const [checklist, setChecklist] = useState<ServerChecklist | null>(null);
@@ -91,12 +130,35 @@ export default function ServerChecklistPage() {
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [accessError, setAccessError] = useState<string | null>(null);
 
+  // History and date selection state
+  const [showHistory, setShowHistory] = useState(false);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [selectedType, setSelectedType] = useState<string | undefined>(undefined);
+  const [isHistoricalView, setIsHistoricalView] = useState(false);
+
   // Fetch checklist data
-  const fetchChecklist = async () => {
+  const fetchChecklist = async (date?: Date, type?: string) => {
     try {
       setLoading(true);
       setAccessError(null);
-      const response = await fetch('/api/server-checklist');
+
+      let url = '/api/server-checklist';
+      const params = new URLSearchParams();
+
+      if (date) {
+        params.append('date', format(date, 'yyyy-MM-dd'));
+      }
+      if (type) {
+        params.append('type', type);
+      }
+
+      if (params.toString()) {
+        url += '?' + params.toString();
+      }
+
+      const response = await fetch(url);
 
       if (response.status === 403) {
         const data = await response.json();
@@ -110,15 +172,63 @@ export default function ServerChecklistPage() {
       }
 
       const data = await response.json();
+
+      // Check if no data found for historical query
+      if (data.found === false && data.historical) {
+        setChecklist(null);
+        setStats(null);
+        setHasAccess(true);
+        toast.info(data.message || 'Tidak ada checklist ditemukan');
+        return;
+      }
+
       setChecklist(data);
       setStats(data.stats || null);
       setHasAccess(true);
+      setIsHistoricalView(data.historical || false);
     } catch (error) {
       console.error('Error fetching checklist:', error);
       toast.error('Gagal memuat checklist');
     } finally {
       setLoading(false);
     }
+  };
+
+  // Fetch history
+  const fetchHistory = async () => {
+    try {
+      setLoadingHistory(true);
+      const response = await fetch('/api/server-checklist/history?limit=30');
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch history');
+      }
+
+      const data = await response.json();
+      setHistory(data.data || []);
+    } catch (error) {
+      console.error('Error fetching history:', error);
+      toast.error('Gagal memuat riwayat');
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  // View historical checklist
+  const viewHistoricalChecklist = (date: string, type: string) => {
+    const dateObj = new Date(date);
+    setSelectedDate(dateObj);
+    setSelectedType(type);
+    setShowHistory(false);
+    fetchChecklist(dateObj, type);
+  };
+
+  // Back to today
+  const backToToday = () => {
+    setSelectedDate(undefined);
+    setSelectedType(undefined);
+    setIsHistoricalView(false);
+    fetchChecklist();
   };
 
   // Claim checklist
@@ -153,16 +263,23 @@ export default function ServerChecklistPage() {
     }
   }, [session]);
 
-  // Auto-refresh every 60 seconds to update lock status
+  // Fetch history when showing history panel
+  useEffect(() => {
+    if (showHistory && history.length === 0) {
+      fetchHistory();
+    }
+  }, [showHistory]);
+
+  // Auto-refresh every 60 seconds to update lock status (only for today's checklist)
   useEffect(() => {
     const interval = setInterval(() => {
-      if (session?.user?.id && hasAccess && checklist?.claimedByUser) {
+      if (session?.user?.id && hasAccess && checklist?.claimedByUser && !isHistoricalView) {
         fetchChecklist();
       }
     }, 60000);
 
     return () => clearInterval(interval);
-  }, [session, hasAccess, checklist?.claimedByUser]);
+  }, [session, hasAccess, checklist?.claimedByUser, isHistoricalView]);
 
   // Handle item updates
   const handleUpdateItems = async (
@@ -359,25 +476,120 @@ export default function ServerChecklistPage() {
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
+              {isHistoricalView && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={backToToday}
+                  className="mb-2 -ml-2"
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Kembali ke Hari Ini
+                </Button>
+              )}
               <h1 className="text-3xl font-bold flex items-center gap-3">
                 <Server className="h-8 w-8 text-primary" />
                 Server Checklist
               </h1>
               <p className="text-muted-foreground mt-2">
-                Checklist harian untuk pemeliharaan server
+                {isHistoricalView
+                  ? `Riwayat checklist - ${selectedDate ? format(selectedDate, 'd MMMM yyyy', { locale: id }) : ''}`
+                  : 'Checklist harian untuk pemeliharaan server'}
               </p>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => fetchChecklist()}
-              disabled={loading || updating}
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${updating ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowHistory(true)}
+              >
+                <History className="h-4 w-4 mr-2" />
+                Riwayat
+              </Button>
+              {!isHistoricalView && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fetchChecklist()}
+                  disabled={loading || updating}
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${updating ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
+              )}
+            </div>
           </div>
         </div>
+
+        {/* History Panel */}
+        {showHistory && (
+          <Card className="mb-6">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <History className="h-5 w-5" />
+                  Riwayat Checklist
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowHistory(false)}
+                >
+                  Tutup
+                </Button>
+              </div>
+              <CardDescription>
+                Pilih tanggal untuk melihat checklist sebelumnya
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loadingHistory ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : history.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  Belum ada riwayat checklist
+                </div>
+              ) : (
+                <div className="space-y-4 max-h-[400px] overflow-y-auto">
+                  {history.map((entry) => (
+                    <div key={entry.date} className="border rounded-lg p-3">
+                      <div className="font-medium text-sm mb-2">
+                        {format(new Date(entry.date), 'EEEE, d MMMM yyyy', { locale: id })}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {entry.checklists.map((cl) => {
+                          const progress = cl.stats.total > 0
+                            ? Math.round((cl.stats.completed / cl.stats.total) * 100)
+                            : 0;
+                          return (
+                            <Button
+                              key={cl.id}
+                              variant="outline"
+                              size="sm"
+                              className="h-auto py-2 px-3"
+                              onClick={() => viewHistoricalChecklist(entry.date, cl.type)}
+                            >
+                              <div className="text-left">
+                                <div className="text-xs font-medium">
+                                  {checklistTypeLabels[cl.type] || cl.type}
+                                </div>
+                                <div className="text-[10px] text-muted-foreground">
+                                  {progress}% selesai
+                                </div>
+                              </div>
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Date and Status Card */}
         <Card className="mb-6">
