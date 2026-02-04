@@ -104,39 +104,42 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get today's shift assignment to determine shift type
-    // Use date range to handle timezone issues with Prisma
-    const witaTime = getCurrentTimeWITA();
-    const todayStart = new Date(witaTime);
-    todayStart.setHours(0, 0, 0, 0);
-    const todayEnd = new Date(todayStart);
-    todayEnd.setDate(todayEnd.getDate() + 1);
+    // Get today's date in WITA timezone for shift lookup
+    // WITA is UTC+8, so we need to get the correct calendar date
+    const now = new Date();
+    const witaOffset = 8 * 60; // WITA is UTC+8 in minutes
+    const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+    const witaMinutes = utcMinutes + witaOffset;
 
-    // Debug: log all shift assignments for this staff
-    const allShifts = await prisma.shiftAssignment.findMany({
-      where: {
-        staffProfileId: staffProfile.id,
-      },
-      orderBy: { date: 'desc' },
-      take: 5,
-    });
+    // Calculate the WITA date
+    let witaYear = now.getUTCFullYear();
+    let witaMonth = now.getUTCMonth();
+    let witaDay = now.getUTCDate();
 
-    console.log('[server-checklist] Staff profile:', staffProfile.id);
-    console.log('[server-checklist] WITA time:', witaTime.toISOString());
-    console.log('[server-checklist] Looking for date between:', todayStart.toISOString(), 'and', todayEnd.toISOString());
-    console.log('[server-checklist] Recent shifts:', allShifts.map(s => ({ date: s.date, type: s.shiftType })));
+    // If WITA time crosses midnight, adjust the date
+    if (witaMinutes >= 24 * 60) {
+      // Next day in WITA
+      const tempDate = new Date(Date.UTC(witaYear, witaMonth, witaDay + 1));
+      witaYear = tempDate.getUTCFullYear();
+      witaMonth = tempDate.getUTCMonth();
+      witaDay = tempDate.getUTCDate();
+    }
+
+    // Create today's date at UTC midnight (how Prisma stores dates)
+    const todayUTC = new Date(Date.UTC(witaYear, witaMonth, witaDay, 0, 0, 0, 0));
+
+    console.log('[server-checklist] UTC now:', now.toISOString());
+    console.log('[server-checklist] WITA date:', `${witaYear}-${String(witaMonth + 1).padStart(2, '0')}-${String(witaDay).padStart(2, '0')}`);
+    console.log('[server-checklist] Looking for date:', todayUTC.toISOString());
 
     const currentShift = await prisma.shiftAssignment.findFirst({
       where: {
         staffProfileId: staffProfile.id,
-        date: {
-          gte: todayStart,
-          lt: todayEnd,
-        },
+        date: todayUTC,
       },
     });
 
-    console.log('[server-checklist] Found shift:', currentShift?.shiftType || 'none');
+    console.log('[server-checklist] Staff:', staffProfile.id, 'Shift:', currentShift?.shiftType || 'none');
 
     // Determine checklist type
     let checklistType: DailyChecklistType;
