@@ -20,6 +20,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PendingTicketsVerification } from './pending-tickets-verification';
 
 interface ServerChecklistItem {
   id: string;
@@ -296,6 +297,12 @@ export function ServerAccessChecklist({
               <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
                 {item.lockMessage}
               </p>
+            )}
+            {/* Special content for Verifikasi Ticket Pending H-1 */}
+            {item.title === 'Verifikasi Ticket Pending H-1' && !isLocked && (
+              <div className="mt-2">
+                <PendingTicketsVerification />
+              </div>
             )}
           </div>
 
