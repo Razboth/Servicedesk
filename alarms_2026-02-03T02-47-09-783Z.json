@@ -1,0 +1,923 @@
+{
+  "timestamp": "2026-02-03T02:47:09.783Z",
+  "alarmCount": 131,
+  "alarms": [
+    {
+      "deviceId": "04204",
+      "alarmType": "Communication Offline",
+      "timeAgo": "0 minute ago",
+      "location": "ATM LK TERMINAL MALALAYANG",
+      "timestamp": "2026-02-03 10:48:46"
+    },
+    {
+      "deviceId": "02802",
+      "alarmType": "",
+      "timeAgo": "0 minute ago",
+      "location": "ATM KANTOR KAS LEMITO",
+      "timestamp": "2026-02-03 10:48:16"
+    },
+    {
+      "deviceId": "00905",
+      "alarmType": "",
+      "timeAgo": "5 minutes ago",
+      "location": "ATM KANTOR CABANG TOMOHON 2",
+      "timestamp": "2026-02-03 10:42:48"
+    },
+    {
+      "deviceId": "00202",
+      "alarmType": "",
+      "timeAgo": "10 minutes ago",
+      "location": "CABANG KOTAMOBAGU",
+      "timestamp": "2026-02-03 10:37:44"
+    },
+    {
+      "deviceId": "00190",
+      "alarmType": "Communication Offline",
+      "timeAgo": "13 minutes ago",
+      "location": "ATM SLA INDOMARET PANDU",
+      "timestamp": "2026-02-03 10:35:36"
+    },
+    {
+      "deviceId": "03201",
+      "alarmType": "Cash Handler Error",
+      "timeAgo": "16 minutes ago",
+      "location": "CAPEM TAGULANDANG",
+      "timestamp": "2026-02-03 10:32:17"
+    },
+    {
+      "deviceId": "03101",
+      "alarmType": "Communication Offline",
+      "timeAgo": "23 minutes ago",
+      "location": "KCP LOLAK",
+      "timestamp": "2026-02-03 10:25:29"
+    },
+    {
+      "deviceId": "04902",
+      "alarmType": "Cash Handler Error",
+      "timeAgo": "45 minutes ago",
+      "location": "ATM CAPEM TELAGA 2",
+      "timestamp": "2026-02-03 10:02:47"
+    },
+    {
+      "deviceId": "00701",
+      "alarmType": "Cash Handler Error",
+      "timeAgo": "1 hour 59 minutes ago",
+      "location": "KANTOR CABANG LIMBOTO",
+      "timestamp": "2026-02-03 08:49:12"
+    },
+    {
+      "deviceId": "01001",
+      "alarmType": "Cash Handler Error",
+      "timeAgo": "2 hours 21 minutes ago",
+      "location": "KANTOR CABANG MARISA",
+      "timestamp": "2026-02-03 08:26:44"
+    },
+    {
+      "deviceId": "00714",
+      "alarmType": "",
+      "timeAgo": "5 hours 9 minutes ago",
+      "location": "ATM BATUDAA",
+      "timestamp": "2026-02-03 05:39:10"
+    },
+    {
+      "deviceId": "00508",
+      "alarmType": "",
+      "timeAgo": "5 hours 15 minutes ago",
+      "location": "ATM ALFAMART GIRIAN INDAH",
+      "timestamp": "2026-02-03 05:33:19"
+    },
+    {
+      "deviceId": "00313",
+      "alarmType": "Communication Offline",
+      "timeAgo": "11 hours 17 minutes ago",
+      "location": "ATM ALFAMART RAJA EYATO",
+      "timestamp": "2026-02-02 23:31:34"
+    },
+    {
+      "deviceId": "01711",
+      "alarmType": "",
+      "timeAgo": "14 hours 24 minutes ago",
+      "location": "ATM KALAWAT",
+      "timestamp": "2026-02-02 20:23:51"
+    },
+    {
+      "deviceId": "00904",
+      "alarmType": "Cash Handler Error",
+      "timeAgo": "14 hours 26 minutes ago",
+      "location": "SUPERMARKET COOL TOMOHON",
+      "timestamp": "2026-02-02 20:22:17"
+    },
+    {
+      "deviceId": "03202",
+      "alarmType": "Communication Offline",
+      "timeAgo": "16 hours 6 minutes ago",
+      "location": "KANTOR CAMAT TAGULANDANG",
+      "timestamp": "2026-02-02 18:42:44"
+    },
+    {
+      "deviceId": "03004",
+      "alarmType": "Communication Offline",
+      "timeAgo": "16 hours 7 minutes ago",
+      "location": "ATM CABANG MOLIBAGU 2",
+      "timestamp": "2026-02-02 18:41:38"
+    },
+    {
+      "deviceId": "02203",
+      "alarmType": "Communication Offline",
+      "timeAgo": "16 hours 9 minutes ago",
+      "location": "ATM KANTOR BUPATI MINAHASA TGR",
+      "timestamp": "2026-02-02 18:38:52"
+    },
+    {
+      "deviceId": "01004",
+      "alarmType": "Communication Offline",
+      "timeAgo": "16 hours 12 minutes ago",
+      "location": "ATM KANTOR KAS RSUD MARISA",
+      "timestamp": "2026-02-02 18:36:34"
+    },
+    {
+      "deviceId": "00507",
+      "alarmType": "Communication Offline",
+      "timeAgo": "16 hours 17 minutes ago",
+      "location": "ATM GIRIAN WERU",
+      "timestamp": "2026-02-02 18:30:51"
+    },
+    {
+      "deviceId": "03003",
+      "alarmType": "",
+      "timeAgo": "17 hours 24 minutes ago",
+      "location": "ATM POSIGADAN",
+      "timestamp": "2026-02-02 17:24:32"
+    },
+    {
+      "deviceId": "00126",
+      "alarmType": "Communication Offline",
+      "timeAgo": "13 days 9 hours ago",
+      "location": "MOBIL KELILING CAB UTAMA",
+      "timestamp": "2026-01-21 01:18:30"
+    },
+    {
+      "deviceId": "",
+      "alarmType": "Offline",
+      "timeAgo": "13 days 9 hours ago",
+      "location": "Kantor Pusat",
+      "timestamp": "2026-01-21 01:18:27"
+    },
+    {
+      "deviceId": "",
+      "alarmType": "Offline",
+      "timeAgo": "13 days 9 hours ago",
+      "location": "Jakarta",
+      "timestamp": "2026-01-21 01:18:27"
+    },
+    {
+      "deviceId": "",
+      "alarmType": "Offline",
+      "timeAgo": "13 days 9 hours ago",
+      "location": "Jakarta",
+      "timestamp": "2026-01-21 01:18:27"
+    },
+    {
+      "deviceId": "02007",
+      "alarmType": "",
+      "timeAgo": "0 minute ago",
+      "location": "ATM KANTOR CABANG BOROKO II",
+      "timestamp": "2026-02-03 10:48:17"
+    },
+    {
+      "deviceId": "03201",
+      "alarmType": "",
+      "timeAgo": "0 minute ago",
+      "location": "CAPEM TAGULANDANG",
+      "timestamp": "2026-02-03 10:48:00"
+    },
+    {
+      "deviceId": "02205",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "1 minute ago",
+      "location": "ATM  KK TOMBATU",
+      "timestamp": "2026-02-03 10:47:44"
+    },
+    {
+      "deviceId": "",
+      "alarmType": "",
+      "timeAgo": "6 minutes ago",
+      "location": "",
+      "timestamp": "2026-02-03 10:42:44"
+    },
+    {
+      "deviceId": "03401",
+      "alarmType": "",
+      "timeAgo": "15 minutes ago",
+      "location": "BS CAPEM LIKUPANG",
+      "timestamp": "2026-02-03 10:32:58"
+    },
+    {
+      "deviceId": "04001",
+      "alarmType": "MCRW Error",
+      "timeAgo": "16 minutes ago",
+      "location": "ATM CABANG RANDANGAN",
+      "timestamp": "2026-02-03 10:32:02"
+    },
+    {
+      "deviceId": "00147",
+      "alarmType": "",
+      "timeAgo": "19 minutes ago",
+      "location": "ATM DINAS PENANAMAN MODAL",
+      "timestamp": "2026-02-03 10:29:06"
+    },
+    {
+      "deviceId": "00147",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "19 minutes ago",
+      "location": "ATM DINAS PENANAMAN MODAL",
+      "timestamp": "2026-02-03 10:29:06"
+    },
+    {
+      "deviceId": "00170",
+      "alarmType": "",
+      "timeAgo": "20 minutes ago",
+      "location": "ATM SLA DPRD SULUT",
+      "timestamp": "2026-02-03 10:28:21"
+    },
+    {
+      "deviceId": "01807",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "39 minutes ago",
+      "location": "ATM GALERY CABANG SUWAWA 2",
+      "timestamp": "2026-02-03 10:09:28"
+    },
+    {
+      "deviceId": "00308",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "40 minutes ago",
+      "location": "ATM MALL GORONTALO",
+      "timestamp": "2026-02-03 10:08:03"
+    },
+    {
+      "deviceId": "00153",
+      "alarmType": "",
+      "timeAgo": "42 minutes ago",
+      "location": "ATM JUMBO PASAR SWALAYAN",
+      "timestamp": "2026-02-03 10:06:43"
+    },
+    {
+      "deviceId": "00153",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "42 minutes ago",
+      "location": "ATM JUMBO PASAR SWALAYAN",
+      "timestamp": "2026-02-03 10:06:43"
+    },
+    {
+      "deviceId": "01003",
+      "alarmType": "",
+      "timeAgo": "44 minutes ago",
+      "location": "PERTOKOAN MARISA",
+      "timestamp": "2026-02-03 10:03:52"
+    },
+    {
+      "deviceId": "04902",
+      "alarmType": "MCRW Error",
+      "timeAgo": "45 minutes ago",
+      "location": "ATM CAPEM TELAGA 2",
+      "timestamp": "2026-02-03 10:03:44"
+    },
+    {
+      "deviceId": "01006",
+      "alarmType": "",
+      "timeAgo": "55 minutes ago",
+      "location": "ATM BUNTULIA POHUWATO",
+      "timestamp": "2026-02-03 09:53:22"
+    },
+    {
+      "deviceId": "00148",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "58 minutes ago",
+      "location": "ATM KK GUBERNUR SULUT",
+      "timestamp": "2026-02-03 09:50:45"
+    },
+    {
+      "deviceId": "01902",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "1 hour 4 minutes ago",
+      "location": "KANTOR BUPATI GORUT KWANDANG",
+      "timestamp": "2026-02-03 09:44:06"
+    },
+    {
+      "deviceId": "00317",
+      "alarmType": "",
+      "timeAgo": "1 hour 7 minutes ago",
+      "location": "ATM KANTOR GUBERNUR GORONTALO",
+      "timestamp": "2026-02-03 09:41:39"
+    },
+    {
+      "deviceId": "00805",
+      "alarmType": "",
+      "timeAgo": "1 hour 9 minutes ago",
+      "location": "KANTOR CABANG TONDANO",
+      "timestamp": "2026-02-03 09:39:29"
+    },
+    {
+      "deviceId": "00805",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "1 hour 9 minutes ago",
+      "location": "KANTOR CABANG TONDANO",
+      "timestamp": "2026-02-03 09:39:29"
+    },
+    {
+      "deviceId": "00705",
+      "alarmType": "MCRW Error",
+      "timeAgo": "1 hour 10 minutes ago",
+      "location": "RS DUNDA",
+      "timestamp": "2026-02-03 09:38:38"
+    },
+    {
+      "deviceId": "03804",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "1 hour 11 minutes ago",
+      "location": "ATM GALERI CERIA MART",
+      "timestamp": "2026-02-03 09:37:06"
+    },
+    {
+      "deviceId": "02002",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "1 hour 17 minutes ago",
+      "location": "ATM KANTOR BUPATI BOROKO",
+      "timestamp": "2026-02-03 09:31:24"
+    },
+    {
+      "deviceId": "04501",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "1 hour 23 minutes ago",
+      "location": "DESA MODELOMO",
+      "timestamp": "2026-02-03 09:24:48"
+    },
+    {
+      "deviceId": "04501",
+      "alarmType": "",
+      "timeAgo": "1 hour 24 minutes ago",
+      "location": "DESA MODELOMO",
+      "timestamp": "2026-02-03 09:24:41"
+    },
+    {
+      "deviceId": "00177",
+      "alarmType": "",
+      "timeAgo": "1 hour 33 minutes ago",
+      "location": "ATM SLA RUKO WINANGUN",
+      "timestamp": "2026-02-03 09:14:45"
+    },
+    {
+      "deviceId": "00177",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "1 hour 33 minutes ago",
+      "location": "ATM SLA RUKO WINANGUN",
+      "timestamp": "2026-02-03 09:14:45"
+    },
+    {
+      "deviceId": "00301",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "1 hour 34 minutes ago",
+      "location": "CABANG GORONTALO",
+      "timestamp": "2026-02-03 09:13:53"
+    },
+    {
+      "deviceId": "02208",
+      "alarmType": "",
+      "timeAgo": "1 hour 36 minutes ago",
+      "location": "ATM TOLOMBUKAN LIWUTUNG",
+      "timestamp": "2026-02-03 09:11:46"
+    },
+    {
+      "deviceId": "02208",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "1 hour 36 minutes ago",
+      "location": "ATM TOLOMBUKAN LIWUTUNG",
+      "timestamp": "2026-02-03 09:11:46"
+    },
+    {
+      "deviceId": "00305",
+      "alarmType": "",
+      "timeAgo": "1 hour 40 minutes ago",
+      "location": "ATM MALL KARSA GORONTALO",
+      "timestamp": "2026-02-03 09:07:56"
+    },
+    {
+      "deviceId": "00305",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "1 hour 40 minutes ago",
+      "location": "ATM MALL KARSA GORONTALO",
+      "timestamp": "2026-02-03 09:07:56"
+    },
+    {
+      "deviceId": "01120",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "1 hour 48 minutes ago",
+      "location": "ATM KANTOR WALIKOTA",
+      "timestamp": "2026-02-03 09:00:34"
+    },
+    {
+      "deviceId": "00175",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "1 hour 51 minutes ago",
+      "location": "ATM SLA CITRALAND",
+      "timestamp": "2026-02-03 08:56:59"
+    },
+    {
+      "deviceId": "02802",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "1 hour 52 minutes ago",
+      "location": "ATM KANTOR KAS LEMITO",
+      "timestamp": "2026-02-03 08:55:56"
+    },
+    {
+      "deviceId": "02802",
+      "alarmType": "",
+      "timeAgo": "1 hour 53 minutes ago",
+      "location": "ATM KANTOR KAS LEMITO",
+      "timestamp": "2026-02-03 08:55:26"
+    },
+    {
+      "deviceId": "01901",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "1 hour 55 minutes ago",
+      "location": "KANTOR KAS MOLUO KWANDANG",
+      "timestamp": "2026-02-03 08:53:42"
+    },
+    {
+      "deviceId": "03103",
+      "alarmType": "",
+      "timeAgo": "1 hour 56 minutes ago",
+      "location": "KANTOR KAS POGAR",
+      "timestamp": "2026-02-03 08:52:06"
+    },
+    {
+      "deviceId": "00809",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "2 hours 0 minute ago",
+      "location": "ATM ALFAMART REMBOKEN",
+      "timestamp": "2026-02-03 08:48:38"
+    },
+    {
+      "deviceId": "01118",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "2 hours 7 minutes ago",
+      "location": "ATM KANTOR KAS MAPANGET",
+      "timestamp": "2026-02-03 08:41:20"
+    },
+    {
+      "deviceId": "01402",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "2 hours 8 minutes ago",
+      "location": "ATM KK KABARUAN LIRUNG",
+      "timestamp": "2026-02-03 08:40:04"
+    },
+    {
+      "deviceId": "00709",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "2 hours 11 minutes ago",
+      "location": "ATM BANDARA GORONTALO",
+      "timestamp": "2026-02-03 08:36:47"
+    },
+    {
+      "deviceId": "01804",
+      "alarmType": "",
+      "timeAgo": "2 hours 13 minutes ago",
+      "location": "ATM TAPA",
+      "timestamp": "2026-02-03 08:35:06"
+    },
+    {
+      "deviceId": "00804",
+      "alarmType": "",
+      "timeAgo": "2 hours 17 minutes ago",
+      "location": "KANTOR KAS TATAARAN",
+      "timestamp": "2026-02-03 08:31:32"
+    },
+    {
+      "deviceId": "00211",
+      "alarmType": "",
+      "timeAgo": "2 hours 23 minutes ago",
+      "location": "ATM INDOMARET POYOWA BESAR",
+      "timestamp": "2026-02-03 08:25:34"
+    },
+    {
+      "deviceId": "01709",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "2 hours 28 minutes ago",
+      "location": "ATM RSUD WALANDA MARAMIS",
+      "timestamp": "2026-02-03 08:20:30"
+    },
+    {
+      "deviceId": "00407",
+      "alarmType": "",
+      "timeAgo": "2 hours 40 minutes ago",
+      "location": "ATM KANTOR CABANG TAHUNA 2",
+      "timestamp": "2026-02-03 08:08:00"
+    },
+    {
+      "deviceId": "00407",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "2 hours 40 minutes ago",
+      "location": "ATM KANTOR CABANG TAHUNA 2",
+      "timestamp": "2026-02-03 08:08:00"
+    },
+    {
+      "deviceId": "00701",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "2 hours 41 minutes ago",
+      "location": "KANTOR CABANG LIMBOTO",
+      "timestamp": "2026-02-03 08:06:54"
+    },
+    {
+      "deviceId": "00711",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "2 hours 43 minutes ago",
+      "location": "ATM KANTOR KAS ISIMU",
+      "timestamp": "2026-02-03 08:04:50"
+    },
+    {
+      "deviceId": "01002",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "2 hours 46 minutes ago",
+      "location": "KANTOR BUPATI MARISA",
+      "timestamp": "2026-02-03 08:02:29"
+    },
+    {
+      "deviceId": "01504",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "2 hours 49 minutes ago",
+      "location": "ATM KANTOR CABANG TILAMUTA 2",
+      "timestamp": "2026-02-03 07:58:53"
+    },
+    {
+      "deviceId": "01501",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "3 hours 1 minute ago",
+      "location": "KANTOR CABANG TILAMUTA",
+      "timestamp": "2026-02-03 07:47:33"
+    },
+    {
+      "deviceId": "04401",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "3 hours 3 minutes ago",
+      "location": "ATM CAPEM TAMAKO",
+      "timestamp": "2026-02-03 07:45:37"
+    },
+    {
+      "deviceId": "02007",
+      "alarmType": "",
+      "timeAgo": "3 hours 4 minutes ago",
+      "location": "ATM KANTOR CABANG BOROKO II",
+      "timestamp": "2026-02-03 07:44:24"
+    },
+    {
+      "deviceId": "01003",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "3 hours 6 minutes ago",
+      "location": "PERTOKOAN MARISA",
+      "timestamp": "2026-02-03 07:41:52"
+    },
+    {
+      "deviceId": "01705",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "3 hours 24 minutes ago",
+      "location": "ATM KANTOR KAS KAUDITAN AIRMADIDI",
+      "timestamp": "2026-02-03 07:24:44"
+    },
+    {
+      "deviceId": "00409",
+      "alarmType": "MCRW Error",
+      "timeAgo": "3 hours 30 minutes ago",
+      "location": "ATM TONA II BAPELITBANG",
+      "timestamp": "2026-02-03 07:18:25"
+    },
+    {
+      "deviceId": "03201",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "3 hours 41 minutes ago",
+      "location": "CAPEM TAGULANDANG",
+      "timestamp": "2026-02-03 07:07:11"
+    },
+    {
+      "deviceId": "03103",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "3 hours 46 minutes ago",
+      "location": "KANTOR KAS POGAR",
+      "timestamp": "2026-02-03 07:02:14"
+    },
+    {
+      "deviceId": "03805",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "3 hours 55 minutes ago",
+      "location": "ATM CABANG MELONG 2",
+      "timestamp": "2026-02-03 06:53:15"
+    },
+    {
+      "deviceId": "01806",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "4 hours 3 minutes ago",
+      "location": "ATM GALERY CABANG SUWAWA 1",
+      "timestamp": "2026-02-03 06:45:04"
+    },
+    {
+      "deviceId": "01201",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "4 hours 14 minutes ago",
+      "location": "KANTOR CABANG AMURANG",
+      "timestamp": "2026-02-03 06:34:43"
+    },
+    {
+      "deviceId": "00316",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "4 hours 42 minutes ago",
+      "location": "KOTA BARAT GORONTALO RSUD",
+      "timestamp": "2026-02-03 06:06:05"
+    },
+    {
+      "deviceId": "00501",
+      "alarmType": "",
+      "timeAgo": "4 hours 52 minutes ago",
+      "location": "KANTOR CABANG BITUNG",
+      "timestamp": "2026-02-03 05:56:13"
+    },
+    {
+      "deviceId": "00501",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "4 hours 52 minutes ago",
+      "location": "KANTOR CABANG BITUNG",
+      "timestamp": "2026-02-03 05:56:13"
+    },
+    {
+      "deviceId": "00324",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "5 hours 32 minutes ago",
+      "location": "ATM DPRD PROV GORONTALO",
+      "timestamp": "2026-02-03 05:16:17"
+    },
+    {
+      "deviceId": "00324",
+      "alarmType": "",
+      "timeAgo": "5 hours 32 minutes ago",
+      "location": "ATM DPRD PROV GORONTALO",
+      "timestamp": "2026-02-03 05:16:17"
+    },
+    {
+      "deviceId": "03401",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "7 hours 46 minutes ago",
+      "location": "BS CAPEM LIKUPANG",
+      "timestamp": "2026-02-03 03:02:16"
+    },
+    {
+      "deviceId": "00712",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "10 hours 56 minutes ago",
+      "location": "ATM TELAGA BIRU",
+      "timestamp": "2026-02-02 23:52:01"
+    },
+    {
+      "deviceId": "01904",
+      "alarmType": "",
+      "timeAgo": "12 hours 49 minutes ago",
+      "location": "ATM KANTOR CABANG KWANDANG 2",
+      "timestamp": "2026-02-02 21:59:10"
+    },
+    {
+      "deviceId": "01904",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "12 hours 49 minutes ago",
+      "location": "ATM KANTOR CABANG KWANDANG 2",
+      "timestamp": "2026-02-02 21:59:10"
+    },
+    {
+      "deviceId": "00312",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "13 hours 7 minutes ago",
+      "location": "ATM KANTOR CABANG GORONTALO 2",
+      "timestamp": "2026-02-02 21:41:13"
+    },
+    {
+      "deviceId": "00905",
+      "alarmType": "MCRW Error",
+      "timeAgo": "13 hours 13 minutes ago",
+      "location": "ATM KANTOR CABANG TOMOHON 2",
+      "timestamp": "2026-02-02 21:35:07"
+    },
+    {
+      "deviceId": "00316",
+      "alarmType": "MCRW Error",
+      "timeAgo": "13 hours 40 minutes ago",
+      "location": "KOTA BARAT GORONTALO RSUD",
+      "timestamp": "2026-02-02 21:08:20"
+    },
+    {
+      "deviceId": "00601",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "13 hours 57 minutes ago",
+      "location": "KANTOR CABANG KAWANGKOAN",
+      "timestamp": "2026-02-02 20:51:29"
+    },
+    {
+      "deviceId": "02001",
+      "alarmType": "",
+      "timeAgo": "14 hours 10 minutes ago",
+      "location": "KANTOR CABANG BOROKO",
+      "timestamp": "2026-02-02 20:38:12"
+    },
+    {
+      "deviceId": "01707",
+      "alarmType": "MCRW Error",
+      "timeAgo": "14 hours 14 minutes ago",
+      "location": "ATM RE RA FARMA AIRMADIDI",
+      "timestamp": "2026-02-02 20:34:12"
+    },
+    {
+      "deviceId": "01803",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "14 hours 14 minutes ago",
+      "location": "ATM KK BONE PANTAI SUWAWA",
+      "timestamp": "2026-02-02 20:33:51"
+    },
+    {
+      "deviceId": "01904",
+      "alarmType": "MCRW Error",
+      "timeAgo": "14 hours 29 minutes ago",
+      "location": "ATM KANTOR CABANG KWANDANG 2",
+      "timestamp": "2026-02-02 20:19:05"
+    },
+    {
+      "deviceId": "01503",
+      "alarmType": "",
+      "timeAgo": "14 hours 42 minutes ago",
+      "location": "ATM KANTOR KAS WONOSARI",
+      "timestamp": "2026-02-02 20:06:36"
+    },
+    {
+      "deviceId": "01503",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "14 hours 42 minutes ago",
+      "location": "ATM KANTOR KAS WONOSARI",
+      "timestamp": "2026-02-02 20:06:36"
+    },
+    {
+      "deviceId": "00710",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "14 hours 54 minutes ago",
+      "location": "ATM CABANG LIMBOTO 2",
+      "timestamp": "2026-02-02 19:53:53"
+    },
+    {
+      "deviceId": "00401",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "15 hours 3 minutes ago",
+      "location": "CABANG TAHUNA",
+      "timestamp": "2026-02-02 19:45:28"
+    },
+    {
+      "deviceId": "01804",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "15 hours 35 minutes ago",
+      "location": "ATM TAPA",
+      "timestamp": "2026-02-02 19:12:48"
+    },
+    {
+      "deviceId": "01506",
+      "alarmType": "",
+      "timeAgo": "15 hours 35 minutes ago",
+      "location": "ATM MANANGGU",
+      "timestamp": "2026-02-02 19:12:45"
+    },
+    {
+      "deviceId": "01506",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "15 hours 35 minutes ago",
+      "location": "ATM MANANGGU",
+      "timestamp": "2026-02-02 19:12:45"
+    },
+    {
+      "deviceId": "00409",
+      "alarmType": "",
+      "timeAgo": "16 hours 16 minutes ago",
+      "location": "ATM TONA II BAPELITBANG",
+      "timestamp": "2026-02-02 18:32:33"
+    },
+    {
+      "deviceId": "00409",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "16 hours 16 minutes ago",
+      "location": "ATM TONA II BAPELITBANG",
+      "timestamp": "2026-02-02 18:32:33"
+    },
+    {
+      "deviceId": "01703",
+      "alarmType": "Receipt Printer Error",
+      "timeAgo": "16 hours 23 minutes ago",
+      "location": "ATM KANTOR CAMAT AIRMADIDI",
+      "timestamp": "2026-02-02 18:25:18"
+    },
+    {
+      "deviceId": "01703",
+      "alarmType": "",
+      "timeAgo": "16 hours 23 minutes ago",
+      "location": "ATM KANTOR CAMAT AIRMADIDI",
+      "timestamp": "2026-02-02 18:25:18"
+    },
+    {
+      "deviceId": "02802",
+      "alarmType": "",
+      "timeAgo": "0 minute ago",
+      "location": "ATM KANTOR KAS LEMITO",
+      "timestamp": "2026-02-03 10:48:21"
+    },
+    {
+      "deviceId": "02802",
+      "alarmType": "",
+      "timeAgo": "0 minute ago",
+      "location": "ATM KANTOR KAS LEMITO",
+      "timestamp": "2026-02-03 10:48:18"
+    },
+    {
+      "deviceId": "02205",
+      "alarmType": "Receipt Paper Media Low",
+      "timeAgo": "1 minute ago",
+      "location": "ATM  KK TOMBATU",
+      "timestamp": "2026-02-03 10:47:44"
+    },
+    {
+      "deviceId": "04603",
+      "alarmType": "Cassette Type 2 Supply Media Low",
+      "timeAgo": "11 minutes ago",
+      "location": "ATM INDOMARET KAKAS",
+      "timestamp": "2026-02-03 10:36:53"
+    },
+    {
+      "deviceId": "01118",
+      "alarmType": "",
+      "timeAgo": "29 minutes ago",
+      "location": "ATM KANTOR KAS MAPANGET",
+      "timestamp": "2026-02-03 10:19:16"
+    },
+    {
+      "deviceId": "01118",
+      "alarmType": "",
+      "timeAgo": "30 minutes ago",
+      "location": "ATM KANTOR KAS MAPANGET",
+      "timestamp": "2026-02-03 10:18:20"
+    },
+    {
+      "deviceId": "03702",
+      "alarmType": "Cassette Type 3 Supply Media Low",
+      "timeAgo": "1 hour 14 minutes ago",
+      "location": "KANTOR KAS TOMPASO BARU",
+      "timestamp": "2026-02-03 09:34:38"
+    },
+    {
+      "deviceId": "01711",
+      "alarmType": "Cassette Type 2 Supply Media Low",
+      "timeAgo": "1 hour 23 minutes ago",
+      "location": "ATM KALAWAT",
+      "timestamp": "2026-02-03 09:24:50"
+    },
+    {
+      "deviceId": "04501",
+      "alarmType": "Receipt Paper Media Low",
+      "timeAgo": "1 hour 23 minutes ago",
+      "location": "DESA MODELOMO",
+      "timestamp": "2026-02-03 09:24:48"
+    },
+    {
+      "deviceId": "03401",
+      "alarmType": "Receipt Paper Media Low",
+      "timeAgo": "7 hours 46 minutes ago",
+      "location": "BS CAPEM LIKUPANG",
+      "timestamp": "2026-02-03 03:02:16"
+    },
+    {
+      "deviceId": "00508",
+      "alarmType": "Cassette Type 2 Supply Media Low",
+      "timeAgo": "8 hours 21 minutes ago",
+      "location": "ATM ALFAMART GIRIAN INDAH",
+      "timestamp": "2026-02-03 02:26:51"
+    },
+    {
+      "deviceId": "01803",
+      "alarmType": "Door Access Warning",
+      "timeAgo": "14 hours 17 minutes ago",
+      "location": "ATM KK BONE PANTAI SUWAWA",
+      "timestamp": "2026-02-02 20:30:57"
+    },
+    {
+      "deviceId": "00710",
+      "alarmType": "Cash Handler Warning",
+      "timeAgo": "16 hours 4 minutes ago",
+      "location": "ATM CABANG LIMBOTO 2",
+      "timestamp": "2026-02-02 18:44:41"
+    },
+    {
+      "deviceId": "03003",
+      "alarmType": "Cassette Type 3 Supply Media Low",
+      "timeAgo": "17 hours 28 minutes ago",
+      "location": "ATM POSIGADAN",
+      "timestamp": "2026-02-02 17:20:21"
+    }
+  ]
+}

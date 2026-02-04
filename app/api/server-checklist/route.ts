@@ -104,20 +104,39 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get today's shift assignment to determine shift type (using WITA timezone)
+    // Get today's shift assignment to determine shift type
+    // Use date range to handle timezone issues with Prisma
     const witaTime = getCurrentTimeWITA();
-    const todayWITA = new Date(witaTime);
-    todayWITA.setHours(0, 0, 0, 0);
+    const todayStart = new Date(witaTime);
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date(todayStart);
+    todayEnd.setDate(todayEnd.getDate() + 1);
+
+    // Debug: log all shift assignments for this staff
+    const allShifts = await prisma.shiftAssignment.findMany({
+      where: {
+        staffProfileId: staffProfile.id,
+      },
+      orderBy: { date: 'desc' },
+      take: 5,
+    });
+
+    console.log('[server-checklist] Staff profile:', staffProfile.id);
+    console.log('[server-checklist] WITA time:', witaTime.toISOString());
+    console.log('[server-checklist] Looking for date between:', todayStart.toISOString(), 'and', todayEnd.toISOString());
+    console.log('[server-checklist] Recent shifts:', allShifts.map(s => ({ date: s.date, type: s.shiftType })));
 
     const currentShift = await prisma.shiftAssignment.findFirst({
       where: {
         staffProfileId: staffProfile.id,
-        date: todayWITA,
+        date: {
+          gte: todayStart,
+          lt: todayEnd,
+        },
       },
     });
 
-    // Debug logging
-    console.log('[server-checklist] Staff:', staffProfile.id, 'Date:', todayWITA.toISOString(), 'Shift:', currentShift?.shiftType || 'none');
+    console.log('[server-checklist] Found shift:', currentShift?.shiftType || 'none');
 
     // Determine checklist type
     let checklistType: DailyChecklistType;
