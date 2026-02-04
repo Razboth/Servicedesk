@@ -271,11 +271,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Add lock status to each item
-    const now = getCurrentTimeWITA();
+    const witaTimeNow = getCurrentTimeWITA();
     const itemsWithLockStatus = checklist.items.map((item) => ({
       ...item,
-      isLocked: !isItemUnlocked(item.unlockTime, now),
-      lockMessage: getLockStatusMessage(item.unlockTime, now),
+      isLocked: !isItemUnlocked(item.unlockTime, witaTimeNow),
+      lockMessage: getLockStatusMessage(item.unlockTime, witaTimeNow),
     }));
 
     // Calculate stats
@@ -289,13 +289,13 @@ export async function GET(request: NextRequest) {
     };
 
     // Format current WITA time for display
-    const witaTimeStr = now.toLocaleTimeString('id-ID', {
+    const witaTimeStr = witaTimeNow.toLocaleTimeString('id-ID', {
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
       hour12: false,
     });
-    const witaDateStr = now.toLocaleDateString('id-ID', {
+    const witaDateStr = witaTimeNow.toLocaleDateString('id-ID', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -310,9 +310,9 @@ export async function GET(request: NextRequest) {
       // Current server time in WITA for display
       serverTime: {
         wita: `${witaDateStr}, ${witaTimeStr} WITA`,
-        witaHour: now.getHours(),
-        witaMinute: now.getMinutes(),
-        iso: now.toISOString(),
+        witaHour: witaTimeNow.getHours(),
+        witaMinute: witaTimeNow.getMinutes(),
+        iso: witaTimeNow.toISOString(),
       },
       // Include shift info for UI
       shiftInfo: {
