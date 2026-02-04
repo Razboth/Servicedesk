@@ -17,7 +17,6 @@ import {
 } from '@/components/ui/dialog';
 import {
   ClipboardList,
-  FileText,
   Download,
   CheckCircle2,
   Loader2,
@@ -29,7 +28,6 @@ import {
   ServerCog,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { ShiftChecklist } from './shift-checklist';
 import { ShiftIssues, ShiftIssue } from './shift-issues';
 import { PendingIssuesAlert } from './pending-issues-alert';
 import { ServerAccessChecklist } from './server-access-checklist';
@@ -137,7 +135,6 @@ const statusLabels: Record<string, { label: string; color: string }> = {
 };
 
 const tabConfig = [
-  { id: 'checklist', label: 'Checklist', icon: FileText },
   { id: 'issues', label: 'Masalah', icon: AlertTriangle },
   { id: 'notes', label: 'Catatan', icon: MessageSquare },
 ];
@@ -165,7 +162,7 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
   });
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [activeTab, setActiveTab] = useState('checklist');
+  const [activeTab, setActiveTab] = useState('issues');
   const [dailyChecklists, setDailyChecklists] = useState<Record<DailyChecklistType, ServerChecklist | null>>({
     HARIAN: null,
     SERVER_SIANG: null,
@@ -893,25 +890,6 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
                   onCreateIssue={handleCreateIssue}
                   onUpdateIssue={handleUpdateIssue}
                   onDeleteIssue={handleDeleteIssue}
-                  isLoading={isUpdating}
-                  readOnly={isCompleted}
-                />
-              </div>
-            )}
-
-            {/* Checklist Tab */}
-            {activeTab === 'checklist' && (
-              <div className="mt-4 space-y-4">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Progress Checklist</span>
-                  <span className="font-medium">
-                    {stats.completed + stats.skipped}/{stats.total} ({progressPercentage}%)
-                  </span>
-                </div>
-                <Progress value={progressPercentage} className="h-2" />
-                <ShiftChecklist
-                  items={checklistItems}
-                  onUpdateItems={handleUpdateChecklist}
                   isLoading={isUpdating}
                   readOnly={isCompleted}
                 />
