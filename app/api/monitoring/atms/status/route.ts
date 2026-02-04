@@ -14,8 +14,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // All monitoring roles can view all ATMs
-    const branchId: string | undefined = undefined;
+    // MANAGER can only view ATMs from their branch
+    let branchId: string | undefined = undefined;
+    if (session.user.role === 'MANAGER') {
+      const user = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { branchId: true }
+      });
+      branchId = user?.branchId || undefined;
+    }
 
     // Fetch ATMs with their status
     const atms = await prisma.aTM.findMany({

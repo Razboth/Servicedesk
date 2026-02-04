@@ -13,8 +13,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // All monitoring roles can view all network health data
-    const branchId: string | undefined = undefined;
+    // MANAGER can only view their own branch data
+    let branchId: string | undefined = undefined;
+    if (session.user.role === 'MANAGER') {
+      const user = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { branchId: true }
+      });
+      branchId = user?.branchId || undefined;
+    }
 
     const now = new Date();
     const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);

@@ -19,8 +19,17 @@ export async function GET(request: NextRequest) {
     const defaultLimit = '500'; // All monitoring roles get high limit
     const limit = parseInt(searchParams.get('limit') || defaultLimit);
 
-    // Get branchId from query params (all monitoring roles can see all data)
-    const branchId: string | undefined = searchParams.get('branchId') || undefined;
+    // Get branchId from query params or user's branch for MANAGER
+    let branchId: string | undefined = searchParams.get('branchId') || undefined;
+
+    // MANAGER can only see their own branch data
+    if (session.user.role === 'MANAGER') {
+      const user = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { branchId: true }
+      });
+      branchId = user?.branchId || undefined;
+    }
 
     // Build where clause for branches
     // For map display, show all active branches (monitoring not required)

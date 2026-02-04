@@ -23,6 +23,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // MANAGER can only ping their own branch
+    if (session.user.role === 'MANAGER') {
+      const user = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { branchId: true }
+      });
+      if (user?.branchId && branchId !== user.branchId) {
+        return NextResponse.json(
+          { error: 'Access denied - can only ping your assigned branch' },
+          { status: 403 }
+        );
+      }
+    }
+
     // Check if branch exists
     const branch = await prisma.branch.findUnique({
       where: { id: branchId },
@@ -101,7 +115,19 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // All monitoring roles can view all branch data
+    // MANAGER can only view their own branch data
+    if (session.user.role === 'MANAGER') {
+      const user = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { branchId: true }
+      });
+      if (user?.branchId && branchId !== user.branchId) {
+        return NextResponse.json(
+          { error: 'Access denied - can only view data for your assigned branch' },
+          { status: 403 }
+        );
+      }
+    }
 
     const since = new Date();
     since.setHours(since.getHours() - hours);

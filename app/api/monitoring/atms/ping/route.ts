@@ -26,12 +26,13 @@ export async function POST(request: NextRequest) {
     // Check if ATM exists
     const atm = await prisma.aTM.findUnique({
       where: { id: atmId },
-      select: { 
-        id: true, 
+      select: {
+        id: true,
         code: true,
         name: true,
         isActive: true,
-        ipAddress: true
+        ipAddress: true,
+        branchId: true
       }
     });
 
@@ -40,6 +41,20 @@ export async function POST(request: NextRequest) {
         { error: 'ATM not found' },
         { status: 404 }
       );
+    }
+
+    // MANAGER can only ping ATMs from their branch
+    if (session.user.role === 'MANAGER') {
+      const user = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { branchId: true }
+      });
+      if (user?.branchId && atm.branchId !== user.branchId) {
+        return NextResponse.json(
+          { error: 'Access denied - can only ping ATMs from your assigned branch' },
+          { status: 403 }
+        );
+      }
     }
 
     if (!atm.isActive) {
