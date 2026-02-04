@@ -1,8 +1,32 @@
 -- ============================================
 -- Migration: Checklist System v2 - Input Types
 -- Date: 2026-02-05
--- Description: Adds ChecklistInputType enum, inputType columns,
---              and new DailyChecklistType values for OPS/MONITORING
+-- Description: Drops v1 checklist data, adds ChecklistInputType enum,
+--              inputType columns, and new DailyChecklistType values
+-- ============================================
+
+-- ============================================
+-- STEP 0: Clean up v1 checklist data
+-- ============================================
+
+-- Drop all checklist items first (foreign key dependency)
+TRUNCATE TABLE "server_access_checklist_items" CASCADE;
+
+-- Drop all daily checklists
+TRUNCATE TABLE "server_access_daily_checklists" CASCADE;
+
+-- Drop all templates (will be re-seeded with v2 templates)
+TRUNCATE TABLE "server_access_checklist_templates" CASCADE;
+
+-- Drop checklist claims if exists
+DO $$ BEGIN
+    TRUNCATE TABLE "checklist_claims" CASCADE;
+EXCEPTION
+    WHEN undefined_table THEN null;
+END $$;
+
+-- ============================================
+-- STEP 1: Add new enum values
 -- ============================================
 
 -- 1. Add new values to DailyChecklistType enum
