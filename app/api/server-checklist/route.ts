@@ -25,6 +25,15 @@ const OPERATIONAL_SHIFTS: ShiftType[] = [
   'STANDBY_BRANCH',
 ];
 
+// All working shift types (excludes OFF and LEAVE)
+const WORKING_SHIFTS: ShiftType[] = [
+  'NIGHT_WEEKDAY',
+  'NIGHT_WEEKEND',
+  'DAY_WEEKEND',
+  'STANDBY_ONCALL',
+  'STANDBY_BRANCH',
+];
+
 /**
  * Determine checklist type based on current WITA time
  * - 08:00-19:59 → SERVER_SIANG (daytime)
@@ -123,15 +132,16 @@ export async function GET(request: NextRequest) {
     const hasServerAccess = staffProfile.hasServerAccess;
     const isOnNightShift = currentShift && NIGHT_STANDBY_SHIFTS.includes(currentShift.shiftType);
     const isOnOpsShift = currentShift && OPERATIONAL_SHIFTS.includes(currentShift.shiftType);
+    const isOnWorkingShift = currentShift && WORKING_SHIFTS.includes(currentShift.shiftType);
 
     // Check access based on checklist type
     switch (checklistType) {
       case 'HARIAN':
       case 'AKHIR_HARI':
-        // Requires operational shift
-        if (!isOnOpsShift && !isOnNightShift) {
+        // Requires any working shift (not OFF or LEAVE)
+        if (!isOnWorkingShift) {
           return NextResponse.json(
-            { error: 'Checklist ini hanya untuk shift operasional' },
+            { error: 'Checklist ini hanya untuk staff yang sedang bertugas' },
             { status: 403 }
           );
         }
@@ -287,6 +297,7 @@ export async function GET(request: NextRequest) {
         hasServerAccess,
         isOnNightShift,
         isOnOpsShift,
+        isOnWorkingShift,
         currentShiftType: currentShift?.shiftType || null,
       },
     });
