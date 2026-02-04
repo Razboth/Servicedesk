@@ -906,7 +906,7 @@ export default function TechnicianShiftsPage() {
   const overallProgress = calculateOverallProgress();
 
   return (
-    <div className="p-4 md:p-6 space-y-4">
+    <div className="p-4 md:p-6 space-y-6">
       {/* Header with Export */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
@@ -948,7 +948,7 @@ export default function TechnicianShiftsPage() {
 
       {/* Shift Status Card */}
       <Card>
-        <CardContent className="pt-4">
+        <CardContent className="p-5">
           {todayShift ? (
             <div className="space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -1004,13 +1004,13 @@ export default function TechnicianShiftsPage() {
       {/* Checklist Tabs - Main Area */}
       {hasActiveShift && availableChecklistTypes.length > 0 && (
         <Card>
-          <CardHeader className="pb-0">
+          <CardHeader className="px-5 pt-5 pb-4">
             <CardTitle className="text-lg flex items-center gap-2">
               <ClipboardList className="h-5 w-5" />
               Checklist Harian
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-4">
+          <CardContent className="px-5 pb-5 pt-0">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="w-full justify-start mb-4 h-auto flex-wrap">
                 {availableChecklistTypes.map((type) => {
@@ -1051,16 +1051,19 @@ export default function TechnicianShiftsPage() {
 
       {/* Info when no active shift */}
       {!hasActiveShift && (
-        <Card className="border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
-          <CardContent className="pt-4">
-            <p className="text-sm text-yellow-700 dark:text-yellow-300">
-              <strong>Info:</strong> Checklist akan muncul ketika Anda memiliki shift aktif hari ini.
-              {todayShift ? (
-                <span> Shift Anda saat ini: <strong>{todayShift.shiftType}</strong> (bukan shift kerja aktif)</span>
-              ) : (
-                <span> Anda tidak memiliki shift yang ditugaskan untuk hari ini.</span>
-              )}
-            </p>
+        <Card className="border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30">
+          <CardContent className="p-5">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                <strong>Info:</strong> Checklist akan muncul ketika Anda memiliki shift aktif hari ini.
+                {todayShift ? (
+                  <span> Shift Anda saat ini: <strong>{shiftTypeConfig[todayShift.shiftType as keyof typeof shiftTypeConfig]?.label || todayShift.shiftType}</strong> (bukan shift kerja aktif)</span>
+                ) : (
+                  <span> Anda tidak memiliki shift yang ditugaskan untuk hari ini.</span>
+                )}
+              </p>
+            </div>
           </CardContent>
         </Card>
       )}

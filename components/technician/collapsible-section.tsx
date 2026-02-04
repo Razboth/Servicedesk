@@ -30,13 +30,13 @@ export function CollapsibleSection({
   return (
     <Card className={cn('overflow-hidden', className)}>
       <CardHeader
-        className="cursor-pointer hover:bg-muted/50 transition-colors py-3"
+        className="cursor-pointer hover:bg-muted/50 transition-colors px-5 py-4"
         onClick={() => setIsOpen(!isOpen)}
       >
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {icon}
-            <CardTitle className="text-base font-medium">{title}</CardTitle>
+            <CardTitle className="text-base font-semibold">{title}</CardTitle>
             {badge !== undefined && (
               <Badge variant={badgeVariant} className="text-xs">
                 {badge}
@@ -44,14 +44,14 @@ export function CollapsibleSection({
             )}
           </div>
           {isOpen ? (
-            <ChevronUp className="h-4 w-4 text-muted-foreground" />
+            <ChevronUp className="h-5 w-5 text-muted-foreground" />
           ) : (
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            <ChevronDown className="h-5 w-5 text-muted-foreground" />
           )}
         </div>
       </CardHeader>
       {isOpen && (
-        <CardContent className="pt-0">
+        <CardContent className="px-5 pb-5 pt-2">
           {children}
         </CardContent>
       )}
