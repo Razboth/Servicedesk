@@ -518,9 +518,10 @@ export function Sidebar() {
           </div>
         )}
 
-        {/* Network Monitoring - For ADMIN, SUPER_ADMIN, TECHNICIAN, and Network Operations Center users */}
+        {/* Network Monitoring - For ADMIN, SUPER_ADMIN, MANAGER_IT, TECHNICIAN, and Network Operations Center users */}
         {(session.user?.role === 'ADMIN' ||
           session.user?.role === 'SUPER_ADMIN' ||
+          session.user?.role === 'MANAGER_IT' ||
           session.user?.role === 'TECHNICIAN' ||
           session.user?.supportGroupCode === 'NETWORK_OPERATIONS_CENTER') && (
           <div className="space-y-1">
