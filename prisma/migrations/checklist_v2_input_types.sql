@@ -9,21 +9,14 @@
 -- STEP 0: Clean up v1 checklist data
 -- ============================================
 
--- Drop all checklist items first (foreign key dependency)
-TRUNCATE TABLE "server_access_checklist_items" CASCADE;
+-- Delete all checklist items first (foreign key dependency)
+DELETE FROM "server_access_checklist_items";
 
--- Drop all daily checklists
-TRUNCATE TABLE "server_access_daily_checklists" CASCADE;
+-- Delete all daily checklists
+DELETE FROM "server_access_daily_checklists";
 
--- Drop all templates (will be re-seeded with v2 templates)
-TRUNCATE TABLE "server_access_checklist_templates" CASCADE;
-
--- Drop checklist claims if exists
-DO $$ BEGIN
-    TRUNCATE TABLE "checklist_claims" CASCADE;
-EXCEPTION
-    WHEN undefined_table THEN null;
-END $$;
+-- Delete all templates (will be re-seeded with v2 templates)
+DELETE FROM "server_access_checklist_templates";
 
 -- ============================================
 -- STEP 1: Add new enum values
