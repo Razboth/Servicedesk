@@ -256,11 +256,32 @@ export async function GET(request: NextRequest) {
       locked: itemsWithLockStatus.filter((i) => i.isLocked).length,
     };
 
+    // Format current WITA time for display
+    const witaTimeStr = now.toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    });
+    const witaDateStr = now.toLocaleDateString('id-ID', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+
     return NextResponse.json({
       ...checklist,
       checklistType,
       items: itemsWithLockStatus,
       stats,
+      // Current server time in WITA for display
+      serverTime: {
+        wita: `${witaDateStr}, ${witaTimeStr} WITA`,
+        witaHour: now.getHours(),
+        witaMinute: now.getMinutes(),
+        iso: now.toISOString(),
+      },
       // Include shift info for UI
       shiftInfo: {
         hasServerAccess,

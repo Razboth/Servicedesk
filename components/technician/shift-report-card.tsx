@@ -88,6 +88,12 @@ interface ServerChecklist {
     name: string;
     email: string;
   };
+  serverTime?: {
+    wita: string;
+    witaHour: number;
+    witaMinute: number;
+    iso: string;
+  };
   shiftInfo?: {
     hasServerAccess: boolean;
     isOnNightShift: boolean;
@@ -965,8 +971,8 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
                     </div>
                   ) : checklist ? (
                     <>
-                      {/* PIC Info - Read Only */}
-                      <div className="p-3 bg-muted/50 rounded-lg">
+                      {/* PIC Info and Server Time */}
+                      <div className="p-3 bg-muted/50 rounded-lg space-y-2">
                         <div className="flex items-center justify-between">
                           <div>
                             <span className="text-xs text-muted-foreground">PIC</span>
@@ -988,6 +994,16 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
                               : 'Pending'}
                           </Badge>
                         </div>
+                        {/* Server Time Display */}
+                        {checklist.serverTime && (
+                          <div className="flex items-center justify-between text-xs border-t pt-2">
+                            <span className="text-muted-foreground">Waktu Server:</span>
+                            <span className="font-mono text-primary">
+                              {String(checklist.serverTime.witaHour).padStart(2, '0')}:
+                              {String(checklist.serverTime.witaMinute).padStart(2, '0')} WITA
+                            </span>
+                          </div>
+                        )}
                       </div>
                       <ServerAccessChecklist
                         items={checklist.items}
