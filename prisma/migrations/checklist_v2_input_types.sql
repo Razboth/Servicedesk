@@ -19,7 +19,21 @@ DELETE FROM "server_access_daily_checklists";
 DELETE FROM "server_access_checklist_templates";
 
 -- ============================================
--- STEP 1: Add new enum values
+-- STEP 1: Change category column from enum to text
+-- ============================================
+
+-- Change category column type from enum to text for flexible time-based categories
+ALTER TABLE "server_access_checklist_templates"
+ALTER COLUMN "category" TYPE TEXT;
+
+ALTER TABLE "server_access_checklist_items"
+ALTER COLUMN "category" TYPE TEXT;
+
+-- Drop the old enum (optional, can keep for backward compatibility)
+-- DROP TYPE IF EXISTS "ServerChecklistCategory";
+
+-- ============================================
+-- STEP 2: Add new enum values
 -- ============================================
 
 -- 1. Add new values to DailyChecklistType enum
