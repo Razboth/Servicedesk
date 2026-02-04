@@ -168,13 +168,11 @@ export async function GET(request: NextRequest) {
     const checklistDate = getChecklistDate(checklistType);
 
     // Try to find existing checklist for today and type
-    let checklist = await prisma.serverAccessDailyChecklist.findUnique({
+    let checklist = await prisma.serverAccessDailyChecklist.findFirst({
       where: {
-        userId_date_checklistType: {
-          userId: session.user.id,
-          date: checklistDate,
-          checklistType: checklistType,
-        },
+        userId: session.user.id,
+        date: checklistDate,
+        checklistType: checklistType,
       },
       include: {
         items: {
