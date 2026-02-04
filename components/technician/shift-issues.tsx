@@ -46,7 +46,7 @@ interface TicketInfo {
   createdAt: string;
 }
 
-interface ShiftIssue {
+export interface ShiftIssue {
   id: string;
   title: string;
   description: string | null;

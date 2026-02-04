@@ -338,6 +338,17 @@ export async function GET(
     const ongoingIssues = report.issues?.filter((i) => i.status === 'ONGOING') || [];
     const resolvedIssues = report.issues?.filter((i) => i.status === 'RESOLVED') || [];
 
+    // Check if user has server access
+    const staffProfile = await prisma.staffShiftProfile.findFirst({
+      where: {
+        userId: session.user.id,
+      },
+      select: {
+        hasServerAccess: true,
+      },
+    });
+    const hasServerAccess = staffProfile?.hasServerAccess ?? false;
+
     return NextResponse.json({
       success: true,
       data: {
@@ -378,6 +389,8 @@ export async function GET(
         isOwner,
         isReadOnly: !isOwner && !isAdmin,
         canEdit: isOwner || isAdmin,
+        // Server access flag for daily checklist
+        hasServerAccess,
       },
     });
   } catch (error) {

@@ -26,6 +26,7 @@
     "db:seed:atm-claims": "tsx prisma/seed-atm-claim-templates.ts",
     "db:seed:atm-claims:js": "node prisma/seed-atm-claim-templates.js",
     "db:seed:licenses": "tsx scripts/seed-licenses.ts",
+    "db:seed:server-checklist": "tsx prisma/seed-server-checklist.ts",
     "db:schema:update": "tsx update-schema-constraints.ts",
     "api:generate-claim-key": "tsx scripts/generate-claim-api-key.ts",
     "monitoring:start": "tsx scripts/start-monitoring.ts start",

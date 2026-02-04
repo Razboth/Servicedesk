@@ -23,19 +23,16 @@ import {
   Loader2,
   AlertTriangle,
   FileSpreadsheet,
-  Database,
   MessageSquare,
-  Server,
-  Pencil,
   Trash2,
   RotateCcw,
+  ServerCog,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { ServerMetricsDisplay } from './server-metrics-display';
 import { ShiftChecklist } from './shift-checklist';
-import { BackupChecklist } from './backup-checklist';
-import { ShiftIssues } from './shift-issues';
+import { ShiftIssues, ShiftIssue } from './shift-issues';
 import { PendingIssuesAlert } from './pending-issues-alert';
+import { ServerAccessChecklist } from './server-access-checklist';
 
 interface ShiftAssignment {
   id: string;
@@ -60,44 +57,34 @@ interface ChecklistItem {
   notes: string | null;
 }
 
-interface BackupItem {
+interface ServerChecklistItem {
   id: string;
-  databaseName: string;
-  description: string | null;
-  isChecked: boolean;
-  checkedAt: string | null;
-  notes: string | null;
-  order: number;
-}
-
-interface ShiftIssue {
-  id: string;
+  category: string;
   title: string;
   description: string | null;
-  status: 'ONGOING' | 'RESOLVED';
-  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-  resolution: string | null;
-  resolvedAt: string | null;
-  createdAt: string;
+  order: number;
+  isRequired: boolean;
+  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'SKIPPED';
+  completedAt: string | null;
+  notes: string | null;
+  unlockTime?: string | null;
+  isLocked?: boolean;
+  lockMessage?: string | null;
 }
 
-interface ServerMetrics {
-  cpuUsagePercent: number | null;
-  cpuCores: number | null;
-  cpuLoadAvg1m: number | null;
-  cpuLoadAvg5m: number | null;
-  cpuLoadAvg15m: number | null;
-  ramTotalGB: number | null;
-  ramUsedGB: number | null;
-  ramUsagePercent: number | null;
-  diskTotalGB: number | null;
-  diskUsedGB: number | null;
-  diskUsagePercent: number | null;
-  networkInBytesPerSec: number | null;
-  networkOutBytesPerSec: number | null;
-  uptimeSeconds: number | null;
-  lastBootTime: string | null;
-  collectedAt: string;
+interface ServerChecklist {
+  id: string;
+  userId: string;
+  date: string;
+  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED';
+  completedAt: string | null;
+  notes: string | null;
+  items: ServerChecklistItem[];
+  user: {
+    id: string;
+    name: string;
+    email: string;
+  };
 }
 
 interface ReportData {
@@ -113,39 +100,18 @@ interface ReportData {
     notes: string | null;
   };
   checklistItems: ChecklistItem[];
-  backupChecklist: BackupItem[];
   issues: ShiftIssue[];
   ongoingIssues: ShiftIssue[];
   resolvedIssues: ShiftIssue[];
-  serverMetrics: ServerMetrics | null;
-  multiServerMetrics: {
-    collectionId: string;
-    fetchedAt: string;
-    reportTimestamp: string;
-    totalServers: number;
-    avgCpu: number | null;
-    avgMemory: number | null;
-    healthyCount: number;
-    warningCount: number;
-    criticalCount: number;
-    topCpuServers: { ipAddress: string; serverName: string | null; cpuPercent: number }[];
-    topMemoryServers: { ipAddress: string; serverName: string | null; memoryPercent: number }[];
-    storageAlertsCount: number;
-    storageAlerts: { ipAddress: string; serverName: string | null; partition: string; usagePercent: number }[];
-  } | null;
-  metricsAvailable: boolean;
-  metricsStale: boolean;
   stats: {
     total: number;
     completed: number;
     pending: number;
     inProgress: number;
     skipped: number;
+    locked?: number;
   };
-  backupStats: {
-    total: number;
-    checked: number;
-  };
+  hasServerAccess: boolean;
 }
 
 const statusLabels: Record<string, { label: string; color: string }> = {
@@ -155,12 +121,13 @@ const statusLabels: Record<string, { label: string; color: string }> = {
 };
 
 const tabConfig = [
-  { id: 'metrics', label: 'Metrik', icon: Server },
-  { id: 'backup', label: 'Backup', icon: Database },
-  { id: 'issues', label: 'Masalah', icon: AlertTriangle },
   { id: 'checklist', label: 'Checklist', icon: FileText },
+  { id: 'issues', label: 'Masalah', icon: AlertTriangle },
   { id: 'notes', label: 'Catatan', icon: MessageSquare },
 ];
+
+// Daily checklist tab - only shown for users with server access
+const dailyChecklistTab = { id: 'daily', label: 'Daily Checklist', icon: ServerCog };
 
 export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftReportCardProps) {
   const [reportData, setReportData] = useState<ReportData | null>(null);
@@ -177,7 +144,9 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
   });
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [activeTab, setActiveTab] = useState('metrics');
+  const [activeTab, setActiveTab] = useState('checklist');
+  const [serverChecklist, setServerChecklist] = useState<ServerChecklist | null>(null);
+  const [isLoadingServerChecklist, setIsLoadingServerChecklist] = useState(false);
 
   const fetchReport = useCallback(async () => {
     try {
@@ -210,6 +179,28 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
   useEffect(() => {
     fetchReport();
   }, [fetchReport]);
+
+  // Fetch server access daily checklist if user has server access
+  const fetchServerChecklist = useCallback(async () => {
+    if (!reportData?.hasServerAccess) return;
+    try {
+      setIsLoadingServerChecklist(true);
+      const response = await fetch('/api/server-checklist');
+      if (!response.ok) throw new Error('Failed to fetch server checklist');
+      const data = await response.json();
+      setServerChecklist(data);
+    } catch (error) {
+      console.error('Error fetching server checklist:', error);
+    } finally {
+      setIsLoadingServerChecklist(false);
+    }
+  }, [reportData?.hasServerAccess]);
+
+  useEffect(() => {
+    if (reportData?.hasServerAccess) {
+      fetchServerChecklist();
+    }
+  }, [reportData?.hasServerAccess, fetchServerChecklist]);
 
   const handleUpdateChecklist = async (
     items: { id: string; status?: string; notes?: string }[]
@@ -249,75 +240,31 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
     }
   };
 
-  const handleUpdateBackup = async (
-    items: { id: string; isChecked?: boolean; notes?: string }[]
+  const handleUpdateServerChecklist = async (
+    items: { id: string; status?: string; notes?: string }[]
   ) => {
     try {
       setIsUpdating(true);
-      const response = await fetch(
-        `/api/shifts/${shiftAssignment.id}/report/backup`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ items }),
+      const response = await fetch('/api/server-checklist/items', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        if (data.errors && data.errors.length > 0) {
+          toast.error(data.errors[0].error);
+          return;
         }
-      );
+        throw new Error('Failed to update server checklist');
+      }
 
-      if (!response.ok) throw new Error('Failed to update backup checklist');
-
-      const data = await response.json();
-      setReportData((prev) =>
-        prev
-          ? {
-              ...prev,
-              backupChecklist: data.data.backupChecklist,
-              backupStats: {
-                total: data.data.backupChecklist.length,
-                checked: data.data.backupChecklist.filter((b: BackupItem) => b.isChecked).length,
-              },
-            }
-          : null
-      );
-      toast.success('Backup checklist diperbarui');
+      await fetchServerChecklist();
+      toast.success('Daily checklist diperbarui');
     } catch (error) {
-      console.error('Error updating backup checklist:', error);
-      toast.error('Gagal memperbarui backup checklist');
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const handleCheckAllBackup = async (checkAll: boolean) => {
-    try {
-      setIsUpdating(true);
-      const response = await fetch(
-        `/api/shifts/${shiftAssignment.id}/report/backup`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ checkAll }),
-        }
-      );
-
-      if (!response.ok) throw new Error('Failed to update backup checklist');
-
-      const data = await response.json();
-      setReportData((prev) =>
-        prev
-          ? {
-              ...prev,
-              backupChecklist: data.data.backupChecklist,
-              backupStats: {
-                total: data.data.backupChecklist.length,
-                checked: data.data.backupChecklist.filter((b: BackupItem) => b.isChecked).length,
-              },
-            }
-          : null
-      );
-      toast.success(checkAll ? 'Semua backup ditandai' : 'Semua tanda backup dihapus');
-    } catch (error) {
-      console.error('Error updating backup checklist:', error);
-      toast.error('Gagal memperbarui backup checklist');
+      console.error('Error updating server checklist:', error);
+      toast.error('Gagal memperbarui daily checklist');
     } finally {
       setIsUpdating(false);
     }
@@ -599,53 +546,6 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
         });
         yPos += 8;
 
-        // Server Metrics
-        drawSectionHeader('KONDISI SERVER');
-        if (exportData.serverMetrics) {
-          const metrics = exportData.serverMetrics;
-          const metricsData = [
-            ['CPU Usage', `${metrics.cpu.usagePercent?.toFixed(1) || '-'}%`],
-            ['RAM Usage', `${metrics.ram.usagePercent?.toFixed(1) || '-'}%`],
-            ['Disk Usage', `${metrics.disk.usagePercent?.toFixed(1) || '-'}%`],
-            ['Uptime', metrics.uptime.days ? `${metrics.uptime.days} hari` : '-'],
-          ];
-          const colWidth = contentWidth / 4;
-          doc.setFontSize(8);
-          metricsData.forEach((metric, index) => {
-            const xPos = margin + (index * colWidth);
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(...colors.gray);
-            doc.text(metric[0], xPos, yPos);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(...colors.darkGray);
-            doc.text(metric[1], xPos, yPos + 5);
-          });
-          yPos += 15;
-        } else {
-          doc.setFontSize(9);
-          doc.setFont('helvetica', 'normal');
-          doc.setTextColor(...colors.gray);
-          doc.text('Metrik server tidak tersedia', margin, yPos);
-          yPos += 10;
-        }
-        yPos += 5;
-
-        // Backup Database Section
-        if (exportData.backupChecklist && exportData.backupChecklist.length > 0) {
-          drawSectionHeader('BACKUP DATABASE');
-          exportData.backupChecklist.forEach((item: { databaseName: string; isChecked: boolean }) => {
-            checkPageBreak(8);
-            doc.setFontSize(9);
-            const statusSymbol = item.isChecked ? '[v]' : '[ ]';
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(...colors.darkGray);
-            doc.text(statusSymbol, margin, yPos);
-            doc.text(item.databaseName, margin + 10, yPos);
-            yPos += 5;
-          });
-          yPos += 5;
-        }
-
         // Issues Section
         if (exportData.issues && exportData.issues.length > 0) {
           drawSectionHeader('MASALAH');
@@ -806,7 +706,7 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
     );
   }
 
-  const { report, checklistItems, backupChecklist, ongoingIssues, resolvedIssues, serverMetrics, multiServerMetrics, metricsAvailable, metricsStale, stats, backupStats } = reportData;
+  const { report, checklistItems, ongoingIssues, resolvedIssues, stats, hasServerAccess } = reportData;
   const isCompleted = report.status === 'COMPLETED';
   const progressPercentage = Math.round(((stats.completed + stats.skipped) / stats.total) * 100);
   const statusInfo = statusLabels[report.status] || statusLabels.DRAFT;
@@ -835,7 +735,8 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
           <div className="w-full">
             <div className="border-b mb-6">
               <nav className="flex gap-4 overflow-x-auto" aria-label="Tabs">
-                {tabConfig.map((tab) => {
+                {/* Conditionally add daily checklist tab for users with server access */}
+                {[...tabConfig, ...(hasServerAccess ? [dailyChecklistTab] : [])].map((tab) => {
                   const Icon = tab.icon;
                   const isActive = activeTab === tab.id;
                   return (
@@ -858,38 +759,6 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
                 })}
               </nav>
             </div>
-
-            {/* Server Metrics Tab */}
-            {activeTab === 'metrics' && (
-              <div className="mt-4">
-                <ServerMetricsDisplay
-                  metrics={serverMetrics}
-                  multiServerMetrics={multiServerMetrics}
-                  available={metricsAvailable}
-                  isStale={metricsStale}
-                />
-              </div>
-            )}
-
-            {/* Backup Checklist Tab */}
-            {activeTab === 'backup' && (
-              <div className="mt-4">
-                <BackupChecklist
-                  items={backupChecklist}
-                  onUpdateItems={handleUpdateBackup}
-                  onCheckAll={handleCheckAllBackup}
-                  isLoading={isUpdating}
-                  readOnly={isCompleted}
-                />
-                <div className="mt-3 flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Progress Backup</span>
-                  <span className="font-medium">
-                    {backupStats.checked}/{backupStats.total} ({Math.round((backupStats.checked / backupStats.total) * 100) || 0}%)
-                  </span>
-                </div>
-                <Progress value={(backupStats.checked / backupStats.total) * 100 || 0} className="h-2 mt-2" />
-              </div>
-            )}
 
             {/* Issues Tab */}
             {activeTab === 'issues' && (
@@ -965,6 +834,55 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+
+            {/* Daily Checklist Tab - Only for users with server access */}
+            {activeTab === 'daily' && hasServerAccess && (
+              <div className="mt-4 space-y-4">
+                {isLoadingServerChecklist ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : serverChecklist ? (
+                  <>
+                    {/* PIC Info - Read Only */}
+                    <div className="p-3 bg-muted/50 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-xs text-muted-foreground">PIC Shift</span>
+                          <p className="font-medium text-sm">{serverChecklist.user.name}</p>
+                        </div>
+                        <Badge
+                          className={
+                            serverChecklist.status === 'COMPLETED'
+                              ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                              : serverChecklist.status === 'IN_PROGRESS'
+                              ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
+                              : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                          }
+                        >
+                          {serverChecklist.status === 'COMPLETED'
+                            ? 'Selesai'
+                            : serverChecklist.status === 'IN_PROGRESS'
+                            ? 'Dalam Proses'
+                            : 'Pending'}
+                        </Badge>
+                      </div>
+                    </div>
+                    <ServerAccessChecklist
+                      items={serverChecklist.items}
+                      onUpdateItems={handleUpdateServerChecklist}
+                      isLoading={isUpdating}
+                      readOnly={serverChecklist.status === 'COMPLETED'}
+                    />
+                  </>
+                ) : (
+                  <div className="flex items-center justify-center py-8 text-muted-foreground">
+                    <AlertTriangle className="h-5 w-5 mr-2" />
+                    Gagal memuat daily checklist
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1135,8 +1053,8 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
             </DialogTitle>
             <DialogDescription>
               {isCompleted
-                ? 'Apakah Anda yakin ingin menghapus laporan shift ini? Semua data termasuk checklist, backup checklist, dan masalah akan dihapus permanen.'
-                : 'Apakah Anda yakin ingin mereset laporan shift ini? Semua data checklist, backup, dan masalah akan dikembalikan ke kondisi awal.'}
+                ? 'Apakah Anda yakin ingin menghapus laporan shift ini? Semua data termasuk checklist dan masalah akan dihapus permanen.'
+                : 'Apakah Anda yakin ingin mereset laporan shift ini? Semua data checklist dan masalah akan dikembalikan ke kondisi awal.'}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
