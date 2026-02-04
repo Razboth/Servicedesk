@@ -280,12 +280,15 @@ export default function TechnicianShiftsPage() {
     const firstDay = new Date(selectedYear, selectedMonth - 1, 1).getDay();
 
     // Group assignments by date (allow multiple per date)
+    // Normalize date to YYYY-MM-DD format to match lookup keys
     const assignmentsByDate: Record<string, ShiftAssignment[]> = {};
     monthlySchedule.shiftAssignments.forEach(assignment => {
-      if (!assignmentsByDate[assignment.date]) {
-        assignmentsByDate[assignment.date] = [];
+      // Handle both ISO string and date-only formats
+      const dateKey = assignment.date.split('T')[0];
+      if (!assignmentsByDate[dateKey]) {
+        assignmentsByDate[dateKey] = [];
       }
-      assignmentsByDate[assignment.date].push(assignment);
+      assignmentsByDate[dateKey].push(assignment);
     });
 
     return (
