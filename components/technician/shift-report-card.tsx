@@ -98,7 +98,7 @@ interface ServerChecklist {
     hasServerAccess: boolean;
     isOnNightShift: boolean;
     isOnOpsShift: boolean;
-    isOnWorkingShift: boolean;
+    canAccessHarian: boolean;
     currentShiftType: string | null;
   };
 }
@@ -237,8 +237,8 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
       const types: DailyChecklistType[] = [];
 
       // Determine available types based on shift info
-      // HARIAN and AKHIR_HARI available for any working shift
-      if (shiftInfo?.isOnWorkingShift) {
+      // HARIAN and AKHIR_HARI only for STANDBY_BRANCH
+      if (shiftInfo?.canAccessHarian) {
         types.push('HARIAN');
         types.push('AKHIR_HARI');
       }

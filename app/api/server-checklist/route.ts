@@ -25,12 +25,8 @@ const OPERATIONAL_SHIFTS: ShiftType[] = [
   'STANDBY_BRANCH',
 ];
 
-// All working shift types (excludes OFF and LEAVE)
-const WORKING_SHIFTS: ShiftType[] = [
-  'NIGHT_WEEKDAY',
-  'NIGHT_WEEKEND',
-  'DAY_WEEKEND',
-  'STANDBY_ONCALL',
+// Shift types that can access HARIAN checklist
+const HARIAN_SHIFTS: ShiftType[] = [
   'STANDBY_BRANCH',
 ];
 
@@ -108,16 +104,20 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get today's shift assignment to determine shift type
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Get today's shift assignment to determine shift type (using WITA timezone)
+    const witaTime = getCurrentTimeWITA();
+    const todayWITA = new Date(witaTime);
+    todayWITA.setHours(0, 0, 0, 0);
 
     const currentShift = await prisma.shiftAssignment.findFirst({
       where: {
         staffProfileId: staffProfile.id,
-        date: today,
+        date: todayWITA,
       },
     });
+
+    // Debug logging
+    console.log('[server-checklist] Staff:', staffProfile.id, 'Date:', todayWITA.toISOString(), 'Shift:', currentShift?.shiftType || 'none');
 
     // Determine checklist type
     let checklistType: DailyChecklistType;
@@ -132,16 +132,16 @@ export async function GET(request: NextRequest) {
     const hasServerAccess = staffProfile.hasServerAccess;
     const isOnNightShift = currentShift && NIGHT_STANDBY_SHIFTS.includes(currentShift.shiftType);
     const isOnOpsShift = currentShift && OPERATIONAL_SHIFTS.includes(currentShift.shiftType);
-    const isOnWorkingShift = currentShift && WORKING_SHIFTS.includes(currentShift.shiftType);
+    const canAccessHarian = currentShift && HARIAN_SHIFTS.includes(currentShift.shiftType);
 
     // Check access based on checklist type
     switch (checklistType) {
       case 'HARIAN':
       case 'AKHIR_HARI':
-        // Requires any working shift (not OFF or LEAVE)
-        if (!isOnWorkingShift) {
+        // Requires STANDBY_BRANCH shift
+        if (!canAccessHarian) {
           return NextResponse.json(
-            { error: 'Checklist ini hanya untuk staff yang sedang bertugas' },
+            { error: 'Checklist ini hanya untuk shift STANDBY_BRANCH' },
             { status: 403 }
           );
         }
@@ -297,7 +297,7 @@ export async function GET(request: NextRequest) {
         hasServerAccess,
         isOnNightShift,
         isOnOpsShift,
-        isOnWorkingShift,
+        canAccessHarian,
         currentShiftType: currentShift?.shiftType || null,
       },
     });
