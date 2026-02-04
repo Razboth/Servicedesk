@@ -16,6 +16,9 @@ import {
   Lock,
   Loader2,
   CalendarDays,
+  UserCheck,
+  Users,
+  Hand,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -36,10 +39,17 @@ interface ServerChecklistItem {
   lockMessage: string | null;
 }
 
+interface OtherClaim {
+  userId: string;
+  userName: string;
+  status: string;
+}
+
 interface ServerChecklist {
   id: string;
   userId: string;
   date: string;
+  checklistType: string;
   status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED';
   completedAt: string | null;
   notes: string | null;
@@ -48,6 +58,17 @@ interface ServerChecklist {
     id: string;
     name: string;
     email: string;
+  };
+  claimed: boolean;
+  claimedByUser: boolean;
+  canClaim?: boolean;
+  otherClaims?: OtherClaim[];
+  shiftInfo?: {
+    hasServerAccess: boolean;
+    isOnNightShift: boolean;
+    isOnOpsShift: boolean;
+    canAccessHarian: boolean;
+    currentShiftType: string | null;
   };
 }
 
@@ -66,16 +87,21 @@ export default function ServerChecklistPage() {
   const [stats, setStats] = useState<ChecklistStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [claiming, setClaiming] = useState(false);
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
+  const [accessError, setAccessError] = useState<string | null>(null);
 
   // Fetch checklist data
   const fetchChecklist = async () => {
     try {
       setLoading(true);
+      setAccessError(null);
       const response = await fetch('/api/server-checklist');
 
       if (response.status === 403) {
+        const data = await response.json();
         setHasAccess(false);
+        setAccessError(data.error || 'Akses ditolak');
         return;
       }
 
@@ -85,13 +111,39 @@ export default function ServerChecklistPage() {
 
       const data = await response.json();
       setChecklist(data);
-      setStats(data.stats);
+      setStats(data.stats || null);
       setHasAccess(true);
     } catch (error) {
       console.error('Error fetching checklist:', error);
       toast.error('Gagal memuat checklist');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Claim checklist
+  const handleClaim = async () => {
+    try {
+      setClaiming(true);
+      const response = await fetch('/api/server-checklist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: checklist?.checklistType }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Gagal mengklaim checklist');
+      }
+
+      toast.success('Checklist berhasil diklaim');
+      await fetchChecklist();
+    } catch (error) {
+      console.error('Error claiming checklist:', error);
+      toast.error(error instanceof Error ? error.message : 'Gagal mengklaim checklist');
+    } finally {
+      setClaiming(false);
     }
   };
 
@@ -104,13 +156,13 @@ export default function ServerChecklistPage() {
   // Auto-refresh every 60 seconds to update lock status
   useEffect(() => {
     const interval = setInterval(() => {
-      if (session?.user?.id && hasAccess) {
+      if (session?.user?.id && hasAccess && checklist?.claimedByUser) {
         fetchChecklist();
       }
     }, 60000);
 
     return () => clearInterval(interval);
-  }, [session, hasAccess]);
+  }, [session, hasAccess, checklist?.claimedByUser]);
 
   // Handle item updates
   const handleUpdateItems = async (
@@ -172,10 +224,123 @@ export default function ServerChecklistPage() {
             </div>
             <CardTitle>Akses Ditolak</CardTitle>
             <CardDescription>
-              Anda tidak memiliki akses server. Hubungi administrator untuk mendapatkan akses.
+              {accessError || 'Anda tidak memiliki akses server. Hubungi administrator untuk mendapatkan akses.'}
             </CardDescription>
           </CardHeader>
         </Card>
+      </div>
+    );
+  }
+
+  // Not claimed yet - show claim UI
+  if (checklist && !checklist.claimedByUser && checklist.canClaim) {
+    return (
+      <div className="min-h-screen bg-background">
+        <main className="container mx-auto py-8 px-4 max-w-4xl">
+          {/* Header */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold flex items-center gap-3">
+                  <Server className="h-8 w-8 text-primary" />
+                  Server Checklist
+                </h1>
+                <p className="text-muted-foreground mt-2">
+                  Klaim checklist untuk memulai pemeriksaan server
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fetchChecklist()}
+                disabled={loading}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+            </div>
+          </div>
+
+          {/* Claim Card */}
+          <Card className="mb-6">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                  <Hand className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <CardTitle>Klaim Checklist {checklist.checklistType?.replace('_', ' ')}</CardTitle>
+                  <CardDescription>
+                    Checklist ini belum diklaim. Klik tombol di bawah untuk mengklaim.
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {/* Other claims info */}
+              {checklist.otherClaims && checklist.otherClaims.length > 0 && (
+                <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
+                  <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400 mb-2">
+                    <Users className="h-4 w-4" />
+                    <span className="text-sm font-medium">Staff lain yang sudah mengklaim:</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {checklist.otherClaims.map((claim) => (
+                      <Badge key={claim.userId} variant="secondary" className="text-xs">
+                        <UserCheck className="h-3 w-3 mr-1" />
+                        {claim.userName}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <Button
+                onClick={handleClaim}
+                disabled={claiming}
+                className="w-full"
+                size="lg"
+              >
+                {claiming ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Mengklaim...
+                  </>
+                ) : (
+                  <>
+                    <Hand className="h-4 w-4 mr-2" />
+                    Klaim Checklist
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Shift Info */}
+          {checklist.shiftInfo && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Informasi Shift</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Server Access</p>
+                    <Badge variant={checklist.shiftInfo.hasServerAccess ? 'default' : 'destructive'}>
+                      {checklist.shiftInfo.hasServerAccess ? 'Ya' : 'Tidak'}
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Shift Saat Ini</p>
+                    <Badge variant="secondary">
+                      {checklist.shiftInfo.currentShiftType || 'Tidak ada shift'}
+                    </Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </main>
       </div>
     );
   }
@@ -228,27 +393,33 @@ export default function ServerChecklistPage() {
                       ? format(new Date(checklist.date), 'EEEE, d MMMM yyyy', { locale: id })
                       : 'Hari Ini'}
                   </CardTitle>
-                  <CardDescription>
-                    {checklist?.user?.name || session?.user?.name}
+                  <CardDescription className="flex items-center gap-2">
+                    <UserCheck className="h-3 w-3" />
+                    Diklaim oleh: {checklist?.user?.name || session?.user?.name}
                   </CardDescription>
                 </div>
               </div>
-              <Badge
-                variant={isCompleted ? 'default' : 'secondary'}
-                className={isCompleted ? 'bg-green-500' : ''}
-              >
-                {isCompleted ? (
-                  <>
-                    <CheckCircle2 className="h-3 w-3 mr-1" />
-                    Selesai
-                  </>
-                ) : (
-                  <>
-                    <Clock className="h-3 w-3 mr-1" />
-                    Dalam Proses
-                  </>
-                )}
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-xs">
+                  {checklist?.checklistType?.replace('_', ' ')}
+                </Badge>
+                <Badge
+                  variant={isCompleted ? 'default' : 'secondary'}
+                  className={isCompleted ? 'bg-green-500' : ''}
+                >
+                  {isCompleted ? (
+                    <>
+                      <CheckCircle2 className="h-3 w-3 mr-1" />
+                      Selesai
+                    </>
+                  ) : (
+                    <>
+                      <Clock className="h-3 w-3 mr-1" />
+                      Dalam Proses
+                    </>
+                  )}
+                </Badge>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -285,6 +456,18 @@ export default function ServerChecklistPage() {
               </div>
             )}
 
+            {/* Other claims info */}
+            {checklist?.otherClaims && checklist.otherClaims.length > 0 && (
+              <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
+                <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
+                  <Users className="h-4 w-4" />
+                  <span className="text-sm">
+                    {checklist.otherClaims.length} staff lain juga mengerjakan checklist ini
+                  </span>
+                </div>
+              </div>
+            )}
+
             {/* Locked items notice */}
             {stats && stats.locked > 0 && (
               <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
@@ -314,6 +497,7 @@ export default function ServerChecklistPage() {
                 onUpdateItems={handleUpdateItems}
                 isLoading={updating}
                 readOnly={isCompleted}
+                groupByTimeSlot={checklist.checklistType === 'SERVER_SIANG' || checklist.checklistType === 'SERVER_MALAM'}
               />
             ) : (
               <div className="text-center py-8 text-muted-foreground">

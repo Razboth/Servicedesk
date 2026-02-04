@@ -19,6 +19,12 @@ const NIGHT_STANDBY_SHIFTS: ShiftType[] = [
   'STANDBY_ONCALL',
 ];
 
+// Shift types that CANNOT access SERVER_SIANG (night shifts)
+const NIGHT_ONLY_SHIFTS: ShiftType[] = [
+  'NIGHT_WEEKDAY',
+  'NIGHT_WEEKEND',
+];
+
 // Shift types that are considered "operational" shifts
 const OPERATIONAL_SHIFTS: ShiftType[] = [
   'DAY_WEEKEND',
@@ -69,7 +75,30 @@ function getChecklistDate(checklistType: DailyChecklistType): Date {
   return today;
 }
 
-// GET - Get or create today's server access checklist
+/**
+ * Get today's date in WITA for shift lookup
+ */
+function getTodayUTC(): Date {
+  const now = new Date();
+  const witaOffset = 8 * 60; // WITA is UTC+8 in minutes
+  const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+  const witaMinutes = utcMinutes + witaOffset;
+
+  let witaYear = now.getUTCFullYear();
+  let witaMonth = now.getUTCMonth();
+  let witaDay = now.getUTCDate();
+
+  if (witaMinutes >= 24 * 60) {
+    const tempDate = new Date(Date.UTC(witaYear, witaMonth, witaDay + 1));
+    witaYear = tempDate.getUTCFullYear();
+    witaMonth = tempDate.getUTCMonth();
+    witaDay = tempDate.getUTCDate();
+  }
+
+  return new Date(Date.UTC(witaYear, witaMonth, witaDay, 0, 0, 0, 0));
+}
+
+// GET - Get checklist status (available, claimed by user, or claimed by others)
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
@@ -104,33 +133,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get today's date in WITA timezone for shift lookup
-    // WITA is UTC+8, so we need to get the correct calendar date
-    const now = new Date();
-    const witaOffset = 8 * 60; // WITA is UTC+8 in minutes
-    const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
-    const witaMinutes = utcMinutes + witaOffset;
-
-    // Calculate the WITA date
-    let witaYear = now.getUTCFullYear();
-    let witaMonth = now.getUTCMonth();
-    let witaDay = now.getUTCDate();
-
-    // If WITA time crosses midnight, adjust the date
-    if (witaMinutes >= 24 * 60) {
-      // Next day in WITA
-      const tempDate = new Date(Date.UTC(witaYear, witaMonth, witaDay + 1));
-      witaYear = tempDate.getUTCFullYear();
-      witaMonth = tempDate.getUTCMonth();
-      witaDay = tempDate.getUTCDate();
+    // Check server access
+    if (!staffProfile.hasServerAccess) {
+      return NextResponse.json(
+        { error: 'Anda tidak memiliki akses server. Hubungi administrator untuk mendapatkan akses.' },
+        { status: 403 }
+      );
     }
 
-    // Create today's date at UTC midnight (how Prisma stores dates)
-    const todayUTC = new Date(Date.UTC(witaYear, witaMonth, witaDay, 0, 0, 0, 0));
-
-    console.log('[server-checklist] UTC now:', now.toISOString());
-    console.log('[server-checklist] WITA date:', `${witaYear}-${String(witaMonth + 1).padStart(2, '0')}-${String(witaDay).padStart(2, '0')}`);
-    console.log('[server-checklist] Looking for date:', todayUTC.toISOString());
+    const todayUTC = getTodayUTC();
 
     const currentShift = await prisma.shiftAssignment.findFirst({
       where: {
@@ -139,28 +150,24 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    console.log('[server-checklist] Staff:', staffProfile.id, 'Shift:', currentShift?.shiftType || 'none');
+    // Check if user is on night-only shift (NIGHT_WEEKDAY, NIGHT_WEEKEND)
+    const isOnNightOnlyShift = currentShift && NIGHT_ONLY_SHIFTS.includes(currentShift.shiftType);
+    const isOnNightShift = currentShift && NIGHT_STANDBY_SHIFTS.includes(currentShift.shiftType);
+    const isOnOpsShift = currentShift && OPERATIONAL_SHIFTS.includes(currentShift.shiftType);
+    const canAccessHarian = currentShift && HARIAN_SHIFTS.includes(currentShift.shiftType);
 
     // Determine checklist type
     let checklistType: DailyChecklistType;
     if (typeParam) {
       checklistType = typeParam;
     } else {
-      // Auto-determine based on current time
       checklistType = getChecklistTypeByTime();
     }
 
-    // === ACCESS CONTROL ===
-    const hasServerAccess = staffProfile.hasServerAccess;
-    const isOnNightShift = currentShift && NIGHT_STANDBY_SHIFTS.includes(currentShift.shiftType);
-    const isOnOpsShift = currentShift && OPERATIONAL_SHIFTS.includes(currentShift.shiftType);
-    const canAccessHarian = currentShift && HARIAN_SHIFTS.includes(currentShift.shiftType);
-
-    // Check access based on checklist type
+    // === ACCESS CONTROL FOR CLAIM SYSTEM ===
     switch (checklistType) {
       case 'HARIAN':
       case 'AKHIR_HARI':
-        // Requires STANDBY_BRANCH shift
         if (!canAccessHarian) {
           return NextResponse.json(
             { error: 'Checklist ini hanya untuk shift STANDBY_BRANCH' },
@@ -170,37 +177,30 @@ export async function GET(request: NextRequest) {
         break;
 
       case 'SERVER_SIANG':
-        // Requires server access
-        if (!hasServerAccess) {
+        // Night-only shifts (NIGHT_WEEKDAY, NIGHT_WEEKEND) cannot access SERVER_SIANG
+        if (isOnNightOnlyShift) {
           return NextResponse.json(
-            { error: 'Anda tidak memiliki akses server' },
+            { error: 'Staff dengan shift malam tidak dapat mengakses checklist server siang. Gunakan checklist SERVER_MALAM.' },
             { status: 403 }
           );
         }
         break;
 
       case 'SERVER_MALAM':
-        // Requires server access + night/standby shift
-        if (!hasServerAccess) {
-          return NextResponse.json(
-            { error: 'Anda tidak memiliki akses server' },
-            { status: 403 }
-          );
-        }
+        // Only night shifts can access SERVER_MALAM
         if (!isOnNightShift) {
           return NextResponse.json(
-            { error: 'Checklist server malam hanya untuk shift standby' },
+            { error: 'Checklist server malam hanya untuk shift standby/malam' },
             { status: 403 }
           );
         }
         break;
     }
 
-    // Get the appropriate date for this checklist
     const checklistDate = getChecklistDate(checklistType);
 
-    // Try to find existing checklist for today and type
-    let checklist = await prisma.serverAccessDailyChecklist.findFirst({
+    // Check if user has already claimed this checklist
+    const userChecklist = await prisma.serverAccessDailyChecklist.findFirst({
       where: {
         userId: session.user.id,
         date: checklistDate,
@@ -220,75 +220,25 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // If no checklist exists, create one from templates
-    if (!checklist) {
-      const templates = await prisma.serverAccessChecklistTemplate.findMany({
-        where: {
-          isActive: true,
-          checklistType: checklistType,
-        },
-        orderBy: [{ category: 'asc' }, { order: 'asc' }],
-      });
-
-      if (templates.length === 0) {
-        return NextResponse.json(
-          { error: `Tidak ada template untuk checklist ${checklistType}` },
-          { status: 404 }
-        );
-      }
-
-      checklist = await prisma.serverAccessDailyChecklist.create({
-        data: {
-          userId: session.user.id,
-          date: checklistDate,
-          checklistType: checklistType,
-          status: 'PENDING',
-          items: {
-            create: templates.map((template) => ({
-              title: template.title,
-              description: template.description,
-              category: template.category,
-              order: template.order,
-              isRequired: template.isRequired,
-              status: 'PENDING',
-              unlockTime: template.unlockTime,
-            })),
+    // Check if anyone else has claimed this checklist
+    const otherClaims = await prisma.serverAccessDailyChecklist.findMany({
+      where: {
+        date: checklistDate,
+        checklistType: checklistType,
+        userId: { not: session.user.id },
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
           },
         },
-        include: {
-          items: {
-            orderBy: [{ category: 'asc' }, { order: 'asc' }],
-          },
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
-        },
-      });
-    }
+      },
+    });
 
-    // Add lock status to each item
     const witaTimeNow = getCurrentTimeWITA();
-    const itemsWithLockStatus = checklist.items.map((item) => ({
-      ...item,
-      isLocked: !isItemUnlocked(item.unlockTime, witaTimeNow),
-      lockMessage: getLockStatusMessage(item.unlockTime, witaTimeNow),
-    }));
-
-    // Calculate stats
-    const stats = {
-      total: checklist.items.length,
-      completed: checklist.items.filter((i) => i.status === 'COMPLETED').length,
-      pending: checklist.items.filter((i) => i.status === 'PENDING').length,
-      inProgress: checklist.items.filter((i) => i.status === 'IN_PROGRESS').length,
-      skipped: checklist.items.filter((i) => i.status === 'SKIPPED').length,
-      locked: itemsWithLockStatus.filter((i) => i.isLocked).length,
-    };
-
-    // Format current WITA time for display
     const witaTimeStr = witaTimeNow.toLocaleTimeString('id-ID', {
       hour: '2-digit',
       minute: '2-digit',
@@ -302,21 +252,71 @@ export async function GET(request: NextRequest) {
       day: 'numeric',
     });
 
+    // If user has claimed, return their checklist
+    if (userChecklist) {
+      const itemsWithLockStatus = userChecklist.items.map((item) => ({
+        ...item,
+        isLocked: !isItemUnlocked(item.unlockTime, witaTimeNow),
+        lockMessage: getLockStatusMessage(item.unlockTime, witaTimeNow),
+      }));
+
+      const stats = {
+        total: userChecklist.items.length,
+        completed: userChecklist.items.filter((i) => i.status === 'COMPLETED').length,
+        pending: userChecklist.items.filter((i) => i.status === 'PENDING').length,
+        inProgress: userChecklist.items.filter((i) => i.status === 'IN_PROGRESS').length,
+        skipped: userChecklist.items.filter((i) => i.status === 'SKIPPED').length,
+        locked: itemsWithLockStatus.filter((i) => i.isLocked).length,
+      };
+
+      return NextResponse.json({
+        ...userChecklist,
+        checklistType,
+        items: itemsWithLockStatus,
+        stats,
+        claimed: true,
+        claimedByUser: true,
+        otherClaims: otherClaims.map((c) => ({
+          userId: c.user.id,
+          userName: c.user.name,
+          status: c.status,
+        })),
+        serverTime: {
+          wita: `${witaDateStr}, ${witaTimeStr} WITA`,
+          witaHour: witaTimeNow.getHours(),
+          witaMinute: witaTimeNow.getMinutes(),
+          iso: witaTimeNow.toISOString(),
+        },
+        shiftInfo: {
+          hasServerAccess: staffProfile.hasServerAccess,
+          isOnNightShift,
+          isOnOpsShift,
+          canAccessHarian,
+          currentShiftType: currentShift?.shiftType || null,
+        },
+      });
+    }
+
+    // User hasn't claimed - return available status
     return NextResponse.json({
-      ...checklist,
+      claimed: false,
+      claimedByUser: false,
       checklistType,
-      items: itemsWithLockStatus,
-      stats,
-      // Current server time in WITA for display
+      date: checklistDate,
+      canClaim: true,
+      otherClaims: otherClaims.map((c) => ({
+        userId: c.user.id,
+        userName: c.user.name,
+        status: c.status,
+      })),
       serverTime: {
         wita: `${witaDateStr}, ${witaTimeStr} WITA`,
         witaHour: witaTimeNow.getHours(),
         witaMinute: witaTimeNow.getMinutes(),
         iso: witaTimeNow.toISOString(),
       },
-      // Include shift info for UI
       shiftInfo: {
-        hasServerAccess,
+        hasServerAccess: staffProfile.hasServerAccess,
         isOnNightShift,
         isOnOpsShift,
         canAccessHarian,
@@ -327,6 +327,193 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching server checklist:', error);
     return NextResponse.json(
       { error: 'Gagal mengambil checklist server' },
+      { status: 500 }
+    );
+  }
+}
+
+// POST - Claim a checklist
+export async function POST(request: NextRequest) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { type } = body as { type?: DailyChecklistType };
+
+    // Get staff profile
+    const staffProfile = await prisma.staffShiftProfile.findFirst({
+      where: {
+        userId: session.user.id,
+        isActive: true,
+      },
+    });
+
+    if (!staffProfile) {
+      return NextResponse.json(
+        { error: 'Profil staff tidak ditemukan' },
+        { status: 403 }
+      );
+    }
+
+    if (!staffProfile.hasServerAccess) {
+      return NextResponse.json(
+        { error: 'Anda tidak memiliki akses server' },
+        { status: 403 }
+      );
+    }
+
+    const todayUTC = getTodayUTC();
+
+    const currentShift = await prisma.shiftAssignment.findFirst({
+      where: {
+        staffProfileId: staffProfile.id,
+        date: todayUTC,
+      },
+    });
+
+    const isOnNightOnlyShift = currentShift && NIGHT_ONLY_SHIFTS.includes(currentShift.shiftType);
+    const isOnNightShift = currentShift && NIGHT_STANDBY_SHIFTS.includes(currentShift.shiftType);
+    const canAccessHarian = currentShift && HARIAN_SHIFTS.includes(currentShift.shiftType);
+
+    // Determine checklist type
+    let checklistType: DailyChecklistType;
+    if (type && VALID_CHECKLIST_TYPES.includes(type)) {
+      checklistType = type;
+    } else {
+      checklistType = getChecklistTypeByTime();
+    }
+
+    // Access control
+    switch (checklistType) {
+      case 'HARIAN':
+      case 'AKHIR_HARI':
+        if (!canAccessHarian) {
+          return NextResponse.json(
+            { error: 'Checklist ini hanya untuk shift STANDBY_BRANCH' },
+            { status: 403 }
+          );
+        }
+        break;
+
+      case 'SERVER_SIANG':
+        if (isOnNightOnlyShift) {
+          return NextResponse.json(
+            { error: 'Staff dengan shift malam tidak dapat mengklaim checklist server siang' },
+            { status: 403 }
+          );
+        }
+        break;
+
+      case 'SERVER_MALAM':
+        if (!isOnNightShift) {
+          return NextResponse.json(
+            { error: 'Checklist server malam hanya untuk shift standby/malam' },
+            { status: 403 }
+          );
+        }
+        break;
+    }
+
+    const checklistDate = getChecklistDate(checklistType);
+
+    // Check if user already claimed
+    const existingClaim = await prisma.serverAccessDailyChecklist.findFirst({
+      where: {
+        userId: session.user.id,
+        date: checklistDate,
+        checklistType: checklistType,
+      },
+    });
+
+    if (existingClaim) {
+      return NextResponse.json(
+        { error: 'Anda sudah mengklaim checklist ini' },
+        { status: 400 }
+      );
+    }
+
+    // Get templates
+    const templates = await prisma.serverAccessChecklistTemplate.findMany({
+      where: {
+        isActive: true,
+        checklistType: checklistType,
+      },
+      orderBy: [{ category: 'asc' }, { order: 'asc' }],
+    });
+
+    if (templates.length === 0) {
+      return NextResponse.json(
+        { error: `Tidak ada template untuk checklist ${checklistType}` },
+        { status: 404 }
+      );
+    }
+
+    // Create the checklist (claim it)
+    const checklist = await prisma.serverAccessDailyChecklist.create({
+      data: {
+        userId: session.user.id,
+        date: checklistDate,
+        checklistType: checklistType,
+        status: 'PENDING',
+        items: {
+          create: templates.map((template) => ({
+            title: template.title,
+            description: template.description,
+            category: template.category,
+            order: template.order,
+            isRequired: template.isRequired,
+            status: 'PENDING',
+            unlockTime: template.unlockTime,
+          })),
+        },
+      },
+      include: {
+        items: {
+          orderBy: [{ category: 'asc' }, { order: 'asc' }],
+        },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    const witaTimeNow = getCurrentTimeWITA();
+    const itemsWithLockStatus = checklist.items.map((item) => ({
+      ...item,
+      isLocked: !isItemUnlocked(item.unlockTime, witaTimeNow),
+      lockMessage: getLockStatusMessage(item.unlockTime, witaTimeNow),
+    }));
+
+    const stats = {
+      total: checklist.items.length,
+      completed: 0,
+      pending: checklist.items.length,
+      inProgress: 0,
+      skipped: 0,
+      locked: itemsWithLockStatus.filter((i) => i.isLocked).length,
+    };
+
+    return NextResponse.json({
+      success: true,
+      message: 'Checklist berhasil diklaim',
+      ...checklist,
+      checklistType,
+      items: itemsWithLockStatus,
+      stats,
+      claimed: true,
+      claimedByUser: true,
+    });
+  } catch (error) {
+    console.error('Error claiming server checklist:', error);
+    return NextResponse.json(
+      { error: 'Gagal mengklaim checklist' },
       { status: 500 }
     );
   }
