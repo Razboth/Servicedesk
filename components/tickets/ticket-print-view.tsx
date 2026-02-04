@@ -118,15 +118,19 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
                 borderRadius: '8px',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                padding: '4px'
               }}>
-                <span style={{
-                  color: '#DC2626',
-                  fontWeight: '900',
-                  fontSize: '16px'
-                }}>
-                  BSG
-                </span>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/logo-bsg.png"
+                  alt="BSG Logo"
+                  style={{
+                    width: '40px',
+                    height: '40px',
+                    objectFit: 'contain'
+                  }}
+                />
               </div>
               <div>
                 <h1 style={{
@@ -423,13 +427,20 @@ export const TicketPrintView = React.forwardRef<HTMLDivElement, TicketPrintViewP
                   <div style={{
                     width: '32px',
                     height: '32px',
-                    backgroundColor: '#DC2626',
+                    backgroundColor: '#ffffff',
                     borderRadius: '6px',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center'
+                    justifyContent: 'center',
+                    border: '1px solid #FECACA',
+                    padding: '2px'
                   }}>
-                    <span style={{ color: '#ffffff', fontWeight: '900', fontSize: '10px' }}>BSG</span>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/logo-bsg.png"
+                      alt="BSG"
+                      style={{ width: '26px', height: '26px', objectFit: 'contain' }}
+                    />
                   </div>
                   <div>
                     <h4 style={{ fontSize: '12px', fontWeight: '800', color: '#DC2626', margin: 0 }}>
