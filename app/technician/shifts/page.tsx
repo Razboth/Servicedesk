@@ -1030,10 +1030,10 @@ export default function TechnicianShiftsPage() {
                 {availableChecklistTypes.map((type) => {
                   const config = checklistTypeConfig[type];
                   const stats = checklistStats[type];
-                  const progress = stats
+                  const progress = stats && stats.total > 0
                     ? Math.round(((stats.completed + stats.skipped) / stats.total) * 100)
                     : 0;
-                  const isComplete = progress === 100;
+                  const isComplete = stats && stats.total > 0 && progress === 100;
 
                   return (
                     <TabsTrigger
@@ -1043,7 +1043,7 @@ export default function TechnicianShiftsPage() {
                     >
                       {isComplete && <CheckCircle2 className="h-3 w-3" />}
                       {config.label}
-                      {stats && (
+                      {stats && stats.total > 0 && (
                         <Badge variant="secondary" className="text-xs ml-1">
                           {progress}%
                         </Badge>
