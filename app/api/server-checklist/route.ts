@@ -133,14 +133,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Check server access
-    if (!staffProfile.hasServerAccess) {
-      return NextResponse.json(
-        { error: 'Anda tidak memiliki akses server. Hubungi administrator untuk mendapatkan akses.' },
-        { status: 403 }
-      );
-    }
-
     const todayUTC = getTodayUTC();
 
     const currentShift = await prisma.shiftAssignment.findFirst({
@@ -161,13 +153,19 @@ export async function GET(request: NextRequest) {
     if (typeParam) {
       checklistType = typeParam;
     } else {
-      checklistType = getChecklistTypeByTime();
+      // Auto-determine based on shift type and time
+      if (canAccessHarian) {
+        checklistType = 'HARIAN';
+      } else {
+        checklistType = getChecklistTypeByTime();
+      }
     }
 
     // === ACCESS CONTROL FOR CLAIM SYSTEM ===
     switch (checklistType) {
       case 'HARIAN':
       case 'AKHIR_HARI':
+        // HARIAN and AKHIR_HARI only require STANDBY_BRANCH shift, no server access needed
         if (!canAccessHarian) {
           return NextResponse.json(
             { error: 'Checklist ini hanya untuk shift STANDBY_BRANCH' },
@@ -177,6 +175,13 @@ export async function GET(request: NextRequest) {
         break;
 
       case 'SERVER_SIANG':
+        // Requires server access
+        if (!staffProfile.hasServerAccess) {
+          return NextResponse.json(
+            { error: 'Anda tidak memiliki akses server' },
+            { status: 403 }
+          );
+        }
         // Night-only shifts (NIGHT_WEEKDAY, NIGHT_WEEKEND) cannot access SERVER_SIANG
         if (isOnNightOnlyShift) {
           return NextResponse.json(
@@ -187,7 +192,13 @@ export async function GET(request: NextRequest) {
         break;
 
       case 'SERVER_MALAM':
-        // Only night shifts can access SERVER_MALAM
+        // Requires server access + night shift
+        if (!staffProfile.hasServerAccess) {
+          return NextResponse.json(
+            { error: 'Anda tidak memiliki akses server' },
+            { status: 403 }
+          );
+        }
         if (!isOnNightShift) {
           return NextResponse.json(
             { error: 'Checklist server malam hanya untuk shift standby/malam' },
@@ -358,13 +369,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!staffProfile.hasServerAccess) {
-      return NextResponse.json(
-        { error: 'Anda tidak memiliki akses server' },
-        { status: 403 }
-      );
-    }
-
     const todayUTC = getTodayUTC();
 
     const currentShift = await prisma.shiftAssignment.findFirst({
@@ -383,13 +387,19 @@ export async function POST(request: NextRequest) {
     if (type && VALID_CHECKLIST_TYPES.includes(type)) {
       checklistType = type;
     } else {
-      checklistType = getChecklistTypeByTime();
+      // Auto-determine based on shift type and time
+      if (canAccessHarian) {
+        checklistType = 'HARIAN';
+      } else {
+        checklistType = getChecklistTypeByTime();
+      }
     }
 
     // Access control
     switch (checklistType) {
       case 'HARIAN':
       case 'AKHIR_HARI':
+        // HARIAN and AKHIR_HARI only require STANDBY_BRANCH shift, no server access needed
         if (!canAccessHarian) {
           return NextResponse.json(
             { error: 'Checklist ini hanya untuk shift STANDBY_BRANCH' },
@@ -399,6 +409,13 @@ export async function POST(request: NextRequest) {
         break;
 
       case 'SERVER_SIANG':
+        // Requires server access
+        if (!staffProfile.hasServerAccess) {
+          return NextResponse.json(
+            { error: 'Anda tidak memiliki akses server' },
+            { status: 403 }
+          );
+        }
         if (isOnNightOnlyShift) {
           return NextResponse.json(
             { error: 'Staff dengan shift malam tidak dapat mengklaim checklist server siang' },
@@ -408,6 +425,13 @@ export async function POST(request: NextRequest) {
         break;
 
       case 'SERVER_MALAM':
+        // Requires server access + night shift
+        if (!staffProfile.hasServerAccess) {
+          return NextResponse.json(
+            { error: 'Anda tidak memiliki akses server' },
+            { status: 403 }
+          );
+        }
         if (!isOnNightShift) {
           return NextResponse.json(
             { error: 'Checklist server malam hanya untuk shift standby/malam' },
