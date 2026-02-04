@@ -104,14 +104,19 @@ export function ChecklistPanel({ type, onStatsUpdate }: ChecklistPanelProps) {
   const [checklist, setChecklist] = useState<ServerChecklist | null>(null);
   const [stats, setStats] = useState<ChecklistStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [claiming, setClaiming] = useState(false);
   const [releasing, setReleasing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchChecklist = useCallback(async () => {
+  const fetchChecklist = useCallback(async (showLoading: boolean = true) => {
     try {
-      setLoading(true);
+      if (showLoading) {
+        setLoading(true);
+      } else {
+        setRefreshing(true);
+      }
       setError(null);
 
       const response = await fetch(`/api/server-checklist?type=${type}`);
@@ -154,6 +159,7 @@ export function ChecklistPanel({ type, onStatsUpdate }: ChecklistPanelProps) {
       toast.error('Gagal memuat checklist');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [type, onStatsUpdate]);
 
@@ -165,7 +171,7 @@ export function ChecklistPanel({ type, onStatsUpdate }: ChecklistPanelProps) {
   useEffect(() => {
     const interval = setInterval(() => {
       if (checklist?.claimedByUser && !error) {
-        fetchChecklist();
+        fetchChecklist(false); // Silent refresh, don't show loading spinner
       }
     }, 60000);
 
@@ -188,7 +194,24 @@ export function ChecklistPanel({ type, onStatsUpdate }: ChecklistPanelProps) {
       }
 
       toast.success('Checklist berhasil diklaim');
-      await fetchChecklist();
+
+      // Update state directly from the claim response instead of re-fetching
+      // This avoids the loading spinner and provides instant UI update
+      setChecklist(data);
+
+      // Calculate and update stats from the response
+      if (data.items) {
+        const calculatedStats: ChecklistStats = {
+          total: data.items.length,
+          completed: data.items.filter((i: ServerChecklistItem) => i.status === 'COMPLETED').length,
+          pending: data.items.filter((i: ServerChecklistItem) => i.status === 'PENDING').length,
+          inProgress: data.items.filter((i: ServerChecklistItem) => i.status === 'IN_PROGRESS').length,
+          skipped: data.items.filter((i: ServerChecklistItem) => i.status === 'SKIPPED').length,
+          locked: data.items.filter((i: ServerChecklistItem) => i.isLocked === true).length,
+        };
+        setStats(calculatedStats);
+        onStatsUpdate?.(type, calculatedStats);
+      }
     } catch (err) {
       console.error('Error claiming checklist:', err);
       toast.error(err instanceof Error ? err.message : 'Gagal mengklaim checklist');
@@ -220,7 +243,10 @@ export function ChecklistPanel({ type, onStatsUpdate }: ChecklistPanelProps) {
       }
 
       toast.success('Checklist berhasil dilepaskan');
-      await fetchChecklist();
+
+      // Re-fetch without showing loading spinner to get the unclaimed state
+      // This will show the claim UI smoothly
+      await fetchChecklist(false);
     } catch (err) {
       console.error('Error releasing checklist:', err);
       toast.error(err instanceof Error ? err.message : 'Gagal melepaskan checklist');
@@ -253,7 +279,8 @@ export function ChecklistPanel({ type, onStatsUpdate }: ChecklistPanelProps) {
         return;
       }
 
-      await fetchChecklist();
+      // Silent refresh to update checklist status and stats without loading spinner
+      await fetchChecklist(false);
       toast.success('Checklist diperbarui');
     } catch (err) {
       console.error('Error updating items:', err);
@@ -439,11 +466,11 @@ export function ChecklistPanel({ type, onStatsUpdate }: ChecklistPanelProps) {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => fetchChecklist()}
-            disabled={loading || updating}
+            onClick={() => fetchChecklist(false)}
+            disabled={loading || updating || refreshing}
             className="h-8 w-8 p-0"
           >
-            <RefreshCw className={`h-4 w-4 ${updating ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
           </Button>
           {/* Release button - only show when user has claimed, not completed, and no items done */}
           {checklist.claimedByUser && !isCompleted && stats?.completed === 0 && (

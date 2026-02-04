@@ -1026,7 +1026,8 @@ export default function TechnicianShiftsPage() {
           </CardHeader>
           <CardContent className="px-5 pb-5 pt-0">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="w-full justify-start mb-4 h-auto flex-wrap">
+              {/* Modern Card-Based Tabs Design */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 mb-6">
                 {availableChecklistTypes.map((type) => {
                   const config = checklistTypeConfig[type];
                   const stats = checklistStats[type];
@@ -1034,27 +1035,127 @@ export default function TechnicianShiftsPage() {
                     ? Math.round(((stats.completed + stats.skipped) / stats.total) * 100)
                     : 0;
                   const isComplete = stats && stats.total > 0 && progress === 100;
+                  const isActive = activeTab === type.toLowerCase().replace('_', '-');
+                  const Icon = config.icon;
 
                   return (
-                    <TabsTrigger
+                    <button
                       key={type}
-                      value={type.toLowerCase().replace('_', '-')}
-                      className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                      onClick={() => setActiveTab(type.toLowerCase().replace('_', '-'))}
+                      className={`
+                        group relative overflow-hidden rounded-xl p-4 text-left transition-all duration-200
+                        ${isActive
+                          ? 'bg-primary shadow-lg shadow-primary/25 scale-[1.02] ring-2 ring-primary/50'
+                          : 'bg-card hover:bg-accent/50 hover:shadow-md border border-border/50'
+                        }
+                      `}
                     >
-                      {isComplete && <CheckCircle2 className="h-3 w-3" />}
-                      {config.label}
-                      {stats && stats.total > 0 && (
-                        <Badge variant="secondary" className="text-xs ml-1">
-                          {progress}%
-                        </Badge>
-                      )}
-                    </TabsTrigger>
+                      {/* Background gradient effect on hover */}
+                      <div className={`
+                        absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200
+                        bg-gradient-to-br from-primary/5 to-transparent
+                        ${isActive ? 'opacity-100' : ''}
+                      `} />
+
+                      {/* Content */}
+                      <div className="relative z-10 space-y-3">
+                        {/* Header with icon and label */}
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <div className={`
+                              flex items-center justify-center w-9 h-9 rounded-lg shrink-0 transition-colors
+                              ${isActive
+                                ? 'bg-primary-foreground/20 text-primary-foreground'
+                                : 'bg-primary/10 text-primary group-hover:bg-primary/15'
+                              }
+                            `}>
+                              <Icon className="h-4 w-4" />
+                            </div>
+                            <span className={`
+                              font-semibold text-sm leading-tight truncate
+                              ${isActive ? 'text-primary-foreground' : 'text-foreground'}
+                            `}>
+                              {config.label}
+                            </span>
+                          </div>
+
+                          {/* Completion indicator */}
+                          {isComplete && (
+                            <div className={`
+                              flex items-center justify-center w-6 h-6 rounded-full shrink-0
+                              ${isActive
+                                ? 'bg-green-500 text-white'
+                                : 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+                              }
+                            `}>
+                              <CheckCircle2 className="h-4 w-4" />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Progress indicator */}
+                        {stats && stats.total > 0 && (
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className={`
+                                font-medium
+                                ${isActive ? 'text-primary-foreground/80' : 'text-muted-foreground'}
+                              `}>
+                                Progress
+                              </span>
+                              <span className={`
+                                font-bold tabular-nums
+                                ${isActive
+                                  ? 'text-primary-foreground'
+                                  : isComplete
+                                    ? 'text-green-600 dark:text-green-400'
+                                    : 'text-foreground'
+                                }
+                              `}>
+                                {progress}%
+                              </span>
+                            </div>
+                            <div className={`
+                              h-1.5 rounded-full overflow-hidden
+                              ${isActive ? 'bg-primary-foreground/20' : 'bg-muted'}
+                            `}>
+                              <div
+                                className={`
+                                  h-full rounded-full transition-all duration-500
+                                  ${isActive
+                                    ? 'bg-primary-foreground'
+                                    : isComplete
+                                      ? 'bg-green-500'
+                                      : 'bg-primary'
+                                  }
+                                `}
+                                style={{ width: `${progress}%` }}
+                              />
+                            </div>
+
+                            {/* Task count */}
+                            <div className={`
+                              text-xs font-medium
+                              ${isActive ? 'text-primary-foreground/70' : 'text-muted-foreground'}
+                            `}>
+                              {stats.completed + stats.skipped}/{stats.total} tugas
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Active indicator */}
+                        {isActive && (
+                          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-foreground rounded-full" />
+                        )}
+                      </div>
+                    </button>
                   );
                 })}
-              </TabsList>
+              </div>
 
+              {/* Tab Content */}
               {availableChecklistTypes.map((type) => (
-                <TabsContent key={type} value={type.toLowerCase().replace('_', '-')} className="mt-0 pt-4">
+                <TabsContent key={type} value={type.toLowerCase().replace('_', '-')} className="mt-0">
                   <ChecklistPanel type={type} onStatsUpdate={handleStatsUpdate} />
                 </TabsContent>
               ))}
