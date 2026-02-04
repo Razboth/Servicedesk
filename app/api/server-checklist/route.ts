@@ -254,12 +254,18 @@ export async function GET(request: NextRequest) {
             { status: 403 }
           );
         }
-        // Night-only shifts cannot access daytime monitoring
-        if (isOnNightOnlyShift) {
-          return NextResponse.json(
-            { error: 'Staff shift malam tidak dapat mengakses Checklist Monitoring Siang' },
-            { status: 403 }
-          );
+        // Night-only shifts can access MONITORING_SIANG during early morning (00:00-08:00)
+        // This allows D_1 (NIGHT_WEEKEND with server) to complete 08:00 items when finishing shift
+        {
+          const witaTime = getCurrentTimeWITA();
+          const currentHour = witaTime.getHours();
+          const isEarlyMorning = currentHour >= 0 && currentHour < 8;
+          if (isOnNightOnlyShift && !isEarlyMorning) {
+            return NextResponse.json(
+              { error: 'Staff shift malam hanya dapat mengakses Checklist Monitoring Siang saat pagi (00:00-08:00)' },
+              { status: 403 }
+            );
+          }
         }
         break;
 
