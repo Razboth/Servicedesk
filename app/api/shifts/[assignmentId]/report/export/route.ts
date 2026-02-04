@@ -83,15 +83,8 @@ export async function GET(
       );
     }
 
-    if (!shiftAssignment.shiftReport) {
-      return NextResponse.json(
-        { error: 'Shift report not found' },
-        { status: 404 }
-      );
-    }
-
     const report = shiftAssignment.shiftReport;
-    const metrics = report.serverMetrics;
+    const metrics = report?.serverMetrics;
 
     // Fetch daily checklists for this user on this date
     const shiftDate = new Date(shiftAssignment.date);
@@ -113,13 +106,26 @@ export async function GET(
       },
     });
 
+    // If no report and no daily checklists, return error
+    if (!report && dailyChecklists.length === 0) {
+      return NextResponse.json(
+        { error: 'Tidak ada laporan atau checklist untuk diekspor' },
+        { status: 404 }
+      );
+    }
+
     // Build export data
     const exportData = {
-      reportInfo: {
+      reportInfo: report ? {
         id: report.id,
         status: report.status,
         startedAt: report.startedAt,
         completedAt: report.completedAt,
+      } : {
+        id: shiftAssignment.id,
+        status: 'IN_PROGRESS',
+        startedAt: new Date().toISOString(),
+        completedAt: null,
       },
       shiftInfo: {
         date: shiftAssignment.date,
@@ -155,7 +161,7 @@ export async function GET(
             collectedAt: metrics.collectedAt,
           }
         : null,
-      checklist: report.checklistItems.map((item) => ({
+      checklist: report?.checklistItems?.map((item) => ({
         category: categoryLabels[item.category] || item.category,
         title: item.title,
         description: item.description,
@@ -163,22 +169,27 @@ export async function GET(
         isRequired: item.isRequired,
         completedAt: item.completedAt,
         notes: item.notes,
-      })),
-      summary: {
+      })) || [],
+      summary: report ? {
         summary: report.summary,
         handoverNotes: report.handoverNotes,
         issuesEncountered: report.issuesEncountered,
         pendingActions: report.pendingActions,
+      } : {
+        summary: null,
+        handoverNotes: null,
+        issuesEncountered: null,
+        pendingActions: null,
       },
-      notes: report.notes,
-      backupChecklist: report.backupChecklist?.map((item) => ({
+      notes: report?.notes || null,
+      backupChecklist: report?.backupChecklist?.map((item) => ({
         databaseName: item.databaseName,
         description: item.description,
         isChecked: item.isChecked,
         checkedAt: item.checkedAt,
         notes: item.notes,
       })) || [],
-      issues: report.issues?.map((issue) => ({
+      issues: report?.issues?.map((issue) => ({
         title: issue.title,
         description: issue.description,
         status: issue.status,
@@ -186,11 +197,16 @@ export async function GET(
         resolution: issue.resolution,
         resolvedAt: issue.resolvedAt,
       })) || [],
-      stats: {
+      stats: report ? {
         total: report.checklistItems.length,
         completed: report.checklistItems.filter((i) => i.status === 'COMPLETED').length,
         pending: report.checklistItems.filter((i) => i.status === 'PENDING').length,
         skipped: report.checklistItems.filter((i) => i.status === 'SKIPPED').length,
+      } : {
+        total: 0,
+        completed: 0,
+        pending: 0,
+        skipped: 0,
       },
       // Daily checklists (HARIAN, SERVER_SIANG, SERVER_MALAM, AKHIR_HARI)
       dailyChecklists: dailyChecklists.map((checklist) => ({
@@ -225,71 +241,83 @@ export async function GET(
       });
     }
 
+    // Build excel data sheets
+    const excelSheets: { title: string; headers?: string[]; rows: (string | null)[][] }[] = [
+      {
+        title: 'Informasi Laporan',
+        rows: [
+          ['ID Laporan', report?.id || shiftAssignment.id],
+          ['Status', report?.status || 'IN_PROGRESS'],
+          ['Tanggal Shift', new Date(shiftAssignment.date).toLocaleDateString('id-ID')],
+          ['Jenis Shift', shiftAssignment.shiftType],
+          ['Teknisi', shiftAssignment.staffProfile.user.name],
+          ['Cabang', shiftAssignment.staffProfile.branch?.name || 'N/A'],
+          ['Waktu Mulai', report?.startedAt ? new Date(report.startedAt).toLocaleString('id-ID') : '-'],
+          ['Waktu Selesai', report?.completedAt ? new Date(report.completedAt).toLocaleString('id-ID') : '-'],
+        ],
+      },
+    ];
+
+    // Add server metrics if available
+    if (metrics) {
+      excelSheets.push({
+        title: 'Metrik Server',
+        rows: [
+          ['CPU Usage', `${metrics.cpuUsagePercent?.toFixed(1) || '-'}%`],
+          ['RAM Usage', `${metrics.ramUsagePercent?.toFixed(1) || '-'}%`],
+          ['Disk Usage', `${metrics.diskUsagePercent?.toFixed(1) || '-'}%`],
+          ['Uptime', metrics.uptimeSeconds ? `${Math.floor(metrics.uptimeSeconds / 86400)} hari` : '-'],
+          ['Waktu Pengambilan', new Date(metrics.collectedAt).toLocaleString('id-ID')],
+        ],
+      });
+    }
+
+    // Add shift report checklist if available
+    if (report && report.checklistItems.length > 0) {
+      excelSheets.push({
+        title: 'Daftar Periksa',
+        headers: ['Kategori', 'Item', 'Status', 'Wajib', 'Catatan'],
+        rows: report.checklistItems.map((item) => [
+          categoryLabels[item.category] || item.category,
+          item.title,
+          statusLabels[item.status] || item.status,
+          item.isRequired ? 'Ya' : 'Tidak',
+          item.notes || '-',
+        ]),
+      });
+
+      excelSheets.push({
+        title: 'Ringkasan',
+        rows: [
+          ['Ringkasan', report.summary || '-'],
+          ['Catatan Serah Terima', report.handoverNotes || '-'],
+          ['Masalah yang Ditemui', report.issuesEncountered || '-'],
+          ['Tindakan Tertunda', report.pendingActions || '-'],
+        ],
+      });
+    }
+
+    // Add daily checklists as separate sheets
+    dailyChecklists.forEach((checklist) => {
+      excelSheets.push({
+        title: checklistTypeLabels[checklist.checklistType] || checklist.checklistType,
+        headers: ['Waktu', 'Item', 'Status', 'Wajib', 'Catatan'],
+        rows: checklist.items.map((item) => [
+          item.unlockTime || '-',
+          item.title,
+          statusLabels[item.status] || item.status,
+          item.isRequired ? 'Ya' : 'Tidak',
+          item.notes || '-',
+        ]),
+      });
+    });
+
     // For xlsx/pdf, return data that can be processed by frontend
     return NextResponse.json({
       success: true,
       format,
       data: exportData,
-      // Flattened data for Excel export
-      excelData: [
-        {
-          title: 'Informasi Laporan',
-          rows: [
-            ['ID Laporan', report.id],
-            ['Status', report.status],
-            ['Tanggal Shift', new Date(shiftAssignment.date).toLocaleDateString('id-ID')],
-            ['Jenis Shift', shiftAssignment.shiftType],
-            ['Teknisi', shiftAssignment.staffProfile.user.name],
-            ['Cabang', shiftAssignment.staffProfile.branch?.name || 'N/A'],
-            ['Waktu Mulai', new Date(report.startedAt).toLocaleString('id-ID')],
-            ['Waktu Selesai', report.completedAt ? new Date(report.completedAt).toLocaleString('id-ID') : '-'],
-          ],
-        },
-        {
-          title: 'Metrik Server',
-          rows: metrics
-            ? [
-                ['CPU Usage', `${metrics.cpuUsagePercent?.toFixed(1) || '-'}%`],
-                ['RAM Usage', `${metrics.ramUsagePercent?.toFixed(1) || '-'}%`],
-                ['Disk Usage', `${metrics.diskUsagePercent?.toFixed(1) || '-'}%`],
-                ['Uptime', metrics.uptimeSeconds ? `${Math.floor(metrics.uptimeSeconds / 86400)} hari` : '-'],
-                ['Waktu Pengambilan', new Date(metrics.collectedAt).toLocaleString('id-ID')],
-              ]
-            : [['Status', 'Laporan metrik tidak tersedia']],
-        },
-        {
-          title: 'Daftar Periksa',
-          headers: ['Kategori', 'Item', 'Status', 'Wajib', 'Catatan'],
-          rows: report.checklistItems.map((item) => [
-            categoryLabels[item.category] || item.category,
-            item.title,
-            statusLabels[item.status] || item.status,
-            item.isRequired ? 'Ya' : 'Tidak',
-            item.notes || '-',
-          ]),
-        },
-        {
-          title: 'Ringkasan',
-          rows: [
-            ['Ringkasan', report.summary || '-'],
-            ['Catatan Serah Terima', report.handoverNotes || '-'],
-            ['Masalah yang Ditemui', report.issuesEncountered || '-'],
-            ['Tindakan Tertunda', report.pendingActions || '-'],
-          ],
-        },
-        // Add daily checklists as separate sheets
-        ...dailyChecklists.map((checklist) => ({
-          title: checklistTypeLabels[checklist.checklistType] || checklist.checklistType,
-          headers: ['Waktu', 'Item', 'Status', 'Wajib', 'Catatan'],
-          rows: checklist.items.map((item) => [
-            item.unlockTime || '-',
-            item.title,
-            statusLabels[item.status] || item.status,
-            item.isRequired ? 'Ya' : 'Tidak',
-            item.notes || '-',
-          ]),
-        })),
-      ],
+      excelData: excelSheets,
     });
   } catch (error) {
     console.error('Error exporting shift report:', error);
