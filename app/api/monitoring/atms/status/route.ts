@@ -7,22 +7,15 @@ export async function GET(request: NextRequest) {
   try {
     const session = await auth();
     
-    if (!session || !['MANAGER', 'ADMIN', 'TECHNICIAN'].includes(session.user.role)) {
+    if (!session || !['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'MANAGER_IT', 'TECHNICIAN'].includes(session.user.role)) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
-    // Get user's branch if not admin
-    let branchId: string | undefined;
-    if (session.user.role !== 'ADMIN') {
-      const user = await prisma.user.findUnique({
-        where: { id: session.user.id },
-        select: { branchId: true }
-      });
-      branchId = user?.branchId || undefined;
-    }
+    // All monitoring roles can view all ATMs
+    const branchId: string | undefined = undefined;
 
     // Fetch ATMs with their status
     const atms = await prisma.aTM.findMany({

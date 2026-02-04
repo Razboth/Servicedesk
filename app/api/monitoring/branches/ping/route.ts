@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await auth();
     
-    if (!session || !['ADMIN', 'TECHNICIAN'].includes(session.user.role)) {
+    if (!session || !['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'MANAGER_IT', 'TECHNICIAN'].includes(session.user.role)) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
   try {
     const session = await auth();
     
-    if (!session || !['MANAGER', 'ADMIN', 'TECHNICIAN'].includes(session.user.role)) {
+    if (!session || !['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'MANAGER_IT', 'TECHNICIAN'].includes(session.user.role)) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -101,23 +101,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get user's branch if not admin
-    let userBranchId: string | undefined;
-    if (session.user.role !== 'ADMIN') {
-      const user = await prisma.user.findUnique({
-        where: { id: session.user.id },
-        select: { branchId: true }
-      });
-      userBranchId = user?.branchId || undefined;
-    }
-
-    // Check if user can access this branch data
-    if (userBranchId && branchId !== userBranchId) {
-      return NextResponse.json(
-        { error: 'Access denied - can only view data for your assigned branch' },
-        { status: 403 }
-      );
-    }
+    // All monitoring roles can view all branch data
 
     const since = new Date();
     since.setHours(since.getHours() - hours);
