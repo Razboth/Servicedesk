@@ -109,6 +109,7 @@ model User {
   // Shift management
   shiftProfile           StaffShiftProfile?
   serverAccessChecklists ServerAccessDailyChecklist[] @relation("ServerAccessChecklists")
+  checklistClaims        ChecklistClaim[]        @relation("ChecklistClaims")
 
   // Import tracking
   importLogs             ImportLog[]            @relation("ImportLogCreatedBy")
@@ -3284,10 +3285,17 @@ enum ServerChecklistStatus {
 
 // Types of daily checklists
 enum DailyChecklistType {
+  // Legacy types (keep for backward compatibility)
   HARIAN                // Shift Ops daily tasks (08:00 - branch closed)
   SERVER_SIANG          // Server daytime (08:00-20:00) - any server access staff
   SERVER_MALAM          // Server nighttime (20:01-07:59) - shift standby only
   AKHIR_HARI            // End of day handover before night shift
+
+  // New types (based on access, not shift)
+  OPS_SIANG             // Checklist Ops 08:00-20:00 (A, B_2 - no server access)
+  OPS_MALAM             // Checklist Ops 22:00-06:00 (D_2 - no server access)
+  MONITORING_SIANG      // Checklist Monitoring 08:00-20:00 (E, B_1, D_1 - server access)
+  MONITORING_MALAM      // Checklist Monitoring 22:00-06:00 (C, D_1 - server access)
 }
 
 // Templates for server access checklist items
@@ -3301,6 +3309,7 @@ model ServerAccessChecklistTemplate {
   isRequired            Boolean                 @default(true)
   isActive              Boolean                 @default(true)
   unlockTime            String?                 // Time-lock: "HH:mm" format
+  inputType             ChecklistInputType      @default(CHECKBOX) // Type of input for this item
 
   // Metadata
   createdAt             DateTime                @default(now())
@@ -3313,7 +3322,7 @@ model ServerAccessChecklistTemplate {
 // Daily server access checklist instance (one per user per day per type)
 model ServerAccessDailyChecklist {
   id                    String                  @id @default(cuid())
-  userId                String
+  userId                String                  // Original creator/owner
   date                  DateTime                @db.Date
   checklistType         DailyChecklistType      @default(SERVER_SIANG) // Type of checklist
   status                ServerChecklistStatus   @default(PENDING)
@@ -3327,6 +3336,7 @@ model ServerAccessDailyChecklist {
   // Relations
   user                  User                    @relation("ServerAccessChecklists", fields: [userId], references: [id], onDelete: Cascade)
   items                 ServerAccessChecklistItem[]
+  claims                ChecklistClaim[]        // Multiple users can claim this checklist
 
   @@unique([userId, date, checklistType]) // Unique per user + date + type
   @@index([userId, date, checklistType])
@@ -3345,8 +3355,13 @@ model ServerAccessChecklistItem {
   isRequired            Boolean                 @default(true)
   status                ShiftChecklistStatus    @default(PENDING)
   completedAt           DateTime?
+  completedBy           String?                 // User ID who completed this item
   notes                 String?                 @db.Text
   unlockTime            String?                 // Time-lock: "HH:mm" format
+
+  // Data storage for special item types
+  inputType             ChecklistInputType      @default(CHECKBOX)
+  data                  Json?                   // Stores: Grafana %, ATM list, tickets, timestamps, etc.
 
   // Metadata
   createdAt             DateTime                @default(now())
@@ -3358,6 +3373,35 @@ model ServerAccessChecklistItem {
   @@index([checklistId, category])
   @@index([checklistId, order])
   @@map("server_access_checklist_items")
+}
+
+// Input types for checklist items
+enum ChecklistInputType {
+  CHECKBOX              // Simple yes/no confirmation
+  TIMESTAMP             // Record a timestamp (branch open/close)
+  GRAFANA_STATUS        // 10 service percentages input
+  ATM_ALERT             // Auto-fetch ATM alert list
+  PENDING_TICKETS       // Auto-fetch pending tickets
+  APP_STATUS            // Core/Surrounding/Supporting status
+  AVAILABILITY_STATUS   // Koneksi, Akses Aplikasi status
+  TEXT_INPUT            // Free text input (handover notes)
+}
+
+// Collaborative checklist claim (multiple users can claim same checklist)
+model ChecklistClaim {
+  id                    String                  @id @default(cuid())
+  checklistId           String
+  userId                String
+  claimedAt             DateTime                @default(now())
+
+  // Relations
+  checklist             ServerAccessDailyChecklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  user                  User                    @relation("ChecklistClaims", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([checklistId, userId])
+  @@index([checklistId])
+  @@index([userId])
+  @@map("checklist_claims")
 }
 
 // Import/Export tracking

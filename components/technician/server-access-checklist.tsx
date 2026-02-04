@@ -5,6 +5,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import {
   Database,
   Server,
@@ -18,10 +19,34 @@ import {
   MessageSquare,
   Lock,
   Clock,
+  Save,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { PendingTicketsVerification } from './pending-tickets-verification';
-import { AtmAlertStatusVerification } from './atm-alert-status-verification';
+import { GrafanaStatusInput, GrafanaStatusData } from './grafana-status-input';
+import { ATMAlertList, ATMAlertData } from './atm-alert-list';
+import { AppStatusInput, AppStatusData } from './app-status-input';
+import { PendingTicketsDisplay, PendingTicketsData } from './pending-tickets-display';
+import { AvailabilityStatusInput, AvailabilityStatusData } from './availability-status-input';
+
+type ChecklistInputType =
+  | 'CHECKBOX'
+  | 'TIMESTAMP'
+  | 'GRAFANA_STATUS'
+  | 'ATM_ALERT'
+  | 'PENDING_TICKETS'
+  | 'APP_STATUS'
+  | 'AVAILABILITY_STATUS'
+  | 'TEXT_INPUT';
+
+type ChecklistItemData =
+  | GrafanaStatusData
+  | ATMAlertData
+  | AppStatusData
+  | PendingTicketsData
+  | AvailabilityStatusData
+  | { timestamp: string }
+  | { text: string }
+  | null;
 
 interface ServerChecklistItem {
   id: string;
@@ -36,12 +61,14 @@ interface ServerChecklistItem {
   unlockTime?: string | null;
   isLocked?: boolean;
   lockMessage?: string | null;
+  inputType?: ChecklistInputType;
+  data?: ChecklistItemData;
 }
 
 interface ServerAccessChecklistProps {
   items: ServerChecklistItem[];
   onUpdateItems: (
-    items: { id: string; status?: string; notes?: string }[]
+    items: { id: string; status?: string; notes?: string; data?: ChecklistItemData }[]
   ) => Promise<void>;
   isLoading?: boolean;
   readOnly?: boolean;
@@ -240,6 +267,167 @@ export function ServerAccessChecklist({
     }
   };
 
+  // Handle data update for special input types
+  const handleDataChange = async (itemId: string, data: ChecklistItemData) => {
+    if (readOnly || isLoading) return;
+    await onUpdateItems([{ id: itemId, data }]);
+  };
+
+  // Handle data submit with auto-complete
+  const handleDataSubmit = async (itemId: string, data: ChecklistItemData) => {
+    if (readOnly || isLoading) return;
+    await onUpdateItems([{ id: itemId, data, status: 'COMPLETED' }]);
+  };
+
+  // Record timestamp for TIMESTAMP type
+  const handleTimestamp = async (itemId: string) => {
+    if (readOnly || isLoading) return;
+    const timestamp = new Date().toISOString();
+    await onUpdateItems([{ id: itemId, data: { timestamp }, status: 'COMPLETED' }]);
+  };
+
+  // Render special input component based on inputType
+  const renderInputComponent = (item: ServerChecklistItem) => {
+    const inputType = item.inputType || 'CHECKBOX';
+    const isLocked = item.isLocked === true;
+    const isDone = item.status === 'COMPLETED' || item.status === 'SKIPPED';
+
+    if (isLocked) return null;
+
+    // Extract target time from title for ATM_ALERT
+    const timeMatch = item.title.match(/^\[(\d{2}:\d{2})\]/);
+    const targetTime = timeMatch ? timeMatch[1] : '08:00';
+
+    switch (inputType) {
+      case 'GRAFANA_STATUS':
+        return (
+          <div className="mt-3">
+            <GrafanaStatusInput
+              value={item.data as GrafanaStatusData | undefined}
+              onChange={(data) => handleDataChange(item.id, data)}
+              onSubmit={() => handleDataSubmit(item.id, item.data!)}
+              readOnly={readOnly || isDone}
+              isLoading={isLoading}
+            />
+          </div>
+        );
+
+      case 'ATM_ALERT':
+        return (
+          <div className="mt-3">
+            <ATMAlertList
+              targetTime={targetTime}
+              value={item.data as ATMAlertData | undefined}
+              onChange={(data) => handleDataChange(item.id, data)}
+              onSubmit={() => handleDataSubmit(item.id, item.data!)}
+              readOnly={readOnly || isDone}
+            />
+          </div>
+        );
+
+      case 'PENDING_TICKETS':
+        return (
+          <div className="mt-3">
+            <PendingTicketsDisplay
+              value={item.data as PendingTicketsData | undefined}
+              onChange={(data) => handleDataChange(item.id, data)}
+              onSubmit={() => handleDataSubmit(item.id, item.data!)}
+              readOnly={readOnly || isDone}
+            />
+          </div>
+        );
+
+      case 'APP_STATUS':
+        return (
+          <div className="mt-3">
+            <AppStatusInput
+              value={item.data as AppStatusData | undefined}
+              onChange={(data) => handleDataChange(item.id, data)}
+              onSubmit={() => handleDataSubmit(item.id, item.data!)}
+              readOnly={readOnly || isDone}
+              isLoading={isLoading}
+            />
+          </div>
+        );
+
+      case 'AVAILABILITY_STATUS':
+        return (
+          <div className="mt-3">
+            <AvailabilityStatusInput
+              value={item.data as AvailabilityStatusData | undefined}
+              onChange={(data) => handleDataChange(item.id, data)}
+              onSubmit={() => handleDataSubmit(item.id, item.data!)}
+              readOnly={readOnly || isDone}
+              isLoading={isLoading}
+            />
+          </div>
+        );
+
+      case 'TIMESTAMP':
+        const timestampData = item.data as { timestamp: string } | undefined;
+        return (
+          <div className="mt-3">
+            {timestampData?.timestamp ? (
+              <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-950/30 rounded-lg">
+                <CheckCircle2 className="h-5 w-5 text-green-500" />
+                <div>
+                  <p className="text-sm font-medium text-green-700 dark:text-green-400">Tercatat</p>
+                  <p className="text-xs text-green-600 dark:text-green-500">
+                    {new Date(timestampData.timestamp).toLocaleString('id-ID', {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </p>
+                </div>
+              </div>
+            ) : !readOnly && !isDone ? (
+              <Button
+                size="sm"
+                onClick={() => handleTimestamp(item.id)}
+                disabled={isLoading}
+              >
+                <Clock className="h-4 w-4 mr-1" />
+                Catat Waktu
+              </Button>
+            ) : null}
+          </div>
+        );
+
+      case 'TEXT_INPUT':
+        return (
+          <div className="mt-3 space-y-2">
+            <Textarea
+              value={(item.data as { text: string } | undefined)?.text || ''}
+              onChange={(e) => handleDataChange(item.id, { text: e.target.value })}
+              placeholder="Tulis catatan..."
+              className="text-sm min-h-[80px]"
+              disabled={readOnly || isLoading || isDone}
+            />
+            {!readOnly && !isDone && (
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  onClick={() => handleDataSubmit(item.id, item.data!)}
+                  disabled={isLoading || !(item.data as { text: string })?.text}
+                >
+                  <Save className="h-4 w-4 mr-1" />
+                  Simpan
+                </Button>
+              </div>
+            )}
+          </div>
+        );
+
+      case 'CHECKBOX':
+      default:
+        return null; // Checkbox is handled in the main row
+    }
+  };
+
   // Render a single checklist item
   const renderItem = (item: ServerChecklistItem) => {
     const isCompleted = item.status === 'COMPLETED';
@@ -247,6 +435,8 @@ export function ServerAccessChecklist({
     const isDone = isCompleted || isSkipped;
     const isLocked = item.isLocked === true;
     const displayTitle = groupByTimeSlot ? stripTimeSlot(item.title) : item.title;
+    const inputType = item.inputType || 'CHECKBOX';
+    const isCheckbox = inputType === 'CHECKBOX';
 
     return (
       <div
@@ -259,19 +449,32 @@ export function ServerAccessChecklist({
       >
         {/* Main row */}
         <div className="flex items-center gap-3">
-          <Checkbox
-            checked={isCompleted}
-            onCheckedChange={(checked) =>
-              handleStatusChange(item.id, checked as boolean)
-            }
-            disabled={readOnly || isLoading || isSkipped || isLocked}
-          />
+          {/* Only show checkbox for CHECKBOX type */}
+          {isCheckbox ? (
+            <Checkbox
+              checked={isCompleted}
+              onCheckedChange={(checked) =>
+                handleStatusChange(item.id, checked as boolean)
+              }
+              disabled={readOnly || isLoading || isSkipped || isLocked}
+            />
+          ) : (
+            <div className="w-4 h-4 flex items-center justify-center">
+              {isDone ? (
+                <CheckCircle2 className="h-4 w-4 text-green-500" />
+              ) : isLocked ? (
+                <Lock className="h-4 w-4 text-amber-500" />
+              ) : (
+                <Circle className="h-4 w-4 text-muted-foreground/50" />
+              )}
+            </div>
+          )}
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span
                 className={cn(
-                  'text-sm',
+                  'text-sm font-medium',
                   isDone && 'line-through text-muted-foreground',
                   isLocked && 'text-muted-foreground'
                 )}
@@ -299,65 +502,53 @@ export function ServerAccessChecklist({
                 {item.lockMessage}
               </p>
             )}
-            {/* Special content for Verifikasi Ticket Pending H-1 */}
-            {item.title === 'Verifikasi Ticket Pending H-1' && !isLocked && (
-              <div className="mt-2">
-                <PendingTicketsVerification />
-              </div>
-            )}
-            {/* Special content for Status Alert ATM - extract time from title */}
-            {item.title.includes('Status Alert ATM') && !isLocked && (() => {
-              const timeMatch = item.title.match(/^\[(\d{2}:\d{2})\]/);
-              const targetTime = timeMatch ? timeMatch[1] : null;
-              if (!targetTime) return null;
-              return (
-                <div className="mt-2">
-                  <AtmAlertStatusVerification targetTime={targetTime} />
+
+            {/* Render input component based on inputType */}
+            {renderInputComponent(item)}
+          </div>
+
+          {/* Status indicator - only for checkbox type */}
+          {isCheckbox && (
+            <div className="flex items-center gap-1">
+              {isLocked && (
+                <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                  <Lock className="h-4 w-4" />
+                  {item.unlockTime && (
+                    <span className="text-xs flex items-center gap-0.5">
+                      <Clock className="h-3 w-3" />
+                      {item.unlockTime}
+                    </span>
+                  )}
                 </div>
-              );
-            })()}
-          </div>
+              )}
+              {!isLocked && isCompleted && (
+                <CheckCircle2 className="h-4 w-4 text-green-500" />
+              )}
+              {!isLocked && isSkipped && (
+                <SkipForward className="h-4 w-4 text-yellow-500" />
+              )}
+              {!isLocked && !isDone && (
+                <Circle className="h-4 w-4 text-muted-foreground/50" />
+              )}
 
-          {/* Status indicator */}
-          <div className="flex items-center gap-1">
-            {isLocked && (
-              <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
-                <Lock className="h-4 w-4" />
-                {item.unlockTime && (
-                  <span className="text-xs flex items-center gap-0.5">
-                    <Clock className="h-3 w-3" />
-                    {item.unlockTime}
-                  </span>
-                )}
-              </div>
-            )}
-            {!isLocked && isCompleted && (
-              <CheckCircle2 className="h-4 w-4 text-green-500" />
-            )}
-            {!isLocked && isSkipped && (
-              <SkipForward className="h-4 w-4 text-yellow-500" />
-            )}
-            {!isLocked && !isDone && (
-              <Circle className="h-4 w-4 text-muted-foreground/50" />
-            )}
-
-            {/* Skip button */}
-            {!readOnly && !isDone && !item.isRequired && !isLocked && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
-                onClick={() => handleSkip(item.id)}
-                disabled={isLoading}
-              >
-                Lewati
-              </Button>
-            )}
-          </div>
+              {/* Skip button */}
+              {!readOnly && !isDone && !item.isRequired && !isLocked && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => handleSkip(item.id)}
+                  disabled={isLoading}
+                >
+                  Lewati
+                </Button>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Notes section */}
-        {(item.notes || editingNote === item.id) && (
+        {/* Notes section - only for checkbox type */}
+        {isCheckbox && (item.notes || editingNote === item.id) && (
           <div className="mt-2 ml-7">
             {editingNote === item.id ? (
               <div className="space-y-2">
@@ -399,8 +590,8 @@ export function ServerAccessChecklist({
           </div>
         )}
 
-        {/* Add note button */}
-        {!readOnly && !item.notes && editingNote !== item.id && !isLocked && (
+        {/* Add note button - only for checkbox type */}
+        {isCheckbox && !readOnly && !item.notes && editingNote !== item.id && !isLocked && (
           <button
             className="mt-1 ml-7 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
             onClick={() => startEditNote(item)}

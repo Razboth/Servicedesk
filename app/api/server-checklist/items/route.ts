@@ -5,10 +5,20 @@ import { isItemUnlocked, getLockStatusMessage, getCurrentTimeWITA } from '@/lib/
 import { DailyChecklistType, ShiftType } from '@prisma/client';
 
 // Checklist types that require server access
-const SERVER_CHECKLIST_TYPES: DailyChecklistType[] = ['SERVER_SIANG', 'SERVER_MALAM'];
+const SERVER_CHECKLIST_TYPES: DailyChecklistType[] = [
+  'SERVER_SIANG',
+  'SERVER_MALAM',
+  'MONITORING_SIANG',
+  'MONITORING_MALAM',
+];
 
-// Checklist types for operational shift (STANDBY_BRANCH)
-const OPS_CHECKLIST_TYPES: DailyChecklistType[] = ['HARIAN', 'AKHIR_HARI'];
+// Checklist types for operational shift (no server access needed)
+const OPS_CHECKLIST_TYPES: DailyChecklistType[] = [
+  'HARIAN',
+  'AKHIR_HARI',
+  'OPS_SIANG',
+  'OPS_MALAM',
+];
 
 // Shifts that can access HARIAN/AKHIR_HARI
 const HARIAN_SHIFTS: ShiftType[] = ['STANDBY_BRANCH'];
@@ -27,6 +37,7 @@ export async function PUT(request: NextRequest) {
         id: string;
         status?: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'SKIPPED';
         notes?: string;
+        data?: Record<string, unknown>; // JSON data for special input types
       }>;
       checklistType?: DailyChecklistType;
     };
@@ -147,6 +158,7 @@ export async function PUT(request: NextRequest) {
         data: {
           status: item.status,
           notes: item.notes,
+          data: item.data !== undefined ? item.data : undefined,
           completedAt: item.status === 'COMPLETED' ? now : null,
         },
       });
