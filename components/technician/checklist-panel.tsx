@@ -67,6 +67,8 @@ interface ServerChecklist {
   claimed: boolean;
   claimedByUser: boolean;
   canClaim?: boolean;
+  readOnly?: boolean;
+  viewingOtherUser?: boolean;
   otherClaims?: OtherClaim[];
   serverTime?: {
     wita: string;
@@ -246,8 +248,8 @@ export function ChecklistPanel({ type, onStatsUpdate }: ChecklistPanelProps) {
     );
   }
 
-  // Not claimed yet - show claim UI
-  if (checklist && !checklist.claimedByUser && checklist.canClaim) {
+  // Not claimed yet and no one else has claimed - show claim UI
+  if (checklist && !checklist.claimedByUser && checklist.canClaim && !checklist.viewingOtherUser) {
     return (
       <div className="space-y-4">
         <div className="p-6 border rounded-lg bg-muted/30">
@@ -262,24 +264,6 @@ export function ChecklistPanel({ type, onStatsUpdate }: ChecklistPanelProps) {
               </p>
             </div>
           </div>
-
-          {/* Other claims info */}
-          {checklist.otherClaims && checklist.otherClaims.length > 0 && (
-            <div className="mb-5 p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
-              <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400 mb-2">
-                <Users className="h-4 w-4" />
-                <span className="text-sm font-medium">Staff lain yang sudah mengklaim:</span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {checklist.otherClaims.map((claim) => (
-                  <Badge key={claim.userId} variant="secondary" className="text-xs">
-                    <UserCheck className="h-3 w-3 mr-1" />
-                    {claim.userName}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
 
           <Button
             onClick={handleClaim}
@@ -319,9 +303,53 @@ export function ChecklistPanel({ type, onStatsUpdate }: ChecklistPanelProps) {
     ? Math.round(((stats.completed + stats.skipped) / stats.total) * 100)
     : 0;
   const isCompleted = checklist.status === 'COMPLETED';
+  const isViewingOther = checklist.viewingOtherUser === true;
+  const isReadOnly = isCompleted || isViewingOther || checklist.readOnly === true;
 
   return (
     <div className="space-y-5">
+      {/* Read-only notice when viewing other user's checklist */}
+      {isViewingOther && (
+        <div className="p-4 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900/50 rounded-lg flex items-center justify-center flex-shrink-0">
+                <Users className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <p className="font-medium text-amber-800 dark:text-amber-300">
+                  Mode Hanya Lihat
+                </p>
+                <p className="text-sm text-amber-600 dark:text-amber-400">
+                  Anda melihat checklist milik <strong>{checklist.user.name}</strong>
+                </p>
+              </div>
+            </div>
+            {checklist.canClaim && (
+              <Button
+                onClick={handleClaim}
+                disabled={claiming}
+                variant="outline"
+                size="sm"
+                className="border-amber-500 text-amber-700 hover:bg-amber-100 dark:border-amber-600 dark:text-amber-400 dark:hover:bg-amber-900/50"
+              >
+                {claiming ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Mengklaim...
+                  </>
+                ) : (
+                  <>
+                    <Hand className="h-4 w-4 mr-2" />
+                    Klaim Checklist Sendiri
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Info Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-muted/30 rounded-lg border">
         <div className="flex items-center gap-3">
@@ -340,10 +368,20 @@ export function ChecklistPanel({ type, onStatsUpdate }: ChecklistPanelProps) {
           <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <UserCheck className="h-4 w-4" />
             <span>{checklist.user.name}</span>
+            {isViewingOther && (
+              <Badge variant="outline" className="text-[10px] ml-1">
+                PIC
+              </Badge>
+            )}
           </div>
         </div>
 
         <div className="flex items-center gap-2">
+          {isViewingOther && (
+            <Badge variant="outline" className="text-amber-600 border-amber-500">
+              Hanya Lihat
+            </Badge>
+          )}
           <Badge
             className={
               isCompleted
@@ -394,8 +432,8 @@ export function ChecklistPanel({ type, onStatsUpdate }: ChecklistPanelProps) {
         </div>
       )}
 
-      {/* Other claims info */}
-      {checklist.otherClaims && checklist.otherClaims.length > 0 && (
+      {/* Other claims info - only show when user has claimed */}
+      {checklist.claimedByUser && checklist.otherClaims && checklist.otherClaims.length > 0 && (
         <div className="p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
           <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
             <Users className="h-4 w-4" />
@@ -411,7 +449,7 @@ export function ChecklistPanel({ type, onStatsUpdate }: ChecklistPanelProps) {
         items={checklist.items}
         onUpdateItems={handleUpdateItems}
         isLoading={updating}
-        readOnly={isCompleted}
+        readOnly={isReadOnly}
         groupByTimeSlot={type === 'SERVER_SIANG' || type === 'SERVER_MALAM' || type === 'MONITORING_SIANG' || type === 'MONITORING_MALAM' || type === 'OPS_SIANG' || type === 'OPS_MALAM'}
       />
 

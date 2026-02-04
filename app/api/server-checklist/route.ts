@@ -445,18 +445,87 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // User hasn't claimed - return available status
+    // User hasn't claimed - check if others have claimed and return read-only view
+    if (otherClaims.length > 0) {
+      // Get the first other claim's checklist with items for read-only view
+      const otherChecklist = await prisma.serverAccessDailyChecklist.findFirst({
+        where: {
+          date: checklistDate,
+          checklistType: checklistType,
+          userId: { not: session.user.id },
+        },
+        include: {
+          items: {
+            orderBy: [{ category: 'asc' }, { order: 'asc' }],
+          },
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+      });
+
+      if (otherChecklist) {
+        // Return other user's checklist in read-only mode
+        const itemsWithLockStatus = otherChecklist.items.map((item) => ({
+          ...item,
+          isLocked: !isItemUnlocked(item.unlockTime, witaTimeNow),
+          lockMessage: getLockStatusMessage(item.unlockTime, witaTimeNow),
+        }));
+
+        const stats = {
+          total: otherChecklist.items.length,
+          completed: otherChecklist.items.filter((i) => i.status === 'COMPLETED').length,
+          pending: otherChecklist.items.filter((i) => i.status === 'PENDING').length,
+          inProgress: otherChecklist.items.filter((i) => i.status === 'IN_PROGRESS').length,
+          skipped: otherChecklist.items.filter((i) => i.status === 'SKIPPED').length,
+          locked: itemsWithLockStatus.filter((i) => i.isLocked).length,
+        };
+
+        return NextResponse.json({
+          ...otherChecklist,
+          checklistType,
+          items: itemsWithLockStatus,
+          stats,
+          claimed: true,
+          claimedByUser: false,
+          canClaim: true,
+          readOnly: true, // Flag for read-only mode
+          viewingOtherUser: true, // Flag to indicate viewing another user's checklist
+          otherClaims: otherClaims.map((c) => ({
+            userId: c.user.id,
+            userName: c.user.name,
+            status: c.status,
+          })),
+          serverTime: {
+            wita: `${witaDateStr}, ${witaTimeStr} WITA`,
+            witaHour: witaTimeNow.getHours(),
+            witaMinute: witaTimeNow.getMinutes(),
+            iso: witaTimeNow.toISOString(),
+          },
+          shiftInfo: {
+            hasServerAccess: staffProfile.hasServerAccess,
+            isOnNightShift,
+            isOnOpsShift,
+            canAccessHarian,
+            currentShiftType: currentShift?.shiftType || null,
+          },
+        });
+      }
+    }
+
+    // No one has claimed yet - return available status
     return NextResponse.json({
       claimed: false,
       claimedByUser: false,
       checklistType,
       date: checklistDate,
       canClaim: true,
-      otherClaims: otherClaims.map((c) => ({
-        userId: c.user.id,
-        userName: c.user.name,
-        status: c.status,
-      })),
+      items: [], // Empty items - need to claim first
+      otherClaims: [],
       serverTime: {
         wita: `${witaDateStr}, ${witaTimeStr} WITA`,
         witaHour: witaTimeNow.getHours(),
