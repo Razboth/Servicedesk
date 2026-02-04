@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PendingTicketsVerification } from './pending-tickets-verification';
+import { AtmAlertStatusVerification } from './atm-alert-status-verification';
 
 interface ServerChecklistItem {
   id: string;
@@ -304,6 +305,17 @@ export function ServerAccessChecklist({
                 <PendingTicketsVerification />
               </div>
             )}
+            {/* Special content for Status Alert ATM - extract time from title */}
+            {item.title.includes('Status Alert ATM') && !isLocked && (() => {
+              const timeMatch = item.title.match(/^\[(\d{2}:\d{2})\]/);
+              const targetTime = timeMatch ? timeMatch[1] : null;
+              if (!targetTime) return null;
+              return (
+                <div className="mt-2">
+                  <AtmAlertStatusVerification targetTime={targetTime} />
+                </div>
+              );
+            })()}
           </div>
 
           {/* Status indicator */}
