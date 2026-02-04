@@ -18,7 +18,6 @@ import {
   Clock,
   CheckCircle2,
   AlertTriangle,
-  Database,
   FileText,
   Loader2,
   Eye,
@@ -199,11 +198,6 @@ export function TodayReportsList({ currentUserId, onViewOwnReport }: TodayReport
                     100
                 )
               : 0;
-            const backupProgress = report.stats.backup.total > 0
-              ? Math.round(
-                  (report.stats.backup.checked / report.stats.backup.total) * 100
-                )
-              : 0;
 
             return (
               <div
@@ -253,10 +247,6 @@ export function TodayReportsList({ currentUserId, onViewOwnReport }: TodayReport
                         <FileText className="h-3.5 w-3.5" />
                         <span>Checklist: <span className={cn("font-medium", checklistProgress > 0 ? "text-foreground" : "text-muted-foreground")}>{checklistProgress}%</span></span>
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        <Database className="h-3.5 w-3.5" />
-                        <span>Backup: <span className={cn("font-medium", backupProgress > 0 ? "text-foreground" : "text-muted-foreground")}>{backupProgress}%</span></span>
-                      </div>
                     </div>
                   </div>
                 )}
@@ -264,8 +254,8 @@ export function TodayReportsList({ currentUserId, onViewOwnReport }: TodayReport
                 {/* Expanded content */}
                 {isExpanded && (
                   <div className="px-3 pb-3 pt-0 space-y-3 border-t">
-                    {/* Progress bars */}
-                    <div className="grid grid-cols-2 gap-4 pt-3">
+                    {/* Progress bar */}
+                    <div className="pt-3">
                       <div className="space-y-1.5">
                         <div className="flex items-center justify-between text-xs">
                           <span className="text-muted-foreground flex items-center gap-1.5">
@@ -278,21 +268,6 @@ export function TodayReportsList({ currentUserId, onViewOwnReport }: TodayReport
                           className={cn(
                             "h-2.5",
                             checklistProgress === 0 && "[&>div]:bg-muted"
-                          )}
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-muted-foreground flex items-center gap-1.5">
-                            <Database className="h-3.5 w-3.5" /> Backup
-                          </span>
-                          <span className="font-medium">{backupProgress}%</span>
-                        </div>
-                        <Progress
-                          value={backupProgress}
-                          className={cn(
-                            "h-2.5",
-                            backupProgress === 0 && "[&>div]:bg-muted"
                           )}
                         />
                       </div>
@@ -383,49 +358,27 @@ export function TodayReportsList({ currentUserId, onViewOwnReport }: TodayReport
               </div>
 
               {/* Progress */}
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground flex items-center gap-2">
-                      <FileText className="h-4 w-4" />
-                      Progress Checklist
-                    </span>
-                    <span className="font-medium">
-                      {selectedReport.stats.checklist.completed + selectedReport.stats.checklist.skipped}/
-                      {selectedReport.stats.checklist.total}
-                    </span>
-                  </div>
-                  <Progress
-                    value={
-                      selectedReport.stats.checklist.total > 0
-                        ? ((selectedReport.stats.checklist.completed + selectedReport.stats.checklist.skipped) /
-                            selectedReport.stats.checklist.total) *
-                          100
-                        : 0
-                    }
-                    className="h-3"
-                  />
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Progress Checklist
+                  </span>
+                  <span className="font-medium">
+                    {selectedReport.stats.checklist.completed + selectedReport.stats.checklist.skipped}/
+                    {selectedReport.stats.checklist.total}
+                  </span>
                 </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground flex items-center gap-2">
-                      <Database className="h-4 w-4" />
-                      Progress Backup
-                    </span>
-                    <span className="font-medium">
-                      {selectedReport.stats.backup.checked}/{selectedReport.stats.backup.total}
-                    </span>
-                  </div>
-                  <Progress
-                    value={
-                      selectedReport.stats.backup.total > 0
-                        ? (selectedReport.stats.backup.checked / selectedReport.stats.backup.total) * 100
-                        : 0
-                    }
-                    className="h-3"
-                  />
-                </div>
+                <Progress
+                  value={
+                    selectedReport.stats.checklist.total > 0
+                      ? ((selectedReport.stats.checklist.completed + selectedReport.stats.checklist.skipped) /
+                          selectedReport.stats.checklist.total) *
+                        100
+                      : 0
+                  }
+                  className="h-3"
+                />
               </div>
 
               {/* Issues */}
