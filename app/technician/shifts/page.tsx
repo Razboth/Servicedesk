@@ -41,7 +41,15 @@ import { PendingIssuesAlert } from '@/components/technician/pending-issues-alert
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 
-type DailyChecklistType = 'HARIAN' | 'SERVER_SIANG' | 'SERVER_MALAM' | 'AKHIR_HARI';
+type DailyChecklistType =
+  | 'HARIAN'
+  | 'SERVER_SIANG'
+  | 'SERVER_MALAM'
+  | 'AKHIR_HARI'
+  | 'OPS_SIANG'
+  | 'OPS_MALAM'
+  | 'MONITORING_SIANG'
+  | 'MONITORING_MALAM';
 
 interface ShiftAssignment {
   id: string;
@@ -94,6 +102,10 @@ const checklistTypeConfig: Record<DailyChecklistType, { label: string; icon: typ
   SERVER_SIANG: { label: 'Server Siang', icon: ServerCog },
   SERVER_MALAM: { label: 'Server Malam', icon: ServerCog },
   AKHIR_HARI: { label: 'Akhir Hari', icon: CheckCircle2 },
+  OPS_SIANG: { label: 'Ops Siang', icon: ClipboardList },
+  OPS_MALAM: { label: 'Ops Malam', icon: ClipboardList },
+  MONITORING_SIANG: { label: 'Monitoring Siang', icon: ServerCog },
+  MONITORING_MALAM: { label: 'Monitoring Malam', icon: ServerCog },
 };
 
 const monthNames = [
@@ -117,6 +129,10 @@ export default function TechnicianShiftsPage() {
     SERVER_SIANG: null,
     SERVER_MALAM: null,
     AKHIR_HARI: null,
+    OPS_SIANG: null,
+    OPS_MALAM: null,
+    MONITORING_SIANG: null,
+    MONITORING_MALAM: null,
   });
   const [isExporting, setIsExporting] = useState(false);
 
@@ -223,14 +239,30 @@ export default function TechnicianShiftsPage() {
     try {
       const response = await fetch('/api/server-checklist');
       if (!response.ok) {
+        // Fallback: try to check each type individually
         const types: DailyChecklistType[] = [];
+
+        // Try HARIAN for STANDBY_BRANCH users
         const harianResponse = await fetch('/api/server-checklist?type=HARIAN');
         if (harianResponse.ok) {
           types.push('HARIAN', 'AKHIR_HARI');
         }
+
+        // Try OPS_SIANG for users without server access
+        const opsSiangResponse = await fetch('/api/server-checklist?type=OPS_SIANG');
+        if (opsSiangResponse.ok) {
+          types.push('OPS_SIANG');
+        }
+
+        // Try MONITORING_SIANG for users with server access (day shift)
+        const monitoringSiangResponse = await fetch('/api/server-checklist?type=MONITORING_SIANG');
+        if (monitoringSiangResponse.ok) {
+          types.push('MONITORING_SIANG');
+        }
+
         setAvailableChecklistTypes(types);
         if (types.length > 0 && !activeTab) {
-          setActiveTab(types[0].toLowerCase());
+          setActiveTab(types[0].toLowerCase().replace('_', '-'));
         }
         return;
       }
@@ -239,11 +271,13 @@ export default function TechnicianShiftsPage() {
       const shiftInfo = data.shiftInfo;
       const types: DailyChecklistType[] = [];
 
+      // HARIAN and AKHIR_HARI for STANDBY_BRANCH
       if (shiftInfo?.canAccessHarian) {
         types.push('HARIAN');
         types.push('AKHIR_HARI');
       }
 
+      // Server checklists (legacy - SERVER_SIANG/SERVER_MALAM)
       if (shiftInfo?.hasServerAccess) {
         if (shiftInfo?.isOnNightShift) {
           types.push('SERVER_MALAM');
@@ -252,9 +286,27 @@ export default function TechnicianShiftsPage() {
         }
       }
 
+      // NEW: OPS checklists (for users WITHOUT server access)
+      if (!shiftInfo?.hasServerAccess) {
+        if (shiftInfo?.isOnNightShift) {
+          types.push('OPS_MALAM');
+        } else {
+          types.push('OPS_SIANG');
+        }
+      }
+
+      // NEW: MONITORING checklists (for users WITH server access)
+      if (shiftInfo?.hasServerAccess) {
+        if (shiftInfo?.isOnNightShift) {
+          types.push('MONITORING_MALAM');
+        } else {
+          types.push('MONITORING_SIANG');
+        }
+      }
+
       setAvailableChecklistTypes(types);
       if (types.length > 0 && !activeTab) {
-        setActiveTab(types[0].toLowerCase());
+        setActiveTab(types[0].toLowerCase().replace('_', '-'));
       }
     } catch (error) {
       console.error('Error determining available checklist types:', error);
@@ -972,7 +1024,7 @@ export default function TechnicianShiftsPage() {
                   return (
                     <TabsTrigger
                       key={type}
-                      value={type.toLowerCase()}
+                      value={type.toLowerCase().replace('_', '-')}
                       className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
                     >
                       {isComplete && <CheckCircle2 className="h-3 w-3" />}
@@ -988,7 +1040,7 @@ export default function TechnicianShiftsPage() {
               </TabsList>
 
               {availableChecklistTypes.map((type) => (
-                <TabsContent key={type} value={type.toLowerCase()} className="mt-0">
+                <TabsContent key={type} value={type.toLowerCase().replace('_', '-')} className="mt-0 pt-4">
                   <ChecklistPanel type={type} onStatsUpdate={handleStatsUpdate} />
                 </TabsContent>
               ))}

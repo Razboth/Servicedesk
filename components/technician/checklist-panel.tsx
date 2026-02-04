@@ -19,7 +19,15 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 
-type DailyChecklistType = 'HARIAN' | 'SERVER_SIANG' | 'SERVER_MALAM' | 'AKHIR_HARI';
+type DailyChecklistType =
+  | 'HARIAN'
+  | 'SERVER_SIANG'
+  | 'SERVER_MALAM'
+  | 'AKHIR_HARI'
+  | 'OPS_SIANG'
+  | 'OPS_MALAM'
+  | 'MONITORING_SIANG'
+  | 'MONITORING_MALAM';
 
 interface ServerChecklistItem {
   id: string;
@@ -242,22 +250,22 @@ export function ChecklistPanel({ type, onStatsUpdate }: ChecklistPanelProps) {
   if (checklist && !checklist.claimedByUser && checklist.canClaim) {
     return (
       <div className="space-y-4">
-        <div className="p-4 border rounded-lg bg-muted/30">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-              <Hand className="h-5 w-5 text-primary" />
+        <div className="p-6 border rounded-lg bg-muted/30">
+          <div className="flex items-start gap-4 mb-4">
+            <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
+              <Hand className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <p className="font-medium">Checklist Belum Diklaim</p>
-              <p className="text-sm text-muted-foreground">
-                Klik tombol di bawah untuk mengklaim checklist ini
+              <p className="font-semibold text-lg">Checklist Belum Diklaim</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Klik tombol di bawah untuk mengklaim dan mulai mengerjakan checklist ini
               </p>
             </div>
           </div>
 
           {/* Other claims info */}
           {checklist.otherClaims && checklist.otherClaims.length > 0 && (
-            <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
+            <div className="mb-5 p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
               <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400 mb-2">
                 <Users className="h-4 w-4" />
                 <span className="text-sm font-medium">Staff lain yang sudah mengklaim:</span>
@@ -276,6 +284,7 @@ export function ChecklistPanel({ type, onStatsUpdate }: ChecklistPanelProps) {
           <Button
             onClick={handleClaim}
             disabled={claiming}
+            size="lg"
             className="w-full"
           >
             {claiming ? (
@@ -312,9 +321,9 @@ export function ChecklistPanel({ type, onStatsUpdate }: ChecklistPanelProps) {
   const isCompleted = checklist.status === 'COMPLETED';
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {/* Info Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-muted/30 rounded-lg">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-muted/30 rounded-lg border">
         <div className="flex items-center gap-3">
           {/* Server Time */}
           {checklist.serverTime && (
@@ -369,17 +378,17 @@ export function ChecklistPanel({ type, onStatsUpdate }: ChecklistPanelProps) {
 
       {/* Progress Bar */}
       {stats && (
-        <div className="space-y-2">
+        <div className="space-y-2 p-4 bg-muted/20 rounded-lg border">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Progress</span>
-            <span className="font-medium">
+            <span className="text-muted-foreground font-medium">Progress</span>
+            <span className="font-semibold">
               {stats.completed + stats.skipped}/{stats.total} selesai
             </span>
           </div>
-          <Progress value={progress} className="h-2" />
+          <Progress value={progress} className="h-2.5" />
           {stats.locked > 0 && (
-            <p className="text-xs text-amber-600 dark:text-amber-400">
-              {stats.locked} item masih terkunci
+            <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+              {stats.locked} item masih terkunci (akan terbuka sesuai jadwal)
             </p>
           )}
         </div>
@@ -387,10 +396,10 @@ export function ChecklistPanel({ type, onStatsUpdate }: ChecklistPanelProps) {
 
       {/* Other claims info */}
       {checklist.otherClaims && checklist.otherClaims.length > 0 && (
-        <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
+        <div className="p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
           <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
             <Users className="h-4 w-4" />
-            <span className="text-sm">
+            <span className="text-sm font-medium">
               {checklist.otherClaims.length} staff lain juga mengerjakan checklist ini
             </span>
           </div>
@@ -403,18 +412,18 @@ export function ChecklistPanel({ type, onStatsUpdate }: ChecklistPanelProps) {
         onUpdateItems={handleUpdateItems}
         isLoading={updating}
         readOnly={isCompleted}
-        groupByTimeSlot={type === 'SERVER_SIANG' || type === 'SERVER_MALAM'}
+        groupByTimeSlot={type === 'SERVER_SIANG' || type === 'SERVER_MALAM' || type === 'MONITORING_SIANG' || type === 'MONITORING_MALAM' || type === 'OPS_SIANG' || type === 'OPS_MALAM'}
       />
 
       {/* Completed Notice */}
       {isCompleted && (
-        <div className="p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
-          <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
-            <CheckCircle2 className="h-5 w-5" />
+        <div className="p-4 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
+          <div className="flex items-center gap-3 text-green-700 dark:text-green-400">
+            <CheckCircle2 className="h-6 w-6 flex-shrink-0" />
             <div>
-              <p className="font-medium">Checklist Selesai</p>
+              <p className="font-semibold">Checklist Selesai</p>
               {checklist.completedAt && (
-                <p className="text-sm">
+                <p className="text-sm mt-0.5">
                   Diselesaikan pada{' '}
                   {format(new Date(checklist.completedAt), 'HH:mm, d MMMM yyyy', { locale: id })}
                 </p>

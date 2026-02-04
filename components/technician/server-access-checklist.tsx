@@ -442,39 +442,41 @@ export function ServerAccessChecklist({
       <div
         key={item.id}
         className={cn(
-          'px-3 py-2 transition-colors',
+          'px-4 py-3 transition-colors',
           isDone && 'bg-muted/30',
           isLocked && 'bg-amber-50/50 dark:bg-amber-950/20'
         )}
       >
         {/* Main row */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-start gap-3">
           {/* Only show checkbox for CHECKBOX type */}
-          {isCheckbox ? (
-            <Checkbox
-              checked={isCompleted}
-              onCheckedChange={(checked) =>
-                handleStatusChange(item.id, checked as boolean)
-              }
-              disabled={readOnly || isLoading || isSkipped || isLocked}
-            />
-          ) : (
-            <div className="w-4 h-4 flex items-center justify-center">
-              {isDone ? (
-                <CheckCircle2 className="h-4 w-4 text-green-500" />
-              ) : isLocked ? (
-                <Lock className="h-4 w-4 text-amber-500" />
-              ) : (
-                <Circle className="h-4 w-4 text-muted-foreground/50" />
-              )}
-            </div>
-          )}
+          <div className="pt-0.5">
+            {isCheckbox ? (
+              <Checkbox
+                checked={isCompleted}
+                onCheckedChange={(checked) =>
+                  handleStatusChange(item.id, checked as boolean)
+                }
+                disabled={readOnly || isLoading || isSkipped || isLocked}
+              />
+            ) : (
+              <div className="w-4 h-4 flex items-center justify-center">
+                {isDone ? (
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                ) : isLocked ? (
+                  <Lock className="h-4 w-4 text-amber-500" />
+                ) : (
+                  <Circle className="h-4 w-4 text-muted-foreground/50" />
+                )}
+              </div>
+            )}
+          </div>
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span
                 className={cn(
-                  'text-sm font-medium',
+                  'text-sm font-medium leading-tight',
                   isDone && 'line-through text-muted-foreground',
                   isLocked && 'text-muted-foreground'
                 )}
@@ -482,18 +484,18 @@ export function ServerAccessChecklist({
                 {displayTitle}
               </span>
               {item.isRequired && (
-                <Badge variant="destructive" className="text-[10px] h-4 px-1">
+                <Badge variant="destructive" className="text-[10px] h-4 px-1.5">
                   Wajib
                 </Badge>
               )}
               {isLocked && (
-                <Badge variant="outline" className="text-[10px] h-4 px-1 border-amber-500 text-amber-600 dark:text-amber-400">
+                <Badge variant="outline" className="text-[10px] h-4 px-1.5 border-amber-500 text-amber-600 dark:text-amber-400">
                   Terkunci
                 </Badge>
               )}
             </div>
             {item.description && !isLocked && (
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <p className="text-xs text-muted-foreground mt-1">
                 {item.description}
               </p>
             )}
@@ -605,7 +607,7 @@ export function ServerAccessChecklist({
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {orderedGroups.map((groupKey) => {
         const groupItems = groupedItems[groupKey];
         if (!groupItems || groupItems.length === 0) return null;
@@ -617,25 +619,25 @@ export function ServerAccessChecklist({
         const isAllCompleted = progress.completed === progress.total;
 
         return (
-          <div key={groupKey} className="border rounded-lg overflow-hidden">
+          <div key={groupKey} className="border rounded-lg overflow-hidden shadow-sm">
             {/* Group Header */}
             <button
               onClick={() => toggleGroup(groupKey)}
               className={cn(
-                'w-full flex items-center justify-between p-3',
+                'w-full flex items-center justify-between px-4 py-3',
                 groupInfo.bg,
                 isAllCompleted && 'opacity-75'
               )}
             >
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 {isExpanded ? (
                   <ChevronDown className="h-4 w-4 text-muted-foreground" />
                 ) : (
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 )}
-                <Icon className={cn('h-4 w-4', groupInfo.color)} />
+                <Icon className={cn('h-5 w-5', groupInfo.color)} />
                 <div className="flex flex-col items-start">
-                  <span className={cn('font-medium text-sm', isAllCompleted && 'line-through')}>
+                  <span className={cn('font-semibold text-sm', isAllCompleted && 'line-through')}>
                     {groupInfo.label}
                   </span>
                   {'sublabel' in groupInfo && groupInfo.sublabel && (
@@ -652,7 +654,7 @@ export function ServerAccessChecklist({
                 <Badge
                   variant="secondary"
                   className={cn(
-                    'text-xs',
+                    'text-xs font-medium',
                     isAllCompleted && 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
                   )}
                 >
@@ -663,7 +665,7 @@ export function ServerAccessChecklist({
 
             {/* Group Items */}
             {isExpanded && (
-              <div className="divide-y">
+              <div className="divide-y divide-border/50 bg-card">
                 {groupItems.map(renderItem)}
               </div>
             )}
