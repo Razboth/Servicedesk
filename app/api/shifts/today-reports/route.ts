@@ -75,12 +75,39 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    // Get all user IDs from today's shifts
+    const userIds = todayShifts.map((shift) => shift.staffProfile.userId);
+
+    // Fetch daily checklists (HARIAN, SERVER_SIANG, SERVER_MALAM, AKHIR_HARI) for all users
+    const dailyChecklists = await prisma.serverAccessDailyChecklist.findMany({
+      where: {
+        userId: { in: userIds },
+        date: {
+          gte: today,
+          lt: tomorrow,
+        },
+      },
+      include: {
+        items: true,
+      },
+    });
+
+    // Group daily checklists by userId
+    const checklistsByUser: Record<string, typeof dailyChecklists> = {};
+    dailyChecklists.forEach((checklist) => {
+      if (!checklistsByUser[checklist.userId]) {
+        checklistsByUser[checklist.userId] = [];
+      }
+      checklistsByUser[checklist.userId].push(checklist);
+    });
+
     // Transform and add ownership info
     const reports = todayShifts.map((shift) => {
       const report = shift.shiftReport!;
       const isOwner = shift.staffProfile.userId === userId;
+      const techUserId = shift.staffProfile.userId;
 
-      // Calculate stats
+      // Calculate stats from shift report checklist (legacy)
       const checklistStats = {
         total: report.checklistItems.length,
         completed: report.checklistItems.filter((i) => i.status === 'COMPLETED').length,
@@ -97,6 +124,19 @@ export async function GET(request: NextRequest) {
         ongoing: report.issues.filter((i) => i.status === 'ONGOING').length,
         resolved: report.issues.filter((i) => i.status === 'RESOLVED').length,
       };
+
+      // Get daily checklist stats for this user
+      const userDailyChecklists = checklistsByUser[techUserId] || [];
+      const dailyChecklistStats: Record<string, { total: number; completed: number; status: string }> = {};
+
+      userDailyChecklists.forEach((checklist) => {
+        const completed = checklist.items.filter((i) => i.status === 'COMPLETED' || i.status === 'SKIPPED').length;
+        dailyChecklistStats[checklist.checklistType] = {
+          total: checklist.items.length,
+          completed,
+          status: checklist.status,
+        };
+      });
 
       return {
         shiftAssignmentId: shift.id,
@@ -121,6 +161,7 @@ export async function GET(request: NextRequest) {
           checklist: checklistStats,
           backup: backupStats,
           issues: issueStats,
+          dailyChecklists: dailyChecklistStats,
         },
         // Include full data only for owner, summary for others
         serverMetrics: report.serverMetrics,

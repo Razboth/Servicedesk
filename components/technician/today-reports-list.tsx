@@ -27,6 +27,12 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
+interface DailyChecklistStat {
+  total: number;
+  completed: number;
+  status: string;
+}
+
 interface TechnicianReport {
   shiftAssignmentId: string;
   reportId: string;
@@ -54,6 +60,7 @@ interface TechnicianReport {
     checklist: { total: number; completed: number; skipped: number };
     backup: { total: number; checked: number };
     issues: { total: number; ongoing: number; resolved: number };
+    dailyChecklists?: Record<string, DailyChecklistStat>;
   };
   serverMetrics: any;
   issues: Array<{
@@ -89,6 +96,13 @@ const priorityColors: Record<string, string> = {
   MEDIUM: 'bg-blue-100 text-blue-700',
   HIGH: 'bg-orange-100 text-orange-700',
   CRITICAL: 'bg-red-100 text-red-700',
+};
+
+const dailyChecklistLabels: Record<string, string> = {
+  HARIAN: 'Harian',
+  SERVER_SIANG: 'Server Siang',
+  SERVER_MALAM: 'Server Malam',
+  AKHIR_HARI: 'Akhir Hari',
 };
 
 export function TodayReportsList({ currentUserId, onViewOwnReport }: TodayReportsListProps) {
@@ -242,11 +256,24 @@ export function TodayReportsList({ currentUserId, onViewOwnReport }: TodayReport
                 {/* Collapsed summary - show quick stats */}
                 {!isExpanded && (
                   <div className="px-3 pb-3 pt-0">
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                      <div className="flex items-center gap-1.5">
-                        <FileText className="h-3.5 w-3.5" />
-                        <span>Checklist: <span className={cn("font-medium", checklistProgress > 0 ? "text-foreground" : "text-muted-foreground")}>{checklistProgress}%</span></span>
-                      </div>
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                      {/* Daily Checklists */}
+                      {report.stats.dailyChecklists && Object.entries(report.stats.dailyChecklists).map(([type, stat]) => {
+                        const progress = stat.total > 0 ? Math.round((stat.completed / stat.total) * 100) : 0;
+                        return (
+                          <div key={type} className="flex items-center gap-1.5">
+                            <FileText className="h-3.5 w-3.5" />
+                            <span>{dailyChecklistLabels[type] || type}: <span className={cn("font-medium", progress > 0 ? "text-foreground" : "text-muted-foreground")}>{progress}%</span></span>
+                          </div>
+                        );
+                      })}
+                      {/* Fallback to legacy checklist if no daily checklists */}
+                      {(!report.stats.dailyChecklists || Object.keys(report.stats.dailyChecklists).length === 0) && (
+                        <div className="flex items-center gap-1.5">
+                          <FileText className="h-3.5 w-3.5" />
+                          <span>Checklist: <span className={cn("font-medium", checklistProgress > 0 ? "text-foreground" : "text-muted-foreground")}>{checklistProgress}%</span></span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -254,24 +281,52 @@ export function TodayReportsList({ currentUserId, onViewOwnReport }: TodayReport
                 {/* Expanded content */}
                 {isExpanded && (
                   <div className="px-3 pb-3 pt-0 space-y-3 border-t">
-                    {/* Progress bar */}
-                    <div className="pt-3">
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-muted-foreground flex items-center gap-1.5">
-                            <FileText className="h-3.5 w-3.5" /> Checklist
-                          </span>
-                          <span className="font-medium">{checklistProgress}%</span>
-                        </div>
-                        <Progress
-                          value={checklistProgress}
-                          className={cn(
-                            "h-2.5",
-                            checklistProgress === 0 && "[&>div]:bg-muted"
-                          )}
-                        />
+                    {/* Daily Checklists Progress */}
+                    {report.stats.dailyChecklists && Object.keys(report.stats.dailyChecklists).length > 0 && (
+                      <div className="pt-3 space-y-3">
+                        {Object.entries(report.stats.dailyChecklists).map(([type, stat]) => {
+                          const progress = stat.total > 0 ? Math.round((stat.completed / stat.total) * 100) : 0;
+                          return (
+                            <div key={type} className="space-y-1.5">
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-muted-foreground flex items-center gap-1.5">
+                                  <FileText className="h-3.5 w-3.5" /> {dailyChecklistLabels[type] || type}
+                                </span>
+                                <span className="font-medium">{progress}%</span>
+                              </div>
+                              <Progress
+                                value={progress}
+                                className={cn(
+                                  "h-2.5",
+                                  progress === 0 && "[&>div]:bg-muted"
+                                )}
+                              />
+                            </div>
+                          );
+                        })}
                       </div>
-                    </div>
+                    )}
+
+                    {/* Fallback to legacy checklist if no daily checklists */}
+                    {(!report.stats.dailyChecklists || Object.keys(report.stats.dailyChecklists).length === 0) && (
+                      <div className="pt-3">
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-muted-foreground flex items-center gap-1.5">
+                              <FileText className="h-3.5 w-3.5" /> Checklist
+                            </span>
+                            <span className="font-medium">{checklistProgress}%</span>
+                          </div>
+                          <Progress
+                            value={checklistProgress}
+                            className={cn(
+                              "h-2.5",
+                              checklistProgress === 0 && "[&>div]:bg-muted"
+                            )}
+                          />
+                        </div>
+                      </div>
+                    )}
 
                     {/* Issues section */}
                     {report.issues.length > 0 && (
@@ -357,29 +412,55 @@ export function TodayReportsList({ currentUserId, onViewOwnReport }: TodayReport
                 </Badge>
               </div>
 
-              {/* Progress */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    Progress Checklist
-                  </span>
-                  <span className="font-medium">
-                    {selectedReport.stats.checklist.completed + selectedReport.stats.checklist.skipped}/
-                    {selectedReport.stats.checklist.total}
-                  </span>
+              {/* Daily Checklists Progress */}
+              {selectedReport.stats.dailyChecklists && Object.keys(selectedReport.stats.dailyChecklists).length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="font-medium text-sm">Progress Checklist</h4>
+                  {Object.entries(selectedReport.stats.dailyChecklists).map(([type, stat]) => {
+                    const progress = stat.total > 0 ? Math.round((stat.completed / stat.total) * 100) : 0;
+                    return (
+                      <div key={type} className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground flex items-center gap-2">
+                            <FileText className="h-4 w-4" />
+                            {dailyChecklistLabels[type] || type}
+                          </span>
+                          <span className="font-medium">
+                            {stat.completed}/{stat.total}
+                          </span>
+                        </div>
+                        <Progress value={progress} className="h-3" />
+                      </div>
+                    );
+                  })}
                 </div>
-                <Progress
-                  value={
-                    selectedReport.stats.checklist.total > 0
-                      ? ((selectedReport.stats.checklist.completed + selectedReport.stats.checklist.skipped) /
-                          selectedReport.stats.checklist.total) *
-                        100
-                      : 0
-                  }
-                  className="h-3"
-                />
-              </div>
+              )}
+
+              {/* Fallback to legacy checklist if no daily checklists */}
+              {(!selectedReport.stats.dailyChecklists || Object.keys(selectedReport.stats.dailyChecklists).length === 0) && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      Progress Checklist
+                    </span>
+                    <span className="font-medium">
+                      {selectedReport.stats.checklist.completed + selectedReport.stats.checklist.skipped}/
+                      {selectedReport.stats.checklist.total}
+                    </span>
+                  </div>
+                  <Progress
+                    value={
+                      selectedReport.stats.checklist.total > 0
+                        ? ((selectedReport.stats.checklist.completed + selectedReport.stats.checklist.skipped) /
+                            selectedReport.stats.checklist.total) *
+                          100
+                        : 0
+                    }
+                    className="h-3"
+                  />
+                </div>
+              )}
 
               {/* Issues */}
               {selectedReport.issues.length > 0 && (
