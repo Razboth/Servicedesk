@@ -25,7 +25,11 @@ import {
   Trash2,
   AlertTriangle,
   Info,
+  Plus,
+  X,
+  CalendarDays,
 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import Link from 'next/link';
 import { StaffPoolSidebar } from '@/components/shifts/staff-pool-sidebar';
 import { DraggableShiftCalendar } from '@/components/shifts/draggable-shift-calendar';
@@ -110,6 +114,9 @@ export default function EditSchedulePage() {
   const [year, setYear] = useState('');
   const [staffProfiles, setStaffProfiles] = useState<StaffProfile[]>([]);
   const [assignments, setAssignments] = useState<ShiftAssignment[]>([]);
+  const [holidays, setHolidays] = useState<{ date: string; name: string; id?: string }[]>([]);
+  const [newHolidayDate, setNewHolidayDate] = useState('');
+  const [newHolidayName, setNewHolidayName] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [buildMode, setBuildMode] = useState<'blank' | 'auto' | 'template'>('blank');
@@ -162,6 +169,17 @@ export default function EditSchedulePage() {
 
       setAssignments(existingAssignments);
       console.log(`Loaded ${existingAssignments.length} existing assignments`);
+
+      // Load existing holidays
+      if (scheduleData.holidays && scheduleData.holidays.length > 0) {
+        const existingHolidays = scheduleData.holidays.map((h: any) => ({
+          id: h.id,
+          date: new Date(h.date).toISOString().split('T')[0],
+          name: h.name,
+        }));
+        setHolidays(existingHolidays);
+        console.log(`Loaded ${existingHolidays.length} existing holidays`);
+      }
     } catch (error) {
       console.error('Error fetching schedule:', error);
       toast.error('Failed to load schedule');
@@ -263,7 +281,7 @@ export default function EditSchedulePage() {
           branchId: session.user.branchId,
           month: parseInt(month),
           year: parseInt(year),
-          holidayDates: [],
+          holidayDates: holidays.map(h => h.date),
         }),
       });
 
@@ -573,6 +591,25 @@ export default function EditSchedulePage() {
         }
       }
 
+      // Step 4: Update holidays
+      const holidaysResponse = await fetch(`/api/shifts/schedules/${scheduleId}/holidays`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          holidays: holidays.map(h => ({
+            date: h.date,
+            name: h.name,
+          })),
+        }),
+      });
+
+      if (!holidaysResponse.ok) {
+        console.error('Failed to update holidays');
+        // Don't fail the whole operation for holidays
+      } else {
+        console.log('Holidays updated successfully');
+      }
+
       // Navigate back to the schedule view
       router.push(`/manager/shift-schedules/${scheduleId}`);
     } catch (error: any) {
@@ -588,6 +625,38 @@ export default function EditSchedulePage() {
       setAssignments([]);
       toast.success('All assignments cleared');
     }
+  };
+
+  const handleAddHoliday = () => {
+    if (!newHolidayDate) {
+      toast.error('Pilih tanggal libur');
+      return;
+    }
+
+    // Validate date is in selected month/year
+    const [yearStr, monthStr] = newHolidayDate.split('-');
+    if (parseInt(yearStr) !== parseInt(year) || parseInt(monthStr) !== parseInt(month)) {
+      toast.error(`Tanggal harus dalam bulan ${monthNames[parseInt(month) - 1]} ${year}`);
+      return;
+    }
+
+    // Check for duplicate
+    if (holidays.some(h => h.date === newHolidayDate)) {
+      toast.error('Tanggal ini sudah ditambahkan');
+      return;
+    }
+
+    setHolidays([...holidays, {
+      date: newHolidayDate,
+      name: newHolidayName || 'Libur'
+    }]);
+    setNewHolidayDate('');
+    setNewHolidayName('');
+    toast.success('Hari libur ditambahkan');
+  };
+
+  const handleRemoveHoliday = (date: string) => {
+    setHolidays(holidays.filter(h => h.date !== date));
   };
 
   if (!session) {
@@ -738,6 +807,72 @@ export default function EditSchedulePage() {
                 </div>
               </div>
             )}
+
+            {/* Holiday Management */}
+            <div className="border-t pt-4 mt-4">
+              <div className="flex items-center gap-2 mb-3">
+                <CalendarDays className="w-4 h-4 text-red-600" />
+                <label className="text-sm font-medium">Hari Libur</label>
+              </div>
+              <div className="flex flex-wrap gap-2 mb-3">
+                <Input
+                  type="date"
+                  value={newHolidayDate}
+                  onChange={(e) => setNewHolidayDate(e.target.value)}
+                  className="w-auto"
+                  min={`${year}-${month.padStart(2, '0')}-01`}
+                  max={`${year}-${month.padStart(2, '0')}-${new Date(parseInt(year), parseInt(month), 0).getDate()}`}
+                />
+                <Input
+                  type="text"
+                  placeholder="Nama libur (opsional)"
+                  value={newHolidayName}
+                  onChange={(e) => setNewHolidayName(e.target.value)}
+                  className="w-48"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAddHoliday}
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Tambah
+                </Button>
+              </div>
+              {holidays.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {holidays
+                    .sort((a, b) => a.date.localeCompare(b.date))
+                    .map((holiday) => (
+                      <Badge
+                        key={holiday.date}
+                        variant="secondary"
+                        className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 flex items-center gap-1"
+                      >
+                        <span>
+                          {new Date(holiday.date + 'T00:00:00').toLocaleDateString('id-ID', {
+                            day: 'numeric',
+                            month: 'short',
+                          })}
+                          {holiday.name !== 'Libur' && `: ${holiday.name}`}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveHoliday(holiday.date)}
+                          className="ml-1 hover:bg-red-200 dark:hover:bg-red-800 rounded-full p-0.5"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Belum ada hari libur. Tambahkan tanggal libur untuk ditandai di kalender.
+                </p>
+              )}
+            </div>
           </CardContent>
         </Card>
 
@@ -780,7 +915,7 @@ export default function EditSchedulePage() {
                   year={parseInt(year)}
                   month={parseInt(month)}
                   assignments={assignments}
-                  holidays={[]}
+                  holidays={holidays.map(h => ({ ...h, id: h.id || h.date, holidayType: 'PUBLIC' as const }))}
                   editable={true}
                   skipDndContext={true}
                   onAssignmentDelete={handleDeleteAssignment}
