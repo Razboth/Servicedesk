@@ -188,10 +188,13 @@ export async function GET(
 
     // Add lock status to checklist items
     const now = new Date();
+    // Check if this is a night shift (NIGHT_WEEKDAY or NIGHT_WEEKEND)
+    const isNightShift = shiftAssignment.shiftType === 'NIGHT_WEEKDAY' ||
+                         shiftAssignment.shiftType === 'NIGHT_WEEKEND';
     const checklistItemsWithLockStatus = report.checklistItems.map((item) => ({
       ...item,
-      isLocked: !isItemUnlocked(item.unlockTime, now),
-      lockMessage: getLockStatusMessage(item.unlockTime, now),
+      isLocked: !isItemUnlocked(item.unlockTime, now, isNightShift),
+      lockMessage: getLockStatusMessage(item.unlockTime, now, isNightShift),
     }));
 
     // Calculate stats

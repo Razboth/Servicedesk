@@ -397,8 +397,8 @@ export async function GET(request: NextRequest) {
       const isNightChecklist = checklistType === 'OPS_MALAM' || checklistType === 'MONITORING_MALAM';
       const itemsWithLockStatus = userChecklist.items.map((item) => ({
         ...item,
-        isLocked: !isItemUnlocked(item.unlockTime, witaTimeNow),
-        lockMessage: getLockStatusMessage(item.unlockTime, witaTimeNow),
+        isLocked: !isItemUnlocked(item.unlockTime, witaTimeNow, isNightChecklist),
+        lockMessage: getLockStatusMessage(item.unlockTime, witaTimeNow, isNightChecklist),
       }));
       const sortedItems = sortNightChecklistItems(itemsWithLockStatus, isNightChecklist);
 
@@ -465,8 +465,8 @@ export async function GET(request: NextRequest) {
         const isNightChecklist = checklistType === 'OPS_MALAM' || checklistType === 'MONITORING_MALAM';
         const itemsWithLockStatus = otherChecklist.items.map((item) => ({
           ...item,
-          isLocked: !isItemUnlocked(item.unlockTime, witaTimeNow),
-          lockMessage: getLockStatusMessage(item.unlockTime, witaTimeNow),
+          isLocked: !isItemUnlocked(item.unlockTime, witaTimeNow, isNightChecklist),
+          lockMessage: getLockStatusMessage(item.unlockTime, witaTimeNow, isNightChecklist),
         }));
         const sortedItems = sortNightChecklistItems(itemsWithLockStatus, isNightChecklist);
 
@@ -744,8 +744,8 @@ export async function POST(request: NextRequest) {
     const isNightChecklist = checklistType === 'OPS_MALAM' || checklistType === 'MONITORING_MALAM';
     const itemsWithLockStatus = checklist.items.map((item) => ({
       ...item,
-      isLocked: !isItemUnlocked(item.unlockTime, witaTimeNow),
-      lockMessage: getLockStatusMessage(item.unlockTime, witaTimeNow),
+      isLocked: !isItemUnlocked(item.unlockTime, witaTimeNow, isNightChecklist),
+      lockMessage: getLockStatusMessage(item.unlockTime, witaTimeNow, isNightChecklist),
     }));
     const sortedItems = sortNightChecklistItems(itemsWithLockStatus, isNightChecklist);
 

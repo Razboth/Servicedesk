@@ -21,11 +21,13 @@ export function getCurrentTimeWITA(): Date {
  * Check if a time-locked item is unlocked
  * @param unlockTime - Time string in "HH:mm" format (e.g., "22:00") in WITA
  * @param currentTime - Current time to check against (defaults to now in WITA)
+ * @param isNightChecklist - If true, handles night shift time logic (22:00-06:00 spans two days)
  * @returns true if unlocked (no lock or past unlock time)
  */
 export function isItemUnlocked(
   unlockTime: string | null | undefined,
-  currentTime: Date = getCurrentTimeWITA()
+  currentTime: Date = getCurrentTimeWITA(),
+  isNightChecklist: boolean = false
 ): boolean {
   if (!unlockTime) return true; // No lock time = always unlocked
 
@@ -38,10 +40,25 @@ export function isItemUnlocked(
 
   // Get current time in WITA if not already converted
   const witaTime = currentTime;
+  const currentHour = witaTime.getHours();
 
-  // Create unlock time for today in WITA
+  // Create unlock time
   const unlockDate = new Date(witaTime);
   unlockDate.setHours(hours, minutes, 0, 0);
+
+  // For night checklists, handle midnight crossover
+  // Night shift: 20:00 - 08:00 (spans two calendar days)
+  if (isNightChecklist) {
+    const isEveningSlot = hours >= 20; // 20:00, 22:00
+    const isEarlyMorningNow = currentHour >= 0 && currentHour < 8; // 00:00-07:59
+
+    // If we're in early morning (00:00-07:59) and the slot is evening (20:00+),
+    // that slot was from YESTERDAY and should already be unlocked
+    if (isEarlyMorningNow && isEveningSlot) {
+      // The 22:00 slot was unlocked yesterday at 22:00, so it's definitely unlocked now
+      return true;
+    }
+  }
 
   return witaTime >= unlockDate;
 }
@@ -50,13 +67,15 @@ export function isItemUnlocked(
  * Get time remaining until unlock
  * @param unlockTime - Time string in "HH:mm" format in WITA
  * @param currentTime - Current time to check against (defaults to WITA)
+ * @param isNightChecklist - If true, handles night shift time logic
  * @returns Object with hours, minutes remaining, or null if already unlocked
  */
 export function getTimeUntilUnlock(
   unlockTime: string | null | undefined,
-  currentTime: Date = getCurrentTimeWITA()
+  currentTime: Date = getCurrentTimeWITA(),
+  isNightChecklist: boolean = false
 ): { hours: number; minutes: number } | null {
-  if (!unlockTime || isItemUnlocked(unlockTime, currentTime)) {
+  if (!unlockTime || isItemUnlocked(unlockTime, currentTime, isNightChecklist)) {
     return null;
   }
 
@@ -77,17 +96,19 @@ export function getTimeUntilUnlock(
  * Get display message for lock status (Indonesian)
  * @param unlockTime - Time string in "HH:mm" format in WITA
  * @param currentTime - Current time to check against (defaults to WITA)
+ * @param isNightChecklist - If true, handles night shift time logic
  * @returns Display message or null if unlocked
  */
 export function getLockStatusMessage(
   unlockTime: string | null | undefined,
-  currentTime: Date = getCurrentTimeWITA()
+  currentTime: Date = getCurrentTimeWITA(),
+  isNightChecklist: boolean = false
 ): string | null {
-  if (!unlockTime || isItemUnlocked(unlockTime, currentTime)) {
+  if (!unlockTime || isItemUnlocked(unlockTime, currentTime, isNightChecklist)) {
     return null;
   }
 
-  const remaining = getTimeUntilUnlock(unlockTime, currentTime);
+  const remaining = getTimeUntilUnlock(unlockTime, currentTime, isNightChecklist);
   if (!remaining) return null;
 
   if (remaining.hours > 0) {

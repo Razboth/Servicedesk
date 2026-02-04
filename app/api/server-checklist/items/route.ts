@@ -143,11 +143,15 @@ export async function PUT(request: NextRequest) {
         continue;
       }
 
+      // Determine if this is a night checklist for time-lock logic
+      const isNightChecklist = existingItem.checklist.checklistType === 'OPS_MALAM' ||
+                               existingItem.checklist.checklistType === 'MONITORING_MALAM';
+
       // Check time-lock for completing items
-      if (item.status === 'COMPLETED' && !isItemUnlocked(existingItem.unlockTime, now)) {
+      if (item.status === 'COMPLETED' && !isItemUnlocked(existingItem.unlockTime, now, isNightChecklist)) {
         errors.push({
           id: item.id,
-          error: `Item masih terkunci. ${getLockStatusMessage(existingItem.unlockTime, now)}`,
+          error: `Item masih terkunci. ${getLockStatusMessage(existingItem.unlockTime, now, isNightChecklist)}`,
         });
         continue;
       }
@@ -165,8 +169,8 @@ export async function PUT(request: NextRequest) {
 
       updatedItems.push({
         ...updatedItem,
-        isLocked: !isItemUnlocked(updatedItem.unlockTime, now),
-        lockMessage: getLockStatusMessage(updatedItem.unlockTime, now),
+        isLocked: !isItemUnlocked(updatedItem.unlockTime, now, isNightChecklist),
+        lockMessage: getLockStatusMessage(updatedItem.unlockTime, now, isNightChecklist),
       });
     }
 

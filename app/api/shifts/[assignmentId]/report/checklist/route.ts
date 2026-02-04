@@ -82,11 +82,15 @@ export async function PUT(
         continue;
       }
 
+      // Check if this is a night shift
+      const isNightShift = shiftAssignment.shiftType === 'NIGHT_WEEKDAY' ||
+                           shiftAssignment.shiftType === 'NIGHT_WEEKEND';
+
       // Check time-lock when trying to complete
-      if (item.status === 'COMPLETED' && !isItemUnlocked(existingItem.unlockTime, now)) {
+      if (item.status === 'COMPLETED' && !isItemUnlocked(existingItem.unlockTime, now, isNightShift)) {
         errors.push({
           id: item.id,
-          error: `Item masih terkunci. ${getLockStatusMessage(existingItem.unlockTime, now)}`,
+          error: `Item masih terkunci. ${getLockStatusMessage(existingItem.unlockTime, now, isNightShift)}`,
         });
         continue;
       }
@@ -134,10 +138,12 @@ export async function PUT(
     });
 
     // Add lock status to items
+    const isNightShiftForLock = shiftAssignment.shiftType === 'NIGHT_WEEKDAY' ||
+                                shiftAssignment.shiftType === 'NIGHT_WEEKEND';
     const checklistItemsWithLockStatus = checklistItems.map((item) => ({
       ...item,
-      isLocked: !isItemUnlocked(item.unlockTime, now),
-      lockMessage: getLockStatusMessage(item.unlockTime, now),
+      isLocked: !isItemUnlocked(item.unlockTime, now, isNightShiftForLock),
+      lockMessage: getLockStatusMessage(item.unlockTime, now, isNightShiftForLock),
     }));
 
     // Calculate stats
