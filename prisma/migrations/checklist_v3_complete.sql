@@ -10,7 +10,7 @@ ADD COLUMN IF NOT EXISTS "completedBy" TEXT;
 
 -- Step 2: Clear v2 data (order matters due to foreign keys)
 DELETE FROM "server_access_checklist_items";
-DELETE FROM "checklist_claims";
+-- DELETE FROM "checklist_claims"; -- Table may not exist yet
 DELETE FROM "server_access_daily_checklists";
 DELETE FROM "server_access_checklist_templates";
 

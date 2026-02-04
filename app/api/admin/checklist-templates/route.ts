@@ -86,9 +86,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate checklistType
+    // Validate checklistType (v3 - only 4 types)
     const validTypes: DailyChecklistType[] = [
-      'HARIAN', 'SERVER_SIANG', 'SERVER_MALAM', 'AKHIR_HARI',
       'OPS_SIANG', 'OPS_MALAM', 'MONITORING_SIANG', 'MONITORING_MALAM',
     ];
     if (!validTypes.includes(checklistType)) {
