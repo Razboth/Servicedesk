@@ -35,6 +35,37 @@ function isDayTime(): boolean {
 }
 
 /**
+ * Sort items for night checklists (22:00 should come before 00:00)
+ * For night checklists: 22:00 → 00:00 → 02:00 → 04:00 → 06:00
+ */
+function sortNightChecklistItems<T extends { category: string; order: number }>(
+  items: T[],
+  isNightChecklist: boolean
+): T[] {
+  if (!isNightChecklist) {
+    return items; // Already sorted alphabetically by category, which is correct for day checklists
+  }
+
+  return [...items].sort((a, b) => {
+    // Parse hours from category (e.g., "22:00" -> 22)
+    const aHour = parseInt(a.category.split(':')[0], 10);
+    const bHour = parseInt(b.category.split(':')[0], 10);
+
+    // For night checklists, times >= 20 should come first (22:00)
+    // Then times < 8 in order (00:00, 02:00, 04:00, 06:00)
+    const aAdjusted = aHour < 12 ? aHour + 24 : aHour; // 00:00 -> 24, 02:00 -> 26, etc.
+    const bAdjusted = bHour < 12 ? bHour + 24 : bHour;
+
+    if (aAdjusted !== bAdjusted) {
+      return aAdjusted - bAdjusted;
+    }
+
+    // Same time slot - sort by order
+    return a.order - b.order;
+  });
+}
+
+/**
  * Get today's date for checklist (handles midnight crossover for night shift)
  * For night checklists (OPS_MALAM, MONITORING_MALAM) at 00:00-07:59,
  * we use the previous day's date since the shift started the day before
@@ -280,11 +311,13 @@ export async function GET(request: NextRequest) {
       }
 
       // Return historical data without lock status (all unlocked for viewing)
+      const isNightChecklist = historicalChecklist.checklistType === 'OPS_MALAM' || historicalChecklist.checklistType === 'MONITORING_MALAM';
       const itemsForView = historicalChecklist.items.map((item) => ({
         ...item,
         isLocked: false,
         lockMessage: null,
       }));
+      const sortedItems = sortNightChecklistItems(itemsForView, isNightChecklist);
 
       const stats = {
         total: historicalChecklist.items.length,
@@ -297,7 +330,7 @@ export async function GET(request: NextRequest) {
 
       return NextResponse.json({
         ...historicalChecklist,
-        items: itemsForView,
+        items: sortedItems,
         stats,
         claimed: true,
         claimedByUser: true,
@@ -361,11 +394,13 @@ export async function GET(request: NextRequest) {
 
     // If user has claimed, return their checklist
     if (userChecklist) {
+      const isNightChecklist = checklistType === 'OPS_MALAM' || checklistType === 'MONITORING_MALAM';
       const itemsWithLockStatus = userChecklist.items.map((item) => ({
         ...item,
         isLocked: !isItemUnlocked(item.unlockTime, witaTimeNow),
         lockMessage: getLockStatusMessage(item.unlockTime, witaTimeNow),
       }));
+      const sortedItems = sortNightChecklistItems(itemsWithLockStatus, isNightChecklist);
 
       const stats = {
         total: userChecklist.items.length,
@@ -373,13 +408,13 @@ export async function GET(request: NextRequest) {
         pending: userChecklist.items.filter((i) => i.status === 'PENDING').length,
         inProgress: userChecklist.items.filter((i) => i.status === 'IN_PROGRESS').length,
         skipped: userChecklist.items.filter((i) => i.status === 'SKIPPED').length,
-        locked: itemsWithLockStatus.filter((i) => i.isLocked).length,
+        locked: sortedItems.filter((i) => i.isLocked).length,
       };
 
       return NextResponse.json({
         ...userChecklist,
         checklistType,
-        items: itemsWithLockStatus,
+        items: sortedItems,
         stats,
         claimed: true,
         claimedByUser: true,
@@ -427,11 +462,13 @@ export async function GET(request: NextRequest) {
 
       if (otherChecklist) {
         // Return other user's checklist in read-only mode
+        const isNightChecklist = checklistType === 'OPS_MALAM' || checklistType === 'MONITORING_MALAM';
         const itemsWithLockStatus = otherChecklist.items.map((item) => ({
           ...item,
           isLocked: !isItemUnlocked(item.unlockTime, witaTimeNow),
           lockMessage: getLockStatusMessage(item.unlockTime, witaTimeNow),
         }));
+        const sortedItems = sortNightChecklistItems(itemsWithLockStatus, isNightChecklist);
 
         const stats = {
           total: otherChecklist.items.length,
@@ -439,13 +476,13 @@ export async function GET(request: NextRequest) {
           pending: otherChecklist.items.filter((i) => i.status === 'PENDING').length,
           inProgress: otherChecklist.items.filter((i) => i.status === 'IN_PROGRESS').length,
           skipped: otherChecklist.items.filter((i) => i.status === 'SKIPPED').length,
-          locked: itemsWithLockStatus.filter((i) => i.isLocked).length,
+          locked: sortedItems.filter((i) => i.isLocked).length,
         };
 
         return NextResponse.json({
           ...otherChecklist,
           checklistType,
-          items: itemsWithLockStatus,
+          items: sortedItems,
           stats,
           claimed: true,
           claimedByUser: false,
@@ -704,11 +741,13 @@ export async function POST(request: NextRequest) {
     });
 
     const witaTimeNow = getCurrentTimeWITA();
+    const isNightChecklist = checklistType === 'OPS_MALAM' || checklistType === 'MONITORING_MALAM';
     const itemsWithLockStatus = checklist.items.map((item) => ({
       ...item,
       isLocked: !isItemUnlocked(item.unlockTime, witaTimeNow),
       lockMessage: getLockStatusMessage(item.unlockTime, witaTimeNow),
     }));
+    const sortedItems = sortNightChecklistItems(itemsWithLockStatus, isNightChecklist);
 
     const stats = {
       total: checklist.items.length,
@@ -716,7 +755,7 @@ export async function POST(request: NextRequest) {
       pending: checklist.items.length,
       inProgress: 0,
       skipped: 0,
-      locked: itemsWithLockStatus.filter((i) => i.isLocked).length,
+      locked: sortedItems.filter((i) => i.isLocked).length,
     };
 
     return NextResponse.json({
@@ -724,7 +763,7 @@ export async function POST(request: NextRequest) {
       message: 'Checklist berhasil diklaim',
       ...checklist,
       checklistType,
-      items: itemsWithLockStatus,
+      items: sortedItems,
       stats,
       claimed: true,
       claimedByUser: true,
