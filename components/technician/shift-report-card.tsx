@@ -1010,6 +1010,7 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
                         onUpdateItems={(items) => handleUpdateServerChecklist(items, type)}
                         isLoading={isUpdating}
                         readOnly={checklist.status === 'COMPLETED'}
+                        groupByTimeSlot={type === 'SERVER_SIANG' || type === 'SERVER_MALAM'}
                       />
                     </>
                   ) : (

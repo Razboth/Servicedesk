@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -43,6 +43,7 @@ interface ServerAccessChecklistProps {
   ) => Promise<void>;
   isLoading?: boolean;
   readOnly?: boolean;
+  groupByTimeSlot?: boolean; // For periodic checklists (SERVER_SIANG, SERVER_MALAM)
 }
 
 const categoryConfig = {
@@ -72,36 +73,90 @@ const categoryConfig = {
   },
 };
 
+// Extract time slot from title like "[08:00] Status Server" -> "08:00"
+function extractTimeSlot(title: string): string | null {
+  const match = title.match(/^\[(\d{2}:\d{2})\]/);
+  return match ? match[1] : null;
+}
+
+// Remove time slot prefix from title for display
+function stripTimeSlot(title: string): string {
+  return title.replace(/^\[\d{2}:\d{2}\]\s*/, '');
+}
+
+// Time slot display configuration
+const timeSlotConfig: Record<string, { label: string; period: string }> = {
+  '08:00': { label: 'Pukul 08:00', period: 'Pagi' },
+  '10:00': { label: 'Pukul 10:00', period: 'Pagi' },
+  '12:00': { label: 'Pukul 12:00', period: 'Siang' },
+  '14:00': { label: 'Pukul 14:00', period: 'Siang' },
+  '16:00': { label: 'Pukul 16:00', period: 'Sore' },
+  '18:00': { label: 'Pukul 18:00', period: 'Sore' },
+  '20:00': { label: 'Pukul 20:00', period: 'Malam' },
+  '22:00': { label: 'Pukul 22:00', period: 'Malam' },
+  '00:00': { label: 'Pukul 00:00', period: 'Tengah Malam' },
+  '02:00': { label: 'Pukul 02:00', period: 'Dini Hari' },
+  '04:00': { label: 'Pukul 04:00', period: 'Subuh' },
+  '06:00': { label: 'Pukul 06:00', period: 'Pagi' },
+};
+
 export function ServerAccessChecklist({
   items,
   onUpdateItems,
   isLoading = false,
   readOnly = false,
+  groupByTimeSlot = false,
 }: ServerAccessChecklistProps) {
-  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
-    BACKUP_VERIFICATION: true,
-    SERVER_HEALTH: true,
-    SECURITY_CHECK: true,
-    MAINTENANCE: true,
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(() => {
+    // Initialize all groups as expanded
+    const initial: Record<string, boolean> = {
+      BACKUP_VERIFICATION: true,
+      SERVER_HEALTH: true,
+      SECURITY_CHECK: true,
+      MAINTENANCE: true,
+    };
+    // Also expand time slots
+    Object.keys(timeSlotConfig).forEach(slot => {
+      initial[slot] = true;
+    });
+    // Expand "other" group for non-periodic items
+    initial['other'] = true;
+    return initial;
   });
   const [editingNote, setEditingNote] = useState<string | null>(null);
   const [noteText, setNoteText] = useState('');
 
-  // Group items by category
-  const itemsByCategory = items.reduce((acc, item) => {
-    if (!acc[item.category]) {
-      acc[item.category] = [];
+  // Group items by time slot or category
+  const groupedItems = useMemo(() => {
+    if (groupByTimeSlot) {
+      // Group by time slot for periodic checklists
+      const byTimeSlot: Record<string, ServerChecklistItem[]> = {};
+      items.forEach(item => {
+        const timeSlot = extractTimeSlot(item.title) || 'other';
+        if (!byTimeSlot[timeSlot]) {
+          byTimeSlot[timeSlot] = [];
+        }
+        byTimeSlot[timeSlot].push(item);
+      });
+      return byTimeSlot;
+    } else {
+      // Group by category for non-periodic checklists
+      return items.reduce((acc, item) => {
+        if (!acc[item.category]) {
+          acc[item.category] = [];
+        }
+        acc[item.category].push(item);
+        return acc;
+      }, {} as Record<string, ServerChecklistItem[]>);
     }
-    acc[item.category].push(item);
-    return acc;
-  }, {} as Record<string, ServerChecklistItem[]>);
+  }, [items, groupByTimeSlot]);
 
-  // Calculate progress per category
-  const getCategoryProgress = (categoryItems: ServerChecklistItem[]) => {
-    const completed = categoryItems.filter(
+  // Calculate progress per group
+  const getGroupProgress = (groupItems: ServerChecklistItem[]) => {
+    const completed = groupItems.filter(
       (i) => i.status === 'COMPLETED' || i.status === 'SKIPPED'
     ).length;
-    return { completed, total: categoryItems.length };
+    return { completed, total: groupItems.length };
   };
 
   const handleStatusChange = async (itemId: string, checked: boolean) => {
@@ -128,36 +183,238 @@ export function ServerAccessChecklist({
     setNoteText('');
   };
 
-  const toggleCategory = (category: string) => {
-    setExpandedCategories((prev) => ({
+  const toggleGroup = (groupKey: string) => {
+    setExpandedGroups((prev) => ({
       ...prev,
-      [category]: !prev[category],
+      [groupKey]: !prev[groupKey],
     }));
   };
 
-  // Ensure consistent category order
-  const orderedCategories = ['BACKUP_VERIFICATION', 'SERVER_HEALTH', 'SECURITY_CHECK', 'MAINTENANCE'];
-  const sortedCategories = orderedCategories.filter(cat => itemsByCategory[cat]);
+  // Get ordered group keys
+  const orderedGroups = useMemo(() => {
+    if (groupByTimeSlot) {
+      // Order time slots chronologically
+      const timeSlotOrder = ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00', '00:00', '02:00', '04:00', '06:00'];
+      const orderedSlots = timeSlotOrder.filter(slot => groupedItems[slot]);
+      // Add 'other' at the end for non-periodic items
+      if (groupedItems['other']) {
+        orderedSlots.push('other');
+      }
+      return orderedSlots;
+    } else {
+      // Category order
+      const orderedCategories = ['BACKUP_VERIFICATION', 'SERVER_HEALTH', 'SECURITY_CHECK', 'MAINTENANCE'];
+      return orderedCategories.filter(cat => groupedItems[cat]);
+    }
+  }, [groupedItems, groupByTimeSlot]);
+
+  // Get group display info
+  const getGroupInfo = (groupKey: string) => {
+    if (groupByTimeSlot) {
+      if (groupKey === 'other') {
+        return {
+          label: 'Item Lainnya',
+          icon: Wrench,
+          color: 'text-gray-600 dark:text-gray-400',
+          bg: 'bg-gray-50 dark:bg-gray-950/30',
+        };
+      }
+      const slotConfig = timeSlotConfig[groupKey];
+      return {
+        label: slotConfig?.label || groupKey,
+        sublabel: slotConfig?.period,
+        icon: Clock,
+        color: 'text-blue-600 dark:text-blue-400',
+        bg: 'bg-blue-50 dark:bg-blue-950/30',
+      };
+    } else {
+      const config = categoryConfig[groupKey as keyof typeof categoryConfig];
+      return {
+        label: config?.label || groupKey,
+        icon: config?.icon || Server,
+        color: config?.color || 'text-gray-600 dark:text-gray-400',
+        bg: config?.bg || 'bg-muted/50',
+      };
+    }
+  };
+
+  // Render a single checklist item
+  const renderItem = (item: ServerChecklistItem) => {
+    const isCompleted = item.status === 'COMPLETED';
+    const isSkipped = item.status === 'SKIPPED';
+    const isDone = isCompleted || isSkipped;
+    const isLocked = item.isLocked === true;
+    const displayTitle = groupByTimeSlot ? stripTimeSlot(item.title) : item.title;
+
+    return (
+      <div
+        key={item.id}
+        className={cn(
+          'px-3 py-2 transition-colors',
+          isDone && 'bg-muted/30',
+          isLocked && 'bg-amber-50/50 dark:bg-amber-950/20'
+        )}
+      >
+        {/* Main row */}
+        <div className="flex items-center gap-3">
+          <Checkbox
+            checked={isCompleted}
+            onCheckedChange={(checked) =>
+              handleStatusChange(item.id, checked as boolean)
+            }
+            disabled={readOnly || isLoading || isSkipped || isLocked}
+          />
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span
+                className={cn(
+                  'text-sm',
+                  isDone && 'line-through text-muted-foreground',
+                  isLocked && 'text-muted-foreground'
+                )}
+              >
+                {displayTitle}
+              </span>
+              {item.isRequired && (
+                <Badge variant="destructive" className="text-[10px] h-4 px-1">
+                  Wajib
+                </Badge>
+              )}
+              {isLocked && (
+                <Badge variant="outline" className="text-[10px] h-4 px-1 border-amber-500 text-amber-600 dark:text-amber-400">
+                  Terkunci
+                </Badge>
+              )}
+            </div>
+            {item.description && !isLocked && (
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {item.description}
+              </p>
+            )}
+            {isLocked && item.lockMessage && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                {item.lockMessage}
+              </p>
+            )}
+          </div>
+
+          {/* Status indicator */}
+          <div className="flex items-center gap-1">
+            {isLocked && (
+              <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                <Lock className="h-4 w-4" />
+                {item.unlockTime && (
+                  <span className="text-xs flex items-center gap-0.5">
+                    <Clock className="h-3 w-3" />
+                    {item.unlockTime}
+                  </span>
+                )}
+              </div>
+            )}
+            {!isLocked && isCompleted && (
+              <CheckCircle2 className="h-4 w-4 text-green-500" />
+            )}
+            {!isLocked && isSkipped && (
+              <SkipForward className="h-4 w-4 text-yellow-500" />
+            )}
+            {!isLocked && !isDone && (
+              <Circle className="h-4 w-4 text-muted-foreground/50" />
+            )}
+
+            {/* Skip button */}
+            {!readOnly && !isDone && !item.isRequired && !isLocked && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                onClick={() => handleSkip(item.id)}
+                disabled={isLoading}
+              >
+                Lewati
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Notes section */}
+        {(item.notes || editingNote === item.id) && (
+          <div className="mt-2 ml-7">
+            {editingNote === item.id ? (
+              <div className="space-y-2">
+                <Textarea
+                  value={noteText}
+                  onChange={(e) => setNoteText(e.target.value)}
+                  placeholder="Tambah catatan..."
+                  className="text-sm min-h-[60px]"
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs"
+                    onClick={() => setEditingNote(null)}
+                  >
+                    Batal
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => saveNote(item.id)}
+                    disabled={isLoading}
+                  >
+                    Simpan
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <p
+                className="text-xs text-muted-foreground bg-muted/50 px-2 py-1.5 rounded cursor-pointer hover:bg-muted"
+                onClick={() => !readOnly && startEditNote(item)}
+              >
+                <MessageSquare className="h-3 w-3 inline mr-1" />
+                {item.notes}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Add note button */}
+        {!readOnly && !item.notes && editingNote !== item.id && !isLocked && (
+          <button
+            className="mt-1 ml-7 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+            onClick={() => startEditNote(item)}
+          >
+            <MessageSquare className="h-3 w-3" />
+            Tambah catatan
+          </button>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-3">
-      {sortedCategories.map((category) => {
-        const categoryItems = itemsByCategory[category];
-        if (!categoryItems) return null;
+      {orderedGroups.map((groupKey) => {
+        const groupItems = groupedItems[groupKey];
+        if (!groupItems || groupItems.length === 0) return null;
 
-        const config = categoryConfig[category as keyof typeof categoryConfig];
-        const progress = getCategoryProgress(categoryItems);
-        const Icon = config?.icon || Server;
-        const isExpanded = expandedCategories[category];
+        const groupInfo = getGroupInfo(groupKey);
+        const progress = getGroupProgress(groupItems);
+        const Icon = groupInfo.icon;
+        const isExpanded = expandedGroups[groupKey] ?? true;
+        const isAllCompleted = progress.completed === progress.total;
 
         return (
-          <div key={category} className="border rounded-lg overflow-hidden">
-            {/* Category Header */}
+          <div key={groupKey} className="border rounded-lg overflow-hidden">
+            {/* Group Header */}
             <button
-              onClick={() => toggleCategory(category)}
+              onClick={() => toggleGroup(groupKey)}
               className={cn(
                 'w-full flex items-center justify-between p-3',
-                config?.bg || 'bg-muted/50'
+                groupInfo.bg,
+                isAllCompleted && 'opacity-75'
               )}
             >
               <div className="flex items-center gap-2">
@@ -166,172 +423,38 @@ export function ServerAccessChecklist({
                 ) : (
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 )}
-                <Icon className={cn('h-4 w-4', config?.color)} />
-                <span className="font-medium text-sm">
-                  {config?.label || category}
-                </span>
+                <Icon className={cn('h-4 w-4', groupInfo.color)} />
+                <div className="flex flex-col items-start">
+                  <span className={cn('font-medium text-sm', isAllCompleted && 'line-through')}>
+                    {groupInfo.label}
+                  </span>
+                  {'sublabel' in groupInfo && groupInfo.sublabel && (
+                    <span className="text-xs text-muted-foreground">
+                      {groupInfo.sublabel}
+                    </span>
+                  )}
+                </div>
               </div>
-              <Badge variant="secondary" className="text-xs">
-                {progress.completed}/{progress.total}
-              </Badge>
+              <div className="flex items-center gap-2">
+                {isAllCompleted && (
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                )}
+                <Badge
+                  variant="secondary"
+                  className={cn(
+                    'text-xs',
+                    isAllCompleted && 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                  )}
+                >
+                  {progress.completed}/{progress.total}
+                </Badge>
+              </div>
             </button>
 
-            {/* Category Items */}
+            {/* Group Items */}
             {isExpanded && (
               <div className="divide-y">
-                {categoryItems.map((item) => {
-                  const isCompleted = item.status === 'COMPLETED';
-                  const isSkipped = item.status === 'SKIPPED';
-                  const isDone = isCompleted || isSkipped;
-                  const isLocked = item.isLocked === true;
-
-                  return (
-                    <div
-                      key={item.id}
-                      className={cn(
-                        'px-3 py-2 transition-colors',
-                        isDone && 'bg-muted/30',
-                        isLocked && 'bg-amber-50/50 dark:bg-amber-950/20'
-                      )}
-                    >
-                      {/* Main row */}
-                      <div className="flex items-center gap-3">
-                        <Checkbox
-                          checked={isCompleted}
-                          onCheckedChange={(checked) =>
-                            handleStatusChange(item.id, checked as boolean)
-                          }
-                          disabled={readOnly || isLoading || isSkipped || isLocked}
-                        />
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={cn(
-                                'text-sm',
-                                isDone && 'line-through text-muted-foreground',
-                                isLocked && 'text-muted-foreground'
-                              )}
-                            >
-                              {item.title}
-                            </span>
-                            {item.isRequired && (
-                              <Badge variant="destructive" className="text-[10px] h-4 px-1">
-                                Wajib
-                              </Badge>
-                            )}
-                            {isLocked && (
-                              <Badge variant="outline" className="text-[10px] h-4 px-1 border-amber-500 text-amber-600 dark:text-amber-400">
-                                Terkunci
-                              </Badge>
-                            )}
-                          </div>
-                          {item.description && !isLocked && (
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              {item.description}
-                            </p>
-                          )}
-                          {isLocked && item.lockMessage && (
-                            <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
-                              {item.lockMessage}
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Status indicator */}
-                        <div className="flex items-center gap-1">
-                          {isLocked && (
-                            <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
-                              <Lock className="h-4 w-4" />
-                              {item.unlockTime && (
-                                <span className="text-xs flex items-center gap-0.5">
-                                  <Clock className="h-3 w-3" />
-                                  {item.unlockTime}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                          {!isLocked && isCompleted && (
-                            <CheckCircle2 className="h-4 w-4 text-green-500" />
-                          )}
-                          {!isLocked && isSkipped && (
-                            <SkipForward className="h-4 w-4 text-yellow-500" />
-                          )}
-                          {!isLocked && !isDone && (
-                            <Circle className="h-4 w-4 text-muted-foreground/50" />
-                          )}
-
-                          {/* Skip button */}
-                          {!readOnly && !isDone && !item.isRequired && !isLocked && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
-                              onClick={() => handleSkip(item.id)}
-                              disabled={isLoading}
-                            >
-                              Lewati
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Notes section */}
-                      {(item.notes || editingNote === item.id) && (
-                        <div className="mt-2 ml-7">
-                          {editingNote === item.id ? (
-                            <div className="space-y-2">
-                              <Textarea
-                                value={noteText}
-                                onChange={(e) => setNoteText(e.target.value)}
-                                placeholder="Tambah catatan..."
-                                className="text-sm min-h-[60px]"
-                                autoFocus
-                              />
-                              <div className="flex gap-2">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-7 text-xs"
-                                  onClick={() => setEditingNote(null)}
-                                >
-                                  Batal
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  className="h-7 text-xs"
-                                  onClick={() => saveNote(item.id)}
-                                  disabled={isLoading}
-                                >
-                                  Simpan
-                                </Button>
-                              </div>
-                            </div>
-                          ) : (
-                            <p
-                              className="text-xs text-muted-foreground bg-muted/50 px-2 py-1.5 rounded cursor-pointer hover:bg-muted"
-                              onClick={() => !readOnly && startEditNote(item)}
-                            >
-                              <MessageSquare className="h-3 w-3 inline mr-1" />
-                              {item.notes}
-                            </p>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Add note button */}
-                      {!readOnly && !item.notes && editingNote !== item.id && !isLocked && (
-                        <button
-                          className="mt-1 ml-7 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
-                          onClick={() => startEditNote(item)}
-                        >
-                          <MessageSquare className="h-3 w-3" />
-                          Tambah catatan
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
+                {groupItems.map(renderItem)}
               </div>
             )}
           </div>
