@@ -158,10 +158,15 @@ export function ServerAccessChecklist({
   // Group items by time slot or category
   const groupedItems = useMemo(() => {
     if (groupByTimeSlot) {
-      // Group by time slot for periodic checklists
+      // Group by category (which contains time slot like "08:00", "22:00")
+      // The category field is used for time slots in the new checklist system
       const byTimeSlot: Record<string, ServerChecklistItem[]> = {};
       items.forEach(item => {
-        const timeSlot = extractTimeSlot(item.title) || 'other';
+        // Use category as time slot (e.g., "08:00", "22:00")
+        // Fall back to extracting from title for backwards compatibility
+        const timeSlot = /^\d{2}:\d{2}$/.test(item.category)
+          ? item.category
+          : extractTimeSlot(item.title) || 'other';
         if (!byTimeSlot[timeSlot]) {
           byTimeSlot[timeSlot] = [];
         }
@@ -222,14 +227,41 @@ export function ServerAccessChecklist({
   // Get ordered group keys
   const orderedGroups = useMemo(() => {
     if (groupByTimeSlot) {
-      // Order time slots chronologically
-      const timeSlotOrder = ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00', '00:00', '02:00', '04:00', '06:00'];
-      const orderedSlots = timeSlotOrder.filter(slot => groupedItems[slot]);
+      // Get all time slots present in the data
+      const presentSlots = Object.keys(groupedItems).filter(slot => slot !== 'other');
+
+      // Determine if this is a night checklist (has 22:00 or times < 08:00)
+      const hasNightSlots = presentSlots.some(slot => {
+        const hour = parseInt(slot.split(':')[0], 10);
+        return hour >= 20 || hour < 8;
+      });
+      const hasDaySlots = presentSlots.some(slot => {
+        const hour = parseInt(slot.split(':')[0], 10);
+        return hour >= 8 && hour < 20;
+      });
+      const isNightOnly = hasNightSlots && !hasDaySlots;
+
+      // Sort time slots
+      const sortedSlots = presentSlots.sort((a, b) => {
+        const aHour = parseInt(a.split(':')[0], 10);
+        const bHour = parseInt(b.split(':')[0], 10);
+
+        if (isNightOnly) {
+          // For night checklists: 22:00 → 00:00 → 02:00 → 04:00 → 06:00
+          const aAdjusted = aHour < 12 ? aHour + 24 : aHour;
+          const bAdjusted = bHour < 12 ? bHour + 24 : bHour;
+          return aAdjusted - bAdjusted;
+        } else {
+          // For day checklists: 08:00 → 10:00 → ... → 20:00
+          return aHour - bHour;
+        }
+      });
+
       // Add 'other' at the end for non-periodic items
       if (groupedItems['other']) {
-        orderedSlots.push('other');
+        sortedSlots.push('other');
       }
-      return orderedSlots;
+      return sortedSlots;
     } else {
       // Category order
       const orderedCategories = ['BACKUP_VERIFICATION', 'SERVER_HEALTH', 'SECURITY_CHECK', 'MAINTENANCE'];
@@ -294,9 +326,10 @@ export function ServerAccessChecklist({
 
     if (isLocked) return null;
 
-    // Extract target time from title for ATM_ALERT
-    const timeMatch = item.title.match(/^\[(\d{2}:\d{2})\]/);
-    const targetTime = timeMatch ? timeMatch[1] : '08:00';
+    // Get target time from category (e.g., "08:00", "22:00") or extract from title
+    const targetTime = /^\d{2}:\d{2}$/.test(item.category)
+      ? item.category
+      : (item.title.match(/^\[(\d{2}:\d{2})\]/)?.[1] || '08:00');
 
     switch (inputType) {
       case 'GRAFANA_STATUS':

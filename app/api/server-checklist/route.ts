@@ -776,3 +776,110 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+// DELETE - Release a claimed checklist
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const checklistId = searchParams.get('id');
+    const type = searchParams.get('type') as DailyChecklistType | null;
+
+    // Get staff profile
+    const staffProfile = await prisma.staffShiftProfile.findFirst({
+      where: {
+        userId: session.user.id,
+        isActive: true,
+      },
+    });
+
+    if (!staffProfile) {
+      return NextResponse.json(
+        { error: 'Profil staff tidak ditemukan' },
+        { status: 403 }
+      );
+    }
+
+    // Find the checklist to release
+    let checklistToRelease;
+
+    if (checklistId) {
+      // Release by specific ID
+      checklistToRelease = await prisma.serverAccessDailyChecklist.findFirst({
+        where: {
+          id: checklistId,
+          userId: session.user.id,
+        },
+        include: { items: true },
+      });
+    } else if (type && VALID_CHECKLIST_TYPES.includes(type)) {
+      // Release by type for today
+      const checklistDate = getChecklistDate(type);
+      checklistToRelease = await prisma.serverAccessDailyChecklist.findFirst({
+        where: {
+          userId: session.user.id,
+          date: checklistDate,
+          checklistType: type,
+        },
+        include: { items: true },
+      });
+    } else {
+      return NextResponse.json(
+        { error: 'ID atau tipe checklist diperlukan' },
+        { status: 400 }
+      );
+    }
+
+    if (!checklistToRelease) {
+      return NextResponse.json(
+        { error: 'Checklist tidak ditemukan atau bukan milik Anda' },
+        { status: 404 }
+      );
+    }
+
+    // Check if checklist is already completed - cannot release completed checklists
+    if (checklistToRelease.status === 'COMPLETED') {
+      return NextResponse.json(
+        { error: 'Tidak dapat melepaskan checklist yang sudah selesai' },
+        { status: 400 }
+      );
+    }
+
+    // Check if any items have been completed
+    const completedItems = checklistToRelease.items.filter(
+      (item) => item.status === 'COMPLETED'
+    );
+
+    if (completedItems.length > 0) {
+      return NextResponse.json(
+        {
+          error: `Tidak dapat melepaskan checklist karena ${completedItems.length} item sudah dikerjakan`,
+          completedCount: completedItems.length,
+        },
+        { status: 400 }
+      );
+    }
+
+    // Delete the checklist and its items (cascade should handle items)
+    await prisma.serverAccessDailyChecklist.delete({
+      where: { id: checklistToRelease.id },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: 'Checklist berhasil dilepaskan',
+      releasedId: checklistToRelease.id,
+      checklistType: checklistToRelease.checklistType,
+    });
+  } catch (error) {
+    console.error('Error releasing server checklist:', error);
+    return NextResponse.json(
+      { error: 'Gagal melepaskan checklist' },
+      { status: 500 }
+    );
+  }
+}

@@ -36,8 +36,8 @@ export async function GET(request: NextRequest) {
     // Set the target datetime
     targetDate.setHours(hours, minutes, 0, 0);
 
-    // Define search window: 5 minutes before and after
-    const marginMs = 5 * 60 * 1000; // 5 minutes in milliseconds
+    // Define search window: 1 minute before, 1 minute after (prioritize after)
+    const marginMs = 1 * 60 * 1000; // 1 minute in milliseconds
     const windowStart = new Date(targetDate.getTime() - marginMs);
     const windowEnd = new Date(targetDate.getTime() + marginMs);
 
@@ -49,26 +49,40 @@ export async function GET(request: NextRequest) {
           lte: windowEnd,
         },
       },
-      orderBy: { receivedAt: 'desc' },
+      orderBy: { receivedAt: 'asc' }, // Ascending to find snapshots closest to/after target
     });
 
     if (snapshots.length === 0) {
       // No snapshot found in the window, try to find the nearest one
-      // Look for the closest snapshot before or after the target time within 30 minutes
-      const extendedWindowStart = new Date(targetDate.getTime() - 30 * 60 * 1000);
-      const extendedWindowEnd = new Date(targetDate.getTime() + 30 * 60 * 1000);
+      // Look for the closest snapshot after the target time first (within 5 minutes)
+      const extendedAfterEnd = new Date(targetDate.getTime() + 5 * 60 * 1000);
+      const extendedBeforeStart = new Date(targetDate.getTime() - 5 * 60 * 1000);
 
-      const nearestSnapshots = await prisma.atmAlarmSnapshot.findMany({
+      // First, try to find a snapshot AFTER the target time (prioritize)
+      let nearestSnapshot = await prisma.atmAlarmSnapshot.findFirst({
         where: {
           receivedAt: {
-            gte: extendedWindowStart,
-            lte: extendedWindowEnd,
+            gte: targetDate,
+            lte: extendedAfterEnd,
           },
         },
-        orderBy: { receivedAt: 'desc' },
+        orderBy: { receivedAt: 'asc' }, // Get the earliest one after target
       });
 
-      if (nearestSnapshots.length === 0) {
+      // If no snapshot after, look before
+      if (!nearestSnapshot) {
+        nearestSnapshot = await prisma.atmAlarmSnapshot.findFirst({
+          where: {
+            receivedAt: {
+              gte: extendedBeforeStart,
+              lt: targetDate,
+            },
+          },
+          orderBy: { receivedAt: 'desc' }, // Get the latest one before target
+        });
+      }
+
+      if (!nearestSnapshot) {
         return NextResponse.json({
           found: false,
           targetTime,
@@ -77,18 +91,7 @@ export async function GET(request: NextRequest) {
         });
       }
 
-      // Find the nearest snapshot to target time
-      let nearestSnapshot = nearestSnapshots[0];
-      let minDiff = Math.abs(new Date(nearestSnapshot.receivedAt).getTime() - targetDate.getTime());
-
-      for (const snapshot of nearestSnapshots) {
-        const diff = Math.abs(new Date(snapshot.receivedAt).getTime() - targetDate.getTime());
-        if (diff < minDiff) {
-          minDiff = diff;
-          nearestSnapshot = snapshot;
-        }
-      }
-
+      const minDiff = Math.abs(new Date(nearestSnapshot.receivedAt).getTime() - targetDate.getTime());
       const diffMinutes = Math.round(minDiff / 60000);
 
       return NextResponse.json({
@@ -108,18 +111,18 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Find the nearest snapshot to target time from the window
-    let nearestSnapshot = snapshots[0];
-    let minDiff = Math.abs(new Date(nearestSnapshot.receivedAt).getTime() - targetDate.getTime());
+    // Find the best snapshot: prioritize ones AFTER the target time
+    // First, filter snapshots that are >= targetDate
+    const snapshotsAfter = snapshots.filter(
+      (s) => new Date(s.receivedAt).getTime() >= targetDate.getTime()
+    );
+    const snapshotsBefore = snapshots.filter(
+      (s) => new Date(s.receivedAt).getTime() < targetDate.getTime()
+    );
 
-    for (const snapshot of snapshots) {
-      const diff = Math.abs(new Date(snapshot.receivedAt).getTime() - targetDate.getTime());
-      if (diff < minDiff) {
-        minDiff = diff;
-        nearestSnapshot = snapshot;
-      }
-    }
-
+    // Prioritize: use the earliest snapshot after target time, or the latest before
+    let nearestSnapshot = snapshotsAfter.length > 0 ? snapshotsAfter[0] : snapshotsBefore[snapshotsBefore.length - 1];
+    const minDiff = Math.abs(new Date(nearestSnapshot.receivedAt).getTime() - targetDate.getTime());
     const diffMinutes = Math.round(minDiff / 60000);
 
     return NextResponse.json({

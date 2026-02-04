@@ -759,21 +759,21 @@ export default function TechnicianShiftsPage() {
               <div
                 key={day}
                 className={`
-                  min-h-20 p-1 border rounded text-xs overflow-hidden
+                  min-h-28 p-2 border rounded text-xs overflow-hidden
                   ${isWeekend ? 'bg-blue-50 dark:bg-blue-900/20' : 'bg-white dark:bg-gray-800'}
                   ${isToday ? 'border-blue-500 border-2' : 'border-gray-200 dark:border-gray-700'}
                 `}
               >
-                <div className={`font-semibold text-xs mb-0.5 ${isToday ? 'text-blue-600 dark:text-blue-400' : ''}`}>
+                <div className={`font-bold text-sm mb-1 ${isToday ? 'text-blue-600 dark:text-blue-400' : ''}`}>
                   {day}
                 </div>
-                <div className="space-y-0.5">
-                  {Object.entries(assignmentsByType).slice(0, 2).map(([shiftType, assignments]) => {
+                <div className="space-y-1">
+                  {Object.entries(assignmentsByType).slice(0, 3).map(([shiftType, assignments]) => {
                     const config = shiftTypeConfig[shiftType as keyof typeof shiftTypeConfig];
                     return (
-                      <div key={shiftType} className={`p-0.5 rounded text-[9px] ${config?.color || ''}`}>
+                      <div key={shiftType} className={`p-1 rounded text-[10px] ${config?.color || ''}`}>
                         <div className="font-semibold truncate">{config?.label || shiftType}</div>
-                        {assignments.slice(0, 1).map((assignment) => {
+                        {assignments.slice(0, 2).map((assignment) => {
                           const isCurrentUser = assignment.staffProfile.user.id === session?.user?.id;
                           return (
                             <div
@@ -785,15 +785,15 @@ export default function TechnicianShiftsPage() {
                             </div>
                           );
                         })}
-                        {assignments.length > 1 && (
-                          <div className="text-[8px] opacity-75">+{assignments.length - 1} lagi</div>
+                        {assignments.length > 2 && (
+                          <div className="text-[9px] opacity-75">+{assignments.length - 2} lagi</div>
                         )}
                       </div>
                     );
                   })}
-                  {Object.keys(assignmentsByType).length > 2 && (
-                    <div className="text-[8px] text-muted-foreground">
-                      +{Object.keys(assignmentsByType).length - 2} shift lain
+                  {Object.keys(assignmentsByType).length > 3 && (
+                    <div className="text-[9px] text-muted-foreground">
+                      +{Object.keys(assignmentsByType).length - 3} shift lain
                     </div>
                   )}
                 </div>
@@ -1190,7 +1190,7 @@ export default function TechnicianShiftsPage() {
       <CollapsibleSection
         title="Jadwal Bulanan"
         icon={<Calendar className="h-4 w-4" />}
-        defaultOpen={false}
+        defaultOpen={true}
       >
         <div className="space-y-4">
           <div className="flex items-center justify-between">
