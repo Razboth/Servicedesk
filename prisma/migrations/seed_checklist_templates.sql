@@ -1,93 +1,128 @@
 -- ============================================
 -- Seed: Daily Checklist Templates (4 Types)
 -- Date: 2026-02-04
--- Total: 27 templates
+-- Total: 60 templates
+-- Based on: checklist items.xlsx
 -- ============================================
 
--- Clear existing templates (optional - uncomment if needed)
--- DELETE FROM "server_access_checklist_templates";
+-- Clear existing templates first
+DELETE FROM "server_access_checklist_templates";
 
 -- ============================================
--- SERVER_SIANG - Daytime Server Checklist (08:00 - 20:00)
+-- SERVER_SIANG - Daytime Server Checklist (08:00 - 18:00)
 -- PIC: Any staff with server access
--- Total: 8 items
+-- Total: 24 items (4 items x 6 time slots)
 -- ============================================
 
-INSERT INTO "server_access_checklist_templates"
-("id", "title", "description", "category", "checklistType", "order", "isRequired", "isActive", "unlockTime", "createdAt", "updatedAt")
-VALUES
--- Periodic monitoring every 2 hours
-(gen_random_uuid(), 'Pemantauan Server Pukul 08:00', 'Periksa kondisi server pada jam 08:00 WITA. Catat status CPU, memory, disk, dan service penting.', 'SERVER_HEALTH', 'SERVER_SIANG', 1, true, true, '08:00', NOW(), NOW()),
-(gen_random_uuid(), 'Pemantauan Server Pukul 10:00', 'Periksa kondisi server pada jam 10:00 WITA. Catat status CPU, memory, disk, dan service penting.', 'SERVER_HEALTH', 'SERVER_SIANG', 2, true, true, '10:00', NOW(), NOW()),
-(gen_random_uuid(), 'Pemantauan Server Pukul 12:00', 'Periksa kondisi server pada jam 12:00 WITA. Catat status CPU, memory, disk, dan service penting.', 'SERVER_HEALTH', 'SERVER_SIANG', 3, true, true, '12:00', NOW(), NOW()),
-(gen_random_uuid(), 'Pemantauan Server Pukul 14:00', 'Periksa kondisi server pada jam 14:00 WITA. Catat status CPU, memory, disk, dan service penting.', 'SERVER_HEALTH', 'SERVER_SIANG', 4, true, true, '14:00', NOW(), NOW()),
-(gen_random_uuid(), 'Pemantauan Server Pukul 16:00', 'Periksa kondisi server pada jam 16:00 WITA. Catat status CPU, memory, disk, dan service penting.', 'SERVER_HEALTH', 'SERVER_SIANG', 5, true, true, '16:00', NOW(), NOW()),
-(gen_random_uuid(), 'Pemantauan Server Pukul 18:00', 'Periksa kondisi server pada jam 18:00 WITA. Catat status CPU, memory, disk, dan service penting.', 'SERVER_HEALTH', 'SERVER_SIANG', 6, true, true, '18:00', NOW(), NOW()),
--- General daytime tasks
-(gen_random_uuid(), 'Review security logs pagi', 'Periksa log keamanan untuk aktivitas mencurigakan selama malam sebelumnya', 'SECURITY_CHECK', 'SERVER_SIANG', 10, true, true, '08:00', NOW(), NOW()),
-(gen_random_uuid(), 'Cek status scheduled jobs', 'Pastikan scheduled jobs berjalan sesuai jadwal', 'MAINTENANCE', 'SERVER_SIANG', 11, true, true, NULL, NOW(), NOW())
+-- 08:00 Slot
+INSERT INTO "server_access_checklist_templates" ("id", "title", "description", "category", "checklistType", "order", "isRequired", "isActive", "unlockTime", "createdAt", "updatedAt") VALUES
+(gen_random_uuid(), '[08:00] Status Server', 'Periksa status server (CPU, Memory, Disk usage). Pastikan semua service berjalan normal. (Pemeriksaan pukul 08:00 WITA)', 'SERVER_HEALTH', 'SERVER_SIANG', 1, true, true, '08:00', NOW(), NOW()),
+(gen_random_uuid(), '[08:00] Koneksi Jaringan', 'Cek koneksi jaringan utama dan backup. Pastikan latency dalam batas normal. (Pemeriksaan pukul 08:00 WITA)', 'SERVER_HEALTH', 'SERVER_SIANG', 2, true, true, '08:00', NOW(), NOW()),
+(gen_random_uuid(), '[08:00] Koneksi Host 2 Host', 'Verifikasi koneksi Host to Host dengan mitra (BI, switching, dll). (Pemeriksaan pukul 08:00 WITA)', 'SERVER_HEALTH', 'SERVER_SIANG', 3, true, true, '08:00', NOW(), NOW()),
+(gen_random_uuid(), '[08:00] Status ATM', 'Cek jumlah alarm ATM di monitoring. Catat jumlah ATM offline/bermasalah. (Pemeriksaan pukul 08:00 WITA)', 'MAINTENANCE', 'SERVER_SIANG', 4, true, true, '08:00', NOW(), NOW()),
 
-ON CONFLICT DO NOTHING;
+-- 10:00 Slot
+(gen_random_uuid(), '[10:00] Status Server', 'Periksa status server (CPU, Memory, Disk usage). Pastikan semua service berjalan normal. (Pemeriksaan pukul 10:00 WITA)', 'SERVER_HEALTH', 'SERVER_SIANG', 11, true, true, '10:00', NOW(), NOW()),
+(gen_random_uuid(), '[10:00] Koneksi Jaringan', 'Cek koneksi jaringan utama dan backup. Pastikan latency dalam batas normal. (Pemeriksaan pukul 10:00 WITA)', 'SERVER_HEALTH', 'SERVER_SIANG', 12, true, true, '10:00', NOW(), NOW()),
+(gen_random_uuid(), '[10:00] Koneksi Host 2 Host', 'Verifikasi koneksi Host to Host dengan mitra (BI, switching, dll). (Pemeriksaan pukul 10:00 WITA)', 'SERVER_HEALTH', 'SERVER_SIANG', 13, true, true, '10:00', NOW(), NOW()),
+(gen_random_uuid(), '[10:00] Status ATM', 'Cek jumlah alarm ATM di monitoring. Catat jumlah ATM offline/bermasalah. (Pemeriksaan pukul 10:00 WITA)', 'MAINTENANCE', 'SERVER_SIANG', 14, true, true, '10:00', NOW(), NOW()),
+
+-- 12:00 Slot
+(gen_random_uuid(), '[12:00] Status Server', 'Periksa status server (CPU, Memory, Disk usage). Pastikan semua service berjalan normal. (Pemeriksaan pukul 12:00 WITA)', 'SERVER_HEALTH', 'SERVER_SIANG', 21, true, true, '12:00', NOW(), NOW()),
+(gen_random_uuid(), '[12:00] Koneksi Jaringan', 'Cek koneksi jaringan utama dan backup. Pastikan latency dalam batas normal. (Pemeriksaan pukul 12:00 WITA)', 'SERVER_HEALTH', 'SERVER_SIANG', 22, true, true, '12:00', NOW(), NOW()),
+(gen_random_uuid(), '[12:00] Koneksi Host 2 Host', 'Verifikasi koneksi Host to Host dengan mitra (BI, switching, dll). (Pemeriksaan pukul 12:00 WITA)', 'SERVER_HEALTH', 'SERVER_SIANG', 23, true, true, '12:00', NOW(), NOW()),
+(gen_random_uuid(), '[12:00] Status ATM', 'Cek jumlah alarm ATM di monitoring. Catat jumlah ATM offline/bermasalah. (Pemeriksaan pukul 12:00 WITA)', 'MAINTENANCE', 'SERVER_SIANG', 24, true, true, '12:00', NOW(), NOW()),
+
+-- 14:00 Slot
+(gen_random_uuid(), '[14:00] Status Server', 'Periksa status server (CPU, Memory, Disk usage). Pastikan semua service berjalan normal. (Pemeriksaan pukul 14:00 WITA)', 'SERVER_HEALTH', 'SERVER_SIANG', 31, true, true, '14:00', NOW(), NOW()),
+(gen_random_uuid(), '[14:00] Koneksi Jaringan', 'Cek koneksi jaringan utama dan backup. Pastikan latency dalam batas normal. (Pemeriksaan pukul 14:00 WITA)', 'SERVER_HEALTH', 'SERVER_SIANG', 32, true, true, '14:00', NOW(), NOW()),
+(gen_random_uuid(), '[14:00] Koneksi Host 2 Host', 'Verifikasi koneksi Host to Host dengan mitra (BI, switching, dll). (Pemeriksaan pukul 14:00 WITA)', 'SERVER_HEALTH', 'SERVER_SIANG', 33, true, true, '14:00', NOW(), NOW()),
+(gen_random_uuid(), '[14:00] Status ATM', 'Cek jumlah alarm ATM di monitoring. Catat jumlah ATM offline/bermasalah. (Pemeriksaan pukul 14:00 WITA)', 'MAINTENANCE', 'SERVER_SIANG', 34, true, true, '14:00', NOW(), NOW()),
+
+-- 16:00 Slot
+(gen_random_uuid(), '[16:00] Status Server', 'Periksa status server (CPU, Memory, Disk usage). Pastikan semua service berjalan normal. (Pemeriksaan pukul 16:00 WITA)', 'SERVER_HEALTH', 'SERVER_SIANG', 41, true, true, '16:00', NOW(), NOW()),
+(gen_random_uuid(), '[16:00] Koneksi Jaringan', 'Cek koneksi jaringan utama dan backup. Pastikan latency dalam batas normal. (Pemeriksaan pukul 16:00 WITA)', 'SERVER_HEALTH', 'SERVER_SIANG', 42, true, true, '16:00', NOW(), NOW()),
+(gen_random_uuid(), '[16:00] Koneksi Host 2 Host', 'Verifikasi koneksi Host to Host dengan mitra (BI, switching, dll). (Pemeriksaan pukul 16:00 WITA)', 'SERVER_HEALTH', 'SERVER_SIANG', 43, true, true, '16:00', NOW(), NOW()),
+(gen_random_uuid(), '[16:00] Status ATM', 'Cek jumlah alarm ATM di monitoring. Catat jumlah ATM offline/bermasalah. (Pemeriksaan pukul 16:00 WITA)', 'MAINTENANCE', 'SERVER_SIANG', 44, true, true, '16:00', NOW(), NOW()),
+
+-- 18:00 Slot
+(gen_random_uuid(), '[18:00] Status Server', 'Periksa status server (CPU, Memory, Disk usage). Pastikan semua service berjalan normal. (Pemeriksaan pukul 18:00 WITA)', 'SERVER_HEALTH', 'SERVER_SIANG', 51, true, true, '18:00', NOW(), NOW()),
+(gen_random_uuid(), '[18:00] Koneksi Jaringan', 'Cek koneksi jaringan utama dan backup. Pastikan latency dalam batas normal. (Pemeriksaan pukul 18:00 WITA)', 'SERVER_HEALTH', 'SERVER_SIANG', 52, true, true, '18:00', NOW(), NOW()),
+(gen_random_uuid(), '[18:00] Koneksi Host 2 Host', 'Verifikasi koneksi Host to Host dengan mitra (BI, switching, dll). (Pemeriksaan pukul 18:00 WITA)', 'SERVER_HEALTH', 'SERVER_SIANG', 53, true, true, '18:00', NOW(), NOW()),
+(gen_random_uuid(), '[18:00] Status ATM', 'Cek jumlah alarm ATM di monitoring. Catat jumlah ATM offline/bermasalah. (Pemeriksaan pukul 18:00 WITA)', 'MAINTENANCE', 'SERVER_SIANG', 54, true, true, '18:00', NOW(), NOW());
 
 -- ============================================
--- SERVER_MALAM - Nighttime Server Checklist (20:00 - 07:59)
+-- SERVER_MALAM - Nighttime Server Checklist (20:00 - 06:00)
 -- PIC: Shift Standby only
--- Total: 10 items
+-- Total: 26 items (4 items x 6 time slots + 2 extra)
 -- ============================================
 
-INSERT INTO "server_access_checklist_templates"
-("id", "title", "description", "category", "checklistType", "order", "isRequired", "isActive", "unlockTime", "createdAt", "updatedAt")
-VALUES
--- Periodic monitoring every 2 hours
-(gen_random_uuid(), 'Pemantauan Server Pukul 20:00', 'Periksa kondisi server pada jam 20:00 WITA. Catat status CPU, memory, disk, dan service penting.', 'SERVER_HEALTH', 'SERVER_MALAM', 1, true, true, '20:00', NOW(), NOW()),
-(gen_random_uuid(), 'Pemantauan Server Pukul 22:00', 'Periksa kondisi server pada jam 22:00 WITA. Catat status CPU, memory, disk, dan service penting.', 'SERVER_HEALTH', 'SERVER_MALAM', 2, true, true, '22:00', NOW(), NOW()),
-(gen_random_uuid(), 'Pemantauan Server Pukul 00:00', 'Periksa kondisi server pada jam 00:00 WITA (tengah malam). Catat status CPU, memory, disk, dan service penting.', 'SERVER_HEALTH', 'SERVER_MALAM', 3, true, true, '00:00', NOW(), NOW()),
-(gen_random_uuid(), 'Pemantauan Server Pukul 02:00', 'Periksa kondisi server pada jam 02:00 WITA. Catat status CPU, memory, disk, dan service penting.', 'SERVER_HEALTH', 'SERVER_MALAM', 4, true, true, '02:00', NOW(), NOW()),
-(gen_random_uuid(), 'Pemantauan Server Pukul 04:00', 'Periksa kondisi server pada jam 04:00 WITA. Catat status CPU, memory, disk, dan service penting.', 'SERVER_HEALTH', 'SERVER_MALAM', 5, true, true, '04:00', NOW(), NOW()),
-(gen_random_uuid(), 'Pemantauan Server Pukul 06:00', 'Periksa kondisi server pada jam 06:00 WITA. Catat status CPU, memory, disk, dan service penting.', 'SERVER_HEALTH', 'SERVER_MALAM', 6, true, true, '06:00', NOW(), NOW()),
--- Backup verification (night shift responsibility)
-(gen_random_uuid(), 'Verifikasi backup database utama', 'Pastikan backup database utama berhasil dilakukan dan file backup tersedia', 'BACKUP_VERIFICATION', 'SERVER_MALAM', 10, true, true, '22:00', NOW(), NOW()),
-(gen_random_uuid(), 'Verifikasi backup incremental', 'Cek status backup incremental harian', 'BACKUP_VERIFICATION', 'SERVER_MALAM', 11, true, true, '22:30', NOW(), NOW()),
-(gen_random_uuid(), 'Cek integritas file backup', 'Verifikasi bahwa file backup tidak corrupt dan dapat di-restore', 'BACKUP_VERIFICATION', 'SERVER_MALAM', 12, false, true, NULL, NOW(), NOW()),
--- Morning handover preparation
-(gen_random_uuid(), 'Persiapan serah terima pagi', 'Siapkan catatan kejadian malam untuk handover ke shift pagi', 'MAINTENANCE', 'SERVER_MALAM', 20, true, true, '06:00', NOW(), NOW())
+INSERT INTO "server_access_checklist_templates" ("id", "title", "description", "category", "checklistType", "order", "isRequired", "isActive", "unlockTime", "createdAt", "updatedAt") VALUES
+-- 20:00 Slot
+(gen_random_uuid(), '[20:00] Status Server', 'Periksa status server (CPU, Memory, Disk usage). Pastikan semua service berjalan normal. (Pemeriksaan pukul 20:00 WITA)', 'SERVER_HEALTH', 'SERVER_MALAM', 1, true, true, '20:00', NOW(), NOW()),
+(gen_random_uuid(), '[20:00] Koneksi Jaringan', 'Cek koneksi jaringan utama dan backup. Pastikan latency dalam batas normal. (Pemeriksaan pukul 20:00 WITA)', 'SERVER_HEALTH', 'SERVER_MALAM', 2, true, true, '20:00', NOW(), NOW()),
+(gen_random_uuid(), '[20:00] Koneksi Host 2 Host', 'Verifikasi koneksi Host to Host dengan mitra (BI, switching, dll). (Pemeriksaan pukul 20:00 WITA)', 'SERVER_HEALTH', 'SERVER_MALAM', 3, true, true, '20:00', NOW(), NOW()),
+(gen_random_uuid(), '[20:00] Status ATM', 'Cek jumlah alarm ATM di monitoring. Catat jumlah ATM offline/bermasalah. (Pemeriksaan pukul 20:00 WITA)', 'MAINTENANCE', 'SERVER_MALAM', 4, true, true, '20:00', NOW(), NOW()),
 
-ON CONFLICT DO NOTHING;
+-- 22:00 Slot
+(gen_random_uuid(), '[22:00] Status Server', 'Periksa status server (CPU, Memory, Disk usage). Pastikan semua service berjalan normal. (Pemeriksaan pukul 22:00 WITA)', 'SERVER_HEALTH', 'SERVER_MALAM', 11, true, true, '22:00', NOW(), NOW()),
+(gen_random_uuid(), '[22:00] Koneksi Jaringan', 'Cek koneksi jaringan utama dan backup. Pastikan latency dalam batas normal. (Pemeriksaan pukul 22:00 WITA)', 'SERVER_HEALTH', 'SERVER_MALAM', 12, true, true, '22:00', NOW(), NOW()),
+(gen_random_uuid(), '[22:00] Koneksi Host 2 Host', 'Verifikasi koneksi Host to Host dengan mitra (BI, switching, dll). (Pemeriksaan pukul 22:00 WITA)', 'SERVER_HEALTH', 'SERVER_MALAM', 13, true, true, '22:00', NOW(), NOW()),
+(gen_random_uuid(), '[22:00] Status ATM', 'Cek jumlah alarm ATM di monitoring. Catat jumlah ATM offline/bermasalah. (Pemeriksaan pukul 22:00 WITA)', 'MAINTENANCE', 'SERVER_MALAM', 14, true, true, '22:00', NOW(), NOW()),
+
+-- 00:00 Slot
+(gen_random_uuid(), '[00:00] Status Server', 'Periksa status server (CPU, Memory, Disk usage). Pastikan semua service berjalan normal. (Pemeriksaan pukul 00:00 WITA)', 'SERVER_HEALTH', 'SERVER_MALAM', 21, true, true, '00:00', NOW(), NOW()),
+(gen_random_uuid(), '[00:00] Koneksi Jaringan', 'Cek koneksi jaringan utama dan backup. Pastikan latency dalam batas normal. (Pemeriksaan pukul 00:00 WITA)', 'SERVER_HEALTH', 'SERVER_MALAM', 22, true, true, '00:00', NOW(), NOW()),
+(gen_random_uuid(), '[00:00] Koneksi Host 2 Host', 'Verifikasi koneksi Host to Host dengan mitra (BI, switching, dll). (Pemeriksaan pukul 00:00 WITA)', 'SERVER_HEALTH', 'SERVER_MALAM', 23, true, true, '00:00', NOW(), NOW()),
+(gen_random_uuid(), '[00:00] Status ATM', 'Cek jumlah alarm ATM di monitoring. Catat jumlah ATM offline/bermasalah. (Pemeriksaan pukul 00:00 WITA)', 'MAINTENANCE', 'SERVER_MALAM', 24, true, true, '00:00', NOW(), NOW()),
+
+-- 02:00 Slot
+(gen_random_uuid(), '[02:00] Status Server', 'Periksa status server (CPU, Memory, Disk usage). Pastikan semua service berjalan normal. (Pemeriksaan pukul 02:00 WITA)', 'SERVER_HEALTH', 'SERVER_MALAM', 31, true, true, '02:00', NOW(), NOW()),
+(gen_random_uuid(), '[02:00] Koneksi Jaringan', 'Cek koneksi jaringan utama dan backup. Pastikan latency dalam batas normal. (Pemeriksaan pukul 02:00 WITA)', 'SERVER_HEALTH', 'SERVER_MALAM', 32, true, true, '02:00', NOW(), NOW()),
+(gen_random_uuid(), '[02:00] Koneksi Host 2 Host', 'Verifikasi koneksi Host to Host dengan mitra (BI, switching, dll). (Pemeriksaan pukul 02:00 WITA)', 'SERVER_HEALTH', 'SERVER_MALAM', 33, true, true, '02:00', NOW(), NOW()),
+(gen_random_uuid(), '[02:00] Status ATM', 'Cek jumlah alarm ATM di monitoring. Catat jumlah ATM offline/bermasalah. (Pemeriksaan pukul 02:00 WITA)', 'MAINTENANCE', 'SERVER_MALAM', 34, true, true, '02:00', NOW(), NOW()),
+
+-- 04:00 Slot
+(gen_random_uuid(), '[04:00] Status Server', 'Periksa status server (CPU, Memory, Disk usage). Pastikan semua service berjalan normal. (Pemeriksaan pukul 04:00 WITA)', 'SERVER_HEALTH', 'SERVER_MALAM', 41, true, true, '04:00', NOW(), NOW()),
+(gen_random_uuid(), '[04:00] Koneksi Jaringan', 'Cek koneksi jaringan utama dan backup. Pastikan latency dalam batas normal. (Pemeriksaan pukul 04:00 WITA)', 'SERVER_HEALTH', 'SERVER_MALAM', 42, true, true, '04:00', NOW(), NOW()),
+(gen_random_uuid(), '[04:00] Koneksi Host 2 Host', 'Verifikasi koneksi Host to Host dengan mitra (BI, switching, dll). (Pemeriksaan pukul 04:00 WITA)', 'SERVER_HEALTH', 'SERVER_MALAM', 43, true, true, '04:00', NOW(), NOW()),
+(gen_random_uuid(), '[04:00] Status ATM', 'Cek jumlah alarm ATM di monitoring. Catat jumlah ATM offline/bermasalah. (Pemeriksaan pukul 04:00 WITA)', 'MAINTENANCE', 'SERVER_MALAM', 44, true, true, '04:00', NOW(), NOW()),
+
+-- 06:00 Slot
+(gen_random_uuid(), '[06:00] Status Server', 'Periksa status server (CPU, Memory, Disk usage). Pastikan semua service berjalan normal. (Pemeriksaan pukul 06:00 WITA)', 'SERVER_HEALTH', 'SERVER_MALAM', 51, true, true, '06:00', NOW(), NOW()),
+(gen_random_uuid(), '[06:00] Koneksi Jaringan', 'Cek koneksi jaringan utama dan backup. Pastikan latency dalam batas normal. (Pemeriksaan pukul 06:00 WITA)', 'SERVER_HEALTH', 'SERVER_MALAM', 52, true, true, '06:00', NOW(), NOW()),
+(gen_random_uuid(), '[06:00] Koneksi Host 2 Host', 'Verifikasi koneksi Host to Host dengan mitra (BI, switching, dll). (Pemeriksaan pukul 06:00 WITA)', 'SERVER_HEALTH', 'SERVER_MALAM', 53, true, true, '06:00', NOW(), NOW()),
+(gen_random_uuid(), '[06:00] Status ATM', 'Cek jumlah alarm ATM di monitoring. Catat jumlah ATM offline/bermasalah. (Pemeriksaan pukul 06:00 WITA)', 'MAINTENANCE', 'SERVER_MALAM', 54, true, true, '06:00', NOW(), NOW()),
+
+-- Extra night shift items
+(gen_random_uuid(), 'Backup Database', 'Verifikasi backup database harian berhasil. Cek log backup dan ukuran file.', 'BACKUP_VERIFICATION', 'SERVER_MALAM', 100, true, true, '22:00', NOW(), NOW()),
+(gen_random_uuid(), 'Persiapan Serah Terima Pagi', 'Siapkan catatan kejadian malam untuk handover ke shift pagi.', 'MAINTENANCE', 'SERVER_MALAM', 110, true, true, '06:00', NOW(), NOW());
 
 -- ============================================
--- HARIAN - Daily Operational Checklist (08:00 - branch closed)
--- PIC: Shift Operasional
--- Total: 4 items
--- ============================================
-
-INSERT INTO "server_access_checklist_templates"
-("id", "title", "description", "category", "checklistType", "order", "isRequired", "isActive", "unlockTime", "createdAt", "updatedAt")
-VALUES
-(gen_random_uuid(), 'Cek status sistem utama', 'Verifikasi semua sistem utama berjalan normal', 'SERVER_HEALTH', 'HARIAN', 1, true, true, '08:00', NOW(), NOW()),
-(gen_random_uuid(), 'Review tiket pending', 'Tinjau tiket yang masih pending dari hari sebelumnya', 'MAINTENANCE', 'HARIAN', 2, true, true, NULL, NOW(), NOW()),
-(gen_random_uuid(), 'Koordinasi dengan tim cabang', 'Konfirmasi status operasional dengan tim cabang', 'MAINTENANCE', 'HARIAN', 3, false, true, NULL, NOW(), NOW()),
--- Placeholder - user will provide actual items
-(gen_random_uuid(), '[Placeholder] Tugas harian 1', 'Item placeholder - akan diganti dengan tugas harian sebenarnya', 'MAINTENANCE', 'HARIAN', 100, false, true, NULL, NOW(), NOW())
-
-ON CONFLICT DO NOTHING;
-
--- ============================================
--- AKHIR_HARI - End of Day Checklist (before handover ~18:00-20:00)
+-- HARIAN - Daily Operational Checklist
 -- PIC: Shift Operasional
 -- Total: 5 items
 -- ============================================
 
-INSERT INTO "server_access_checklist_templates"
-("id", "title", "description", "category", "checklistType", "order", "isRequired", "isActive", "unlockTime", "createdAt", "updatedAt")
-VALUES
-(gen_random_uuid(), 'Rangkuman aktivitas hari ini', 'Buat ringkasan aktivitas dan kejadian penting selama shift', 'MAINTENANCE', 'AKHIR_HARI', 1, true, true, '17:00', NOW(), NOW()),
-(gen_random_uuid(), 'Update status tiket', 'Pastikan semua tiket yang dikerjakan sudah di-update statusnya', 'MAINTENANCE', 'AKHIR_HARI', 2, true, true, NULL, NOW(), NOW()),
-(gen_random_uuid(), 'Catatan serah terima', 'Siapkan catatan penting untuk shift malam', 'MAINTENANCE', 'AKHIR_HARI', 3, true, true, '18:00', NOW(), NOW()),
-(gen_random_uuid(), 'Verifikasi final sistem', 'Pastikan semua sistem dalam kondisi stabil sebelum handover', 'SERVER_HEALTH', 'AKHIR_HARI', 4, true, true, '19:00', NOW(), NOW()),
--- Placeholder - user will provide actual items
-(gen_random_uuid(), '[Placeholder] Tugas akhir hari 1', 'Item placeholder - akan diganti dengan tugas akhir hari sebenarnya', 'MAINTENANCE', 'AKHIR_HARI', 100, false, true, NULL, NOW(), NOW())
+INSERT INTO "server_access_checklist_templates" ("id", "title", "description", "category", "checklistType", "order", "isRequired", "isActive", "unlockTime", "createdAt", "updatedAt") VALUES
+(gen_random_uuid(), 'Koneksi Touch iOS', 'Cek koneksi dan fungsi aplikasi mobile banking iOS.', 'SERVER_HEALTH', 'HARIAN', 1, true, true, '08:00', NOW(), NOW()),
+(gen_random_uuid(), 'Koneksi Touch Android', 'Cek koneksi dan fungsi aplikasi mobile banking Android.', 'SERVER_HEALTH', 'HARIAN', 2, true, true, '08:00', NOW(), NOW()),
+(gen_random_uuid(), 'Koneksi QRIS', 'Verifikasi koneksi dan transaksi QRIS berjalan normal.', 'SERVER_HEALTH', 'HARIAN', 3, true, true, '08:00', NOW(), NOW()),
+(gen_random_uuid(), 'Grafik Grafana', 'Monitor dashboard Grafana untuk anomali atau alert.', 'MAINTENANCE', 'HARIAN', 4, true, true, NULL, NOW(), NOW()),
+(gen_random_uuid(), 'Review Tiket Pending', 'Tinjau tiket yang masih pending dari hari sebelumnya.', 'MAINTENANCE', 'HARIAN', 5, false, true, NULL, NOW(), NOW());
 
-ON CONFLICT DO NOTHING;
+-- ============================================
+-- AKHIR_HARI - End of Day Checklist
+-- PIC: Shift Operasional (before handover)
+-- Total: 5 items
+-- ============================================
+
+INSERT INTO "server_access_checklist_templates" ("id", "title", "description", "category", "checklistType", "order", "isRequired", "isActive", "unlockTime", "createdAt", "updatedAt") VALUES
+(gen_random_uuid(), 'Daily Server Usage', 'Dokumentasikan penggunaan resource server hari ini (peak usage, anomali).', 'SERVER_HEALTH', 'AKHIR_HARI', 1, true, true, '17:00', NOW(), NOW()),
+(gen_random_uuid(), 'File Staging', 'Cek dan bersihkan file staging yang sudah tidak diperlukan.', 'MAINTENANCE', 'AKHIR_HARI', 2, true, true, '17:00', NOW(), NOW()),
+(gen_random_uuid(), 'Report Harian', 'Siapkan laporan aktivitas harian untuk dokumentasi.', 'MAINTENANCE', 'AKHIR_HARI', 3, true, true, '17:00', NOW(), NOW()),
+(gen_random_uuid(), 'Operasional Cabang', 'Konfirmasi status operasional semua cabang dan catat jika ada kendala.', 'MAINTENANCE', 'AKHIR_HARI', 4, true, true, '16:00', NOW(), NOW()),
+(gen_random_uuid(), 'Catatan Serah Terima', 'Siapkan catatan penting untuk shift malam (pending issues, follow-up needed).', 'MAINTENANCE', 'AKHIR_HARI', 5, true, true, '18:00', NOW(), NOW());
 
 -- ============================================
 -- Verification: Count templates per type

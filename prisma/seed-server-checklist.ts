@@ -34,194 +34,107 @@ interface ChecklistTemplate {
 }
 
 // ============================================
+// PERIODIC SERVER ITEMS - Check every 2 hours
+// These items are repeated for each time slot
+// ============================================
+const periodicServerItems = [
+  {
+    title: 'Status Server',
+    description: 'Periksa status server (CPU, Memory, Disk usage). Pastikan semua service berjalan normal.',
+    category: 'SERVER_HEALTH' as const,
+    isRequired: true,
+  },
+  {
+    title: 'Koneksi Jaringan',
+    description: 'Cek koneksi jaringan utama dan backup. Pastikan latency dalam batas normal.',
+    category: 'SERVER_HEALTH' as const,
+    isRequired: true,
+  },
+  {
+    title: 'Koneksi Host 2 Host',
+    description: 'Verifikasi koneksi Host to Host dengan mitra (BI, switching, dll).',
+    category: 'SERVER_HEALTH' as const,
+    isRequired: true,
+  },
+  {
+    title: 'Status ATM',
+    description: 'Cek jumlah alarm ATM di monitoring. Catat jumlah ATM offline/bermasalah.',
+    category: 'MAINTENANCE' as const,
+    isRequired: true,
+  },
+]
+
+// Time slots for daytime (SERVER_SIANG)
+const daytimeSlots = ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00']
+
+// Time slots for nighttime (SERVER_MALAM)
+const nighttimeSlots = ['20:00', '22:00', '00:00', '02:00', '04:00', '06:00']
+
+// Generate periodic items for a checklist type
+function generatePeriodicItems(
+  checklistType: 'SERVER_SIANG' | 'SERVER_MALAM',
+  timeSlots: string[]
+): ChecklistTemplate[] {
+  const items: ChecklistTemplate[] = []
+
+  timeSlots.forEach((time, slotIndex) => {
+    periodicServerItems.forEach((item, itemIndex) => {
+      items.push({
+        title: `[${time}] ${item.title}`,
+        description: `${item.description} (Pemeriksaan pukul ${time} WITA)`,
+        category: item.category,
+        checklistType,
+        order: slotIndex * 10 + itemIndex + 1,
+        isRequired: item.isRequired,
+        unlockTime: time,
+      })
+    })
+  })
+
+  return items
+}
+
+// ============================================
 // SERVER_SIANG - Daytime Server Checklist (08:00 - 20:00)
-// PIC: Any staff with server access
 // ============================================
 const serverSiangTemplates: ChecklistTemplate[] = [
-  // Periodic monitoring every 2 hours
-  {
-    title: 'Pemantauan Server Pukul 08:00',
-    description: 'Periksa kondisi server pada jam 08:00 WITA. Catat status CPU, memory, disk, dan service penting.',
-    category: 'SERVER_HEALTH',
-    checklistType: 'SERVER_SIANG',
-    order: 1,
-    isRequired: true,
-    unlockTime: '08:00',
-  },
-  {
-    title: 'Pemantauan Server Pukul 10:00',
-    description: 'Periksa kondisi server pada jam 10:00 WITA. Catat status CPU, memory, disk, dan service penting.',
-    category: 'SERVER_HEALTH',
-    checklistType: 'SERVER_SIANG',
-    order: 2,
-    isRequired: true,
-    unlockTime: '10:00',
-  },
-  {
-    title: 'Pemantauan Server Pukul 12:00',
-    description: 'Periksa kondisi server pada jam 12:00 WITA. Catat status CPU, memory, disk, dan service penting.',
-    category: 'SERVER_HEALTH',
-    checklistType: 'SERVER_SIANG',
-    order: 3,
-    isRequired: true,
-    unlockTime: '12:00',
-  },
-  {
-    title: 'Pemantauan Server Pukul 14:00',
-    description: 'Periksa kondisi server pada jam 14:00 WITA. Catat status CPU, memory, disk, dan service penting.',
-    category: 'SERVER_HEALTH',
-    checklistType: 'SERVER_SIANG',
-    order: 4,
-    isRequired: true,
-    unlockTime: '14:00',
-  },
-  {
-    title: 'Pemantauan Server Pukul 16:00',
-    description: 'Periksa kondisi server pada jam 16:00 WITA. Catat status CPU, memory, disk, dan service penting.',
-    category: 'SERVER_HEALTH',
-    checklistType: 'SERVER_SIANG',
-    order: 5,
-    isRequired: true,
-    unlockTime: '16:00',
-  },
-  {
-    title: 'Pemantauan Server Pukul 18:00',
-    description: 'Periksa kondisi server pada jam 18:00 WITA. Catat status CPU, memory, disk, dan service penting.',
-    category: 'SERVER_HEALTH',
-    checklistType: 'SERVER_SIANG',
-    order: 6,
-    isRequired: true,
-    unlockTime: '18:00',
-  },
-  // General daytime tasks
-  {
-    title: 'Review security logs pagi',
-    description: 'Periksa log keamanan untuk aktivitas mencurigakan selama malam sebelumnya',
-    category: 'SECURITY_CHECK',
-    checklistType: 'SERVER_SIANG',
-    order: 10,
-    isRequired: true,
-    unlockTime: '08:00',
-  },
-  {
-    title: 'Cek status scheduled jobs',
-    description: 'Pastikan scheduled jobs berjalan sesuai jadwal',
-    category: 'MAINTENANCE',
-    checklistType: 'SERVER_SIANG',
-    order: 11,
-    isRequired: true,
-    unlockTime: null,
-  },
+  ...generatePeriodicItems('SERVER_SIANG', daytimeSlots),
 ]
 
 // ============================================
 // SERVER_MALAM - Nighttime Server Checklist (20:00 - 07:59)
-// PIC: Shift Standby only
 // ============================================
 const serverMalamTemplates: ChecklistTemplate[] = [
-  // Periodic monitoring every 2 hours
+  ...generatePeriodicItems('SERVER_MALAM', nighttimeSlots),
+  // Backup verification - night shift responsibility
   {
-    title: 'Pemantauan Server Pukul 20:00',
-    description: 'Periksa kondisi server pada jam 20:00 WITA. Catat status CPU, memory, disk, dan service penting.',
-    category: 'SERVER_HEALTH',
+    title: 'Backup Database',
+    description: 'Verifikasi backup database harian berhasil. Cek log backup dan ukuran file.',
+    category: 'BACKUP_VERIFICATION',
     checklistType: 'SERVER_MALAM',
-    order: 1,
-    isRequired: true,
-    unlockTime: '20:00',
-  },
-  {
-    title: 'Pemantauan Server Pukul 22:00',
-    description: 'Periksa kondisi server pada jam 22:00 WITA. Catat status CPU, memory, disk, dan service penting.',
-    category: 'SERVER_HEALTH',
-    checklistType: 'SERVER_MALAM',
-    order: 2,
+    order: 100,
     isRequired: true,
     unlockTime: '22:00',
   },
   {
-    title: 'Pemantauan Server Pukul 00:00',
-    description: 'Periksa kondisi server pada jam 00:00 WITA (tengah malam). Catat status CPU, memory, disk, dan service penting.',
-    category: 'SERVER_HEALTH',
-    checklistType: 'SERVER_MALAM',
-    order: 3,
-    isRequired: true,
-    unlockTime: '00:00',
-  },
-  {
-    title: 'Pemantauan Server Pukul 02:00',
-    description: 'Periksa kondisi server pada jam 02:00 WITA. Catat status CPU, memory, disk, dan service penting.',
-    category: 'SERVER_HEALTH',
-    checklistType: 'SERVER_MALAM',
-    order: 4,
-    isRequired: true,
-    unlockTime: '02:00',
-  },
-  {
-    title: 'Pemantauan Server Pukul 04:00',
-    description: 'Periksa kondisi server pada jam 04:00 WITA. Catat status CPU, memory, disk, dan service penting.',
-    category: 'SERVER_HEALTH',
-    checklistType: 'SERVER_MALAM',
-    order: 5,
-    isRequired: true,
-    unlockTime: '04:00',
-  },
-  {
-    title: 'Pemantauan Server Pukul 06:00',
-    description: 'Periksa kondisi server pada jam 06:00 WITA. Catat status CPU, memory, disk, dan service penting.',
-    category: 'SERVER_HEALTH',
-    checklistType: 'SERVER_MALAM',
-    order: 6,
-    isRequired: true,
-    unlockTime: '06:00',
-  },
-  // Backup verification (night shift responsibility)
-  {
-    title: 'Verifikasi backup database utama',
-    description: 'Pastikan backup database utama berhasil dilakukan dan file backup tersedia',
-    category: 'BACKUP_VERIFICATION',
-    checklistType: 'SERVER_MALAM',
-    order: 10,
-    isRequired: true,
-    unlockTime: '22:00',
-  },
-  {
-    title: 'Verifikasi backup incremental',
-    description: 'Cek status backup incremental harian',
-    category: 'BACKUP_VERIFICATION',
-    checklistType: 'SERVER_MALAM',
-    order: 11,
-    isRequired: true,
-    unlockTime: '22:30',
-  },
-  {
-    title: 'Cek integritas file backup',
-    description: 'Verifikasi bahwa file backup tidak corrupt dan dapat di-restore',
-    category: 'BACKUP_VERIFICATION',
-    checklistType: 'SERVER_MALAM',
-    order: 12,
-    isRequired: false,
-    unlockTime: null,
-  },
-  // Morning handover preparation
-  {
-    title: 'Persiapan serah terima pagi',
-    description: 'Siapkan catatan kejadian malam untuk handover ke shift pagi',
+    title: 'Persiapan Serah Terima Pagi',
+    description: 'Siapkan catatan kejadian malam untuk handover ke shift pagi.',
     category: 'MAINTENANCE',
     checklistType: 'SERVER_MALAM',
-    order: 20,
+    order: 110,
     isRequired: true,
     unlockTime: '06:00',
   },
 ]
 
 // ============================================
-// HARIAN - Daily Operational Checklist (08:00 - branch closed)
+// HARIAN - Daily Operational Checklist
 // PIC: Shift Operasional
 // ============================================
 const harianTemplates: ChecklistTemplate[] = [
   {
-    title: 'Cek status sistem utama',
-    description: 'Verifikasi semua sistem utama berjalan normal',
+    title: 'Koneksi Touch iOS',
+    description: 'Cek koneksi dan fungsi aplikasi mobile banking iOS.',
     category: 'SERVER_HEALTH',
     checklistType: 'HARIAN',
     order: 1,
@@ -229,85 +142,92 @@ const harianTemplates: ChecklistTemplate[] = [
     unlockTime: '08:00',
   },
   {
-    title: 'Review tiket pending',
-    description: 'Tinjau tiket yang masih pending dari hari sebelumnya',
-    category: 'MAINTENANCE',
+    title: 'Koneksi Touch Android',
+    description: 'Cek koneksi dan fungsi aplikasi mobile banking Android.',
+    category: 'SERVER_HEALTH',
     checklistType: 'HARIAN',
     order: 2,
+    isRequired: true,
+    unlockTime: '08:00',
+  },
+  {
+    title: 'Koneksi QRIS',
+    description: 'Verifikasi koneksi dan transaksi QRIS berjalan normal.',
+    category: 'SERVER_HEALTH',
+    checklistType: 'HARIAN',
+    order: 3,
+    isRequired: true,
+    unlockTime: '08:00',
+  },
+  {
+    title: 'Grafik Grafana',
+    description: 'Monitor dashboard Grafana untuk anomali atau alert.',
+    category: 'MAINTENANCE',
+    checklistType: 'HARIAN',
+    order: 4,
     isRequired: true,
     unlockTime: null,
   },
   {
-    title: 'Koordinasi dengan tim cabang',
-    description: 'Konfirmasi status operasional dengan tim cabang',
+    title: 'Review Tiket Pending',
+    description: 'Tinjau tiket yang masih pending dari hari sebelumnya.',
     category: 'MAINTENANCE',
     checklistType: 'HARIAN',
-    order: 3,
-    isRequired: false,
-    unlockTime: null,
-  },
-  // Placeholder - user will provide actual items
-  {
-    title: '[Placeholder] Tugas harian 1',
-    description: 'Item placeholder - akan diganti dengan tugas harian sebenarnya',
-    category: 'MAINTENANCE',
-    checklistType: 'HARIAN',
-    order: 100,
+    order: 5,
     isRequired: false,
     unlockTime: null,
   },
 ]
 
 // ============================================
-// AKHIR_HARI - End of Day Checklist (before handover ~18:00-20:00)
-// PIC: Shift Operasional
+// AKHIR_HARI - End of Day Checklist
+// PIC: Shift Operasional (before handover)
 // ============================================
 const akhirHariTemplates: ChecklistTemplate[] = [
   {
-    title: 'Rangkuman aktivitas hari ini',
-    description: 'Buat ringkasan aktivitas dan kejadian penting selama shift',
-    category: 'MAINTENANCE',
+    title: 'Daily Server Usage',
+    description: 'Dokumentasikan penggunaan resource server hari ini (peak usage, anomali).',
+    category: 'SERVER_HEALTH',
     checklistType: 'AKHIR_HARI',
     order: 1,
     isRequired: true,
     unlockTime: '17:00',
   },
   {
-    title: 'Update status tiket',
-    description: 'Pastikan semua tiket yang dikerjakan sudah di-update statusnya',
+    title: 'File Staging',
+    description: 'Cek dan bersihkan file staging yang sudah tidak diperlukan.',
     category: 'MAINTENANCE',
     checklistType: 'AKHIR_HARI',
     order: 2,
     isRequired: true,
-    unlockTime: null,
+    unlockTime: '17:00',
   },
   {
-    title: 'Catatan serah terima',
-    description: 'Siapkan catatan penting untuk shift malam',
+    title: 'Report Harian',
+    description: 'Siapkan laporan aktivitas harian untuk dokumentasi.',
     category: 'MAINTENANCE',
     checklistType: 'AKHIR_HARI',
     order: 3,
     isRequired: true,
-    unlockTime: '18:00',
+    unlockTime: '17:00',
   },
   {
-    title: 'Verifikasi final sistem',
-    description: 'Pastikan semua sistem dalam kondisi stabil sebelum handover',
-    category: 'SERVER_HEALTH',
+    title: 'Operasional Cabang',
+    description: 'Konfirmasi status operasional semua cabang dan catat jika ada kendala.',
+    category: 'MAINTENANCE',
     checklistType: 'AKHIR_HARI',
     order: 4,
     isRequired: true,
-    unlockTime: '19:00',
+    unlockTime: '16:00',
   },
-  // Placeholder - user will provide actual items
   {
-    title: '[Placeholder] Tugas akhir hari 1',
-    description: 'Item placeholder - akan diganti dengan tugas akhir hari sebenarnya',
+    title: 'Catatan Serah Terima',
+    description: 'Siapkan catatan penting untuk shift malam (pending issues, follow-up needed).',
     category: 'MAINTENANCE',
     checklistType: 'AKHIR_HARI',
-    order: 100,
-    isRequired: false,
-    unlockTime: null,
+    order: 5,
+    isRequired: true,
+    unlockTime: '18:00',
   },
 ]
 
@@ -331,7 +251,6 @@ async function main() {
   }
 
   let created = 0
-  let skipped = 0
   let updated = 0
 
   const stats: Record<string, number> = {
@@ -391,13 +310,12 @@ async function main() {
   log.section('=== Seed Complete ===')
   log.info(`Created: ${created}`)
   log.info(`Updated: ${updated}`)
-  log.info(`Skipped: ${skipped}`)
 
   log.section('=== Templates per Checklist Type ===')
-  log.info(`SERVER_SIANG: ${stats.SERVER_SIANG} items (daytime 08:00-20:00)`)
-  log.info(`SERVER_MALAM: ${stats.SERVER_MALAM} items (nighttime 20:00-07:59)`)
-  log.info(`HARIAN: ${stats.HARIAN} items (daily ops)`)
-  log.info(`AKHIR_HARI: ${stats.AKHIR_HARI} items (end of day)`)
+  log.info(`SERVER_SIANG: ${stats.SERVER_SIANG} items (daytime 08:00-18:00, periodic every 2 hours)`)
+  log.info(`SERVER_MALAM: ${stats.SERVER_MALAM} items (nighttime 20:00-06:00, periodic + backup)`)
+  log.info(`HARIAN: ${stats.HARIAN} items (daily operational)`)
+  log.info(`AKHIR_HARI: ${stats.AKHIR_HARI} items (end of day handover)`)
 }
 
 main()
