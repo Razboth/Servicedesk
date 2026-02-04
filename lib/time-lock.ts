@@ -1,17 +1,31 @@
 /**
  * Time-lock utilities for checklist items
- * Times are in Indonesia WIB timezone (UTC+7)
+ * Times are in Indonesia WITA timezone (UTC+8)
  */
+
+// WITA timezone offset in milliseconds (UTC+8)
+const WITA_OFFSET_MS = 8 * 60 * 60 * 1000;
+
+/**
+ * Get current time in WITA (UTC+8)
+ * @returns Date object representing current time in WITA
+ */
+export function getCurrentTimeWITA(): Date {
+  const now = new Date();
+  // Get UTC time and add WITA offset
+  const utcTime = now.getTime() + now.getTimezoneOffset() * 60 * 1000;
+  return new Date(utcTime + WITA_OFFSET_MS);
+}
 
 /**
  * Check if a time-locked item is unlocked
- * @param unlockTime - Time string in "HH:mm" format (e.g., "22:00")
- * @param currentTime - Current time to check against (defaults to now)
+ * @param unlockTime - Time string in "HH:mm" format (e.g., "22:00") in WITA
+ * @param currentTime - Current time to check against (defaults to now in WITA)
  * @returns true if unlocked (no lock or past unlock time)
  */
 export function isItemUnlocked(
   unlockTime: string | null | undefined,
-  currentTime: Date = new Date()
+  currentTime: Date = getCurrentTimeWITA()
 ): boolean {
   if (!unlockTime) return true; // No lock time = always unlocked
 
@@ -22,22 +36,25 @@ export function isItemUnlocked(
     return true; // Invalid format = treat as unlocked
   }
 
-  // Create unlock time for today
-  const unlockDate = new Date(currentTime);
+  // Get current time in WITA if not already converted
+  const witaTime = currentTime;
+
+  // Create unlock time for today in WITA
+  const unlockDate = new Date(witaTime);
   unlockDate.setHours(hours, minutes, 0, 0);
 
-  return currentTime >= unlockDate;
+  return witaTime >= unlockDate;
 }
 
 /**
  * Get time remaining until unlock
- * @param unlockTime - Time string in "HH:mm" format
- * @param currentTime - Current time to check against
+ * @param unlockTime - Time string in "HH:mm" format in WITA
+ * @param currentTime - Current time to check against (defaults to WITA)
  * @returns Object with hours, minutes remaining, or null if already unlocked
  */
 export function getTimeUntilUnlock(
   unlockTime: string | null | undefined,
-  currentTime: Date = new Date()
+  currentTime: Date = getCurrentTimeWITA()
 ): { hours: number; minutes: number } | null {
   if (!unlockTime || isItemUnlocked(unlockTime, currentTime)) {
     return null;
@@ -58,13 +75,13 @@ export function getTimeUntilUnlock(
 
 /**
  * Get display message for lock status (Indonesian)
- * @param unlockTime - Time string in "HH:mm" format
- * @param currentTime - Current time to check against
+ * @param unlockTime - Time string in "HH:mm" format in WITA
+ * @param currentTime - Current time to check against (defaults to WITA)
  * @returns Display message or null if unlocked
  */
 export function getLockStatusMessage(
   unlockTime: string | null | undefined,
-  currentTime: Date = new Date()
+  currentTime: Date = getCurrentTimeWITA()
 ): string | null {
   if (!unlockTime || isItemUnlocked(unlockTime, currentTime)) {
     return null;
@@ -98,5 +115,5 @@ export function isValidUnlockTime(unlockTime: string): boolean {
  */
 export function formatUnlockTime(unlockTime: string | null | undefined): string {
   if (!unlockTime) return '-';
-  return `Pukul ${unlockTime} WIB`;
+  return `Pukul ${unlockTime} WITA`;
 }
