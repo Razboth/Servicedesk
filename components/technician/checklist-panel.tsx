@@ -14,6 +14,7 @@ import {
   RefreshCw,
   CheckCircle2,
   AlertTriangle,
+  LogOut,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -105,6 +106,7 @@ export function ChecklistPanel({ type, onStatsUpdate }: ChecklistPanelProps) {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [claiming, setClaiming] = useState(false);
+  const [releasing, setReleasing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchChecklist = useCallback(async () => {
@@ -192,6 +194,38 @@ export function ChecklistPanel({ type, onStatsUpdate }: ChecklistPanelProps) {
       toast.error(err instanceof Error ? err.message : 'Gagal mengklaim checklist');
     } finally {
       setClaiming(false);
+    }
+  };
+
+  const handleRelease = async () => {
+    if (!checklist?.id) return;
+
+    // Confirm before release
+    const confirmed = window.confirm(
+      'Apakah Anda yakin ingin melepaskan checklist ini?\n\nAnda hanya dapat melepaskan checklist jika belum ada item yang dikerjakan.'
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setReleasing(true);
+      const response = await fetch(`/api/server-checklist?id=${checklist.id}&type=${type}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Gagal melepaskan checklist');
+      }
+
+      toast.success('Checklist berhasil dilepaskan');
+      await fetchChecklist();
+    } catch (err) {
+      console.error('Error releasing checklist:', err);
+      toast.error(err instanceof Error ? err.message : 'Gagal melepaskan checklist');
+    } finally {
+      setReleasing(false);
     }
   };
 
@@ -411,6 +445,23 @@ export function ChecklistPanel({ type, onStatsUpdate }: ChecklistPanelProps) {
           >
             <RefreshCw className={`h-4 w-4 ${updating ? 'animate-spin' : ''}`} />
           </Button>
+          {/* Release button - only show when user has claimed, not completed, and no items done */}
+          {checklist.claimedByUser && !isCompleted && stats?.completed === 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleRelease}
+              disabled={loading || updating || releasing}
+              className="h-8 px-2 text-red-600 hover:text-red-700 hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-950"
+              title="Lepaskan checklist"
+            >
+              {releasing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <LogOut className="h-4 w-4" />
+              )}
+            </Button>
+          )}
         </div>
       </div>
 
