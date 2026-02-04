@@ -82,6 +82,9 @@ export function Sidebar() {
     if (path === '/technician/shifts') {
       return pathname === '/technician/shifts';
     }
+    if (path === '/technician/server-checklist') {
+      return pathname === '/technician/server-checklist';
+    }
     // For exact matching of my-tickets route (to avoid conflict with /tickets)
     if (path === '/tickets/my-tickets') {
       return pathname === '/tickets/my-tickets';
@@ -280,6 +283,12 @@ export function Sidebar() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
               {(!isCollapsed || isMobile) && 'My Shifts'}
+            </Link>
+            <Link href="/technician/server-checklist" className={linkClass('/technician/server-checklist')} onClick={handleLinkClick}>
+              <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+              </svg>
+              {(!isCollapsed || isMobile) && 'Server Checklist'}
             </Link>
             {/* PC Management for TECH_SUPPORT, PC_AUDITOR groups and SUPER_ADMIN */}
             {(session.user?.supportGroupCode === 'TECH_SUPPORT' || session.user?.supportGroupCode === 'PC_AUDITOR' || session.user?.role === 'SUPER_ADMIN') && (

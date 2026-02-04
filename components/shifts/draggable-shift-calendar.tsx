@@ -12,10 +12,10 @@ import {
   useSensors,
   DragOverEvent,
 } from '@dnd-kit/core';
-import { Moon, Sun, Coffee, Calendar, Clock, AlertCircle, Trash2 } from 'lucide-react';
+import { Moon, Sun, Coffee, Calendar, Clock, AlertCircle, Trash2, Eye, Briefcase } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDroppable } from '@dnd-kit/core';
-import { ShiftDropZone, DraggableAssignmentChip } from './shift-drop-zone';
+import { ShiftDropZone, DraggableAssignmentChip, categoryConfig, getShiftCategory } from './shift-drop-zone';
 
 interface ShiftAssignment {
   id: string;
@@ -48,21 +48,38 @@ interface DraggableShiftCalendarProps {
   showWeekendNights?: boolean; // If true, shows weekend night shift slots (for shift builder)
 }
 
-// Helper function to get shift slots for a day
-function getDayShiftSlots(date: Date, isWeekend: boolean, isHoliday: boolean = false): Array<{ type: string; maxSlots: number; isRequired: boolean }> {
-  const slots: Array<{ type: string; maxSlots: number; isRequired: boolean }> = [];
+// Helper function to get shift slots for a day, grouped by category
+type ShiftCategory = 'MONITORING' | 'OPERATIONAL';
+
+interface ShiftSlot {
+  type: string;
+  maxSlots: number;
+  isRequired: boolean;
+  category: ShiftCategory;
+}
+
+interface ShiftSlotsByCategory {
+  MONITORING: ShiftSlot[];
+  OPERATIONAL: ShiftSlot[];
+}
+
+function getDayShiftSlots(date: Date, isWeekend: boolean, isHoliday: boolean = false): ShiftSlotsByCategory {
+  const slots: ShiftSlotsByCategory = {
+    MONITORING: [],
+    OPERATIONAL: [],
+  };
 
   if (isWeekend || isHoliday) {
     // Weekend or Holiday shifts
-    slots.push({ type: 'DAY_WEEKEND', maxSlots: 1, isRequired: false });
-    slots.push({ type: 'NIGHT_WEEKEND', maxSlots: 1, isRequired: false });
-    slots.push({ type: 'STANDBY_ONCALL', maxSlots: 1, isRequired: false });
-    slots.push({ type: 'STANDBY_BRANCH', maxSlots: 1, isRequired: false });
+    slots.MONITORING.push({ type: 'DAY_WEEKEND', maxSlots: 1, isRequired: false, category: 'MONITORING' });
+    slots.MONITORING.push({ type: 'NIGHT_WEEKEND', maxSlots: 1, isRequired: false, category: 'MONITORING' });
+    slots.OPERATIONAL.push({ type: 'STANDBY_ONCALL', maxSlots: 1, isRequired: false, category: 'OPERATIONAL' });
+    slots.OPERATIONAL.push({ type: 'STANDBY_BRANCH', maxSlots: 1, isRequired: false, category: 'OPERATIONAL' });
   } else {
     // Weekday shifts
-    slots.push({ type: 'NIGHT_WEEKDAY', maxSlots: 1, isRequired: false });
-    slots.push({ type: 'STANDBY_ONCALL', maxSlots: 1, isRequired: false });
-    slots.push({ type: 'STANDBY_BRANCH', maxSlots: 1, isRequired: false });
+    slots.MONITORING.push({ type: 'NIGHT_WEEKDAY', maxSlots: 1, isRequired: false, category: 'MONITORING' });
+    slots.OPERATIONAL.push({ type: 'STANDBY_ONCALL', maxSlots: 1, isRequired: false, category: 'OPERATIONAL' });
+    slots.OPERATIONAL.push({ type: 'STANDBY_BRANCH', maxSlots: 1, isRequired: false, category: 'OPERATIONAL' });
   }
 
   return slots;
@@ -358,36 +375,78 @@ export function DraggableShiftCalendar({
                   </div>
                 )}
 
-                <div className="space-y-1">
-                  {/* Render shift drop zones */}
-                  {shiftSlots.map((slot, slotIndex) => {
-                    // Get all assignments for this shift type
-                    const slotAssignments = dayAssignments.filter(a => a.shiftType === slot.type);
-                    const validationKey = `${dateStr}-${slot.type}`;
+                <div className="space-y-1.5">
+                  {/* Render MONITORING shifts */}
+                  {shiftSlots.MONITORING.length > 0 && (
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1 mb-0.5">
+                        <Eye className="w-2.5 h-2.5 text-blue-500" />
+                        <span className="text-[9px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Mon</span>
+                      </div>
+                      {shiftSlots.MONITORING.map((slot) => {
+                        const slotAssignments = dayAssignments.filter(a => a.shiftType === slot.type);
+                        const validationKey = `${dateStr}-${slot.type}`;
 
-                    // Create multiple drop zones for shifts with maxSlots > 1
-                    return Array.from({ length: slot.maxSlots }).map((_, dropZoneIndex) => {
-                      const assignment = slotAssignments[dropZoneIndex];
-                      const dropZoneId = `${dateStr}-${slot.type}-${dropZoneIndex}`;
+                        return Array.from({ length: slot.maxSlots }).map((_, dropZoneIndex) => {
+                          const assignment = slotAssignments[dropZoneIndex];
+                          const dropZoneId = `${dateStr}-${slot.type}-${dropZoneIndex}`;
 
-                      return (
-                        <ShiftDropZone
-                          key={dropZoneId}
-                          id={dropZoneId}
-                          shiftType={slot.type}
-                          date={date.toDateString()}
-                          dateStr={dateStr}
-                          assignment={assignment}
-                          editable={editable && isCurrentMonth}
-                          maxSlots={slot.maxSlots}
-                          slotIndex={dropZoneIndex}
-                          isRequired={slot.isRequired}
-                          validationError={validationErrors[validationKey]}
-                          onDelete={handleDelete}
-                        />
-                      );
-                    });
-                  }).flat()}
+                          return (
+                            <ShiftDropZone
+                              key={dropZoneId}
+                              id={dropZoneId}
+                              shiftType={slot.type}
+                              date={date.toDateString()}
+                              dateStr={dateStr}
+                              assignment={assignment}
+                              editable={editable && isCurrentMonth}
+                              maxSlots={slot.maxSlots}
+                              slotIndex={dropZoneIndex}
+                              isRequired={slot.isRequired}
+                              validationError={validationErrors[validationKey]}
+                              onDelete={handleDelete}
+                            />
+                          );
+                        });
+                      }).flat()}
+                    </div>
+                  )}
+
+                  {/* Render OPERATIONAL shifts */}
+                  {shiftSlots.OPERATIONAL.length > 0 && (
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1 mb-0.5">
+                        <Briefcase className="w-2.5 h-2.5 text-orange-500" />
+                        <span className="text-[9px] font-semibold text-orange-600 dark:text-orange-400 uppercase tracking-wide">Ops</span>
+                      </div>
+                      {shiftSlots.OPERATIONAL.map((slot) => {
+                        const slotAssignments = dayAssignments.filter(a => a.shiftType === slot.type);
+                        const validationKey = `${dateStr}-${slot.type}`;
+
+                        return Array.from({ length: slot.maxSlots }).map((_, dropZoneIndex) => {
+                          const assignment = slotAssignments[dropZoneIndex];
+                          const dropZoneId = `${dateStr}-${slot.type}-${dropZoneIndex}`;
+
+                          return (
+                            <ShiftDropZone
+                              key={dropZoneId}
+                              id={dropZoneId}
+                              shiftType={slot.type}
+                              date={date.toDateString()}
+                              dateStr={dateStr}
+                              assignment={assignment}
+                              editable={editable && isCurrentMonth}
+                              maxSlots={slot.maxSlots}
+                              slotIndex={dropZoneIndex}
+                              isRequired={slot.isRequired}
+                              validationError={validationErrors[validationKey]}
+                              onDelete={handleDelete}
+                            />
+                          );
+                        });
+                      }).flat()}
+                    </div>
+                  )}
 
                   {/* Render other assignments (OFF, LEAVE, HOLIDAY) */}
                   {dayAssignments

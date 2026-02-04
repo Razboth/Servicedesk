@@ -6,9 +6,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Monitor,
-  Ticket,
-  ArrowRightLeft,
+  Database,
+  Server,
+  Shield,
+  Wrench,
   CheckCircle2,
   Circle,
   SkipForward,
@@ -20,7 +21,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-interface ChecklistItem {
+interface ServerChecklistItem {
   id: string;
   category: string;
   title: string;
@@ -35,8 +36,8 @@ interface ChecklistItem {
   lockMessage?: string | null;
 }
 
-interface ShiftChecklistProps {
-  items: ChecklistItem[];
+interface ServerAccessChecklistProps {
+  items: ServerChecklistItem[];
   onUpdateItems: (
     items: { id: string; status?: string; notes?: string }[]
   ) => Promise<void>;
@@ -45,36 +46,43 @@ interface ShiftChecklistProps {
 }
 
 const categoryConfig = {
-  SYSTEM_MONITORING: {
-    label: 'Pemantauan Sistem',
-    icon: Monitor,
+  BACKUP_VERIFICATION: {
+    label: 'Verifikasi Backup',
+    icon: Database,
     color: 'text-blue-600 dark:text-blue-400',
     bg: 'bg-blue-50 dark:bg-blue-950/30',
   },
-  TICKET_MANAGEMENT: {
-    label: 'Manajemen Tiket',
-    icon: Ticket,
-    color: 'text-purple-600 dark:text-purple-400',
-    bg: 'bg-purple-50 dark:bg-purple-950/30',
-  },
-  HANDOVER_TASKS: {
-    label: 'Serah Terima',
-    icon: ArrowRightLeft,
+  SERVER_HEALTH: {
+    label: 'Kesehatan Server',
+    icon: Server,
     color: 'text-green-600 dark:text-green-400',
     bg: 'bg-green-50 dark:bg-green-950/30',
   },
+  SECURITY_CHECK: {
+    label: 'Pemeriksaan Keamanan',
+    icon: Shield,
+    color: 'text-red-600 dark:text-red-400',
+    bg: 'bg-red-50 dark:bg-red-950/30',
+  },
+  MAINTENANCE: {
+    label: 'Pemeliharaan',
+    icon: Wrench,
+    color: 'text-purple-600 dark:text-purple-400',
+    bg: 'bg-purple-50 dark:bg-purple-950/30',
+  },
 };
 
-export function ShiftChecklist({
+export function ServerAccessChecklist({
   items,
   onUpdateItems,
   isLoading = false,
   readOnly = false,
-}: ShiftChecklistProps) {
+}: ServerAccessChecklistProps) {
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
-    SYSTEM_MONITORING: true,
-    TICKET_MANAGEMENT: true,
-    HANDOVER_TASKS: true,
+    BACKUP_VERIFICATION: true,
+    SERVER_HEALTH: true,
+    SECURITY_CHECK: true,
+    MAINTENANCE: true,
   });
   const [editingNote, setEditingNote] = useState<string | null>(null);
   const [noteText, setNoteText] = useState('');
@@ -86,10 +94,10 @@ export function ShiftChecklist({
     }
     acc[item.category].push(item);
     return acc;
-  }, {} as Record<string, ChecklistItem[]>);
+  }, {} as Record<string, ServerChecklistItem[]>);
 
   // Calculate progress per category
-  const getCategoryProgress = (categoryItems: ChecklistItem[]) => {
+  const getCategoryProgress = (categoryItems: ServerChecklistItem[]) => {
     const completed = categoryItems.filter(
       (i) => i.status === 'COMPLETED' || i.status === 'SKIPPED'
     ).length;
@@ -108,7 +116,7 @@ export function ShiftChecklist({
     await onUpdateItems([{ id: itemId, status: 'SKIPPED' }]);
   };
 
-  const startEditNote = (item: ChecklistItem) => {
+  const startEditNote = (item: ServerChecklistItem) => {
     setEditingNote(item.id);
     setNoteText(item.notes || '');
   };
@@ -127,12 +135,19 @@ export function ShiftChecklist({
     }));
   };
 
+  // Ensure consistent category order
+  const orderedCategories = ['BACKUP_VERIFICATION', 'SERVER_HEALTH', 'SECURITY_CHECK', 'MAINTENANCE'];
+  const sortedCategories = orderedCategories.filter(cat => itemsByCategory[cat]);
+
   return (
     <div className="space-y-3">
-      {Object.entries(itemsByCategory).map(([category, categoryItems]) => {
+      {sortedCategories.map((category) => {
+        const categoryItems = itemsByCategory[category];
+        if (!categoryItems) return null;
+
         const config = categoryConfig[category as keyof typeof categoryConfig];
         const progress = getCategoryProgress(categoryItems);
-        const Icon = config?.icon || Monitor;
+        const Icon = config?.icon || Server;
         const isExpanded = expandedCategories[category];
 
         return (
@@ -211,6 +226,11 @@ export function ShiftChecklist({
                               </Badge>
                             )}
                           </div>
+                          {item.description && !isLocked && (
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {item.description}
+                            </p>
+                          )}
                           {isLocked && item.lockMessage && (
                             <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
                               {item.lockMessage}
@@ -256,7 +276,7 @@ export function ShiftChecklist({
                         </div>
                       </div>
 
-                      {/* Notes section - simplified */}
+                      {/* Notes section */}
                       {(item.notes || editingNote === item.id) && (
                         <div className="mt-2 ml-7">
                           {editingNote === item.id ? (
@@ -299,8 +319,8 @@ export function ShiftChecklist({
                         </div>
                       )}
 
-                      {/* Add note button - only show if no notes and not editing */}
-                      {!readOnly && !item.notes && editingNote !== item.id && (
+                      {/* Add note button */}
+                      {!readOnly && !item.notes && editingNote !== item.id && !isLocked && (
                         <button
                           className="mt-1 ml-7 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
                           onClick={() => startEditNote(item)}

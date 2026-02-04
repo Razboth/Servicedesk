@@ -1,7 +1,7 @@
 'use client';
 
 import { useDroppable, useDraggable } from '@dnd-kit/core';
-import { Moon, Sun, Coffee, Calendar, Clock, AlertTriangle, Building, Trash2 } from 'lucide-react';
+import { Moon, Sun, Coffee, Calendar, Clock, AlertTriangle, Building, Trash2, Eye, Briefcase } from 'lucide-react';
 
 interface ShiftAssignment {
   id: string;
@@ -16,16 +16,53 @@ interface ShiftAssignment {
   };
 }
 
-const shiftTypeConfig = {
-  NIGHT_WEEKDAY: { label: 'Night 20:00-07:59', icon: Moon, color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300', borderColor: 'border-indigo-300 dark:border-indigo-700' },
-  DAY_WEEKEND: { label: 'Day 08:00-19:00', icon: Sun, color: 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300', borderColor: 'border-amber-300 dark:border-amber-700' },
-  NIGHT_WEEKEND: { label: 'Night 20:00-07:59', icon: Moon, color: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300', borderColor: 'border-purple-300 dark:border-purple-700' },
-  STANDBY_ONCALL: { label: 'Standby On-Call', icon: AlertTriangle, color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300', borderColor: 'border-yellow-300 dark:border-yellow-700' },
-  STANDBY_BRANCH: { label: 'Standby Branch Ops', icon: Building, color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300', borderColor: 'border-emerald-300 dark:border-emerald-700' },
-  OFF: { label: 'Off', icon: Coffee, color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300', borderColor: 'border-gray-300 dark:border-gray-700' },
-  LEAVE: { label: 'Leave', icon: Calendar, color: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300', borderColor: 'border-red-300 dark:border-red-700' },
-  HOLIDAY: { label: 'Holiday', icon: Calendar, color: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300', borderColor: 'border-green-300 dark:border-green-700' },
+// Category configuration
+type ShiftCategory = 'MONITORING' | 'OPERATIONAL' | null;
+
+const categoryConfig = {
+  MONITORING: {
+    label: 'Monitoring',
+    shortLabel: 'MON',
+    icon: Eye,
+    color: 'bg-blue-500 text-white',
+    borderColor: 'border-blue-400',
+  },
+  OPERATIONAL: {
+    label: 'Operational',
+    shortLabel: 'OPS',
+    icon: Briefcase,
+    color: 'bg-orange-500 text-white',
+    borderColor: 'border-orange-400',
+  },
 };
+
+// Get category from shift type
+function getShiftCategory(shiftType: string): ShiftCategory {
+  switch (shiftType) {
+    case 'NIGHT_WEEKDAY':
+    case 'DAY_WEEKEND':
+    case 'NIGHT_WEEKEND':
+      return 'MONITORING';
+    case 'STANDBY_ONCALL':
+    case 'STANDBY_BRANCH':
+      return 'OPERATIONAL';
+    default:
+      return null;
+  }
+}
+
+const shiftTypeConfig = {
+  NIGHT_WEEKDAY: { label: 'Night', sublabel: '20:00-07:59', icon: Moon, color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300', borderColor: 'border-indigo-300 dark:border-indigo-700', category: 'MONITORING' as const },
+  DAY_WEEKEND: { label: 'Day', sublabel: '08:00-19:00', icon: Sun, color: 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300', borderColor: 'border-amber-300 dark:border-amber-700', category: 'MONITORING' as const },
+  NIGHT_WEEKEND: { label: 'Night', sublabel: '20:00-07:59', icon: Moon, color: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300', borderColor: 'border-purple-300 dark:border-purple-700', category: 'MONITORING' as const },
+  STANDBY_ONCALL: { label: 'On-Call', sublabel: 'Server', icon: AlertTriangle, color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300', borderColor: 'border-yellow-300 dark:border-yellow-700', category: 'OPERATIONAL' as const },
+  STANDBY_BRANCH: { label: 'Branch', sublabel: 'Ops', icon: Building, color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300', borderColor: 'border-emerald-300 dark:border-emerald-700', category: 'OPERATIONAL' as const },
+  OFF: { label: 'Off', sublabel: '', icon: Coffee, color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300', borderColor: 'border-gray-300 dark:border-gray-700', category: null },
+  LEAVE: { label: 'Leave', sublabel: '', icon: Calendar, color: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300', borderColor: 'border-red-300 dark:border-red-700', category: null },
+  HOLIDAY: { label: 'Holiday', sublabel: '', icon: Calendar, color: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300', borderColor: 'border-green-300 dark:border-green-700', category: null },
+};
+
+export { shiftTypeConfig, categoryConfig, getShiftCategory };
 
 interface DraggableAssignmentChipProps {
   assignment: ShiftAssignment;
@@ -42,6 +79,8 @@ export function DraggableAssignmentChip({
 }: DraggableAssignmentChipProps) {
   const config = shiftTypeConfig[assignment.shiftType as keyof typeof shiftTypeConfig];
   const Icon = config?.icon || Clock;
+  const category = getShiftCategory(assignment.shiftType);
+  const catConfig = category ? categoryConfig[category] : null;
 
   const isDraggableShift = editable && !['OFF', 'LEAVE', 'HOLIDAY'].includes(assignment.shiftType);
 
@@ -86,7 +125,7 @@ export function DraggableAssignmentChip({
         ${isDragging ? 'ring-2 ring-blue-500 shadow-lg' : ''}
         ${hasWarning ? 'ring-2 ring-yellow-400 dark:ring-yellow-600' : ''}
       `}
-      title={`${assignment.staffProfile.user.name} - ${config?.label}${isDraggableShift ? ' (Drag to swap or delete)' : ''}`}
+      title={`${assignment.staffProfile.user.name} - ${config?.label}${catConfig ? ` (${catConfig.label})` : ''}${isDraggableShift ? ' - Drag to swap or delete' : ''}`}
       {...(isDraggableShift ? { ...listeners, ...attributes } : {})}
     >
       <div className="flex items-center gap-1">
@@ -94,13 +133,24 @@ export function DraggableAssignmentChip({
         <span className="truncate font-medium">
           {assignment.staffProfile.user.name.split(' ')[0]}
         </span>
+
+        {/* Category badge */}
+        {catConfig && (
+          <span
+            className={`ml-auto px-1 py-0.5 rounded text-[9px] font-bold leading-none ${catConfig.color}`}
+            title={catConfig.label}
+          >
+            {catConfig.shortLabel}
+          </span>
+        )}
+
         {hasWarning && <AlertTriangle className="w-3 h-3 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />}
 
         {/* Delete button - only show on hover for editable shifts */}
         {isDraggableShift && onDelete && (
           <button
             onClick={handleDelete}
-            className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity hover:scale-110 active:scale-95"
+            className="opacity-0 group-hover:opacity-100 transition-opacity hover:scale-110 active:scale-95"
             title="Delete assignment"
           >
             <Trash2 className="w-3 h-3 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300" />
@@ -152,6 +202,8 @@ export function ShiftDropZone({
 
   const config = shiftTypeConfig[shiftType as keyof typeof shiftTypeConfig];
   const Icon = config?.icon || Clock;
+  const category = getShiftCategory(shiftType);
+  const catConfig = category ? categoryConfig[category] : null;
 
   // Check if dragging item is valid for this slot
   const canAcceptDrop = active && (
@@ -189,7 +241,7 @@ export function ShiftDropZone({
           : ''
         }
       `}
-      title={validationError || (isEmpty ? `Drop staff here for ${config?.label}` : '')}
+      title={validationError || (isEmpty ? `Drop staff here for ${config?.label}${catConfig ? ` (${catConfig.label})` : ''}` : '')}
     >
       {isEmpty ? (
         <div className="flex items-center justify-center gap-1 text-xs text-gray-400 dark:text-gray-600">
@@ -198,6 +250,15 @@ export function ShiftDropZone({
             {config?.label}
             {maxSlots > 1 && ` #${slotIndex + 1}`}
           </span>
+          {/* Category badge for empty slot */}
+          {catConfig && (
+            <span
+              className={`px-1 py-0.5 rounded text-[8px] font-bold leading-none ${catConfig.color} opacity-70`}
+              title={catConfig.label}
+            >
+              {catConfig.shortLabel}
+            </span>
+          )}
         </div>
       ) : (
         <DraggableAssignmentChip
