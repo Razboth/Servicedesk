@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { branchId, month, year } = body;
+    const { branchId, month, year, holidays } = body;
 
     // Validate inputs
     if (!branchId || !month || !year) {
@@ -136,6 +136,24 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Create Holiday records if provided
+    let holidaysCreated = 0;
+    if (holidays && Array.isArray(holidays) && holidays.length > 0) {
+      const holidayRecords = holidays.map((h: { date: string; name?: string }) => ({
+        scheduleId: schedule.id,
+        name: h.name || 'Libur',
+        date: new Date(h.date),
+        holidayType: 'PUBLIC' as const,
+        affectsNightShift: true,
+        affectsWeekendShift: true,
+      }));
+
+      await prisma.holiday.createMany({
+        data: holidayRecords,
+      });
+      holidaysCreated = holidayRecords.length;
+    }
+
     return NextResponse.json({
       success: true,
       data: {
@@ -145,6 +163,7 @@ export async function POST(request: NextRequest) {
         year,
         status: schedule.status,
         leaveAssignmentsCreated: leaveAssignments.length,
+        holidaysCreated,
       },
     });
   } catch (error: any) {
