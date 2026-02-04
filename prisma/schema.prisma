@@ -3303,7 +3303,7 @@ model ServerAccessChecklistTemplate {
   id                    String                  @id @default(cuid())
   title                 String
   description           String?
-  category              ServerChecklistCategory
+  category              String                  // Time-based category: "08:00", "10:00", etc.
   checklistType         DailyChecklistType      @default(SERVER_SIANG) // Which checklist this belongs to
   order                 Int                     @default(0)
   isRequired            Boolean                 @default(true)
@@ -3350,7 +3350,7 @@ model ServerAccessChecklistItem {
   checklistId           String
   title                 String
   description           String?
-  category              ServerChecklistCategory
+  category              String                  // Time-based category: "08:00", "10:00", etc.
   order                 Int                     @default(0)
   isRequired            Boolean                 @default(true)
   status                ShiftChecklistStatus    @default(PENDING)
