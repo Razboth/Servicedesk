@@ -18,6 +18,8 @@ import {
   ChevronRight,
   LayoutGrid,
   List,
+  Download,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ShiftReportCard } from '@/components/technician/shift-report-card';
@@ -78,6 +80,7 @@ export default function TechnicianShiftsPage() {
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     fetchMySchedule();
@@ -392,6 +395,265 @@ export default function TechnicianShiftsPage() {
   // Check if user has an active working shift (not OFF, LEAVE, or HOLIDAY)
   const hasActiveShift = todayShift && !['OFF', 'LEAVE', 'HOLIDAY'].includes(todayShift.shiftType);
 
+  const handleExport = async (format: 'xlsx' | 'pdf') => {
+    if (!todayShift) return;
+
+    try {
+      setIsExporting(true);
+      const response = await fetch(
+        `/api/shifts/${todayShift.id}/report/export?format=${format}`
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to export report');
+      }
+
+      const data = await response.json();
+
+      if (format === 'xlsx') {
+        const XLSX = (await import('xlsx')).default;
+        const workbook = XLSX.utils.book_new();
+
+        data.excelData.forEach((section: { title: string; headers?: string[]; rows: string[][] }) => {
+          let sheetData: string[][] = [];
+          if (section.headers) {
+            sheetData.push(section.headers);
+          }
+          sheetData = sheetData.concat(section.rows);
+          const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
+          XLSX.utils.book_append_sheet(workbook, worksheet, section.title.substring(0, 31));
+        });
+
+        const dateStr = new Date(todayShift.date).toISOString().split('T')[0];
+        XLSX.writeFile(workbook, `Laporan_Shift_${dateStr}.xlsx`);
+        toast.success('File Excel berhasil diunduh');
+      } else {
+        const { jsPDF } = await import('jspdf');
+        const doc = new jsPDF();
+        const exportData = data.data;
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const margin = 20;
+        const contentWidth = pageWidth - margin * 2;
+        let yPos = 20;
+
+        const colors = {
+          black: [0, 0, 0] as [number, number, number],
+          darkGray: [51, 51, 51] as [number, number, number],
+          gray: [102, 102, 102] as [number, number, number],
+          lightGray: [153, 153, 153] as [number, number, number],
+          lineGray: [200, 200, 200] as [number, number, number],
+        };
+
+        const drawLine = (y: number, thickness: number = 0.3) => {
+          doc.setDrawColor(...colors.lineGray);
+          doc.setLineWidth(thickness);
+          doc.line(margin, y, pageWidth - margin, y);
+        };
+
+        const checkPageBreak = (neededSpace: number) => {
+          if (yPos + neededSpace > pageHeight - 25) {
+            doc.addPage();
+            yPos = 20;
+          }
+        };
+
+        const drawSectionHeader = (title: string) => {
+          checkPageBreak(15);
+          doc.setFontSize(11);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(...colors.black);
+          doc.text(title, margin, yPos);
+          yPos += 2;
+          drawLine(yPos, 0.5);
+          yPos += 8;
+        };
+
+        // Header
+        try {
+          const logoImg = new Image();
+          logoImg.crossOrigin = 'anonymous';
+          await new Promise<void>((resolve, reject) => {
+            logoImg.onload = () => resolve();
+            logoImg.onerror = () => reject();
+            logoImg.src = '/logo-bsg.png';
+          });
+          const canvas = document.createElement('canvas');
+          canvas.width = logoImg.width;
+          canvas.height = logoImg.height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(logoImg, 0, 0);
+            const logoBase64 = canvas.toDataURL('image/png');
+            doc.addImage(logoBase64, 'PNG', margin, yPos, 20, 20);
+          }
+        } catch {
+          doc.setFontSize(12);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(...colors.black);
+          doc.text('BSG', margin + 5, yPos + 12);
+        }
+
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...colors.black);
+        doc.text('LAPORAN SHIFT OPERASIONAL', margin + 28, yPos + 8);
+
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...colors.gray);
+        doc.text('PT Bank SulutGo - Divisi Teknologi Informasi', margin + 28, yPos + 14);
+
+        const reportDate = new Date(exportData.shiftInfo.date).toLocaleDateString('id-ID', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        });
+        doc.text(reportDate, margin + 28, yPos + 20);
+        yPos += 28;
+        drawLine(yPos, 0.8);
+        yPos += 10;
+
+        // Shift Info
+        drawSectionHeader('INFORMASI SHIFT');
+        const shiftTypeLabels: Record<string, string> = {
+          NIGHT_WEEKDAY: 'Malam Weekday (20:00-07:59)',
+          DAY_WEEKEND: 'Siang Weekend (08:00-19:00)',
+          NIGHT_WEEKEND: 'Malam Weekend (20:00-07:59)',
+          STANDBY_ONCALL: 'Standby On-Call',
+          STANDBY_BRANCH: 'Standby Cabang',
+        };
+        const statusLabelsMap: Record<string, string> = {
+          DRAFT: 'Draft',
+          IN_PROGRESS: 'Sedang Dikerjakan',
+          COMPLETED: 'Selesai',
+        };
+        const infoData = [
+          ['Nama Teknisi', exportData.shiftInfo.technician],
+          ['Cabang', exportData.shiftInfo.branch],
+          ['Jenis Shift', shiftTypeLabels[exportData.shiftInfo.shiftType] || exportData.shiftInfo.shiftType],
+          ['Status', statusLabelsMap[exportData.reportInfo.status] || exportData.reportInfo.status],
+        ];
+        infoData.forEach((row) => {
+          doc.setFontSize(9);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(...colors.gray);
+          doc.text(row[0] + ':', margin, yPos);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(...colors.darkGray);
+          doc.text(row[1], margin + 45, yPos);
+          yPos += 6;
+        });
+        yPos += 8;
+
+        // Daily Checklists Section
+        if (exportData.dailyChecklists && exportData.dailyChecklists.length > 0) {
+          exportData.dailyChecklists.forEach((dailyChecklist: {
+            type: string;
+            typeLabel: string;
+            status: string;
+            items: { title: string; status: string; isRequired: boolean; unlockTime?: string | null }[];
+            stats: { total: number; completed: number };
+          }) => {
+            drawSectionHeader(dailyChecklist.typeLabel.toUpperCase());
+
+            // Stats summary
+            const dailyProgress = dailyChecklist.stats.total > 0
+              ? Math.round((dailyChecklist.stats.completed / dailyChecklist.stats.total) * 100)
+              : 0;
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(...colors.gray);
+            doc.text(`Progress: ${dailyProgress}% (${dailyChecklist.stats.completed}/${dailyChecklist.stats.total})`, margin, yPos);
+            yPos += 6;
+
+            // Items
+            dailyChecklist.items.forEach((item) => {
+              checkPageBreak(10);
+              doc.setFontSize(9);
+              let statusSymbol = '[ ]';
+              if (item.status === 'Selesai') statusSymbol = '[v]';
+              else if (item.status === 'Dilewati') statusSymbol = '[-]';
+              doc.setFont('helvetica', 'normal');
+              doc.setTextColor(...colors.darkGray);
+              doc.text(statusSymbol, margin, yPos);
+              let titleText = item.title;
+              if (item.unlockTime) titleText = `[${item.unlockTime}] ${titleText}`;
+              if (item.isRequired) titleText += ' *';
+              const lines = doc.splitTextToSize(titleText, contentWidth - 15);
+              doc.text(lines, margin + 10, yPos);
+              yPos += lines.length * 4 + 2;
+            });
+            yPos += 5;
+          });
+        }
+
+        // Summary Section
+        if (exportData.summary) {
+          const { summary, handoverNotes, issuesEncountered, pendingActions } = exportData.summary;
+          if (summary || handoverNotes || issuesEncountered || pendingActions) {
+            drawSectionHeader('RINGKASAN');
+            const summaryItems = [
+              { label: 'Ringkasan', value: summary },
+              { label: 'Catatan Serah Terima', value: handoverNotes },
+              { label: 'Masalah', value: issuesEncountered },
+              { label: 'Tindakan Tertunda', value: pendingActions },
+            ].filter(item => item.value);
+
+            summaryItems.forEach((item) => {
+              checkPageBreak(15);
+              doc.setFontSize(9);
+              doc.setFont('helvetica', 'bold');
+              doc.setTextColor(...colors.gray);
+              doc.text(item.label + ':', margin, yPos);
+              yPos += 5;
+              doc.setFont('helvetica', 'normal');
+              doc.setTextColor(...colors.darkGray);
+              const lines = doc.splitTextToSize(item.value || '-', contentWidth);
+              doc.text(lines, margin, yPos);
+              yPos += lines.length * 4 + 3;
+            });
+          }
+        }
+
+        // Notes Section
+        if (exportData.notes) {
+          drawSectionHeader('CATATAN');
+          doc.setFontSize(9);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(...colors.darkGray);
+          const notesLines = doc.splitTextToSize(exportData.notes, contentWidth);
+          doc.text(notesLines, margin, yPos);
+          yPos += notesLines.length * 4 + 5;
+        }
+
+        // Footer
+        const pageCount = doc.getNumberOfPages();
+        for (let i = 1; i <= pageCount; i++) {
+          doc.setPage(i);
+          drawLine(pageHeight - 18, 0.3);
+          doc.setFontSize(7);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(...colors.lightGray);
+          doc.text('Bank SulutGo ServiceDesk - Laporan Shift Operasional', margin, pageHeight - 12);
+          doc.text(`Halaman ${i} dari ${pageCount}`, pageWidth / 2, pageHeight - 12, { align: 'center' });
+          doc.text(`Dicetak: ${new Date().toLocaleString('id-ID')}`, pageWidth - margin, pageHeight - 12, { align: 'right' });
+        }
+
+        const dateStr = new Date(todayShift.date).toISOString().split('T')[0];
+        doc.save(`Laporan_Shift_Operasional_${dateStr}.pdf`);
+        toast.success('File PDF berhasil diunduh');
+      }
+    } catch (error: any) {
+      console.error('Error exporting report:', error);
+      toast.error(error.message || 'Gagal mengekspor laporan');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -452,6 +714,50 @@ export default function TechnicianShiftsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Download Report Section - Show when user has active shift */}
+      {hasActiveShift && todayShift && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Download className="w-5 h-5" />
+              Download Laporan Shift
+            </CardTitle>
+            <CardDescription>
+              Unduh laporan shift operasional cabang hari ini
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                variant="outline"
+                onClick={() => handleExport('xlsx')}
+                disabled={isExporting}
+                className="flex-1 min-w-[150px]"
+              >
+                {isExporting ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                )}
+                Download Excel
+              </Button>
+              <Button
+                onClick={() => handleExport('pdf')}
+                disabled={isExporting}
+                className="flex-1 min-w-[150px]"
+              >
+                {isExporting ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4 mr-2" />
+                )}
+                Download PDF
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Shift Report Card - Show when user has active working shift */}
       {hasActiveShift && todayShift && (
