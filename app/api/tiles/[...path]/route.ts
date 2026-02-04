@@ -23,9 +23,9 @@ export async function GET(
   const [z, x, yWithExt] = pathSegments;
   const y = yWithExt.replace('.png', '');
 
-  // Validate zoom level bounds (7-14 for offline, fallback for higher)
+  // Validate zoom level bounds (7-12 for offline, fallback for higher)
   const zoom = parseInt(z);
-  const maxOfflineZoom = 14;
+  const maxOfflineZoom = 12;
 
   // Build the local tile path
   const tilePath = path.join(process.cwd(), 'public', 'tiles', z, x, `${y}.png`);

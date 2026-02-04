@@ -14,13 +14,13 @@ import path from 'path';
 // Configuration
 const CONFIG = {
   minZoom: 7,
-  maxZoom: 14,
-  // North Sulawesi bounding box
+  maxZoom: 12,
+  // Indonesia bounding box
   bounds: {
-    north: 3.0,
-    south: 0.0,
-    east: 127.0,
-    west: 120.0,
+    north: 6.0,
+    south: -11.0,
+    east: 141.0,
+    west: 95.0,
   },
   outputDir: './public/tiles',
   tileServers: [
