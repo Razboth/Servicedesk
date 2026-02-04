@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { getShiftCategory } from '@/lib/shift-category';
+import { isItemUnlocked, getLockStatusMessage } from '@/lib/time-lock';
 
 // GET /api/shifts/[assignmentId]/report - Get or create shift report
 export async function GET(
@@ -96,13 +98,28 @@ export async function GET(
         orderBy: { collectedAt: 'desc' },
       });
 
-      // Get checklist templates
+      // Get shift category for this shift type
+      const shiftCategory = getShiftCategory(shiftAssignment.shiftType);
+
+      // Get checklist templates - filter by both shiftType and shiftCategory
       const templates = await prisma.shiftChecklistTemplate.findMany({
         where: {
           isActive: true,
-          OR: [
-            { shiftType: null },
-            { shiftType: shiftAssignment.shiftType },
+          AND: [
+            // Match shiftType (null = all, or specific type)
+            {
+              OR: [
+                { shiftType: null },
+                { shiftType: shiftAssignment.shiftType },
+              ],
+            },
+            // Match shiftCategory (null = all, or specific category)
+            {
+              OR: [
+                { shiftCategory: null },
+                { shiftCategory: shiftCategory },
+              ],
+            },
           ],
         },
         orderBy: [{ category: 'asc' }, { order: 'asc' }],
@@ -128,6 +145,7 @@ export async function GET(
               order: template.order,
               isRequired: template.isRequired,
               status: 'PENDING',
+              unlockTime: template.unlockTime, // Copy time-lock from template
             })),
           },
           backupChecklist: {
@@ -168,6 +186,14 @@ export async function GET(
       });
     }
 
+    // Add lock status to checklist items
+    const now = new Date();
+    const checklistItemsWithLockStatus = report.checklistItems.map((item) => ({
+      ...item,
+      isLocked: !isItemUnlocked(item.unlockTime, now),
+      lockMessage: getLockStatusMessage(item.unlockTime, now),
+    }));
+
     // Calculate stats
     const stats = {
       total: report.checklistItems.length,
@@ -175,6 +201,7 @@ export async function GET(
       pending: report.checklistItems.filter((i) => i.status === 'PENDING').length,
       inProgress: report.checklistItems.filter((i) => i.status === 'IN_PROGRESS').length,
       skipped: report.checklistItems.filter((i) => i.status === 'SKIPPED').length,
+      locked: checklistItemsWithLockStatus.filter((i) => i.isLocked).length,
       byCategory: {} as Record<string, { total: number; completed: number }>,
     };
 
@@ -325,7 +352,7 @@ export async function GET(
           pendingActions: report.pendingActions,
           notes: report.notes,
         },
-        checklistItems: report.checklistItems,
+        checklistItems: checklistItemsWithLockStatus,
         backupChecklist: report.backupChecklist || [],
         issues: report.issues || [],
         ongoingIssues,

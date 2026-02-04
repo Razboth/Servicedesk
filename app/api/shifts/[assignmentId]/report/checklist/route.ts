@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { ShiftChecklistStatus } from '@prisma/client';
+import { isItemUnlocked, getLockStatusMessage } from '@/lib/time-lock';
 
 // PUT /api/shifts/[assignmentId]/report/checklist - Batch update checklist items
 export async function PUT(
@@ -59,35 +60,64 @@ export async function PUT(
       );
     }
 
-    // Update each item
-    const updates = await Promise.all(
-      body.items.map(async (item: { id: string; status?: ShiftChecklistStatus; notes?: string }) => {
-        const updateData: {
-          status?: ShiftChecklistStatus;
-          notes?: string;
-          completedAt?: Date | null;
-        } = {};
+    // Update each item with time-lock validation
+    const now = new Date();
+    const updates = [];
+    const errors = [];
 
-        if (item.status !== undefined) {
-          updateData.status = item.status;
-          // Set completedAt when marking as completed
-          if (item.status === 'COMPLETED') {
-            updateData.completedAt = new Date();
-          } else if (item.status === 'PENDING') {
-            updateData.completedAt = null;
-          }
-        }
+    for (const item of body.items as Array<{ id: string; status?: ShiftChecklistStatus; notes?: string }>) {
+      // Fetch the item to check time-lock
+      const existingItem = await prisma.shiftChecklistItem.findUnique({
+        where: { id: item.id },
+      });
 
-        if (item.notes !== undefined) {
-          updateData.notes = item.notes;
-        }
+      if (!existingItem) {
+        errors.push({ id: item.id, error: 'Item tidak ditemukan' });
+        continue;
+      }
 
-        return prisma.shiftChecklistItem.update({
-          where: { id: item.id },
-          data: updateData,
+      // Verify item belongs to this report
+      if (existingItem.shiftReportId !== shiftAssignment.shiftReport!.id) {
+        errors.push({ id: item.id, error: 'Item tidak termasuk dalam laporan ini' });
+        continue;
+      }
+
+      // Check time-lock when trying to complete
+      if (item.status === 'COMPLETED' && !isItemUnlocked(existingItem.unlockTime, now)) {
+        errors.push({
+          id: item.id,
+          error: `Item masih terkunci. ${getLockStatusMessage(existingItem.unlockTime, now)}`,
         });
-      })
-    );
+        continue;
+      }
+
+      const updateData: {
+        status?: ShiftChecklistStatus;
+        notes?: string;
+        completedAt?: Date | null;
+      } = {};
+
+      if (item.status !== undefined) {
+        updateData.status = item.status;
+        // Set completedAt when marking as completed
+        if (item.status === 'COMPLETED') {
+          updateData.completedAt = now;
+        } else if (item.status === 'PENDING') {
+          updateData.completedAt = null;
+        }
+      }
+
+      if (item.notes !== undefined) {
+        updateData.notes = item.notes;
+      }
+
+      const updated = await prisma.shiftChecklistItem.update({
+        where: { id: item.id },
+        data: updateData,
+      });
+
+      updates.push(updated);
+    }
 
     // Update report status to IN_PROGRESS if it's still DRAFT
     if (shiftAssignment.shiftReport.status === 'DRAFT') {
@@ -97,11 +127,18 @@ export async function PUT(
       });
     }
 
-    // Get updated checklist items
+    // Get updated checklist items with lock status
     const checklistItems = await prisma.shiftChecklistItem.findMany({
       where: { shiftReportId: shiftAssignment.shiftReport.id },
       orderBy: [{ category: 'asc' }, { order: 'asc' }],
     });
+
+    // Add lock status to items
+    const checklistItemsWithLockStatus = checklistItems.map((item) => ({
+      ...item,
+      isLocked: !isItemUnlocked(item.unlockTime, now),
+      lockMessage: getLockStatusMessage(item.unlockTime, now),
+    }));
 
     // Calculate stats
     const stats = {
@@ -110,14 +147,16 @@ export async function PUT(
       pending: checklistItems.filter((i) => i.status === 'PENDING').length,
       inProgress: checklistItems.filter((i) => i.status === 'IN_PROGRESS').length,
       skipped: checklistItems.filter((i) => i.status === 'SKIPPED').length,
+      locked: checklistItemsWithLockStatus.filter((i) => i.isLocked).length,
     };
 
     return NextResponse.json({
       success: true,
       data: {
         updatedCount: updates.length,
-        checklistItems,
+        checklistItems: checklistItemsWithLockStatus,
         stats,
+        errors: errors.length > 0 ? errors : undefined,
       },
     });
   } catch (error) {

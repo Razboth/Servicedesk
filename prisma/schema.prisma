@@ -108,6 +108,7 @@ model User {
 
   // Shift management
   shiftProfile           StaffShiftProfile?
+  serverAccessChecklists ServerAccessDailyChecklist[] @relation("ServerAccessChecklists")
 
   // Import tracking
   importLogs             ImportLog[]            @relation("ImportLogCreatedBy")
@@ -2971,6 +2972,12 @@ enum SwapRequestStatus {
   CANCELLED           // Cancelled by initiator
 }
 
+// Shift categories for checklist grouping
+enum ShiftCategory {
+  MONITORING          // Night shifts + weekend day (20:00-07:59, 08:00-19:00 weekend)
+  OPERATIONAL         // Daytime operational (08:00 to branch close)
+}
+
 // ============================================
 // Shift Report & Server Metrics System
 // ============================================
@@ -3123,6 +3130,7 @@ model ShiftChecklistItem {
   status                ShiftChecklistStatus    @default(PENDING)
   completedAt           DateTime?
   notes                 String?                 @db.Text
+  unlockTime            String?                 // Time-lock: "HH:mm" format, item locked until this time
 
   // Metadata
   createdAt             DateTime                @default(now())
@@ -3136,22 +3144,24 @@ model ShiftChecklistItem {
   @@map("shift_checklist_items")
 }
 
-// Templates for checklist items (per shift type)
+// Templates for checklist items (per shift type/category)
 model ShiftChecklistTemplate {
   id                    String                  @id @default(cuid())
   shiftType             ShiftType?              // Null = applies to all shift types
+  shiftCategory         ShiftCategory?          // Null = applies to all categories (MONITORING/OPERATIONAL)
   category              ShiftChecklistCategory
   title                 String
   description           String?
   order                 Int                     @default(0)
   isRequired            Boolean                 @default(true)
   isActive              Boolean                 @default(true)
+  unlockTime            String?                 // Time-lock: "HH:mm" format, item locked until this time
 
   // Metadata
   createdAt             DateTime                @default(now())
   updatedAt             DateTime                @updatedAt
 
-  @@index([shiftType, category, isActive])
+  @@index([shiftType, shiftCategory, category, isActive])
   @@map("shift_checklist_templates")
 }
 
@@ -3251,6 +3261,93 @@ enum IssuePriority {
   MEDIUM
   HIGH
   CRITICAL
+}
+
+// ============================================
+// Server Access Daily Checklist System
+// ============================================
+
+// Categories for server access checklist
+enum ServerChecklistCategory {
+  BACKUP_VERIFICATION   // Verifikasi backup database
+  SERVER_HEALTH         // Kesehatan server
+  SECURITY_CHECK        // Pemeriksaan keamanan
+  MAINTENANCE           // Tugas pemeliharaan
+}
+
+// Status for server checklist
+enum ServerChecklistStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
+// Templates for server access checklist items
+model ServerAccessChecklistTemplate {
+  id                    String                  @id @default(cuid())
+  title                 String
+  description           String?
+  category              ServerChecklistCategory
+  order                 Int                     @default(0)
+  isRequired            Boolean                 @default(true)
+  isActive              Boolean                 @default(true)
+  unlockTime            String?                 // Time-lock: "HH:mm" format
+
+  // Metadata
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+
+  @@index([category, isActive, order])
+  @@map("server_access_checklist_templates")
+}
+
+// Daily server access checklist instance (one per user per day)
+model ServerAccessDailyChecklist {
+  id                    String                  @id @default(cuid())
+  userId                String
+  date                  DateTime                @db.Date
+  status                ServerChecklistStatus   @default(PENDING)
+  completedAt           DateTime?
+  notes                 String?                 @db.Text
+
+  // Metadata
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+
+  // Relations
+  user                  User                    @relation("ServerAccessChecklists", fields: [userId], references: [id], onDelete: Cascade)
+  items                 ServerAccessChecklistItem[]
+
+  @@unique([userId, date])
+  @@index([userId, date])
+  @@index([date, status])
+  @@map("server_access_daily_checklists")
+}
+
+// Individual items in a server access daily checklist
+model ServerAccessChecklistItem {
+  id                    String                  @id @default(cuid())
+  checklistId           String
+  title                 String
+  description           String?
+  category              ServerChecklistCategory
+  order                 Int                     @default(0)
+  isRequired            Boolean                 @default(true)
+  status                ShiftChecklistStatus    @default(PENDING)
+  completedAt           DateTime?
+  notes                 String?                 @db.Text
+  unlockTime            String?                 // Time-lock: "HH:mm" format
+
+  // Metadata
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+
+  // Relations
+  checklist             ServerAccessDailyChecklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+
+  @@index([checklistId, category])
+  @@index([checklistId, order])
+  @@map("server_access_checklist_items")
 }
 
 // Import/Export tracking
