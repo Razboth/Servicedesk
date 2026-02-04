@@ -3282,12 +3282,21 @@ enum ServerChecklistStatus {
   COMPLETED
 }
 
+// Types of daily checklists
+enum DailyChecklistType {
+  HARIAN                // Shift Ops daily tasks (08:00 - branch closed)
+  SERVER_SIANG          // Server daytime (08:00-20:00) - any server access staff
+  SERVER_MALAM          // Server nighttime (20:01-07:59) - shift standby only
+  AKHIR_HARI            // End of day handover before night shift
+}
+
 // Templates for server access checklist items
 model ServerAccessChecklistTemplate {
   id                    String                  @id @default(cuid())
   title                 String
   description           String?
   category              ServerChecklistCategory
+  checklistType         DailyChecklistType      @default(SERVER_SIANG) // Which checklist this belongs to
   order                 Int                     @default(0)
   isRequired            Boolean                 @default(true)
   isActive              Boolean                 @default(true)
@@ -3297,15 +3306,16 @@ model ServerAccessChecklistTemplate {
   createdAt             DateTime                @default(now())
   updatedAt             DateTime                @updatedAt
 
-  @@index([category, isActive, order])
+  @@index([checklistType, category, isActive, order])
   @@map("server_access_checklist_templates")
 }
 
-// Daily server access checklist instance (one per user per day)
+// Daily server access checklist instance (one per user per day per type)
 model ServerAccessDailyChecklist {
   id                    String                  @id @default(cuid())
   userId                String
   date                  DateTime                @db.Date
+  checklistType         DailyChecklistType      @default(SERVER_SIANG) // Type of checklist
   status                ServerChecklistStatus   @default(PENDING)
   completedAt           DateTime?
   notes                 String?                 @db.Text
@@ -3318,9 +3328,9 @@ model ServerAccessDailyChecklist {
   user                  User                    @relation("ServerAccessChecklists", fields: [userId], references: [id], onDelete: Cascade)
   items                 ServerAccessChecklistItem[]
 
-  @@unique([userId, date])
-  @@index([userId, date])
-  @@index([date, status])
+  @@unique([userId, date, checklistType]) // Unique per user + date + type
+  @@index([userId, date, checklistType])
+  @@index([date, status, checklistType])
   @@map("server_access_daily_checklists")
 }
 

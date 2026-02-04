@@ -1,7 +1,68 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { isItemUnlocked, getLockStatusMessage } from '@/lib/time-lock';
+import { isItemUnlocked, getLockStatusMessage, getCurrentTimeWITA } from '@/lib/time-lock';
+import { DailyChecklistType, ShiftType } from '@prisma/client';
+
+// Valid checklist types
+const VALID_CHECKLIST_TYPES: DailyChecklistType[] = [
+  'HARIAN',
+  'SERVER_SIANG',
+  'SERVER_MALAM',
+  'AKHIR_HARI',
+];
+
+// Shift types that are considered "night/standby" shifts
+const NIGHT_STANDBY_SHIFTS: ShiftType[] = [
+  'NIGHT_WEEKDAY',
+  'NIGHT_WEEKEND',
+  'STANDBY_ONCALL',
+];
+
+// Shift types that are considered "operational" shifts
+const OPERATIONAL_SHIFTS: ShiftType[] = [
+  'DAY_WEEKEND',
+  'STANDBY_BRANCH',
+];
+
+/**
+ * Determine checklist type based on current WITA time
+ * - 08:00-19:59 → SERVER_SIANG (daytime)
+ * - 20:00-07:59 → SERVER_MALAM (nighttime)
+ */
+function getChecklistTypeByTime(): DailyChecklistType {
+  const witaTime = getCurrentTimeWITA();
+  const hour = witaTime.getHours();
+
+  // 08:00-19:59 = daytime
+  if (hour >= 8 && hour < 20) {
+    return 'SERVER_SIANG';
+  }
+  // 20:00-07:59 = nighttime
+  return 'SERVER_MALAM';
+}
+
+/**
+ * Get today's date for checklist (handles midnight crossover for night shift)
+ * For SERVER_MALAM items at 00:00-07:59, we need to use the previous day's date
+ * since the shift started the day before
+ */
+function getChecklistDate(checklistType: DailyChecklistType): Date {
+  const witaTime = getCurrentTimeWITA();
+  const today = new Date(witaTime);
+  today.setHours(0, 0, 0, 0);
+
+  // For SERVER_MALAM between 00:00-07:59, use previous day's date
+  // because the night shift started the previous evening
+  if (checklistType === 'SERVER_MALAM') {
+    const hour = witaTime.getHours();
+    if (hour < 8) {
+      today.setDate(today.getDate() - 1);
+    }
+  }
+
+  return today;
+}
 
 // GET - Get or create today's server access checklist
 export async function GET(request: NextRequest) {
@@ -11,31 +72,108 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check if user has server access
+    // Parse query parameters
+    const { searchParams } = new URL(request.url);
+    const typeParam = searchParams.get('type') as DailyChecklistType | null;
+
+    // Validate checklist type if provided
+    if (typeParam && !VALID_CHECKLIST_TYPES.includes(typeParam)) {
+      return NextResponse.json(
+        { error: `Tipe checklist tidak valid. Gunakan: ${VALID_CHECKLIST_TYPES.join(', ')}` },
+        { status: 400 }
+      );
+    }
+
+    // Get staff profile with shift info
     const staffProfile = await prisma.staffShiftProfile.findFirst({
       where: {
         userId: session.user.id,
-        hasServerAccess: true,
+        isActive: true,
       },
     });
 
     if (!staffProfile) {
       return NextResponse.json(
-        { error: 'Anda tidak memiliki akses server' },
+        { error: 'Profil staff tidak ditemukan' },
         { status: 403 }
       );
     }
 
-    // Get today's date (start of day)
+    // Get today's shift assignment to determine shift type
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Try to find existing checklist for today
+    const currentShift = await prisma.shiftAssignment.findFirst({
+      where: {
+        staffProfileId: staffProfile.id,
+        date: today,
+      },
+    });
+
+    // Determine checklist type
+    let checklistType: DailyChecklistType;
+    if (typeParam) {
+      checklistType = typeParam;
+    } else {
+      // Auto-determine based on current time
+      checklistType = getChecklistTypeByTime();
+    }
+
+    // === ACCESS CONTROL ===
+    const hasServerAccess = staffProfile.hasServerAccess;
+    const isOnNightShift = currentShift && NIGHT_STANDBY_SHIFTS.includes(currentShift.shiftType);
+    const isOnOpsShift = currentShift && OPERATIONAL_SHIFTS.includes(currentShift.shiftType);
+
+    // Check access based on checklist type
+    switch (checklistType) {
+      case 'HARIAN':
+      case 'AKHIR_HARI':
+        // Requires operational shift
+        if (!isOnOpsShift && !isOnNightShift) {
+          return NextResponse.json(
+            { error: 'Checklist ini hanya untuk shift operasional' },
+            { status: 403 }
+          );
+        }
+        break;
+
+      case 'SERVER_SIANG':
+        // Requires server access
+        if (!hasServerAccess) {
+          return NextResponse.json(
+            { error: 'Anda tidak memiliki akses server' },
+            { status: 403 }
+          );
+        }
+        break;
+
+      case 'SERVER_MALAM':
+        // Requires server access + night/standby shift
+        if (!hasServerAccess) {
+          return NextResponse.json(
+            { error: 'Anda tidak memiliki akses server' },
+            { status: 403 }
+          );
+        }
+        if (!isOnNightShift) {
+          return NextResponse.json(
+            { error: 'Checklist server malam hanya untuk shift standby' },
+            { status: 403 }
+          );
+        }
+        break;
+    }
+
+    // Get the appropriate date for this checklist
+    const checklistDate = getChecklistDate(checklistType);
+
+    // Try to find existing checklist for today and type
     let checklist = await prisma.serverAccessDailyChecklist.findUnique({
       where: {
-        userId_date: {
+        userId_date_checklistType: {
           userId: session.user.id,
-          date: today,
+          date: checklistDate,
+          checklistType: checklistType,
         },
       },
       include: {
@@ -55,14 +193,25 @@ export async function GET(request: NextRequest) {
     // If no checklist exists, create one from templates
     if (!checklist) {
       const templates = await prisma.serverAccessChecklistTemplate.findMany({
-        where: { isActive: true },
+        where: {
+          isActive: true,
+          checklistType: checklistType,
+        },
         orderBy: [{ category: 'asc' }, { order: 'asc' }],
       });
+
+      if (templates.length === 0) {
+        return NextResponse.json(
+          { error: `Tidak ada template untuk checklist ${checklistType}` },
+          { status: 404 }
+        );
+      }
 
       checklist = await prisma.serverAccessDailyChecklist.create({
         data: {
           userId: session.user.id,
-          date: today,
+          date: checklistDate,
+          checklistType: checklistType,
           status: 'PENDING',
           items: {
             create: templates.map((template) => ({
@@ -92,7 +241,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Add lock status to each item
-    const now = new Date();
+    const now = getCurrentTimeWITA();
     const itemsWithLockStatus = checklist.items.map((item) => ({
       ...item,
       isLocked: !isItemUnlocked(item.unlockTime, now),
@@ -111,8 +260,16 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       ...checklist,
+      checklistType,
       items: itemsWithLockStatus,
       stats,
+      // Include shift info for UI
+      shiftInfo: {
+        hasServerAccess,
+        isOnNightShift,
+        isOnOpsShift,
+        currentShiftType: currentShift?.shiftType || null,
+      },
     });
   } catch (error) {
     console.error('Error fetching server checklist:', error);

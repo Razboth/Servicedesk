@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { isItemUnlocked, getLockStatusMessage } from '@/lib/time-lock';
+import { isItemUnlocked, getLockStatusMessage, getCurrentTimeWITA } from '@/lib/time-lock';
 
 // PUT - Update checklist items
 export async function PUT(request: NextRequest) {
@@ -42,7 +42,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const now = new Date();
+    const now = getCurrentTimeWITA();
     const updatedItems = [];
     const errors = [];
 

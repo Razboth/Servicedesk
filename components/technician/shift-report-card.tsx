@@ -72,6 +72,8 @@ interface ServerChecklistItem {
   lockMessage?: string | null;
 }
 
+type DailyChecklistType = 'HARIAN' | 'SERVER_SIANG' | 'SERVER_MALAM' | 'AKHIR_HARI';
+
 interface ServerChecklist {
   id: string;
   userId: string;
@@ -79,11 +81,18 @@ interface ServerChecklist {
   status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED';
   completedAt: string | null;
   notes: string | null;
+  checklistType: DailyChecklistType;
   items: ServerChecklistItem[];
   user: {
     id: string;
     name: string;
     email: string;
+  };
+  shiftInfo?: {
+    hasServerAccess: boolean;
+    isOnNightShift: boolean;
+    isOnOpsShift: boolean;
+    currentShiftType: string | null;
   };
 }
 
@@ -126,8 +135,13 @@ const tabConfig = [
   { id: 'notes', label: 'Catatan', icon: MessageSquare },
 ];
 
-// Daily checklist tab - only shown for users with server access
-const dailyChecklistTab = { id: 'daily', label: 'Daily Checklist', icon: ServerCog };
+// Checklist type configurations
+const checklistTypeConfig: Record<DailyChecklistType, { id: string; label: string; icon: typeof ServerCog }> = {
+  HARIAN: { id: 'harian', label: 'Checklist Harian', icon: ClipboardList },
+  SERVER_SIANG: { id: 'server_siang', label: 'Server (Siang)', icon: ServerCog },
+  SERVER_MALAM: { id: 'server_malam', label: 'Server (Malam)', icon: ServerCog },
+  AKHIR_HARI: { id: 'akhir_hari', label: 'Akhir Hari', icon: CheckCircle2 },
+};
 
 export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftReportCardProps) {
   const [reportData, setReportData] = useState<ReportData | null>(null);
@@ -145,8 +159,19 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [activeTab, setActiveTab] = useState('checklist');
-  const [serverChecklist, setServerChecklist] = useState<ServerChecklist | null>(null);
-  const [isLoadingServerChecklist, setIsLoadingServerChecklist] = useState(false);
+  const [dailyChecklists, setDailyChecklists] = useState<Record<DailyChecklistType, ServerChecklist | null>>({
+    HARIAN: null,
+    SERVER_SIANG: null,
+    SERVER_MALAM: null,
+    AKHIR_HARI: null,
+  });
+  const [loadingChecklists, setLoadingChecklists] = useState<Record<DailyChecklistType, boolean>>({
+    HARIAN: false,
+    SERVER_SIANG: false,
+    SERVER_MALAM: false,
+    AKHIR_HARI: false,
+  });
+  const [availableChecklistTypes, setAvailableChecklistTypes] = useState<DailyChecklistType[]>([]);
 
   const fetchReport = useCallback(async () => {
     try {
@@ -180,27 +205,84 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
     fetchReport();
   }, [fetchReport]);
 
-  // Fetch server access daily checklist if user has server access
-  const fetchServerChecklist = useCallback(async () => {
-    if (!reportData?.hasServerAccess) return;
+  // Determine available checklist types based on shift
+  const determineAvailableTypes = useCallback(async () => {
+    if (!reportData) return;
+
+    // First, fetch to get shift info from API
     try {
-      setIsLoadingServerChecklist(true);
       const response = await fetch('/api/server-checklist');
-      if (!response.ok) throw new Error('Failed to fetch server checklist');
+      if (!response.ok) {
+        // If no access, check if we're on ops shift for HARIAN/AKHIR_HARI
+        const types: DailyChecklistType[] = [];
+        // For now, we'll try fetching HARIAN to see if user is on ops shift
+        const harianResponse = await fetch('/api/server-checklist?type=HARIAN');
+        if (harianResponse.ok) {
+          types.push('HARIAN', 'AKHIR_HARI');
+        }
+        setAvailableChecklistTypes(types);
+        return;
+      }
+
       const data = await response.json();
-      setServerChecklist(data);
+      const shiftInfo = data.shiftInfo;
+
+      const types: DailyChecklistType[] = [];
+
+      // Determine available types based on shift info
+      if (shiftInfo?.isOnOpsShift || shiftInfo?.isOnNightShift) {
+        types.push('HARIAN');
+        types.push('AKHIR_HARI');
+      }
+
+      if (shiftInfo?.hasServerAccess) {
+        if (shiftInfo?.isOnNightShift) {
+          types.push('SERVER_MALAM');
+        } else {
+          types.push('SERVER_SIANG');
+        }
+      }
+
+      setAvailableChecklistTypes(types);
+
+      // Store the first fetched checklist
+      if (data.checklistType) {
+        setDailyChecklists(prev => ({
+          ...prev,
+          [data.checklistType]: data,
+        }));
+      }
     } catch (error) {
-      console.error('Error fetching server checklist:', error);
-    } finally {
-      setIsLoadingServerChecklist(false);
+      console.error('Error determining available checklist types:', error);
     }
-  }, [reportData?.hasServerAccess]);
+  }, [reportData]);
+
+  // Fetch a specific checklist type
+  const fetchChecklistByType = useCallback(async (type: DailyChecklistType) => {
+    try {
+      setLoadingChecklists(prev => ({ ...prev, [type]: true }));
+      const response = await fetch(`/api/server-checklist?type=${type}`);
+      if (!response.ok) {
+        console.error(`Failed to fetch ${type} checklist`);
+        return;
+      }
+      const data = await response.json();
+      setDailyChecklists(prev => ({
+        ...prev,
+        [type]: data,
+      }));
+    } catch (error) {
+      console.error(`Error fetching ${type} checklist:`, error);
+    } finally {
+      setLoadingChecklists(prev => ({ ...prev, [type]: false }));
+    }
+  }, []);
 
   useEffect(() => {
-    if (reportData?.hasServerAccess) {
-      fetchServerChecklist();
+    if (reportData) {
+      determineAvailableTypes();
     }
-  }, [reportData?.hasServerAccess, fetchServerChecklist]);
+  }, [reportData, determineAvailableTypes]);
 
   const handleUpdateChecklist = async (
     items: { id: string; status?: string; notes?: string }[]
@@ -241,7 +323,8 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
   };
 
   const handleUpdateServerChecklist = async (
-    items: { id: string; status?: string; notes?: string }[]
+    items: { id: string; status?: string; notes?: string }[],
+    checklistType: DailyChecklistType
   ) => {
     try {
       setIsUpdating(true);
@@ -260,11 +343,11 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
         throw new Error('Failed to update server checklist');
       }
 
-      await fetchServerChecklist();
-      toast.success('Daily checklist diperbarui');
+      await fetchChecklistByType(checklistType);
+      toast.success('Checklist diperbarui');
     } catch (error) {
       console.error('Error updating server checklist:', error);
-      toast.error('Gagal memperbarui daily checklist');
+      toast.error('Gagal memperbarui checklist');
     } finally {
       setIsUpdating(false);
     }
@@ -735,8 +818,8 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
           <div className="w-full">
             <div className="border-b mb-6">
               <nav className="flex gap-4 overflow-x-auto" aria-label="Tabs">
-                {/* Conditionally add daily checklist tab for users with server access */}
-                {[...tabConfig, ...(hasServerAccess ? [dailyChecklistTab] : [])].map((tab) => {
+                {/* Base tabs */}
+                {tabConfig.map((tab) => {
                   const Icon = tab.icon;
                   const isActive = activeTab === tab.id;
                   return (
@@ -754,6 +837,35 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
                       <Icon className="h-3 w-3 sm:h-4 sm:w-4" />
                       <span className="hidden xs:inline">{tab.label}</span>
                       <span className="xs:hidden">{tab.label.charAt(0)}</span>
+                    </button>
+                  );
+                })}
+                {/* Dynamic checklist type tabs */}
+                {availableChecklistTypes.map((type) => {
+                  const config = checklistTypeConfig[type];
+                  const Icon = config.icon;
+                  const isActive = activeTab === config.id;
+                  return (
+                    <button
+                      key={config.id}
+                      onClick={() => {
+                        setActiveTab(config.id);
+                        // Fetch if not loaded yet
+                        if (!dailyChecklists[type]) {
+                          fetchChecklistByType(type);
+                        }
+                      }}
+                      className={`
+                        flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap transition-colors
+                        ${isActive
+                          ? 'border-primary text-primary'
+                          : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+                        }
+                      `}
+                    >
+                      <Icon className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="hidden xs:inline">{config.label}</span>
+                      <span className="xs:hidden">{config.label.charAt(0)}</span>
                     </button>
                   );
                 })}
@@ -837,54 +949,62 @@ export function ShiftReportCard({ shiftAssignment, onReportCreated }: ShiftRepor
               </div>
             )}
 
-            {/* Daily Checklist Tab - Only for users with server access */}
-            {activeTab === 'daily' && hasServerAccess && (
-              <div className="mt-4 space-y-4">
-                {isLoadingServerChecklist ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  </div>
-                ) : serverChecklist ? (
-                  <>
-                    {/* PIC Info - Read Only */}
-                    <div className="p-3 bg-muted/50 rounded-lg">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <span className="text-xs text-muted-foreground">PIC Shift</span>
-                          <p className="font-medium text-sm">{serverChecklist.user.name}</p>
-                        </div>
-                        <Badge
-                          className={
-                            serverChecklist.status === 'COMPLETED'
-                              ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
-                              : serverChecklist.status === 'IN_PROGRESS'
-                              ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
-                              : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
-                          }
-                        >
-                          {serverChecklist.status === 'COMPLETED'
-                            ? 'Selesai'
-                            : serverChecklist.status === 'IN_PROGRESS'
-                            ? 'Dalam Proses'
-                            : 'Pending'}
-                        </Badge>
-                      </div>
+            {/* Dynamic Daily Checklist Tabs */}
+            {availableChecklistTypes.map((type) => {
+              const config = checklistTypeConfig[type];
+              const checklist = dailyChecklists[type];
+              const isLoading = loadingChecklists[type];
+
+              if (activeTab !== config.id) return null;
+
+              return (
+                <div key={type} className="mt-4 space-y-4">
+                  {isLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                     </div>
-                    <ServerAccessChecklist
-                      items={serverChecklist.items}
-                      onUpdateItems={handleUpdateServerChecklist}
-                      isLoading={isUpdating}
-                      readOnly={serverChecklist.status === 'COMPLETED'}
-                    />
-                  </>
-                ) : (
-                  <div className="flex items-center justify-center py-8 text-muted-foreground">
-                    <AlertTriangle className="h-5 w-5 mr-2" />
-                    Gagal memuat daily checklist
-                  </div>
-                )}
-              </div>
-            )}
+                  ) : checklist ? (
+                    <>
+                      {/* PIC Info - Read Only */}
+                      <div className="p-3 bg-muted/50 rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <span className="text-xs text-muted-foreground">PIC</span>
+                            <p className="font-medium text-sm">{checklist.user.name}</p>
+                          </div>
+                          <Badge
+                            className={
+                              checklist.status === 'COMPLETED'
+                                ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                                : checklist.status === 'IN_PROGRESS'
+                                ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
+                                : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                            }
+                          >
+                            {checklist.status === 'COMPLETED'
+                              ? 'Selesai'
+                              : checklist.status === 'IN_PROGRESS'
+                              ? 'Dalam Proses'
+                              : 'Pending'}
+                          </Badge>
+                        </div>
+                      </div>
+                      <ServerAccessChecklist
+                        items={checklist.items}
+                        onUpdateItems={(items) => handleUpdateServerChecklist(items, type)}
+                        isLoading={isUpdating}
+                        readOnly={checklist.status === 'COMPLETED'}
+                      />
+                    </>
+                  ) : (
+                    <div className="flex items-center justify-center py-8 text-muted-foreground">
+                      <AlertTriangle className="h-5 w-5 mr-2" />
+                      Gagal memuat {config.label.toLowerCase()}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
           {/* Actions */}
