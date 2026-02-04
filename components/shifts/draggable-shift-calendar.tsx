@@ -70,11 +70,11 @@ function getDayShiftSlots(date: Date, isWeekend: boolean, isHoliday: boolean = f
   };
 
   if (isWeekend || isHoliday) {
-    // Weekend or Holiday shifts
-    slots.MONITORING.push({ type: 'DAY_WEEKEND', maxSlots: 1, isRequired: false, category: 'MONITORING' });
-    slots.MONITORING.push({ type: 'NIGHT_WEEKEND', maxSlots: 1, isRequired: false, category: 'MONITORING' });
-    slots.OPERATIONAL.push({ type: 'STANDBY_ONCALL', maxSlots: 1, isRequired: false, category: 'OPERATIONAL' });
-    slots.OPERATIONAL.push({ type: 'STANDBY_BRANCH', maxSlots: 1, isRequired: false, category: 'OPERATIONAL' });
+    // Weekend or Holiday shifts - allow multiple staff (2 slots each)
+    slots.MONITORING.push({ type: 'DAY_WEEKEND', maxSlots: 2, isRequired: false, category: 'MONITORING' });
+    slots.MONITORING.push({ type: 'NIGHT_WEEKEND', maxSlots: 2, isRequired: false, category: 'MONITORING' });
+    slots.OPERATIONAL.push({ type: 'STANDBY_ONCALL', maxSlots: 2, isRequired: false, category: 'OPERATIONAL' });
+    slots.OPERATIONAL.push({ type: 'STANDBY_BRANCH', maxSlots: 2, isRequired: false, category: 'OPERATIONAL' });
   } else {
     // Weekday shifts
     slots.MONITORING.push({ type: 'NIGHT_WEEKDAY', maxSlots: 1, isRequired: false, category: 'MONITORING' });
