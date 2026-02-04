@@ -135,6 +135,7 @@ export default function TechnicianShiftsPage() {
     MONITORING_MALAM: null,
   });
   const [isExporting, setIsExporting] = useState(false);
+  const [hasServerAccess, setHasServerAccess] = useState(false);
 
   // Report data
   const [reportData, setReportData] = useState<{
@@ -165,12 +166,13 @@ export default function TechnicianShiftsPage() {
     }
   }, [selectedMonth, selectedYear, userBranchId]);
 
-  // Determine available checklist types when shift data is loaded
+  // Determine available checklist types when page loads
+  // This runs for users with active shift OR users with server access (User E)
   useEffect(() => {
-    if (hasActiveShift) {
+    if (!loading) {
       determineAvailableTypes();
     }
-  }, [hasActiveShift, todayShift]);
+  }, [loading]);
 
   // Fetch report data when shift is loaded
   useEffect(() => {
@@ -237,73 +239,56 @@ export default function TechnicianShiftsPage() {
 
   const determineAvailableTypes = async () => {
     try {
-      const response = await fetch('/api/server-checklist');
-      if (!response.ok) {
-        // Fallback: try to check each type individually
-        const types: DailyChecklistType[] = [];
+      // Try different checklist types in parallel to see what the user can access
+      const checklistTypesToTry: DailyChecklistType[] = [
+        'HARIAN',
+        'AKHIR_HARI',
+        'MONITORING_SIANG',
+        'MONITORING_MALAM',
+        'OPS_SIANG',
+        'OPS_MALAM',
+        'SERVER_SIANG',
+        'SERVER_MALAM',
+      ];
 
-        // Try HARIAN for STANDBY_BRANCH users
-        const harianResponse = await fetch('/api/server-checklist?type=HARIAN');
-        if (harianResponse.ok) {
-          types.push('HARIAN', 'AKHIR_HARI');
-        }
+      const results = await Promise.all(
+        checklistTypesToTry.map(async (type) => {
+          try {
+            const response = await fetch(`/api/server-checklist?type=${type}`);
+            if (response.ok) {
+              const data = await response.json();
+              return { type, success: true, data };
+            }
+            return { type, success: false, data: null };
+          } catch {
+            return { type, success: false, data: null };
+          }
+        })
+      );
 
-        // Try OPS_SIANG for users without server access
-        const opsSiangResponse = await fetch('/api/server-checklist?type=OPS_SIANG');
-        if (opsSiangResponse.ok) {
-          types.push('OPS_SIANG');
-        }
-
-        // Try MONITORING_SIANG for users with server access (day shift)
-        const monitoringSiangResponse = await fetch('/api/server-checklist?type=MONITORING_SIANG');
-        if (monitoringSiangResponse.ok) {
-          types.push('MONITORING_SIANG');
-        }
-
-        setAvailableChecklistTypes(types);
-        if (types.length > 0 && !activeTab) {
-          setActiveTab(types[0].toLowerCase().replace('_', '-'));
-        }
-        return;
-      }
-
-      const data = await response.json();
-      const shiftInfo = data.shiftInfo;
       const types: DailyChecklistType[] = [];
+      let serverAccessFlag = false;
 
-      // HARIAN and AKHIR_HARI for STANDBY_BRANCH
-      if (shiftInfo?.canAccessHarian) {
-        types.push('HARIAN');
-        types.push('AKHIR_HARI');
-      }
-
-      // Server checklists (legacy - SERVER_SIANG/SERVER_MALAM)
-      if (shiftInfo?.hasServerAccess) {
-        if (shiftInfo?.isOnNightShift) {
-          types.push('SERVER_MALAM');
-        } else {
-          types.push('SERVER_SIANG');
+      // HARIAN and AKHIR_HARI go together
+      const harianResult = results.find(r => r.type === 'HARIAN');
+      if (harianResult?.success) {
+        types.push('HARIAN', 'AKHIR_HARI');
+        if (harianResult.data?.shiftInfo?.hasServerAccess !== undefined) {
+          serverAccessFlag = harianResult.data.shiftInfo.hasServerAccess;
         }
       }
 
-      // NEW: OPS checklists (for users WITHOUT server access)
-      if (!shiftInfo?.hasServerAccess) {
-        if (shiftInfo?.isOnNightShift) {
-          types.push('OPS_MALAM');
-        } else {
-          types.push('OPS_SIANG');
+      // Add other successful types
+      for (const result of results) {
+        if (result.success && result.type !== 'HARIAN' && result.type !== 'AKHIR_HARI') {
+          types.push(result.type);
+          if (result.data?.shiftInfo?.hasServerAccess !== undefined) {
+            serverAccessFlag = result.data.shiftInfo.hasServerAccess;
+          }
         }
       }
 
-      // NEW: MONITORING checklists (for users WITH server access)
-      if (shiftInfo?.hasServerAccess) {
-        if (shiftInfo?.isOnNightShift) {
-          types.push('MONITORING_MALAM');
-        } else {
-          types.push('MONITORING_SIANG');
-        }
-      }
-
+      setHasServerAccess(serverAccessFlag);
       setAvailableChecklistTypes(types);
       if (types.length > 0 && !activeTab) {
         setActiveTab(types[0].toLowerCase().replace('_', '-'));
@@ -982,7 +967,35 @@ export default function TechnicianShiftsPage() {
               </div>
 
               {/* Overall Progress */}
-              {hasActiveShift && availableChecklistTypes.length > 0 && (
+              {availableChecklistTypes.length > 0 && (
+                <div className="space-y-2 pt-2 border-t">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Progress Keseluruhan</span>
+                    <span className="font-medium">{overallProgress}%</span>
+                  </div>
+                  <Progress value={overallProgress} className="h-2" />
+                </div>
+              )}
+            </div>
+          ) : hasServerAccess && availableChecklistTypes.length > 0 ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                  <ServerCog className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                      Staff Server Access
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Anda dapat mengakses Checklist Monitoring
+                  </p>
+                </div>
+              </div>
+              {/* Overall Progress */}
+              {availableChecklistTypes.length > 0 && (
                 <div className="space-y-2 pt-2 border-t">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Progress Keseluruhan</span>
@@ -1002,7 +1015,8 @@ export default function TechnicianShiftsPage() {
       </Card>
 
       {/* Checklist Tabs - Main Area */}
-      {hasActiveShift && availableChecklistTypes.length > 0 && (
+      {/* Shows for users with active shift OR users with server access (User E) */}
+      {availableChecklistTypes.length > 0 && (
         <Card>
           <CardHeader className="px-5 pt-5 pb-4">
             <CardTitle className="text-lg flex items-center gap-2">
@@ -1049,18 +1063,21 @@ export default function TechnicianShiftsPage() {
         </Card>
       )}
 
-      {/* Info when no active shift */}
-      {!hasActiveShift && (
+      {/* Info when no active shift and no available checklists */}
+      {!hasActiveShift && availableChecklistTypes.length === 0 && (
         <Card className="border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30">
           <CardContent className="p-5">
             <div className="flex items-start gap-3">
               <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
               <p className="text-sm text-amber-800 dark:text-amber-200">
-                <strong>Info:</strong> Checklist akan muncul ketika Anda memiliki shift aktif hari ini.
+                <strong>Info:</strong> Tidak ada checklist yang tersedia untuk Anda saat ini.
                 {todayShift ? (
-                  <span> Shift Anda saat ini: <strong>{shiftTypeConfig[todayShift.shiftType as keyof typeof shiftTypeConfig]?.label || todayShift.shiftType}</strong> (bukan shift kerja aktif)</span>
+                  <span> Shift Anda: <strong>{shiftTypeConfig[todayShift.shiftType as keyof typeof shiftTypeConfig]?.label || todayShift.shiftType}</strong></span>
                 ) : (
-                  <span> Anda tidak memiliki shift yang ditugaskan untuk hari ini.</span>
+                  <span> Anda tidak memiliki shift yang ditugaskan hari ini.</span>
+                )}
+                {!hasServerAccess && (
+                  <span> Hubungi admin jika Anda seharusnya memiliki akses checklist.</span>
                 )}
               </p>
             </div>
