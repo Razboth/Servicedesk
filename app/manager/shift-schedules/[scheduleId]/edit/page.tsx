@@ -318,7 +318,7 @@ export default function EditSchedulePage() {
       }
 
       toast.success('Assignment deleted');
-      await fetchAssignments();
+      await fetchSchedule();
     } catch (error: any) {
       console.error('Error deleting assignment:', error);
       toast.error(error.message || 'Failed to delete assignment');
