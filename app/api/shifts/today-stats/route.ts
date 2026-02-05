@@ -15,18 +15,15 @@ export async function GET(request: NextRequest) {
     const witaTime = getCurrentTimeWITA();
     const witaHour = witaTime.getHours();
 
-    // Calculate today's date in UTC for database queries
-    const todayUTC = new Date(Date.UTC(
-      witaTime.getFullYear(),
-      witaTime.getMonth(),
-      witaTime.getDate(),
-      0, 0, 0, 0
-    ));
+    // Calculate today's date - must match server-checklist's getChecklistDate logic
+    // Use local date with setHours(0,0,0,0) to match how checklists are stored
+    const todayLocal = new Date(witaTime);
+    todayLocal.setHours(0, 0, 0, 0);
 
     // For night shifts during early morning (00:00-07:59), also check yesterday
     const isEarlyMorning = witaHour >= 0 && witaHour < 8;
-    const yesterdayUTC = new Date(todayUTC);
-    yesterdayUTC.setUTCDate(yesterdayUTC.getUTCDate() - 1);
+    const yesterdayLocal = new Date(todayLocal);
+    yesterdayLocal.setDate(yesterdayLocal.getDate() - 1);
 
     // Shift types
     const operationalShiftTypes = ['NIGHT_WEEKDAY', 'NIGHT_WEEKEND', 'DAY_WEEKEND', 'STANDBY_ONCALL', 'STANDBY_BRANCH'];
@@ -36,7 +33,7 @@ export async function GET(request: NextRequest) {
     // Get today's shift assignments with server access info
     const todayAssignments = await prisma.shiftAssignment.findMany({
       where: {
-        date: todayUTC,
+        date: todayLocal,
         shiftType: { in: operationalShiftTypes },
       },
       include: {
@@ -53,7 +50,7 @@ export async function GET(request: NextRequest) {
     if (isEarlyMorning) {
       activeNightShifts = await prisma.shiftAssignment.findMany({
         where: {
-          date: yesterdayUTC,
+          date: yesterdayLocal,
           shiftType: { in: nightShiftTypes },
         },
         include: {
@@ -140,8 +137,8 @@ export async function GET(request: NextRequest) {
     // For night checklists (MALAM):
     //   - If evening (20:00+): use today
     //   - If early morning (00:00-07:59): use yesterday
-    const siangChecklistDate = todayUTC;
-    const malamChecklistDate = isEarlyMorning ? yesterdayUTC : todayUTC;
+    const siangChecklistDate = todayLocal;
+    const malamChecklistDate = isEarlyMorning ? yesterdayLocal : todayLocal;
 
     // Get checklist claims for OPS and MONITORING types
     const checklistTypes = ['OPS_SIANG', 'OPS_MALAM', 'MONITORING_SIANG', 'MONITORING_MALAM'] as const;
@@ -192,7 +189,7 @@ export async function GET(request: NextRequest) {
         isDayTime,
         isNightTime,
       },
-      todayDate: todayUTC.toISOString(),
+      todayDate: todayLocal.toISOString(),
       // Active operational shifts
       operationalShifts: {
         today: todayAssignments.map((a) => ({
