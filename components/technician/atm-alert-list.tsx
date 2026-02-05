@@ -59,26 +59,48 @@ export function ATMAlertList({
     }
   }, [value]);
 
+  // Check if current time is within allowed fetch window (target time to +3 minutes)
+  const isWithinFetchWindow = () => {
+    const [hours, minutes] = targetTime.split(':').map(Number);
+    const now = new Date();
+
+    // Get current time in WITA (UTC+8)
+    const witaOffset = 8 * 60; // minutes
+    const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+    let witaMinutes = utcMinutes + witaOffset;
+    if (witaMinutes >= 24 * 60) witaMinutes -= 24 * 60;
+
+    const witaHour = Math.floor(witaMinutes / 60);
+    const witaMinute = witaMinutes % 60;
+
+    const targetMinutes = hours * 60 + minutes;
+    const currentMinutes = witaHour * 60 + witaMinute;
+
+    // Allow fetch from target time to +3 minutes
+    const diff = currentMinutes - targetMinutes;
+    return diff >= 0 && diff <= 3;
+  };
+
+  const getTimeWindowMessage = () => {
+    const [hours, minutes] = targetTime.split(':').map(Number);
+    const endMinutes = minutes + 3;
+    const endHour = hours + Math.floor(endMinutes / 60);
+    const endMin = endMinutes % 60;
+    return `${targetTime} - ${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`;
+  };
+
   const fetchAlerts = async () => {
+    // Check if within fetch window
+    if (!isWithinFetchWindow()) {
+      toast.error(`Data hanya bisa diambil pada jam ${getTimeWindowMessage()} WITA`);
+      return;
+    }
+
     try {
       setLoading(true);
 
-      // Parse target time to get time window (±1 minute)
-      const [hours, minutes] = targetTime.split(':').map(Number);
-      const now = new Date();
-      const targetDate = new Date(now);
-      targetDate.setHours(hours, minutes, 0, 0);
-
-      // Create time window: target time ±1 minute
-      const startTime = new Date(targetDate);
-      startTime.setMinutes(startTime.getMinutes() - 1);
-      const endTime = new Date(targetDate);
-      endTime.setMinutes(endTime.getMinutes() + 1);
-
-      // Fetch ATM alerts from monitoring API
-      const response = await fetch(
-        `/api/monitoring/atm/alerts?from=${startTime.toISOString()}&to=${endTime.toISOString()}`
-      );
+      // Fetch ATM alerts from monitoring API (current state)
+      const response = await fetch('/api/monitoring/atm/alerts');
 
       if (!response.ok) {
         throw new Error('Failed to fetch ATM alerts');
@@ -190,8 +212,11 @@ export function ATMAlertList({
           </>
         ) : (
           <div className="text-center py-4">
-            <p className="text-sm text-muted-foreground mb-3">
+            <p className="text-sm text-muted-foreground mb-1">
               Klik tombol untuk mengambil data alert ATM
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Waktu pengambilan: <span className="font-medium">{getTimeWindowMessage()} WITA</span>
             </p>
           </div>
         )}
@@ -202,7 +227,8 @@ export function ATMAlertList({
               size="sm"
               variant="outline"
               onClick={fetchAlerts}
-              disabled={loading}
+              disabled={loading || (!data && !isWithinFetchWindow())}
+              title={!isWithinFetchWindow() ? `Data hanya bisa diambil pada jam ${getTimeWindowMessage()} WITA` : ''}
             >
               {loading ? (
                 <>
