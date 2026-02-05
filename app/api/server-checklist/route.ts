@@ -34,7 +34,6 @@ const MONITORING_MALAM_SHIFTS: ShiftType[] = [
 
 // Shift types for OPS_MALAM (night shifts without server access)
 const OPS_MALAM_SHIFTS: ShiftType[] = [
-  'NIGHT_WEEKDAY',
   'NIGHT_WEEKEND',
 ];
 
@@ -264,7 +263,7 @@ export async function GET(request: NextRequest) {
         }
         if (!isOnOpsMalamShift) {
           return NextResponse.json(
-            { error: 'Checklist Ops Malam hanya untuk shift NIGHT_WEEKDAY atau NIGHT_WEEKEND' },
+            { error: 'Checklist Ops Malam hanya untuk shift NIGHT_WEEKEND' },
             { status: 403 }
           );
         }
