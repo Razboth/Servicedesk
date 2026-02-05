@@ -20,9 +20,10 @@ const AUTO_CLAIM_TYPES: DailyChecklistType[] = [
   'MONITORING_MALAM',
 ];
 
-// Shift types for OPS_SIANG (auto-assign to STANDBY_BRANCH)
+// Shift types for OPS_SIANG (auto-assign to day shift staff)
 const OPS_SIANG_SHIFTS: ShiftType[] = [
   'STANDBY_BRANCH',
+  'DAY_WEEKEND',
 ];
 
 // Shift types for MONITORING_MALAM (night shifts with server access)
@@ -244,10 +245,10 @@ export async function GET(request: NextRequest) {
     // === ACCESS CONTROL ===
     switch (checklistType) {
       case 'OPS_SIANG':
-        // OPS_SIANG: Auto-assign to STANDBY_BRANCH staff
+        // OPS_SIANG: Auto-assign to day shift staff (STANDBY_BRANCH or DAY_WEEKEND)
         if (!isOnOpsSiangShift) {
           return NextResponse.json(
-            { error: 'Checklist Ops Siang hanya untuk staff shift STANDBY_BRANCH' },
+            { error: 'Checklist Ops Siang hanya untuk staff shift STANDBY_BRANCH atau DAY_WEEKEND' },
             { status: 403 }
           );
         }
