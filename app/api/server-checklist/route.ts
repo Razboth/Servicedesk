@@ -451,7 +451,7 @@ export async function GET(request: NextRequest) {
         claimed: true,
         claimedByUser: true,
         autoClaimed: AUTO_CLAIM_TYPES.includes(checklistType), // Flag for auto-claimed types
-        canRelease: checklistType === 'OPS_SIANG', // Only OPS_SIANG can be released
+        canRelease: checklistType === 'MONITORING_SIANG', // Only MONITORING_SIANG can be released
         otherClaims: otherClaims.map((c) => ({
           userId: c.user.id,
           userName: c.user.name,

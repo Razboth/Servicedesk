@@ -510,88 +510,39 @@ export default function TechnicianWorkbench() {
             </Card>
           </div>
 
-          {/* Compact Shift & Checklist Bar */}
+          {/* Compact Shift & Checklist Link */}
           {shiftStats && (
-            <Card className="mb-6 bg-cream-50/80 dark:bg-warm-dark-300/80 border-cream-500 dark:border-warm-dark-200">
-              <CardContent className="py-3 px-4">
-                <div className="flex items-center justify-between gap-4">
-                  {/* Current Shift Info */}
-                  <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">
-                        {shiftStats.serverTime.isDayTime ? 'Shift Siang' : 'Shift Malam'}
+            <div className="mb-4 flex items-center justify-between text-sm">
+              <div className="flex items-center gap-3 text-muted-foreground">
+                <span>{shiftStats.serverTime.isDayTime ? 'Siang' : 'Malam'}</span>
+                <span className="text-muted-foreground/50">•</span>
+                {(() => {
+                  const opsType = shiftStats.serverTime.isDayTime ? 'OPS_SIANG' : 'OPS_MALAM';
+                  const monType = shiftStats.serverTime.isDayTime ? 'MONITORING_SIANG' : 'MONITORING_MALAM';
+                  const opsClaim = shiftStats.checklistStatus[opsType]?.claims?.[0];
+                  const monClaim = shiftStats.checklistStatus[monType]?.claims?.[0];
+                  return (
+                    <span className="flex items-center gap-2">
+                      <span className={opsClaim?.progress === 100 ? 'text-green-600' : opsClaim ? 'text-blue-600' : 'text-muted-foreground'}>
+                        OPS {opsClaim ? `${opsClaim.progress}%` : '-'}
                       </span>
-                      {shiftStats.operationalShifts.today.length > 0 && (
-                        <span className="text-xs text-muted-foreground">
-                          ({shiftStats.operationalShifts.today.length} aktif)
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Checklist Status Indicators */}
-                    <div className="flex items-center gap-4 border-l pl-4 border-muted">
-                      {(() => {
-                        const opsType = shiftStats.serverTime.isDayTime ? 'OPS_SIANG' : 'OPS_MALAM';
-                        const monType = shiftStats.serverTime.isDayTime ? 'MONITORING_SIANG' : 'MONITORING_MALAM';
-                        const opsStatus = shiftStats.checklistStatus[opsType];
-                        const monStatus = shiftStats.checklistStatus[monType];
-                        const opsClaim = opsStatus?.claims?.[0];
-                        const monClaim = monStatus?.claims?.[0];
-
-                        return (
-                          <>
-                            {/* OPS Checklist */}
-                            <div className="flex items-center gap-1.5">
-                              {opsClaim ? (
-                                opsClaim.progress === 100 ? (
-                                  <CheckCircle className="h-3.5 w-3.5 text-green-600" />
-                                ) : (
-                                  <CircleDot className="h-3.5 w-3.5 text-blue-600" />
-                                )
-                              ) : (
-                                <Circle className="h-3.5 w-3.5 text-amber-500" />
-                              )}
-                              <span className="text-xs">
-                                OPS {opsClaim ? `${opsClaim.progress}%` : '-'}
-                              </span>
-                            </div>
-
-                            {/* MONITORING Checklist */}
-                            <div className="flex items-center gap-1.5">
-                              {monClaim ? (
-                                monClaim.progress === 100 ? (
-                                  <CheckCircle className="h-3.5 w-3.5 text-green-600" />
-                                ) : (
-                                  <CircleDot className="h-3.5 w-3.5 text-blue-600" />
-                                )
-                              ) : (
-                                <Circle className="h-3.5 w-3.5 text-amber-500" />
-                              )}
-                              <span className="text-xs">
-                                MON {monClaim ? `${monClaim.progress}%` : '-'}
-                              </span>
-                            </div>
-                          </>
-                        );
-                      })()}
-                    </div>
-                  </div>
-
-                  {/* Button to Shift Page */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => router.push('/technician/shifts')}
-                    className="h-7 text-xs gap-1.5"
-                  >
-                    <ClipboardCheck className="h-3.5 w-3.5" />
-                    Shift & Checklist
-                    <ArrowRight className="h-3 w-3" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+                      <span className={monClaim?.progress === 100 ? 'text-green-600' : monClaim ? 'text-blue-600' : 'text-muted-foreground'}>
+                        MON {monClaim ? `${monClaim.progress}%` : '-'}
+                      </span>
+                    </span>
+                  );
+                })()}
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push('/technician/shifts')}
+                className="h-6 text-xs gap-1 text-muted-foreground hover:text-foreground"
+              >
+                Shift & Checklist
+                <ArrowRight className="h-3 w-3" />
+              </Button>
+            </div>
           )}
 
           {/* Tab Navigation */}
