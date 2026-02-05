@@ -981,161 +981,232 @@ export default function TechnicianShiftsPage() {
         )}
       </div>
 
-      {/* Today's Shift Statistics Card */}
+      {/* Today's Shift Statistics - 3 Separate Cards */}
       {todayStats && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Status Shift & Checklist Hari Ini
-              <Badge variant="outline" className="text-[10px] ml-auto">
-                {todayStats.serverTime.isDayTime ? 'Siang' : 'Malam'}
-              </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              {/* Active Operational Shifts */}
-              <div className="space-y-2">
-                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Shift Aktif
-                </h4>
-                <div className="space-y-1.5">
-                  {[...todayStats.operationalShifts.today, ...todayStats.operationalShifts.activeNight].length > 0 ? (
-                    [...todayStats.operationalShifts.today, ...todayStats.operationalShifts.activeNight].map((shift) => {
-                      const config = shiftTypeConfig[shift.shiftType as keyof typeof shiftTypeConfig];
-                      return (
-                        <div key={shift.id} className="flex items-center gap-2 p-1.5 rounded bg-muted/50 text-sm">
-                          <Badge variant="outline" className={`text-[10px] px-1.5 ${config?.color || ''}`}>
-                            {config?.label || shift.shiftType}
-                          </Badge>
-                          <span className="truncate flex-1">{shift.staffName}</span>
-                          {shift.hasServerAccess && (
-                            <ServerCog className="h-3 w-3 text-blue-500 shrink-0" title="Server Access" />
-                          )}
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <p className="text-xs text-muted-foreground italic">Tidak ada shift aktif</p>
-                  )}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Card 1: Active Shifts - Informational/Reference */}
+          <Card className="relative overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-slate-400 to-slate-500" />
+            <CardHeader className="pb-2 pt-4">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <div className="p-1.5 rounded-md bg-muted">
+                  <Users className="h-4 w-4 text-muted-foreground" />
                 </div>
-              </div>
-
-              {/* OPS Checklist Assignment */}
+                <span>Shift Aktif</span>
+                <Badge variant="outline" className="ml-auto text-xs font-mono">
+                  {todayStats.serverTime.isDayTime ? 'Siang' : 'Malam'}
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
               <div className="space-y-2">
-                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
-                  <ClipboardList className="h-3 w-3" />
-                  {todayStats.assignedFor.ops.type.replace('_', ' ')}
-                </h4>
-                {(() => {
-                  const opsType = todayStats.assignedFor.ops.type;
-                  const status = todayStats.checklistStatus[opsType];
-                  const claim = status?.claims?.[0];
-                  const assignedStaff = todayStats.assignedFor.ops.staff;
-
-                  return (
-                    <div className={`p-2 rounded-lg border ${
-                      claim
-                        ? claim.status === 'COMPLETED'
-                          ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800'
-                          : 'bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800'
-                        : 'bg-muted/30 border-border'
-                    }`}>
-                      <div className="text-xs text-muted-foreground mb-1">
-                        Jadwal: {assignedStaff.length > 0 ? assignedStaff.map(s => s.name).join(', ') : '-'}
-                      </div>
-                      {claim ? (
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1">
-                            {claim.status === 'COMPLETED' ? (
-                              <CheckCircle2 className="h-3 w-3 text-green-600" />
-                            ) : (
-                              <CircleDot className="h-3 w-3 text-blue-600" />
-                            )}
-                            <span className="text-sm font-medium">{claim.userName}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
-                              <div
-                                className={`h-full rounded-full ${claim.status === 'COMPLETED' ? 'bg-green-500' : 'bg-blue-500'}`}
-                                style={{ width: `${claim.progress}%` }}
-                              />
-                            </div>
-                            <span className="text-xs tabular-nums">{claim.progress}%</span>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
-                          <Circle className="h-3 w-3" />
-                          <span className="text-sm">Belum diklaim</span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-              </div>
-
-              {/* MONITORING Checklist Assignment */}
-              <div className="space-y-2">
-                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
-                  <ServerCog className="h-3 w-3" />
-                  {todayStats.assignedFor.monitoring.type.replace('_', ' ')}
-                </h4>
-                {(() => {
-                  const monitorType = todayStats.assignedFor.monitoring.type;
-                  const status = todayStats.checklistStatus[monitorType];
-                  const claim = status?.claims?.[0];
-                  const assignedStaff = todayStats.assignedFor.monitoring.staff;
-                  const additionalStaff = todayStats.assignedFor.monitoring.additionalServerAccess;
-
-                  return (
-                    <div className={`p-2 rounded-lg border ${
-                      claim
-                        ? claim.status === 'COMPLETED'
-                          ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800'
-                          : 'bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800'
-                        : 'bg-muted/30 border-border'
-                    }`}>
-                      <div className="text-xs text-muted-foreground mb-1">
-                        Jadwal: {assignedStaff.length > 0 ? assignedStaff.map(s => s.name).join(', ') : '-'}
-                        {additionalStaff.length > 0 && (
-                          <span className="block text-[10px]">+ {additionalStaff.map(s => s.name).join(', ')}</span>
+                {[...todayStats.operationalShifts.today, ...todayStats.operationalShifts.activeNight].length > 0 ? (
+                  [...todayStats.operationalShifts.today, ...todayStats.operationalShifts.activeNight].map((shift) => {
+                    const config = shiftTypeConfig[shift.shiftType as keyof typeof shiftTypeConfig];
+                    return (
+                      <div
+                        key={shift.id}
+                        className="flex items-center gap-2 p-2 rounded-md bg-muted/40 hover:bg-muted/60 transition-colors"
+                      >
+                        <Badge variant="secondary" className={`text-xs shrink-0 ${config?.color || ''}`}>
+                          {config?.label || shift.shiftType}
+                        </Badge>
+                        <span className="text-sm truncate flex-1">{shift.staffName}</span>
+                        {shift.hasServerAccess && (
+                          <ServerCog className="h-3.5 w-3.5 text-blue-500 shrink-0" title="Server Access" />
                         )}
                       </div>
-                      {claim ? (
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1">
-                            {claim.status === 'COMPLETED' ? (
-                              <CheckCircle2 className="h-3 w-3 text-green-600" />
-                            ) : (
-                              <CircleDot className="h-3 w-3 text-blue-600" />
-                            )}
-                            <span className="text-sm font-medium">{claim.userName}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
-                              <div
-                                className={`h-full rounded-full ${claim.status === 'COMPLETED' ? 'bg-green-500' : 'bg-blue-500'}`}
-                                style={{ width: `${claim.progress}%` }}
-                              />
-                            </div>
-                            <span className="text-xs tabular-nums">{claim.progress}%</span>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
-                          <Circle className="h-3 w-3" />
-                          <span className="text-sm">Belum diklaim</span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
+                    );
+                  })
+                ) : (
+                  <div className="text-sm text-muted-foreground italic py-2">
+                    Tidak ada shift aktif
+                  </div>
+                )}
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+
+          {/* Card 2: OPS Checklist - Action Card */}
+          {(() => {
+            const opsType = todayStats.assignedFor.ops.type;
+            const status = todayStats.checklistStatus[opsType];
+            const claim = status?.claims?.[0];
+            const assignedStaff = todayStats.assignedFor.ops.staff;
+
+            const isCompleted = claim?.status === 'COMPLETED';
+            const isInProgress = claim && !isCompleted;
+            const isUnclaimed = !claim;
+
+            return (
+              <Card className={`relative overflow-hidden transition-all duration-200 ${
+                isCompleted ? 'ring-1 ring-green-500/30 bg-green-50/30 dark:bg-green-950/20' :
+                isInProgress ? 'ring-1 ring-blue-500/30 bg-blue-50/30 dark:bg-blue-950/20' :
+                'ring-1 ring-amber-500/30 bg-amber-50/30 dark:bg-amber-950/20'
+              }`}>
+                <div className={`absolute top-0 left-0 right-0 h-1 ${
+                  isCompleted ? 'bg-green-500' :
+                  isInProgress ? 'bg-blue-500' :
+                  'bg-amber-500'
+                }`} />
+
+                <CardHeader className="pb-2 pt-4">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <div className={`p-1.5 rounded-md ${
+                      isCompleted ? 'bg-green-100 dark:bg-green-900' :
+                      isInProgress ? 'bg-blue-100 dark:bg-blue-900' :
+                      'bg-amber-100 dark:bg-amber-900'
+                    }`}>
+                      <ClipboardList className={`h-4 w-4 ${
+                        isCompleted ? 'text-green-600 dark:text-green-400' :
+                        isInProgress ? 'text-blue-600 dark:text-blue-400' :
+                        'text-amber-600 dark:text-amber-400'
+                      }`} />
+                    </div>
+                    <span>{opsType.replace('_', ' ')}</span>
+                    {isCompleted && (
+                      <CheckCircle2 className="h-4 w-4 text-green-500 ml-auto" />
+                    )}
+                  </CardTitle>
+                </CardHeader>
+
+                <CardContent className="pt-0 space-y-3">
+                  <div className="text-xs text-muted-foreground">
+                    <span className="font-medium">Jadwal:</span>{' '}
+                    {assignedStaff.length > 0 ? assignedStaff.map(s => s.name).join(', ') : '-'}
+                  </div>
+
+                  {claim ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        {isCompleted ? (
+                          <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+                        ) : (
+                          <CircleDot className="h-4 w-4 text-blue-600 shrink-0" />
+                        )}
+                        <span className="text-sm font-medium">{claim.userName}</span>
+                      </div>
+
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-500 ${
+                                isCompleted ? 'bg-green-500' : 'bg-blue-500'
+                              }`}
+                              style={{ width: `${claim.progress}%` }}
+                            />
+                          </div>
+                          <span className="text-xs font-mono tabular-nums min-w-[3ch]">
+                            {claim.progress}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                      <Circle className="h-4 w-4" />
+                      <span className="text-sm font-medium">Belum diklaim</span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })()}
+
+          {/* Card 3: MONITORING Checklist - Action Card */}
+          {(() => {
+            const monitorType = todayStats.assignedFor.monitoring.type;
+            const status = todayStats.checklistStatus[monitorType];
+            const claim = status?.claims?.[0];
+            const assignedStaff = todayStats.assignedFor.monitoring.staff;
+            const additionalStaff = todayStats.assignedFor.monitoring.additionalServerAccess;
+
+            const isCompleted = claim?.status === 'COMPLETED';
+            const isInProgress = claim && !isCompleted;
+            const isUnclaimed = !claim;
+
+            return (
+              <Card className={`relative overflow-hidden transition-all duration-200 ${
+                isCompleted ? 'ring-1 ring-green-500/30 bg-green-50/30 dark:bg-green-950/20' :
+                isInProgress ? 'ring-1 ring-blue-500/30 bg-blue-50/30 dark:bg-blue-950/20' :
+                'ring-1 ring-amber-500/30 bg-amber-50/30 dark:bg-amber-950/20'
+              }`}>
+                <div className={`absolute top-0 left-0 right-0 h-1 ${
+                  isCompleted ? 'bg-green-500' :
+                  isInProgress ? 'bg-blue-500' :
+                  'bg-amber-500'
+                }`} />
+
+                <CardHeader className="pb-2 pt-4">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <div className={`p-1.5 rounded-md ${
+                      isCompleted ? 'bg-green-100 dark:bg-green-900' :
+                      isInProgress ? 'bg-blue-100 dark:bg-blue-900' :
+                      'bg-amber-100 dark:bg-amber-900'
+                    }`}>
+                      <ServerCog className={`h-4 w-4 ${
+                        isCompleted ? 'text-green-600 dark:text-green-400' :
+                        isInProgress ? 'text-blue-600 dark:text-blue-400' :
+                        'text-amber-600 dark:text-amber-400'
+                      }`} />
+                    </div>
+                    <span>{monitorType.replace('_', ' ')}</span>
+                    {isCompleted && (
+                      <CheckCircle2 className="h-4 w-4 text-green-500 ml-auto" />
+                    )}
+                  </CardTitle>
+                </CardHeader>
+
+                <CardContent className="pt-0 space-y-3">
+                  <div className="text-xs text-muted-foreground">
+                    <span className="font-medium">Jadwal:</span>{' '}
+                    {assignedStaff.length > 0 ? assignedStaff.map(s => s.name).join(', ') : '-'}
+                    {additionalStaff.length > 0 && (
+                      <span className="block mt-0.5 text-[11px]">
+                        + {additionalStaff.map(s => s.name).join(', ')}
+                      </span>
+                    )}
+                  </div>
+
+                  {claim ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        {isCompleted ? (
+                          <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+                        ) : (
+                          <CircleDot className="h-4 w-4 text-blue-600 shrink-0" />
+                        )}
+                        <span className="text-sm font-medium">{claim.userName}</span>
+                      </div>
+
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-500 ${
+                                isCompleted ? 'bg-green-500' : 'bg-blue-500'
+                              }`}
+                              style={{ width: `${claim.progress}%` }}
+                            />
+                          </div>
+                          <span className="text-xs font-mono tabular-nums min-w-[3ch]">
+                            {claim.progress}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                      <Circle className="h-4 w-4" />
+                      <span className="text-sm font-medium">Belum diklaim</span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })()}
+        </div>
       )}
 
       {/* Shift Status Card */}
