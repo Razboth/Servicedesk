@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useId } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -66,6 +66,9 @@ export function AppStatusInput({
   readOnly = false,
   isLoading = false,
 }: AppStatusInputProps) {
+  // Generate unique ID for this instance to avoid ID collisions with multiple instances
+  const instanceId = useId();
+
   const [data, setData] = useState<AppStatusData>({
     core: null,
     surrounding: null,
@@ -136,11 +139,11 @@ export function AppStatusInput({
                   <div key={option.value} className="flex items-center space-x-2">
                     <RadioGroupItem
                       value={option.value || ''}
-                      id={`${category.key}-${option.value}`}
+                      id={`${instanceId}-${category.key}-${option.value}`}
                       className="sr-only"
                     />
                     <Label
-                      htmlFor={`${category.key}-${option.value}`}
+                      htmlFor={`${instanceId}-${category.key}-${option.value}`}
                       className={`
                         flex items-center gap-1.5 px-3 py-1.5 rounded-lg border cursor-pointer
                         transition-colors
