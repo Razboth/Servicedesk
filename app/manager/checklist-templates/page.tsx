@@ -74,7 +74,8 @@ type ChecklistInputType =
   | 'PENDING_TICKETS'
   | 'APP_STATUS'
   | 'AVAILABILITY_STATUS'
-  | 'TEXT_INPUT';
+  | 'TEXT_INPUT'
+  | 'SERVER_METRICS';
 
 interface ChecklistTemplate {
   id: string;
@@ -147,6 +148,7 @@ const inputTypeLabels: Record<ChecklistInputType, { label: string; color: string
   APP_STATUS: { label: 'App Status', color: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300' },
   AVAILABILITY_STATUS: { label: 'Availability Status', color: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' },
   TEXT_INPUT: { label: 'Text Input', color: 'bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300' },
+  SERVER_METRICS: { label: 'Server Metrics', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300' },
 };
 
 const defaultTemplate: Partial<ChecklistTemplate> = {

@@ -684,7 +684,8 @@ export class ShiftGenerator {
    * Check if staff is already assigned
    */
   private isAssigned(staffId: string, day: number): boolean {
-    const date = new Date(this.year, this.month - 1, day);
+    // Use UTC date to match addAssignment
+    const date = new Date(Date.UTC(this.year, this.month - 1, day, 0, 0, 0, 0));
     return this.assignments.some(
       (a) => a.staffProfileId === staffId && a.date.getTime() === date.getTime()
     );
@@ -694,7 +695,8 @@ export class ShiftGenerator {
    * Add assignment
    */
   private addAssignment(staffId: string, day: number, shiftType: ShiftType): void {
-    const date = new Date(this.year, this.month - 1, day);
+    // Use UTC date to ensure consistent storage and querying
+    const date = new Date(Date.UTC(this.year, this.month - 1, day, 0, 0, 0, 0));
     this.assignments.push({
       staffProfileId: staffId,
       date,
