@@ -143,9 +143,24 @@ export default function TechnicianShiftsPage() {
 
   // Today's shift statistics
   const [todayStats, setTodayStats] = useState<{
+    serverTime: {
+      isDayTime: boolean;
+      isNightTime: boolean;
+    };
     operationalShifts: {
-      today: { id: string; shiftType: string; staffName: string; staffId: string }[];
-      activeNight: { id: string; shiftType: string; staffName: string; staffId: string; fromYesterday: boolean }[];
+      today: { id: string; shiftType: string; staffName: string; staffId: string; hasServerAccess?: boolean }[];
+      activeNight: { id: string; shiftType: string; staffName: string; staffId: string; hasServerAccess?: boolean; fromYesterday: boolean }[];
+    };
+    assignedFor: {
+      ops: {
+        type: string;
+        staff: { id: string; name: string; shiftType: string; hasServerAccess: boolean }[];
+      };
+      monitoring: {
+        type: string;
+        staff: { id: string; name: string; shiftType: string }[];
+        additionalServerAccess: { id: string; name: string }[];
+      };
     };
     checklistStatus: Record<string, {
       date: string;
@@ -184,7 +199,9 @@ export default function TechnicianShiftsPage() {
       if (response.ok) {
         const data = await response.json();
         setTodayStats({
+          serverTime: data.serverTime,
           operationalShifts: data.operationalShifts,
+          assignedFor: data.assignedFor,
           checklistStatus: data.checklistStatus,
         });
       }
@@ -971,112 +988,150 @@ export default function TechnicianShiftsPage() {
             <CardTitle className="text-base flex items-center gap-2">
               <Users className="h-4 w-4" />
               Status Shift & Checklist Hari Ini
+              <Badge variant="outline" className="text-[10px] ml-auto">
+                {todayStats.serverTime.isDayTime ? 'Siang' : 'Malam'}
+              </Badge>
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               {/* Active Operational Shifts */}
-              <div className="space-y-3">
-                <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                  <UserCheck className="h-4 w-4" />
-                  Shift Operasional Aktif
+              <div className="space-y-2">
+                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Shift Aktif
                 </h4>
-                <div className="space-y-2">
-                  {/* Combine today's shifts and active night shifts */}
+                <div className="space-y-1.5">
                   {[...todayStats.operationalShifts.today, ...todayStats.operationalShifts.activeNight].length > 0 ? (
                     [...todayStats.operationalShifts.today, ...todayStats.operationalShifts.activeNight].map((shift) => {
                       const config = shiftTypeConfig[shift.shiftType as keyof typeof shiftTypeConfig];
                       return (
-                        <div key={shift.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className={`text-xs ${config?.color || ''}`}>
-                              {config?.label || shift.shiftType}
-                            </Badge>
-                            <span className="text-sm font-medium">{shift.staffName}</span>
-                          </div>
-                          {'fromYesterday' in shift && shift.fromYesterday && (
-                            <Badge variant="secondary" className="text-[10px]">Lanjutan</Badge>
+                        <div key={shift.id} className="flex items-center gap-2 p-1.5 rounded bg-muted/50 text-sm">
+                          <Badge variant="outline" className={`text-[10px] px-1.5 ${config?.color || ''}`}>
+                            {config?.label || shift.shiftType}
+                          </Badge>
+                          <span className="truncate flex-1">{shift.staffName}</span>
+                          {shift.hasServerAccess && (
+                            <ServerCog className="h-3 w-3 text-blue-500 shrink-0" title="Server Access" />
                           )}
                         </div>
                       );
                     })
                   ) : (
-                    <p className="text-sm text-muted-foreground italic">Tidak ada shift aktif</p>
+                    <p className="text-xs text-muted-foreground italic">Tidak ada shift aktif</p>
                   )}
                 </div>
               </div>
 
-              {/* Checklist Status */}
-              <div className="space-y-3">
-                <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                  <ClipboardList className="h-4 w-4" />
-                  Status Checklist
+              {/* OPS Checklist Assignment */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                  <ClipboardList className="h-3 w-3" />
+                  {todayStats.assignedFor.ops.type.replace('_', ' ')}
                 </h4>
-                <div className="grid grid-cols-2 gap-2">
-                  {(['OPS_SIANG', 'OPS_MALAM', 'MONITORING_SIANG', 'MONITORING_MALAM'] as const).map((type) => {
-                    const status = todayStats.checklistStatus[type];
-                    const hasClaim = status?.claimed;
-                    const claim = status?.claims?.[0];
-                    const isMonitoring = type.includes('MONITORING');
-                    const isMalam = type.includes('MALAM');
+                {(() => {
+                  const opsType = todayStats.assignedFor.ops.type;
+                  const status = todayStats.checklistStatus[opsType];
+                  const claim = status?.claims?.[0];
+                  const assignedStaff = todayStats.assignedFor.ops.staff;
 
-                    return (
-                      <div
-                        key={type}
-                        className={`p-2 rounded-lg border ${
-                          hasClaim
-                            ? claim?.status === 'COMPLETED'
-                              ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800'
-                              : 'bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800'
-                            : 'bg-muted/30 border-border'
-                        }`}
-                      >
-                        <div className="flex items-center gap-1.5 mb-1">
-                          {isMonitoring ? (
-                            <ServerCog className="h-3 w-3 text-muted-foreground" />
-                          ) : (
-                            <ClipboardList className="h-3 w-3 text-muted-foreground" />
-                          )}
-                          <span className="text-xs font-medium">
-                            {isMonitoring ? 'Monitor' : 'Ops'} {isMalam ? 'Malam' : 'Siang'}
-                          </span>
+                  return (
+                    <div className={`p-2 rounded-lg border ${
+                      claim
+                        ? claim.status === 'COMPLETED'
+                          ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800'
+                          : 'bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800'
+                        : 'bg-muted/30 border-border'
+                    }`}>
+                      <div className="text-xs text-muted-foreground mb-1">
+                        Jadwal: {assignedStaff.length > 0 ? assignedStaff.map(s => s.name).join(', ') : '-'}
+                      </div>
+                      {claim ? (
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1">
+                            {claim.status === 'COMPLETED' ? (
+                              <CheckCircle2 className="h-3 w-3 text-green-600" />
+                            ) : (
+                              <CircleDot className="h-3 w-3 text-blue-600" />
+                            )}
+                            <span className="text-sm font-medium">{claim.userName}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                              <div
+                                className={`h-full rounded-full ${claim.status === 'COMPLETED' ? 'bg-green-500' : 'bg-blue-500'}`}
+                                style={{ width: `${claim.progress}%` }}
+                              />
+                            </div>
+                            <span className="text-xs tabular-nums">{claim.progress}%</span>
+                          </div>
                         </div>
-                        {hasClaim && claim ? (
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-1">
-                              {claim.status === 'COMPLETED' ? (
-                                <CheckCircle2 className="h-3 w-3 text-green-600 dark:text-green-400" />
-                              ) : (
-                                <CircleDot className="h-3 w-3 text-blue-600 dark:text-blue-400" />
-                              )}
-                              <span className="text-xs truncate" title={claim.userName}>
-                                {claim.userName}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <div className="flex-1 h-1 rounded-full bg-muted overflow-hidden">
-                                <div
-                                  className={`h-full rounded-full ${
-                                    claim.status === 'COMPLETED' ? 'bg-green-500' : 'bg-blue-500'
-                                  }`}
-                                  style={{ width: `${claim.progress}%` }}
-                                />
-                              </div>
-                              <span className="text-[10px] tabular-nums text-muted-foreground">
-                                {claim.progress}%
-                              </span>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1 text-muted-foreground">
-                            <Circle className="h-3 w-3" />
-                            <span className="text-xs">Belum diklaim</span>
-                          </div>
+                      ) : (
+                        <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                          <Circle className="h-3 w-3" />
+                          <span className="text-sm">Belum diklaim</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* MONITORING Checklist Assignment */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                  <ServerCog className="h-3 w-3" />
+                  {todayStats.assignedFor.monitoring.type.replace('_', ' ')}
+                </h4>
+                {(() => {
+                  const monitorType = todayStats.assignedFor.monitoring.type;
+                  const status = todayStats.checklistStatus[monitorType];
+                  const claim = status?.claims?.[0];
+                  const assignedStaff = todayStats.assignedFor.monitoring.staff;
+                  const additionalStaff = todayStats.assignedFor.monitoring.additionalServerAccess;
+
+                  return (
+                    <div className={`p-2 rounded-lg border ${
+                      claim
+                        ? claim.status === 'COMPLETED'
+                          ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800'
+                          : 'bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800'
+                        : 'bg-muted/30 border-border'
+                    }`}>
+                      <div className="text-xs text-muted-foreground mb-1">
+                        Jadwal: {assignedStaff.length > 0 ? assignedStaff.map(s => s.name).join(', ') : '-'}
+                        {additionalStaff.length > 0 && (
+                          <span className="block text-[10px]">+ {additionalStaff.map(s => s.name).join(', ')}</span>
                         )}
                       </div>
-                    );
-                  })}
-                </div>
+                      {claim ? (
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1">
+                            {claim.status === 'COMPLETED' ? (
+                              <CheckCircle2 className="h-3 w-3 text-green-600" />
+                            ) : (
+                              <CircleDot className="h-3 w-3 text-blue-600" />
+                            )}
+                            <span className="text-sm font-medium">{claim.userName}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                              <div
+                                className={`h-full rounded-full ${claim.status === 'COMPLETED' ? 'bg-green-500' : 'bg-blue-500'}`}
+                                style={{ width: `${claim.progress}%` }}
+                              />
+                            </div>
+                            <span className="text-xs tabular-nums">{claim.progress}%</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                          <Circle className="h-3 w-3" />
+                          <span className="text-sm">Belum diklaim</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           </CardContent>

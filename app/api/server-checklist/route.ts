@@ -25,6 +25,12 @@ const NIGHT_ONLY_SHIFTS: ShiftType[] = [
   'NIGHT_WEEKEND',
 ];
 
+// Shift types that can claim OPS_SIANG (day operational shifts)
+const DAY_OPS_SHIFTS: ShiftType[] = [
+  'DAY_WEEKEND',
+  'STANDBY_BRANCH',
+];
+
 /**
  * Determine if current time is daytime (08:00-19:59) or nighttime (20:00-07:59)
  */
@@ -180,6 +186,7 @@ export async function GET(request: NextRequest) {
     // Check if user is on night-only shift (NIGHT_WEEKDAY, NIGHT_WEEKEND)
     const isOnNightOnlyShift = currentShift && NIGHT_ONLY_SHIFTS.includes(currentShift.shiftType);
     const isOnNightShift = currentShift && NIGHT_STANDBY_SHIFTS.includes(currentShift.shiftType);
+    const isOnDayOpsShift = currentShift && DAY_OPS_SHIFTS.includes(currentShift.shiftType);
 
     // Determine checklist type
     let checklistType: DailyChecklistType;
@@ -207,6 +214,13 @@ export async function GET(request: NextRequest) {
         if (staffProfile.hasServerAccess) {
           return NextResponse.json(
             { error: 'User dengan akses server sebaiknya menggunakan Checklist Monitoring' },
+            { status: 403 }
+          );
+        }
+        // Must have a day operational shift to access OPS_SIANG
+        if (!isOnDayOpsShift) {
+          return NextResponse.json(
+            { error: 'Checklist Ops Siang hanya untuk staff dengan jadwal shift Siang Weekend atau Standby Cabang' },
             { status: 403 }
           );
         }
@@ -593,6 +607,7 @@ export async function POST(request: NextRequest) {
 
     const isOnNightOnlyShift = currentShift && NIGHT_ONLY_SHIFTS.includes(currentShift.shiftType);
     const isOnNightShift = currentShift && NIGHT_STANDBY_SHIFTS.includes(currentShift.shiftType);
+    const isOnDayOpsShift = currentShift && DAY_OPS_SHIFTS.includes(currentShift.shiftType);
 
     // Determine checklist type
     let checklistType: DailyChecklistType;
@@ -615,6 +630,13 @@ export async function POST(request: NextRequest) {
         if (staffProfile.hasServerAccess) {
           return NextResponse.json(
             { error: 'User dengan akses server sebaiknya menggunakan Checklist Monitoring' },
+            { status: 403 }
+          );
+        }
+        // Must have a day operational shift to claim OPS_SIANG
+        if (!isOnDayOpsShift) {
+          return NextResponse.json(
+            { error: 'Checklist Ops Siang hanya untuk staff dengan jadwal shift Siang Weekend atau Standby Cabang' },
             { status: 403 }
           );
         }
