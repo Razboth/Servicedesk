@@ -50,13 +50,20 @@ export function isItemUnlocked(
   // Night shift: 20:00 - 08:00 (spans two calendar days)
   if (isNightChecklist) {
     const isEveningSlot = hours >= 20; // 20:00, 22:00
+    const isEarlyMorningSlot = hours >= 0 && hours < 8; // 00:00-07:59
+    const isEveningNow = currentHour >= 20; // 20:00-23:59
     const isEarlyMorningNow = currentHour >= 0 && currentHour < 8; // 00:00-07:59
 
     // If we're in early morning (00:00-07:59) and the slot is evening (20:00+),
     // that slot was from YESTERDAY and should already be unlocked
     if (isEarlyMorningNow && isEveningSlot) {
-      // The 22:00 slot was unlocked yesterday at 22:00, so it's definitely unlocked now
       return true;
+    }
+
+    // If we're in evening (20:00-23:59) and the slot is early morning (00:00-07:59),
+    // that slot is for TOMORROW - add 1 day to unlock date
+    if (isEveningNow && isEarlyMorningSlot) {
+      unlockDate.setDate(unlockDate.getDate() + 1);
     }
   }
 
