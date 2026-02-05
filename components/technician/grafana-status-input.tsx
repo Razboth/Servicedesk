@@ -96,7 +96,9 @@ export function GrafanaStatusInput({
       ...data,
       timestamp: new Date().toISOString(),
     };
-    onChange(dataWithTimestamp);
+    // Update local state
+    setData(dataWithTimestamp);
+    // Only call onSubmit - it will save data + mark as complete
     onSubmit?.(dataWithTimestamp);
   };
 

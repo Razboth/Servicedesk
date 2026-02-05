@@ -120,7 +120,7 @@ export function ServerMetricsInput({
 
   const handleSubmit = () => {
     if (data) {
-      onChange(data);
+      // Only call onSubmit - it will save data + mark as complete
       onSubmit?.(data);
     }
   };

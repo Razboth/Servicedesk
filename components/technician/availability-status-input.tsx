@@ -97,7 +97,10 @@ export function AvailabilityStatusInput({
       ...data,
       timestamp: new Date().toISOString(),
     };
-    onChange(dataWithTimestamp);
+    // Update local state
+    setData(dataWithTimestamp);
+    // Only call onSubmit - it will save data + mark as complete
+    // Don't call onChange here as it would make a redundant API call
     onSubmit?.(dataWithTimestamp);
   };
 

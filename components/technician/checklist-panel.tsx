@@ -258,7 +258,7 @@ export function ChecklistPanel({ type, onStatsUpdate }: ChecklistPanelProps) {
   };
 
   const handleUpdateItems = async (
-    items: { id: string; status?: string; notes?: string }[]
+    items: { id: string; status?: string; notes?: string; data?: unknown }[]
   ) => {
     try {
       setUpdating(true);
@@ -278,6 +278,17 @@ export function ChecklistPanel({ type, onStatsUpdate }: ChecklistPanelProps) {
         } else {
           throw new Error(data.error || 'Failed to update');
         }
+        return;
+      }
+
+      // Check for partial errors even when response.ok is true
+      // (API returns 200 with errors for time-locked items)
+      if (data.errors && data.errors.length > 0) {
+        data.errors.forEach((err: { error: string }) => {
+          toast.error(err.error);
+        });
+        // Still refresh to show current state
+        await fetchChecklist(false);
         return;
       }
 
