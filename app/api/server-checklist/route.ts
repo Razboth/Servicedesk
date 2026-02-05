@@ -634,13 +634,13 @@ export async function GET(request: NextRequest) {
 
     // No one has claimed yet - return available status
     // For auto-claim types, this should not happen as they get auto-created above
-    // But just in case (e.g., no templates), indicate that manual claim is only for OPS_SIANG
+    // But just in case (e.g., no templates), indicate that manual claim is only for MONITORING_SIANG
     return NextResponse.json({
       claimed: false,
       claimedByUser: false,
       checklistType,
       date: checklistDate,
-      canClaim: checklistType === 'OPS_SIANG', // Only OPS_SIANG requires manual claim
+      canClaim: checklistType === 'MONITORING_SIANG', // Only MONITORING_SIANG requires manual claim
       autoClaim: AUTO_CLAIM_TYPES.includes(checklistType), // Flag to indicate this should auto-claim
       items: [], // Empty items - need to claim first (or auto-claim)
       otherClaims: [],
