@@ -145,10 +145,16 @@ export function ATMAlertList({
           </div>
         ) : data ? (
           <>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Clock className="h-3 w-3" />
-              <span>
-                Diambil pada {format(new Date(data.fetchedAt), 'HH:mm:ss, d MMM yyyy', { locale: id })}
+            {/* Fetch time info - prominent display */}
+            <div className="flex items-center justify-between p-2 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
+              <div className="flex items-center gap-2 text-sm">
+                <Clock className="h-4 w-4 text-blue-500" />
+                <span className="text-blue-700 dark:text-blue-300">
+                  Data jam <span className="font-bold">{format(new Date(data.fetchedAt), 'HH:mm')}</span>
+                </span>
+              </div>
+              <span className="text-xs text-blue-600 dark:text-blue-400">
+                {format(new Date(data.fetchedAt), 'd MMM yyyy', { locale: id })}
               </span>
             </div>
 
