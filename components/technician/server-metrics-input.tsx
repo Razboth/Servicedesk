@@ -12,6 +12,7 @@ import {
   Download,
   Loader2,
   HardDrive,
+  Save,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
@@ -43,7 +44,7 @@ export interface ServerMetricsData {
 interface ServerMetricsInputProps {
   value?: ServerMetricsData;
   onChange: (data: ServerMetricsData) => void;
-  onSubmit?: () => void;
+  onSubmit?: (data: ServerMetricsData) => void;
   readOnly?: boolean;
   isLoading?: boolean;
 }
@@ -114,6 +115,13 @@ export function ServerMetricsInput({
       toast.error('Gagal mengambil server metrics');
     } finally {
       setFetching(false);
+    }
+  };
+
+  const handleSubmit = () => {
+    if (data) {
+      onChange(data);
+      onSubmit?.(data);
     }
   };
 
@@ -403,6 +411,7 @@ export function ServerMetricsInput({
           </Button>
           <Button
             size="sm"
+            variant="outline"
             onClick={generatePDF}
             disabled={generating || isLoading}
           >
@@ -411,7 +420,15 @@ export function ServerMetricsInput({
             ) : (
               <Download className="h-4 w-4 mr-2" />
             )}
-            Generate PDF
+            PDF
+          </Button>
+          <Button
+            size="sm"
+            onClick={handleSubmit}
+            disabled={isLoading}
+          >
+            <Save className="h-4 w-4 mr-2" />
+            Simpan
           </Button>
         </div>
       )}

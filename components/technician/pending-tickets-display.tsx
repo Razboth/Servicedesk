@@ -13,6 +13,7 @@ import {
   AlertCircle,
   Loader2,
   ExternalLink,
+  Save,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -43,7 +44,7 @@ export interface PendingTicketsData {
 interface PendingTicketsDisplayProps {
   value?: PendingTicketsData;
   onChange: (data: PendingTicketsData) => void;
-  onSubmit?: () => void;
+  onSubmit?: (data: PendingTicketsData) => void;
   readOnly?: boolean;
 }
 
@@ -145,16 +146,9 @@ export function PendingTicketsDisplay({
   const handleSubmit = () => {
     if (data) {
       onChange(data);
-      onSubmit?.();
+      onSubmit?.(data);
     }
   };
-
-  // Auto-complete when data is fetched
-  useEffect(() => {
-    if (data && !value && onSubmit) {
-      handleSubmit();
-    }
-  }, [data]);
 
   return (
     <Card className="bg-muted/30">
@@ -245,10 +239,11 @@ export function PendingTicketsDisplay({
         )}
 
         {!readOnly && (
-          <div className="flex justify-end pt-2 border-t">
+          <div className="flex justify-end gap-2 pt-2 border-t">
             <Button
               size="sm"
-              onClick={data ? handleSubmit : fetchTickets}
+              variant="outline"
+              onClick={fetchTickets}
               disabled={loading}
             >
               {loading ? (
@@ -256,18 +251,23 @@ export function PendingTicketsDisplay({
                   <Loader2 className="h-4 w-4 mr-1 animate-spin" />
                   Mengambil...
                 </>
-              ) : data ? (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-1" />
-                  Refresh
-                </>
               ) : (
                 <>
                   <RefreshCw className="h-4 w-4 mr-1" />
-                  Ambil Data Tiket
+                  {data ? 'Refresh' : 'Ambil Data'}
                 </>
               )}
             </Button>
+            {data && (
+              <Button
+                size="sm"
+                onClick={handleSubmit}
+                disabled={loading}
+              >
+                <Save className="h-4 w-4 mr-1" />
+                Simpan
+              </Button>
+            )}
           </div>
         )}
       </CardContent>

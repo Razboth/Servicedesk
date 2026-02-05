@@ -341,7 +341,7 @@ export function ServerAccessChecklist({
             <GrafanaStatusInput
               value={item.data as GrafanaStatusData | undefined}
               onChange={(data) => handleDataChange(item.id, data)}
-              onSubmit={() => handleDataSubmit(item.id, item.data!)}
+              onSubmit={(data) => handleDataSubmit(item.id, data)}
               readOnly={readOnly || isDone}
               isLoading={isLoading}
             />
@@ -355,7 +355,7 @@ export function ServerAccessChecklist({
               targetTime={targetTime}
               value={item.data as ATMAlertData | undefined}
               onChange={(data) => handleDataChange(item.id, data)}
-              onSubmit={() => handleDataSubmit(item.id, item.data!)}
+              onSubmit={(data) => handleDataSubmit(item.id, data)}
               readOnly={readOnly || isDone}
             />
           </div>
@@ -367,7 +367,7 @@ export function ServerAccessChecklist({
             <PendingTicketsDisplay
               value={item.data as PendingTicketsData | undefined}
               onChange={(data) => handleDataChange(item.id, data)}
-              onSubmit={() => handleDataSubmit(item.id, item.data!)}
+              onSubmit={(data) => handleDataSubmit(item.id, data)}
               readOnly={readOnly || isDone}
             />
           </div>
@@ -379,7 +379,7 @@ export function ServerAccessChecklist({
             <AppStatusInput
               value={item.data as AppStatusData | undefined}
               onChange={(data) => handleDataChange(item.id, data)}
-              onSubmit={() => handleDataSubmit(item.id, item.data!)}
+              onSubmit={(data) => handleDataSubmit(item.id, data)}
               readOnly={readOnly || isDone}
               isLoading={isLoading}
             />
@@ -392,7 +392,7 @@ export function ServerAccessChecklist({
             <AvailabilityStatusInput
               value={item.data as AvailabilityStatusData | undefined}
               onChange={(data) => handleDataChange(item.id, data)}
-              onSubmit={() => handleDataSubmit(item.id, item.data!)}
+              onSubmit={(data) => handleDataSubmit(item.id, data)}
               readOnly={readOnly || isDone}
               isLoading={isLoading}
             />
@@ -405,7 +405,7 @@ export function ServerAccessChecklist({
             <ServerMetricsInput
               value={item.data as ServerMetricsData | undefined}
               onChange={(data) => handleDataChange(item.id, data)}
-              onSubmit={() => handleDataSubmit(item.id, item.data!)}
+              onSubmit={(data) => handleDataSubmit(item.id, data)}
               readOnly={readOnly || isDone}
               isLoading={isLoading}
             />

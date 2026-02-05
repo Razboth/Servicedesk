@@ -21,7 +21,7 @@ export interface AvailabilityStatusData {
 interface AvailabilityStatusInputProps {
   value?: AvailabilityStatusData;
   onChange: (data: AvailabilityStatusData) => void;
-  onSubmit?: () => void;
+  onSubmit?: (data: AvailabilityStatusData) => void;
   readOnly?: boolean;
   isLoading?: boolean;
 }
@@ -98,7 +98,7 @@ export function AvailabilityStatusInput({
       timestamp: new Date().toISOString(),
     };
     onChange(dataWithTimestamp);
-    onSubmit?.();
+    onSubmit?.(dataWithTimestamp);
   };
 
   const isAllFilled = data.koneksi && data.aksesAplikasi && data.aksesServer;

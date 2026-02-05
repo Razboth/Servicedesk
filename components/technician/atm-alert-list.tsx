@@ -12,6 +12,7 @@ import {
   MapPin,
   Clock,
   Loader2,
+  Save,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -38,7 +39,7 @@ interface ATMAlertListProps {
   targetTime: string; // e.g., "08:00"
   value?: ATMAlertData;
   onChange: (data: ATMAlertData) => void;
-  onSubmit?: () => void;
+  onSubmit?: (data: ATMAlertData) => void;
   readOnly?: boolean;
 }
 
@@ -116,16 +117,9 @@ export function ATMAlertList({
   const handleSubmit = () => {
     if (data) {
       onChange(data);
-      onSubmit?.();
+      onSubmit?.(data);
     }
   };
-
-  // Auto-complete when data is fetched
-  useEffect(() => {
-    if (data && !value && onSubmit) {
-      handleSubmit();
-    }
-  }, [data]);
 
   return (
     <Card className="bg-muted/30">
@@ -197,10 +191,11 @@ export function ATMAlertList({
         )}
 
         {!readOnly && (
-          <div className="flex justify-end pt-2 border-t">
+          <div className="flex justify-end gap-2 pt-2 border-t">
             <Button
               size="sm"
-              onClick={data ? handleSubmit : fetchAlerts}
+              variant="outline"
+              onClick={fetchAlerts}
               disabled={loading}
             >
               {loading ? (
@@ -208,18 +203,23 @@ export function ATMAlertList({
                   <Loader2 className="h-4 w-4 mr-1 animate-spin" />
                   Mengambil...
                 </>
-              ) : data ? (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-1" />
-                  Refresh
-                </>
               ) : (
                 <>
                   <RefreshCw className="h-4 w-4 mr-1" />
-                  Ambil Data ATM
+                  {data ? 'Refresh' : 'Ambil Data'}
                 </>
               )}
             </Button>
+            {data && (
+              <Button
+                size="sm"
+                onClick={handleSubmit}
+                disabled={loading}
+              >
+                <Save className="h-4 w-4 mr-1" />
+                Simpan
+              </Button>
+            )}
           </div>
         )}
       </CardContent>

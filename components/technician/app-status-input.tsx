@@ -20,7 +20,7 @@ export interface AppStatusData {
 interface AppStatusInputProps {
   value?: AppStatusData;
   onChange: (data: AppStatusData) => void;
-  onSubmit?: () => void;
+  onSubmit?: (data: AppStatusData) => void;
   readOnly?: boolean;
   isLoading?: boolean;
 }
@@ -90,7 +90,7 @@ export function AppStatusInput({
       timestamp: new Date().toISOString(),
     };
     onChange(dataWithTimestamp);
-    onSubmit?.();
+    onSubmit?.(dataWithTimestamp);
   };
 
   const isAllFilled = data.core && data.surrounding && data.supporting;

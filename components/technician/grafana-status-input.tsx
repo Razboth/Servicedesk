@@ -39,7 +39,7 @@ export interface GrafanaStatusData {
 interface GrafanaStatusInputProps {
   value?: GrafanaStatusData;
   onChange: (data: GrafanaStatusData) => void;
-  onSubmit?: () => void;
+  onSubmit?: (data: GrafanaStatusData) => void;
   readOnly?: boolean;
   isLoading?: boolean;
 }
@@ -97,7 +97,7 @@ export function GrafanaStatusInput({
       timestamp: new Date().toISOString(),
     };
     onChange(dataWithTimestamp);
-    onSubmit?.();
+    onSubmit?.(dataWithTimestamp);
   };
 
   // Calculate overall average
