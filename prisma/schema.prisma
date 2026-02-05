@@ -3385,6 +3385,7 @@ enum ChecklistInputType {
   APP_STATUS            // Core/Surrounding/Supporting status
   AVAILABILITY_STATUS   // Koneksi, Akses Aplikasi status
   TEXT_INPUT            // Free text input (handover notes)
+  SERVER_METRICS        // Fetch server metrics and generate PDF report
 }
 
 // Collaborative checklist claim (multiple users can claim same checklist)

@@ -27,6 +27,7 @@ import { ATMAlertList, ATMAlertData } from './atm-alert-list';
 import { AppStatusInput, AppStatusData } from './app-status-input';
 import { PendingTicketsDisplay, PendingTicketsData } from './pending-tickets-display';
 import { AvailabilityStatusInput, AvailabilityStatusData } from './availability-status-input';
+import { ServerMetricsInput, ServerMetricsData } from './server-metrics-input';
 
 type ChecklistInputType =
   | 'CHECKBOX'
@@ -36,6 +37,7 @@ type ChecklistInputType =
   | 'PENDING_TICKETS'
   | 'APP_STATUS'
   | 'AVAILABILITY_STATUS'
+  | 'SERVER_METRICS'
   | 'TEXT_INPUT';
 
 type ChecklistItemData =
@@ -44,6 +46,7 @@ type ChecklistItemData =
   | AppStatusData
   | PendingTicketsData
   | AvailabilityStatusData
+  | ServerMetricsData
   | { timestamp: string }
   | { text: string }
   | null;
@@ -388,6 +391,19 @@ export function ServerAccessChecklist({
           <div className="mt-3">
             <AvailabilityStatusInput
               value={item.data as AvailabilityStatusData | undefined}
+              onChange={(data) => handleDataChange(item.id, data)}
+              onSubmit={() => handleDataSubmit(item.id, item.data!)}
+              readOnly={readOnly || isDone}
+              isLoading={isLoading}
+            />
+          </div>
+        );
+
+      case 'SERVER_METRICS':
+        return (
+          <div className="mt-3">
+            <ServerMetricsInput
+              value={item.data as ServerMetricsData | undefined}
               onChange={(data) => handleDataChange(item.id, data)}
               onSubmit={() => handleDataSubmit(item.id, item.data!)}
               readOnly={readOnly || isDone}

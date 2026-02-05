@@ -267,13 +267,13 @@ const checklistMonitoringTemplates: ChecklistTemplateData[] = [
   },
   {
     title: '[08:00] Check Server Metrics (PDF Report)',
-    description: 'Verifikasi server metrics dari PDF report',
+    description: 'Fetch status server dan generate laporan PDF',
     category: 'SERVER_HEALTH',
     checklistType: 'MONITORING_SIANG',
     order: 4,
     isRequired: true,
     unlockTime: '08:00',
-    inputType: 'CHECKBOX',
+    inputType: 'SERVER_METRICS',
   },
   {
     title: '[08:00] Status Alert ATM',
