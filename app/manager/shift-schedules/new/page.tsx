@@ -112,6 +112,9 @@ export default function NewSchedulePage() {
   };
 
   const handleGenerate = async () => {
+    // Prevent double submission
+    if (generating) return;
+
     if (!session?.user?.branchId) {
       toast.error('Branch ID is required');
       return;
@@ -144,6 +147,12 @@ export default function NewSchedulePage() {
       const data = await response.json();
 
       if (!response.ok) {
+        // Handle duplicate schedule error
+        if (response.status === 409 && data.existingScheduleId) {
+          toast.error('Schedule sudah ada untuk bulan ini');
+          router.push(`/manager/shift-schedules/${data.existingScheduleId}`);
+          return;
+        }
         throw new Error(data.error || 'Failed to generate schedule');
       }
 

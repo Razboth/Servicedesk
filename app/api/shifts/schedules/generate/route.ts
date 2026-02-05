@@ -52,18 +52,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Branch not found' }, { status: 404 });
     }
 
-    // Check if a published schedule already exists for this month
-    const publishedSchedule = await prisma.shiftSchedule.findFirst({
+    // Check if an active schedule (not archived) already exists for this month
+    const existingSchedule = await prisma.shiftSchedule.findFirst({
       where: {
         branchId,
         month,
         year,
-        status: 'PUBLISHED',
+        status: { not: 'ARCHIVED' },
       },
     });
 
-    // Note: Multiple schedules can exist for the same month (drafts, generated)
-    // but only one can be PUBLISHED at a time
+    if (existingSchedule) {
+      return NextResponse.json(
+        {
+          error: `A schedule for ${month}/${year} already exists. Please delete or archive the existing schedule first.`,
+          existingScheduleId: existingSchedule.id,
+        },
+        { status: 409 }
+      );
+    }
 
     // Parse holiday dates
     const holidays = holidayDates.map((d: string) => new Date(d));

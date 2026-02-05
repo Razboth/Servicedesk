@@ -353,6 +353,9 @@ export default function ShiftBuilderPage() {
   };
 
   const handleSaveSchedule = async () => {
+    // Prevent double submission
+    if (saving) return;
+
     if (!session?.user?.branchId) {
       toast.error('Branch ID is required');
       return;
@@ -388,6 +391,12 @@ export default function ShiftBuilderPage() {
 
       if (!createScheduleResponse.ok) {
         console.error('Failed to create schedule:', scheduleData);
+        // Handle duplicate schedule error
+        if (createScheduleResponse.status === 409 && scheduleData.existingScheduleId) {
+          toast.error('Schedule sudah ada untuk bulan ini');
+          router.push(`/manager/shift-schedules/${scheduleData.existingScheduleId}/edit`);
+          return;
+        }
         throw new Error(scheduleData.error || 'Failed to create schedule');
       }
 
