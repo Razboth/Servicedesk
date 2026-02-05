@@ -216,7 +216,6 @@ export async function GET(request: NextRequest) {
     // Check if user is on night-only shift (NIGHT_WEEKDAY, NIGHT_WEEKEND)
     const isOnNightOnlyShift = currentShift && NIGHT_ONLY_SHIFTS.includes(currentShift.shiftType);
     const isOnNightShift = currentShift && NIGHT_STANDBY_SHIFTS.includes(currentShift.shiftType);
-    const isOnDayOpsShift = currentShift && DAY_OPS_SHIFTS.includes(currentShift.shiftType);
 
     // Determine checklist type
     let checklistType: DailyChecklistType;
