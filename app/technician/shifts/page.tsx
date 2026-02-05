@@ -1027,96 +1027,76 @@ export default function TechnicianShiftsPage() {
             </CardContent>
           </Card>
 
-          {/* Card 2: OPS Checklist - Shows assigned staff with their progress */}
+          {/* Card 2: OPS Checklist - Simple claim status */}
           {(() => {
             const opsType = todayStats.assignedFor.ops.type;
             const status = todayStats.checklistStatus[opsType];
-            const claims = status?.claims || [];
-            const assignedStaff = todayStats.assignedFor.ops.staff;
+            const claim = status?.claims?.[0];
 
-            // Match assigned staff with their claims
-            const staffWithProgress = assignedStaff.map(staff => {
-              const claim = claims.find(c => c.userId === staff.id);
-              return {
-                ...staff,
-                claim,
-                progress: claim?.progress ?? 0,
-                hasClaimed: !!claim,
-              };
-            });
-
-            // Check if any staff has claimed
-            const hasClaims = claims.length > 0;
-            const allCompleted = hasClaims && claims.every(c => c.status === 'COMPLETED');
-            const someInProgress = hasClaims && !allCompleted;
+            const isCompleted = claim?.status === 'COMPLETED';
+            const isInProgress = claim && !isCompleted;
 
             return (
               <Card className={`relative overflow-hidden transition-all duration-200 ${
-                allCompleted ? 'ring-1 ring-green-500/30 bg-green-50/30 dark:bg-green-950/20' :
-                someInProgress ? 'ring-1 ring-blue-500/30 bg-blue-50/30 dark:bg-blue-950/20' :
+                isCompleted ? 'ring-1 ring-green-500/30 bg-green-50/30 dark:bg-green-950/20' :
+                isInProgress ? 'ring-1 ring-blue-500/30 bg-blue-50/30 dark:bg-blue-950/20' :
                 'ring-1 ring-amber-500/30 bg-amber-50/30 dark:bg-amber-950/20'
               }`}>
                 <div className={`absolute top-0 left-0 right-0 h-1 ${
-                  allCompleted ? 'bg-green-500' :
-                  someInProgress ? 'bg-blue-500' :
+                  isCompleted ? 'bg-green-500' :
+                  isInProgress ? 'bg-blue-500' :
                   'bg-amber-500'
                 }`} />
 
                 <CardHeader className="pb-2 pt-4">
                   <CardTitle className="text-sm font-medium flex items-center gap-2">
                     <div className={`p-1.5 rounded-md ${
-                      allCompleted ? 'bg-green-100 dark:bg-green-900' :
-                      someInProgress ? 'bg-blue-100 dark:bg-blue-900' :
+                      isCompleted ? 'bg-green-100 dark:bg-green-900' :
+                      isInProgress ? 'bg-blue-100 dark:bg-blue-900' :
                       'bg-amber-100 dark:bg-amber-900'
                     }`}>
                       <ClipboardList className={`h-4 w-4 ${
-                        allCompleted ? 'text-green-600 dark:text-green-400' :
-                        someInProgress ? 'text-blue-600 dark:text-blue-400' :
+                        isCompleted ? 'text-green-600 dark:text-green-400' :
+                        isInProgress ? 'text-blue-600 dark:text-blue-400' :
                         'text-amber-600 dark:text-amber-400'
                       }`} />
                     </div>
                     <span>{opsType.replace('_', ' ')}</span>
-                    {allCompleted && (
+                    {isCompleted && (
                       <CheckCircle2 className="h-4 w-4 text-green-500 ml-auto" />
                     )}
                   </CardTitle>
                 </CardHeader>
 
                 <CardContent className="pt-0">
-                  {staffWithProgress.length > 0 ? (
-                    <div className="space-y-3">
-                      {staffWithProgress.map((staff) => (
-                        <div key={staff.id} className="space-y-1">
-                          <div className="flex items-center justify-between">
-                            <span className="text-base font-semibold">{staff.name}</span>
-                            <span className={`text-sm font-mono tabular-nums ${
-                              staff.hasClaimed
-                                ? staff.claim?.status === 'COMPLETED'
-                                  ? 'text-green-600 dark:text-green-400'
-                                  : 'text-blue-600 dark:text-blue-400'
-                                : 'text-muted-foreground'
-                            }`}>
-                              {staff.hasClaimed ? `${staff.progress}%` : '- 0'}
-                            </span>
-                          </div>
-                          <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                            <div
-                              className={`h-full rounded-full transition-all duration-500 ${
-                                staff.hasClaimed
-                                  ? staff.claim?.status === 'COMPLETED'
-                                    ? 'bg-green-500'
-                                    : 'bg-blue-500'
-                                  : 'bg-muted'
-                              }`}
-                              style={{ width: `${staff.progress}%` }}
-                            />
-                          </div>
+                  {claim ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        {isCompleted ? (
+                          <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+                        ) : (
+                          <CircleDot className="h-4 w-4 text-blue-600 shrink-0" />
+                        )}
+                        <span className="text-base font-semibold">{claim.userName}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-500 ${
+                              isCompleted ? 'bg-green-500' : 'bg-blue-500'
+                            }`}
+                            style={{ width: `${claim.progress}%` }}
+                          />
                         </div>
-                      ))}
+                        <span className="text-sm font-mono tabular-nums min-w-[3ch]">
+                          {claim.progress}%
+                        </span>
+                      </div>
                     </div>
                   ) : (
-                    <div className="text-sm text-muted-foreground italic py-2">
-                      Tidak ada staff terjadwal
+                    <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                      <Circle className="h-4 w-4" />
+                      <span className="text-sm font-medium">Belum diklaim</span>
                     </div>
                   )}
                 </CardContent>
@@ -1124,106 +1104,76 @@ export default function TechnicianShiftsPage() {
             );
           })()}
 
-          {/* Card 3: MONITORING Checklist - Shows assigned staff with their progress */}
+          {/* Card 3: MONITORING Checklist - Simple claim status */}
           {(() => {
             const monitorType = todayStats.assignedFor.monitoring.type;
             const status = todayStats.checklistStatus[monitorType];
-            const claims = status?.claims || [];
-            const assignedStaff = todayStats.assignedFor.monitoring.staff;
-            const additionalStaff = todayStats.assignedFor.monitoring.additionalServerAccess;
+            const claim = status?.claims?.[0];
 
-            // Combine assigned staff and additional server access staff
-            const allStaff = [
-              ...assignedStaff.map(s => ({ ...s, isAdditional: false })),
-              ...additionalStaff.map(s => ({ ...s, shiftType: '', isAdditional: true })),
-            ];
-
-            // Match staff with their claims
-            const staffWithProgress = allStaff.map(staff => {
-              const claim = claims.find(c => c.userId === staff.id);
-              return {
-                ...staff,
-                claim,
-                progress: claim?.progress ?? 0,
-                hasClaimed: !!claim,
-              };
-            });
-
-            // Check if any staff has claimed
-            const hasClaims = claims.length > 0;
-            const allCompleted = hasClaims && claims.every(c => c.status === 'COMPLETED');
-            const someInProgress = hasClaims && !allCompleted;
+            const isCompleted = claim?.status === 'COMPLETED';
+            const isInProgress = claim && !isCompleted;
 
             return (
               <Card className={`relative overflow-hidden transition-all duration-200 ${
-                allCompleted ? 'ring-1 ring-green-500/30 bg-green-50/30 dark:bg-green-950/20' :
-                someInProgress ? 'ring-1 ring-blue-500/30 bg-blue-50/30 dark:bg-blue-950/20' :
+                isCompleted ? 'ring-1 ring-green-500/30 bg-green-50/30 dark:bg-green-950/20' :
+                isInProgress ? 'ring-1 ring-blue-500/30 bg-blue-50/30 dark:bg-blue-950/20' :
                 'ring-1 ring-amber-500/30 bg-amber-50/30 dark:bg-amber-950/20'
               }`}>
                 <div className={`absolute top-0 left-0 right-0 h-1 ${
-                  allCompleted ? 'bg-green-500' :
-                  someInProgress ? 'bg-blue-500' :
+                  isCompleted ? 'bg-green-500' :
+                  isInProgress ? 'bg-blue-500' :
                   'bg-amber-500'
                 }`} />
 
                 <CardHeader className="pb-2 pt-4">
                   <CardTitle className="text-sm font-medium flex items-center gap-2">
                     <div className={`p-1.5 rounded-md ${
-                      allCompleted ? 'bg-green-100 dark:bg-green-900' :
-                      someInProgress ? 'bg-blue-100 dark:bg-blue-900' :
+                      isCompleted ? 'bg-green-100 dark:bg-green-900' :
+                      isInProgress ? 'bg-blue-100 dark:bg-blue-900' :
                       'bg-amber-100 dark:bg-amber-900'
                     }`}>
                       <ServerCog className={`h-4 w-4 ${
-                        allCompleted ? 'text-green-600 dark:text-green-400' :
-                        someInProgress ? 'text-blue-600 dark:text-blue-400' :
+                        isCompleted ? 'text-green-600 dark:text-green-400' :
+                        isInProgress ? 'text-blue-600 dark:text-blue-400' :
                         'text-amber-600 dark:text-amber-400'
                       }`} />
                     </div>
                     <span>{monitorType.replace('_', ' ')}</span>
-                    {allCompleted && (
+                    {isCompleted && (
                       <CheckCircle2 className="h-4 w-4 text-green-500 ml-auto" />
                     )}
                   </CardTitle>
                 </CardHeader>
 
                 <CardContent className="pt-0">
-                  {staffWithProgress.length > 0 ? (
-                    <div className="space-y-3">
-                      {staffWithProgress.map((staff) => (
-                        <div key={staff.id} className="space-y-1">
-                          <div className="flex items-center justify-between">
-                            <span className={`text-base font-semibold ${staff.isAdditional ? 'text-muted-foreground' : ''}`}>
-                              {staff.name}
-                              {staff.isAdditional && <span className="text-xs ml-1">(TS/DBA)</span>}
-                            </span>
-                            <span className={`text-sm font-mono tabular-nums ${
-                              staff.hasClaimed
-                                ? staff.claim?.status === 'COMPLETED'
-                                  ? 'text-green-600 dark:text-green-400'
-                                  : 'text-blue-600 dark:text-blue-400'
-                                : 'text-muted-foreground'
-                            }`}>
-                              {staff.hasClaimed ? `${staff.progress}%` : '- 0'}
-                            </span>
-                          </div>
-                          <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                            <div
-                              className={`h-full rounded-full transition-all duration-500 ${
-                                staff.hasClaimed
-                                  ? staff.claim?.status === 'COMPLETED'
-                                    ? 'bg-green-500'
-                                    : 'bg-blue-500'
-                                  : 'bg-muted'
-                              }`}
-                              style={{ width: `${staff.progress}%` }}
-                            />
-                          </div>
+                  {claim ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        {isCompleted ? (
+                          <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+                        ) : (
+                          <CircleDot className="h-4 w-4 text-blue-600 shrink-0" />
+                        )}
+                        <span className="text-base font-semibold">{claim.userName}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-500 ${
+                              isCompleted ? 'bg-green-500' : 'bg-blue-500'
+                            }`}
+                            style={{ width: `${claim.progress}%` }}
+                          />
                         </div>
-                      ))}
+                        <span className="text-sm font-mono tabular-nums min-w-[3ch]">
+                          {claim.progress}%
+                        </span>
+                      </div>
                     </div>
                   ) : (
-                    <div className="text-sm text-muted-foreground italic py-2">
-                      Tidak ada staff terjadwal
+                    <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                      <Circle className="h-4 w-4" />
+                      <span className="text-sm font-medium">Belum diklaim</span>
                     </div>
                   )}
                 </CardContent>

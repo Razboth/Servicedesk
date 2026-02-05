@@ -14,14 +14,21 @@ export async function GET(request: NextRequest) {
     // Get current WITA time
     const witaTime = getCurrentTimeWITA();
     const witaHour = witaTime.getHours();
+    const isEarlyMorning = witaHour >= 0 && witaHour < 8;
 
-    // Calculate today's date - must match server-checklist's getChecklistDate logic
-    // Use local date with setHours(0,0,0,0) to match how checklists are stored
+    // For SHIFT ASSIGNMENTS: Use UTC dates (how shifts are stored)
+    const todayUTC = new Date(Date.UTC(
+      witaTime.getFullYear(),
+      witaTime.getMonth(),
+      witaTime.getDate(),
+      0, 0, 0, 0
+    ));
+    const yesterdayUTC = new Date(todayUTC);
+    yesterdayUTC.setUTCDate(yesterdayUTC.getUTCDate() - 1);
+
+    // For CHECKLIST queries: Use local dates (how checklists are stored via getChecklistDate)
     const todayLocal = new Date(witaTime);
     todayLocal.setHours(0, 0, 0, 0);
-
-    // For night shifts during early morning (00:00-07:59), also check yesterday
-    const isEarlyMorning = witaHour >= 0 && witaHour < 8;
     const yesterdayLocal = new Date(todayLocal);
     yesterdayLocal.setDate(yesterdayLocal.getDate() - 1);
 
@@ -30,10 +37,10 @@ export async function GET(request: NextRequest) {
     const nightShiftTypes = ['NIGHT_WEEKDAY', 'NIGHT_WEEKEND'];
     const dayShiftTypes = ['DAY_WEEKEND', 'STANDBY_BRANCH'];
 
-    // Get today's shift assignments with server access info
+    // Get today's shift assignments with server access info (use UTC dates)
     const todayAssignments = await prisma.shiftAssignment.findMany({
       where: {
-        date: todayLocal,
+        date: todayUTC,
         shiftType: { in: operationalShiftTypes },
       },
       include: {
@@ -50,7 +57,7 @@ export async function GET(request: NextRequest) {
     if (isEarlyMorning) {
       activeNightShifts = await prisma.shiftAssignment.findMany({
         where: {
-          date: yesterdayLocal,
+          date: yesterdayUTC,
           shiftType: { in: nightShiftTypes },
         },
         include: {
@@ -189,7 +196,7 @@ export async function GET(request: NextRequest) {
         isDayTime,
         isNightTime,
       },
-      todayDate: todayLocal.toISOString(),
+      todayDate: todayUTC.toISOString(),
       // Active operational shifts
       operationalShifts: {
         today: todayAssignments.map((a) => ({
