@@ -290,13 +290,20 @@ export async function GET(request: NextRequest) {
         // MONITORING_MALAM: Auto-claim for NIGHT_WEEKDAY or NIGHT_WEEKEND (with server access)
         if (!staffProfile.hasServerAccess) {
           return NextResponse.json(
-            { error: 'Checklist Monitoring memerlukan akses server' },
+            { error: 'Checklist Monitoring memerlukan akses server. Gunakan OPS_MALAM untuk staff tanpa akses server.' },
             { status: 403 }
           );
         }
         if (!isOnMonitoringMalamShift) {
           return NextResponse.json(
-            { error: 'Checklist Monitoring Malam hanya untuk shift NIGHT_WEEKDAY atau NIGHT_WEEKEND dengan akses server' },
+            {
+              error: `Checklist Monitoring Malam hanya untuk shift NIGHT_WEEKDAY atau NIGHT_WEEKEND. Shift saat ini: ${currentShift?.shiftType || 'tidak ada'}`,
+              debug: {
+                currentShiftType: currentShift?.shiftType || null,
+                hasShift: !!currentShift,
+                checkedDate: todayUTC.toISOString(),
+              }
+            },
             { status: 403 }
           );
         }
