@@ -68,6 +68,8 @@ interface ServerChecklist {
   claimed: boolean;
   claimedByUser: boolean;
   canClaim?: boolean;
+  canRelease?: boolean;
+  autoClaimed?: boolean;
   readOnly?: boolean;
   viewingOtherUser?: boolean;
   otherClaims?: OtherClaim[];
@@ -472,8 +474,8 @@ export function ChecklistPanel({ type, onStatsUpdate }: ChecklistPanelProps) {
           >
             <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
           </Button>
-          {/* Release button - only show when user has claimed, not completed, and no items done */}
-          {checklist.claimedByUser && !isCompleted && stats?.completed === 0 && (
+          {/* Release button - only show for OPS_SIANG when user has claimed, not completed, and no items done */}
+          {checklist.claimedByUser && checklist.canRelease !== false && !isCompleted && stats?.completed === 0 && (
             <Button
               variant="ghost"
               size="sm"
