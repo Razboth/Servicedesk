@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     // Shift types
     const operationalShiftTypes = ['NIGHT_WEEKDAY', 'NIGHT_WEEKEND', 'DAY_WEEKEND', 'STANDBY_ONCALL', 'STANDBY_BRANCH'];
     const nightShiftTypes = ['NIGHT_WEEKDAY', 'NIGHT_WEEKEND'];
-    const dayShiftTypes = ['DAY_WEEKEND', 'STANDBY_BRANCH'];
+    const opsSiangShiftTypes = ['STANDBY_BRANCH']; // OPS_SIANG is only for STANDBY_BRANCH
 
     // Get today's shift assignments with server access info (use UTC dates)
     const todayAssignments = await prisma.shiftAssignment.findMany({
@@ -71,10 +71,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Determine who should fill each checklist based on schedule
-    // OPS_SIANG: Day shift operators (DAY_WEEKEND, STANDBY_BRANCH) - 08:00-19:59
-    // OPS_MALAM: Night shift operators (NIGHT_WEEKDAY, NIGHT_WEEKEND) - 20:00-07:59
-    // MONITORING_SIANG: Staff with server access on day shift
-    // MONITORING_MALAM: Staff with server access on night shift
+    // OPS_SIANG: Auto-assign to STANDBY_BRANCH staff - 08:00-19:59
+    // OPS_MALAM: Auto-assign to night shift operators (NIGHT_WEEKDAY, NIGHT_WEEKEND) without server access - 20:00-07:59
+    // MONITORING_SIANG: Manual claim by server access staff NOT on night shift
+    // MONITORING_MALAM: Auto-assign to night shift staff (NIGHT_WEEKDAY, NIGHT_WEEKEND) with server access
 
     const isDayTime = witaHour >= 8 && witaHour < 20;
     const isNightTime = !isDayTime;
@@ -82,9 +82,9 @@ export async function GET(request: NextRequest) {
     // Get staff who should fill OPS checklist
     let opsAssignedStaff: { id: string; name: string; shiftType: string; hasServerAccess: boolean }[] = [];
     if (isDayTime) {
-      // Day time: show day shift staff for OPS_SIANG
+      // Day time: show STANDBY_BRANCH staff for OPS_SIANG (auto-assigned)
       opsAssignedStaff = todayAssignments
-        .filter(a => dayShiftTypes.includes(a.shiftType))
+        .filter(a => opsSiangShiftTypes.includes(a.shiftType))
         .map(a => ({
           id: a.staffProfile.user.id,
           name: a.staffProfile.user.name,
@@ -92,29 +92,26 @@ export async function GET(request: NextRequest) {
           hasServerAccess: a.staffProfile.hasServerAccess,
         }));
     } else {
-      // Night time: show night shift staff for OPS_MALAM
+      // Night time: show night shift staff for OPS_MALAM (without server access)
       const nightStaff = isEarlyMorning ? activeNightShifts : todayAssignments.filter(a => nightShiftTypes.includes(a.shiftType));
-      opsAssignedStaff = nightStaff.map(a => ({
-        id: a.staffProfile.user.id,
-        name: a.staffProfile.user.name,
-        shiftType: a.shiftType,
-        hasServerAccess: a.staffProfile.hasServerAccess,
-      }));
+      opsAssignedStaff = nightStaff
+        .filter(a => !a.staffProfile.hasServerAccess)
+        .map(a => ({
+          id: a.staffProfile.user.id,
+          name: a.staffProfile.user.name,
+          shiftType: a.shiftType,
+          hasServerAccess: a.staffProfile.hasServerAccess,
+        }));
     }
 
     // Get staff who should fill MONITORING checklist (those with server access)
     let monitoringAssignedStaff: { id: string; name: string; shiftType: string }[] = [];
     if (isDayTime) {
-      // Day time: server access staff on day shift
-      monitoringAssignedStaff = todayAssignments
-        .filter(a => a.staffProfile.hasServerAccess && dayShiftTypes.includes(a.shiftType))
-        .map(a => ({
-          id: a.staffProfile.user.id,
-          name: a.staffProfile.user.name,
-          shiftType: a.shiftType,
-        }));
+      // Day time: MONITORING_SIANG is manual claim - show server access staff NOT on night shift as eligible
+      // This is informational - shows who CAN claim, not who will be auto-assigned
+      monitoringAssignedStaff = []; // Leave empty since it's manual claim
     } else {
-      // Night time: server access staff on night shift
+      // Night time: server access staff on night shift (auto-assigned)
       const nightStaff = isEarlyMorning ? activeNightShifts : todayAssignments.filter(a => nightShiftTypes.includes(a.shiftType));
       monitoringAssignedStaff = nightStaff
         .filter(a => a.staffProfile.hasServerAccess)
@@ -125,19 +122,24 @@ export async function GET(request: NextRequest) {
         }));
     }
 
-    // Also get staff with server access who don't have a shift today (User E type)
-    const serverAccessStaffNoShift = await prisma.staffShiftProfile.findMany({
+    // Get staff with server access who are NOT on night shift (eligible for MONITORING_SIANG claim)
+    const eligibleForMonitoringSiang = isDayTime ? await prisma.staffShiftProfile.findMany({
       where: {
         hasServerAccess: true,
         isActive: true,
         NOT: {
-          id: { in: [...todayAssignments, ...activeNightShifts].map(a => a.staffProfile.id) },
+          shiftAssignments: {
+            some: {
+              date: todayUTC,
+              shiftType: { in: nightShiftTypes },
+            },
+          },
         },
       },
       include: {
         user: { select: { id: true, name: true } },
       },
-    });
+    }) : [];
 
     // Determine which checklist date to check based on time
     // For day checklists (SIANG): use today
@@ -225,11 +227,13 @@ export async function GET(request: NextRequest) {
         monitoring: {
           type: isDayTime ? 'MONITORING_SIANG' : 'MONITORING_MALAM',
           staff: monitoringAssignedStaff,
-          // Additional server access staff without shift (can also fill monitoring)
-          additionalServerAccess: serverAccessStaffNoShift.map(s => ({
+          // For MONITORING_SIANG: eligible server access staff who can claim (not on night shift)
+          // For MONITORING_MALAM: empty since it's auto-assigned
+          eligibleToClaim: isDayTime ? eligibleForMonitoringSiang.map(s => ({
             id: s.user.id,
             name: s.user.name,
-          })),
+          })) : [],
+          isManualClaim: isDayTime, // MONITORING_SIANG requires manual claim
         },
       },
       // Checklist claims

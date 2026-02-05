@@ -13,11 +13,16 @@ const VALID_CHECKLIST_TYPES: DailyChecklistType[] = [
 ];
 
 // AUTO-CLAIM TYPES: These are automatically claimed based on schedule
-// Only OPS_SIANG requires manual claiming
+// Only MONITORING_SIANG requires manual claiming
 const AUTO_CLAIM_TYPES: DailyChecklistType[] = [
+  'OPS_SIANG',
   'OPS_MALAM',
-  'MONITORING_SIANG',
   'MONITORING_MALAM',
+];
+
+// Shift types for OPS_SIANG (auto-assign to STANDBY_BRANCH)
+const OPS_SIANG_SHIFTS: ShiftType[] = [
+  'STANDBY_BRANCH',
 ];
 
 // Shift types for MONITORING_MALAM (night shifts with server access)
@@ -38,9 +43,10 @@ const BLOCKED_FROM_OPS_SIANG: ShiftType[] = [
   'NIGHT_WEEKEND',
 ];
 
-// Shift types that block MONITORING_SIANG access (NIGHT_WEEKDAY blocks it)
+// Shift types that block MONITORING_SIANG access (night shifts block it)
 const BLOCKED_FROM_MONITORING_SIANG: ShiftType[] = [
   'NIGHT_WEEKDAY',
+  'NIGHT_WEEKEND',
 ];
 
 // Night shift types
@@ -230,24 +236,18 @@ export async function GET(request: NextRequest) {
     }
 
     // Check specific shift conditions
+    const isOnOpsSiangShift = currentShift && OPS_SIANG_SHIFTS.includes(currentShift.shiftType);
     const isOnOpsMalamShift = currentShift && OPS_MALAM_SHIFTS.includes(currentShift.shiftType);
     const isOnMonitoringMalamShift = currentShift && MONITORING_MALAM_SHIFTS.includes(currentShift.shiftType);
-    const isBlockedFromOpsSiang = currentShift && BLOCKED_FROM_OPS_SIANG.includes(currentShift.shiftType);
     const isBlockedFromMonitoringSiang = currentShift && BLOCKED_FROM_MONITORING_SIANG.includes(currentShift.shiftType);
 
     // === ACCESS CONTROL ===
     switch (checklistType) {
       case 'OPS_SIANG':
-        // OPS_SIANG: Manual claim by DBA/TS (server access) who are NOT on night shift
-        if (!staffProfile.hasServerAccess) {
+        // OPS_SIANG: Auto-assign to STANDBY_BRANCH staff
+        if (!isOnOpsSiangShift) {
           return NextResponse.json(
-            { error: 'Checklist Ops Siang hanya untuk DBA/TS (staff dengan akses server)' },
-            { status: 403 }
-          );
-        }
-        if (isBlockedFromOpsSiang) {
-          return NextResponse.json(
-            { error: 'Staff yang terjadwal shift malam tidak dapat mengakses Checklist Ops Siang' },
+            { error: 'Checklist Ops Siang hanya untuk staff shift STANDBY_BRANCH' },
             { status: 403 }
           );
         }
@@ -270,7 +270,7 @@ export async function GET(request: NextRequest) {
         break;
 
       case 'MONITORING_SIANG':
-        // MONITORING_SIANG: Auto-claim for server access staff NOT on NIGHT_WEEKDAY
+        // MONITORING_SIANG: Manual claim by server access staff NOT on night shift
         if (!staffProfile.hasServerAccess) {
           return NextResponse.json(
             { error: 'Checklist Monitoring memerlukan akses server' },
@@ -279,7 +279,7 @@ export async function GET(request: NextRequest) {
         }
         if (isBlockedFromMonitoringSiang) {
           return NextResponse.json(
-            { error: 'Staff shift NIGHT_WEEKDAY sebaiknya menggunakan Checklist Monitoring Malam' },
+            { error: 'Staff shift malam tidak dapat mengklaim Checklist Monitoring Siang' },
             { status: 403 }
           );
         }
@@ -733,9 +733,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Check specific shift conditions
-    const isBlockedFromOpsSiang = currentShift && BLOCKED_FROM_OPS_SIANG.includes(currentShift.shiftType);
+    const isBlockedFromMonitoringSiang = currentShift && BLOCKED_FROM_MONITORING_SIANG.includes(currentShift.shiftType);
 
-    // === MANUAL CLAIM ONLY FOR OPS_SIANG ===
+    // === MANUAL CLAIM ONLY FOR MONITORING_SIANG ===
     // Other checklist types are auto-claimed and cannot be manually claimed
     if (AUTO_CLAIM_TYPES.includes(checklistType)) {
       return NextResponse.json(
@@ -744,17 +744,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // OPS_SIANG: Manual claim by DBA/TS (server access) who are NOT on night shift
-    if (checklistType === 'OPS_SIANG') {
+    // MONITORING_SIANG: Manual claim by server access staff NOT on night shift
+    if (checklistType === 'MONITORING_SIANG') {
       if (!staffProfile.hasServerAccess) {
         return NextResponse.json(
-          { error: 'Checklist Ops Siang hanya untuk DBA/TS (staff dengan akses server)' },
+          { error: 'Checklist Monitoring Siang memerlukan akses server' },
           { status: 403 }
         );
       }
-      if (isBlockedFromOpsSiang) {
+      if (isBlockedFromMonitoringSiang) {
         return NextResponse.json(
-          { error: 'Staff yang terjadwal shift malam tidak dapat mengklaim Checklist Ops Siang' },
+          { error: 'Staff shift malam tidak dapat mengklaim Checklist Monitoring Siang' },
           { status: 403 }
         );
       }
@@ -929,7 +929,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Only OPS_SIANG can be released - other types are auto-claimed and cannot be released
+    // Only MONITORING_SIANG can be released - other types are auto-claimed and cannot be released
     if (AUTO_CLAIM_TYPES.includes(checklistToRelease.checklistType)) {
       return NextResponse.json(
         { error: `Checklist ${checklistToRelease.checklistType.replace('_', ' ')} tidak dapat dilepaskan karena diklaim otomatis sesuai jadwal` },

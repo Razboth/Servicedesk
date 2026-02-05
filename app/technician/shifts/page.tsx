@@ -1096,7 +1096,14 @@ export default function TechnicianShiftsPage() {
                   ) : (
                     <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
                       <Circle className="h-4 w-4" />
-                      <span className="text-sm font-medium">Belum diklaim</span>
+                      <span className="text-sm font-medium">
+                        {/* OPS_SIANG is auto-assigned, show scheduled staff or "Belum ada jadwal" */}
+                        {opsType === 'OPS_SIANG' && todayStats.assignedFor.ops.staff.length > 0
+                          ? `Dijadwalkan: ${todayStats.assignedFor.ops.staff[0]?.name}`
+                          : opsType === 'OPS_SIANG'
+                            ? 'Belum ada jadwal'
+                            : 'Belum ada jadwal'}
+                      </span>
                     </div>
                   )}
                 </CardContent>
@@ -1173,7 +1180,14 @@ export default function TechnicianShiftsPage() {
                   ) : (
                     <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
                       <Circle className="h-4 w-4" />
-                      <span className="text-sm font-medium">Belum diklaim</span>
+                      <span className="text-sm font-medium">
+                        {/* MONITORING_SIANG is manual claim, MONITORING_MALAM is auto-assigned */}
+                        {monitorType === 'MONITORING_SIANG'
+                          ? 'Belum diklaim'
+                          : todayStats.assignedFor.monitoring.staff.length > 0
+                            ? `Dijadwalkan: ${todayStats.assignedFor.monitoring.staff[0]?.name}`
+                            : 'Belum ada jadwal'}
+                      </span>
                     </div>
                   )}
                 </CardContent>
