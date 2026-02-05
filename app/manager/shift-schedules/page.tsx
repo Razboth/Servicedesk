@@ -31,7 +31,8 @@ import {
   Clock,
   FileText,
   Users,
-  Hammer
+  Hammer,
+  XCircle
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -146,6 +147,28 @@ export default function ShiftSchedulesPage() {
     } catch (error) {
       console.error('Error publishing schedule:', error);
       toast.error('Failed to publish schedule');
+    }
+  };
+
+  const handleUnpublish = async (scheduleId: string) => {
+    if (!confirm('Are you sure you want to unpublish this schedule? Staff will no longer see their shifts.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/shifts/schedules/${scheduleId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'GENERATED' }),
+      });
+
+      if (!response.ok) throw new Error('Failed to unpublish schedule');
+
+      toast.success('Schedule unpublished successfully');
+      fetchSchedules();
+    } catch (error) {
+      console.error('Error unpublishing schedule:', error);
+      toast.error('Failed to unpublish schedule');
     }
   };
 
@@ -307,8 +330,20 @@ export default function ShiftSchedulesPage() {
                               variant="ghost"
                               size="sm"
                               onClick={() => handlePublish(schedule.id)}
+                              title="Publish schedule"
                             >
                               <CheckCircle className="w-4 h-4" />
+                            </Button>
+                          )}
+
+                          {schedule.status === 'PUBLISHED' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleUnpublish(schedule.id)}
+                              title="Unpublish schedule"
+                            >
+                              <XCircle className="w-4 h-4 text-orange-500" />
                             </Button>
                           )}
 
