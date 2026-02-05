@@ -983,7 +983,7 @@ export default function TechnicianShiftsPage() {
 
       {/* Today's Shift Statistics - 3 Separate Cards */}
       {todayStats && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-2">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
           {/* Card 1: Active Shifts - Informational/Reference */}
           <Card className="relative overflow-hidden">
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-slate-400 to-slate-500" />
@@ -998,7 +998,7 @@ export default function TechnicianShiftsPage() {
                 </Badge>
               </CardTitle>
             </CardHeader>
-            <CardContent className="pt-0">
+            <CardContent className="pt-2">
               <div className="space-y-2">
                 {[...todayStats.operationalShifts.today, ...todayStats.operationalShifts.activeNight].length > 0 ? (
                   [...todayStats.operationalShifts.today, ...todayStats.operationalShifts.activeNight].map((shift) => {
@@ -1068,7 +1068,7 @@ export default function TechnicianShiftsPage() {
                   </CardTitle>
                 </CardHeader>
 
-                <CardContent className="pt-0">
+                <CardContent className="pt-2">
                   {claim ? (
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
@@ -1145,7 +1145,7 @@ export default function TechnicianShiftsPage() {
                   </CardTitle>
                 </CardHeader>
 
-                <CardContent className="pt-0">
+                <CardContent className="pt-2">
                   {claim ? (
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
