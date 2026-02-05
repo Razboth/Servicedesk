@@ -32,6 +32,10 @@ import {
   ServerCog,
   CheckCircle2,
   MessageSquare,
+  Users,
+  UserCheck,
+  CircleDot,
+  Circle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ChecklistPanel } from '@/components/technician/checklist-panel';
@@ -137,6 +141,19 @@ export default function TechnicianShiftsPage() {
   const [isExporting, setIsExporting] = useState(false);
   const [hasServerAccess, setHasServerAccess] = useState(false);
 
+  // Today's shift statistics
+  const [todayStats, setTodayStats] = useState<{
+    operationalShifts: {
+      today: { id: string; shiftType: string; staffName: string; staffId: string }[];
+      activeNight: { id: string; shiftType: string; staffName: string; staffId: string; fromYesterday: boolean }[];
+    };
+    checklistStatus: Record<string, {
+      date: string;
+      claimed: boolean;
+      claims: { userId: string; userName: string; status: string; progress: number; completedItems: number; totalItems: number }[];
+    }>;
+  } | null>(null);
+
   // Report data
   const [reportData, setReportData] = useState<{
     report: { id: string; status: string; notes: string | null };
@@ -158,7 +175,23 @@ export default function TechnicianShiftsPage() {
 
   useEffect(() => {
     fetchMySchedule();
+    fetchTodayStats();
   }, []);
+
+  const fetchTodayStats = async () => {
+    try {
+      const response = await fetch('/api/shifts/today-stats');
+      if (response.ok) {
+        const data = await response.json();
+        setTodayStats({
+          operationalShifts: data.operationalShifts,
+          checklistStatus: data.checklistStatus,
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching today stats:', error);
+    }
+  };
 
   useEffect(() => {
     if (userBranchId) {
@@ -930,6 +963,125 @@ export default function TechnicianShiftsPage() {
           </DropdownMenu>
         )}
       </div>
+
+      {/* Today's Shift Statistics Card */}
+      {todayStats && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Status Shift & Checklist Hari Ini
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Active Operational Shifts */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <UserCheck className="h-4 w-4" />
+                  Shift Operasional Aktif
+                </h4>
+                <div className="space-y-2">
+                  {/* Combine today's shifts and active night shifts */}
+                  {[...todayStats.operationalShifts.today, ...todayStats.operationalShifts.activeNight].length > 0 ? (
+                    [...todayStats.operationalShifts.today, ...todayStats.operationalShifts.activeNight].map((shift) => {
+                      const config = shiftTypeConfig[shift.shiftType as keyof typeof shiftTypeConfig];
+                      return (
+                        <div key={shift.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className={`text-xs ${config?.color || ''}`}>
+                              {config?.label || shift.shiftType}
+                            </Badge>
+                            <span className="text-sm font-medium">{shift.staffName}</span>
+                          </div>
+                          {'fromYesterday' in shift && shift.fromYesterday && (
+                            <Badge variant="secondary" className="text-[10px]">Lanjutan</Badge>
+                          )}
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <p className="text-sm text-muted-foreground italic">Tidak ada shift aktif</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Checklist Status */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <ClipboardList className="h-4 w-4" />
+                  Status Checklist
+                </h4>
+                <div className="grid grid-cols-2 gap-2">
+                  {(['OPS_SIANG', 'OPS_MALAM', 'MONITORING_SIANG', 'MONITORING_MALAM'] as const).map((type) => {
+                    const status = todayStats.checklistStatus[type];
+                    const hasClaim = status?.claimed;
+                    const claim = status?.claims?.[0];
+                    const isMonitoring = type.includes('MONITORING');
+                    const isMalam = type.includes('MALAM');
+
+                    return (
+                      <div
+                        key={type}
+                        className={`p-2 rounded-lg border ${
+                          hasClaim
+                            ? claim?.status === 'COMPLETED'
+                              ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800'
+                              : 'bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800'
+                            : 'bg-muted/30 border-border'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5 mb-1">
+                          {isMonitoring ? (
+                            <ServerCog className="h-3 w-3 text-muted-foreground" />
+                          ) : (
+                            <ClipboardList className="h-3 w-3 text-muted-foreground" />
+                          )}
+                          <span className="text-xs font-medium">
+                            {isMonitoring ? 'Monitor' : 'Ops'} {isMalam ? 'Malam' : 'Siang'}
+                          </span>
+                        </div>
+                        {hasClaim && claim ? (
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1">
+                              {claim.status === 'COMPLETED' ? (
+                                <CheckCircle2 className="h-3 w-3 text-green-600 dark:text-green-400" />
+                              ) : (
+                                <CircleDot className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+                              )}
+                              <span className="text-xs truncate" title={claim.userName}>
+                                {claim.userName}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <div className="flex-1 h-1 rounded-full bg-muted overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full ${
+                                    claim.status === 'COMPLETED' ? 'bg-green-500' : 'bg-blue-500'
+                                  }`}
+                                  style={{ width: `${claim.progress}%` }}
+                                />
+                              </div>
+                              <span className="text-[10px] tabular-nums text-muted-foreground">
+                                {claim.progress}%
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 text-muted-foreground">
+                            <Circle className="h-3 w-3" />
+                            <span className="text-xs">Belum diklaim</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Shift Status Card */}
       <Card>
