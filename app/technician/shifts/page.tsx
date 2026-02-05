@@ -27,6 +27,7 @@ import {
   LayoutGrid,
   List,
   Download,
+  FileDown,
   FileSpreadsheet,
   ClipboardList,
   ServerCog,
@@ -184,6 +185,8 @@ export default function TechnicianShiftsPage() {
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
+  const [checklistCalendarData, setChecklistCalendarData] = useState<Record<string, { types: string[]; hasData: boolean }>>({});
+  const [isDownloadingChecklist, setIsDownloadingChecklist] = useState<string | null>(null);
 
   // Check if user has an active working shift (not OFF, LEAVE, or HOLIDAY)
   const hasActiveShift = todayShift && !['OFF', 'LEAVE', 'HOLIDAY'].includes(todayShift.shiftType);
@@ -215,6 +218,11 @@ export default function TechnicianShiftsPage() {
       fetchMonthlySchedule();
     }
   }, [selectedMonth, selectedYear, userBranchId]);
+
+  // Fetch checklist calendar status for the selected month
+  useEffect(() => {
+    fetchChecklistCalendarStatus();
+  }, [selectedMonth, selectedYear]);
 
   // Determine available checklist types when page loads
   // This runs for users with active shift OR users with server access (User E)
@@ -284,6 +292,47 @@ export default function TechnicianShiftsPage() {
       }
     } catch (error) {
       console.error('Error fetching monthly schedule:', error);
+    }
+  };
+
+  const fetchChecklistCalendarStatus = async () => {
+    try {
+      const response = await fetch(
+        `/api/server-checklist/calendar-status?year=${selectedYear}&month=${selectedMonth}`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setChecklistCalendarData(data.datesWithData || {});
+      }
+    } catch (error) {
+      console.error('Error fetching checklist calendar status:', error);
+    }
+  };
+
+  const handleDownloadChecklist = async (dateStr: string) => {
+    setIsDownloadingChecklist(dateStr);
+    try {
+      const response = await fetch(`/api/server-checklist/export?date=${dateStr}`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Export failed');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Checklist_${dateStr}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      toast.success('Checklist berhasil diunduh');
+    } catch (error) {
+      console.error('Error downloading checklist:', error);
+      toast.error(error instanceof Error ? error.message : 'Gagal mengunduh checklist');
+    } finally {
+      setIsDownloadingChecklist(null);
     }
   };
 
@@ -805,15 +854,37 @@ export default function TechnicianShiftsPage() {
               assignmentsByType[assignment.shiftType].push(assignment);
             });
 
+            const hasChecklistData = checklistCalendarData[dateStr]?.hasData;
+
             return (
               <div
                 key={day}
                 className={`
-                  min-h-28 p-2 border rounded text-xs overflow-hidden
+                  relative min-h-28 p-2 border rounded text-xs overflow-hidden
                   ${isWeekend ? 'bg-blue-50 dark:bg-blue-900/20' : 'bg-white dark:bg-gray-800'}
                   ${isToday ? 'border-blue-500 border-2' : 'border-gray-200 dark:border-gray-700'}
                 `}
               >
+                {/* Download checklist button */}
+                {hasChecklistData && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="absolute top-1 right-1 h-5 w-5 p-0 hover:bg-blue-100 dark:hover:bg-blue-900/50"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDownloadChecklist(dateStr);
+                    }}
+                    disabled={isDownloadingChecklist === dateStr}
+                    title="Download checklist PDF"
+                  >
+                    {isDownloadingChecklist === dateStr ? (
+                      <Loader2 className="h-3 w-3 animate-spin text-blue-500" />
+                    ) : (
+                      <FileDown className="h-3 w-3 text-blue-500" />
+                    )}
+                  </Button>
+                )}
                 <div className={`font-bold text-sm mb-1 ${isToday ? 'text-blue-600 dark:text-blue-400' : ''}`}>
                   {day}
                 </div>
