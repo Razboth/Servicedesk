@@ -12,22 +12,41 @@ const VALID_CHECKLIST_TYPES: DailyChecklistType[] = [
   'MONITORING_MALAM',
 ];
 
-// Shift types that are considered "night/standby" shifts
+// Shift types for MONITORING_MALAM (night shifts with server access)
+const MONITORING_MALAM_SHIFTS: ShiftType[] = [
+  'NIGHT_WEEKDAY',
+  'NIGHT_WEEKEND',
+];
+
+// Shift types for OPS_MALAM (night shifts without server access)
+const OPS_MALAM_SHIFTS: ShiftType[] = [
+  'NIGHT_WEEKDAY',
+  'NIGHT_WEEKEND',
+];
+
+// Shift types for OPS_SIANG (only STANDBY_BRANCH)
+const OPS_SIANG_SHIFTS: ShiftType[] = [
+  'STANDBY_BRANCH',
+];
+
+// Shift types that block MONITORING_SIANG access (NIGHT_WEEKDAY blocks it)
+const BLOCKED_FROM_MONITORING_SIANG: ShiftType[] = [
+  'NIGHT_WEEKDAY',
+];
+
+// Legacy: kept for backward compatibility with other parts of code
 const NIGHT_STANDBY_SHIFTS: ShiftType[] = [
   'NIGHT_WEEKDAY',
   'NIGHT_WEEKEND',
   'STANDBY_ONCALL',
 ];
 
-// Shift types that are night-only shifts (cannot access MONITORING_SIANG during day hours)
 const NIGHT_ONLY_SHIFTS: ShiftType[] = [
   'NIGHT_WEEKDAY',
   'NIGHT_WEEKEND',
 ];
 
-// Shift types that can claim OPS_SIANG (day operational shifts)
 const DAY_OPS_SHIFTS: ShiftType[] = [
-  'DAY_WEEKEND',
   'STANDBY_BRANCH',
 ];
 
@@ -205,79 +224,75 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // === ACCESS CONTROL FOR CLAIM SYSTEM (v3 - only 4 types) ===
+    // Check specific shift conditions
+    const isOnOpsSiangShift = currentShift && OPS_SIANG_SHIFTS.includes(currentShift.shiftType);
+    const isOnOpsMalamShift = currentShift && OPS_MALAM_SHIFTS.includes(currentShift.shiftType);
+    const isOnMonitoringMalamShift = currentShift && MONITORING_MALAM_SHIFTS.includes(currentShift.shiftType);
+    const isBlockedFromMonitoringSiang = currentShift && BLOCKED_FROM_MONITORING_SIANG.includes(currentShift.shiftType);
+
+    // === ACCESS CONTROL FOR CLAIM SYSTEM ===
     switch (checklistType) {
-      // Checklist Ops (for users WITHOUT server access: A, B_2, D_2)
       case 'OPS_SIANG':
-        // OPS_SIANG: For STANDBY_BRANCH (A), DAY_WEEKEND without server (B_2)
-        // Users WITH server access should use MONITORING_SIANG instead
+        // OPS_SIANG: Only for STANDBY_BRANCH (no server access)
         if (staffProfile.hasServerAccess) {
           return NextResponse.json(
             { error: 'User dengan akses server sebaiknya menggunakan Checklist Monitoring' },
             { status: 403 }
           );
         }
-        // Must have a day operational shift to access OPS_SIANG
-        if (!isOnDayOpsShift) {
+        if (!isOnOpsSiangShift) {
           return NextResponse.json(
-            { error: 'Checklist Ops Siang hanya untuk staff dengan jadwal shift Siang Weekend atau Standby Cabang' },
+            { error: 'Checklist Ops Siang hanya untuk staff dengan jadwal shift Standby Cabang' },
             { status: 403 }
           );
         }
         break;
 
       case 'OPS_MALAM':
-        // OPS_MALAM 06:00: For NIGHT_WEEKEND without server (D_2)
-        // Only has the cleaning coordination item
+        // OPS_MALAM: NIGHT_WEEKDAY or NIGHT_WEEKEND (without server access)
         if (staffProfile.hasServerAccess) {
           return NextResponse.json(
             { error: 'User dengan akses server sebaiknya menggunakan Checklist Monitoring Malam' },
             { status: 403 }
           );
         }
-        if (!isOnNightShift) {
+        if (!isOnOpsMalamShift) {
           return NextResponse.json(
-            { error: 'Checklist Ops Malam hanya untuk shift malam' },
+            { error: 'Checklist Ops Malam hanya untuk shift NIGHT_WEEKDAY atau NIGHT_WEEKEND' },
             { status: 403 }
           );
         }
         break;
 
-      // NEW: Checklist Monitoring (for users WITH server access: E, B_1, C, D_1)
       case 'MONITORING_SIANG':
-        // Requires server access
+        // MONITORING_SIANG: Server access + NOT on NIGHT_WEEKDAY shift
+        // Allowed: DBA/TS (server access, no shift or any shift except NIGHT_WEEKDAY), DAY_WEEKEND with server access
         if (!staffProfile.hasServerAccess) {
           return NextResponse.json(
             { error: 'Checklist Monitoring memerlukan akses server' },
             { status: 403 }
           );
         }
-        // Night-only shifts can access MONITORING_SIANG during early morning (00:00-08:00)
-        // This allows D_1 (NIGHT_WEEKEND with server) to complete 08:00 items when finishing shift
-        {
-          const witaTime = getCurrentTimeWITA();
-          const currentHour = witaTime.getHours();
-          const isEarlyMorning = currentHour >= 0 && currentHour < 8;
-          if (isOnNightOnlyShift && !isEarlyMorning) {
-            return NextResponse.json(
-              { error: 'Staff shift malam hanya dapat mengakses Checklist Monitoring Siang saat pagi (00:00-08:00)' },
-              { status: 403 }
-            );
-          }
+        // NIGHT_WEEKDAY with server access should use MONITORING_MALAM instead
+        if (isBlockedFromMonitoringSiang) {
+          return NextResponse.json(
+            { error: 'Staff shift NIGHT_WEEKDAY sebaiknya menggunakan Checklist Monitoring Malam' },
+            { status: 403 }
+          );
         }
         break;
 
       case 'MONITORING_MALAM':
-        // Requires server access + night/standby shift
+        // MONITORING_MALAM: NIGHT_WEEKDAY or NIGHT_WEEKEND (with server access)
         if (!staffProfile.hasServerAccess) {
           return NextResponse.json(
             { error: 'Checklist Monitoring memerlukan akses server' },
             { status: 403 }
           );
         }
-        if (!isOnNightShift) {
+        if (!isOnMonitoringMalamShift) {
           return NextResponse.json(
-            { error: 'Checklist Monitoring Malam hanya untuk shift malam/standby' },
+            { error: 'Checklist Monitoring Malam hanya untuk shift NIGHT_WEEKDAY atau NIGHT_WEEKEND dengan akses server' },
             { status: 403 }
           );
         }
@@ -605,10 +620,6 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const isOnNightOnlyShift = currentShift && NIGHT_ONLY_SHIFTS.includes(currentShift.shiftType);
-    const isOnNightShift = currentShift && NIGHT_STANDBY_SHIFTS.includes(currentShift.shiftType);
-    const isOnDayOpsShift = currentShift && DAY_OPS_SHIFTS.includes(currentShift.shiftType);
-
     // Determine checklist type
     let checklistType: DailyChecklistType;
     if (type && VALID_CHECKLIST_TYPES.includes(type)) {
@@ -624,70 +635,76 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Access control (v3 - only 4 types)
+    // Check specific shift conditions (same as GET handler)
+    const isOnOpsSiangShift = currentShift && OPS_SIANG_SHIFTS.includes(currentShift.shiftType);
+    const isOnOpsMalamShift = currentShift && OPS_MALAM_SHIFTS.includes(currentShift.shiftType);
+    const isOnMonitoringMalamShift = currentShift && MONITORING_MALAM_SHIFTS.includes(currentShift.shiftType);
+    const isBlockedFromMonitoringSiang = currentShift && BLOCKED_FROM_MONITORING_SIANG.includes(currentShift.shiftType);
+    const isOnNightShift = currentShift && NIGHT_STANDBY_SHIFTS.includes(currentShift.shiftType);
+
+    // === ACCESS CONTROL FOR CLAIM SYSTEM ===
     switch (checklistType) {
       case 'OPS_SIANG':
+        // OPS_SIANG: Only for STANDBY_BRANCH (no server access)
         if (staffProfile.hasServerAccess) {
           return NextResponse.json(
             { error: 'User dengan akses server sebaiknya menggunakan Checklist Monitoring' },
             { status: 403 }
           );
         }
-        // Must have a day operational shift to claim OPS_SIANG
-        if (!isOnDayOpsShift) {
+        if (!isOnOpsSiangShift) {
           return NextResponse.json(
-            { error: 'Checklist Ops Siang hanya untuk staff dengan jadwal shift Siang Weekend atau Standby Cabang' },
+            { error: 'Checklist Ops Siang hanya untuk staff dengan jadwal shift Standby Cabang' },
             { status: 403 }
           );
         }
         break;
 
       case 'OPS_MALAM':
+        // OPS_MALAM: NIGHT_WEEKDAY or NIGHT_WEEKEND (without server access)
         if (staffProfile.hasServerAccess) {
           return NextResponse.json(
             { error: 'User dengan akses server sebaiknya menggunakan Checklist Monitoring Malam' },
             { status: 403 }
           );
         }
-        if (!isOnNightShift) {
+        if (!isOnOpsMalamShift) {
           return NextResponse.json(
-            { error: 'Checklist Ops Malam hanya untuk shift malam' },
+            { error: 'Checklist Ops Malam hanya untuk shift NIGHT_WEEKDAY atau NIGHT_WEEKEND' },
             { status: 403 }
           );
         }
         break;
 
       case 'MONITORING_SIANG':
+        // MONITORING_SIANG: Server access + NOT on NIGHT_WEEKDAY shift
+        // Allowed: DBA/TS (server access, no shift or any shift except NIGHT_WEEKDAY), DAY_WEEKEND with server access
         if (!staffProfile.hasServerAccess) {
           return NextResponse.json(
             { error: 'Checklist Monitoring memerlukan akses server' },
             { status: 403 }
           );
         }
-        // Night-only shifts can access MONITORING_SIANG during early morning (00:00-08:00)
-        {
-          const witaTime = getCurrentTimeWITA();
-          const currentHour = witaTime.getHours();
-          const isEarlyMorning = currentHour >= 0 && currentHour < 8;
-          if (isOnNightOnlyShift && !isEarlyMorning) {
-            return NextResponse.json(
-              { error: 'Staff shift malam hanya dapat mengakses Checklist Monitoring Siang saat pagi (00:00-08:00)' },
-              { status: 403 }
-            );
-          }
+        // NIGHT_WEEKDAY with server access should use MONITORING_MALAM instead
+        if (isBlockedFromMonitoringSiang) {
+          return NextResponse.json(
+            { error: 'Staff shift NIGHT_WEEKDAY sebaiknya menggunakan Checklist Monitoring Malam' },
+            { status: 403 }
+          );
         }
         break;
 
       case 'MONITORING_MALAM':
+        // MONITORING_MALAM: NIGHT_WEEKDAY or NIGHT_WEEKEND (with server access)
         if (!staffProfile.hasServerAccess) {
           return NextResponse.json(
             { error: 'Checklist Monitoring memerlukan akses server' },
             { status: 403 }
           );
         }
-        if (!isOnNightShift) {
+        if (!isOnMonitoringMalamShift) {
           return NextResponse.json(
-            { error: 'Checklist Monitoring Malam hanya untuk shift malam/standby' },
+            { error: 'Checklist Monitoring Malam hanya untuk shift NIGHT_WEEKDAY atau NIGHT_WEEKEND dengan akses server' },
             { status: 403 }
           );
         }
