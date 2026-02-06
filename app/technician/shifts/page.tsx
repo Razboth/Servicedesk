@@ -855,6 +855,10 @@ export default function TechnicianShiftsPage() {
             });
 
             const hasChecklistData = checklistCalendarData[dateStr]?.hasData;
+            // Only show download button on H+1 (past days, not today)
+            const todayStr = new Date().toISOString().split('T')[0];
+            const isPastDate = dateStr < todayStr;
+            const canDownload = hasChecklistData && isPastDate;
 
             return (
               <div
@@ -865,8 +869,8 @@ export default function TechnicianShiftsPage() {
                   ${isToday ? 'border-blue-500 border-2' : 'border-gray-200 dark:border-gray-700'}
                 `}
               >
-                {/* Download checklist button */}
-                {hasChecklistData && (
+                {/* Download checklist button - only shows on H+1 (past days) */}
+                {canDownload && (
                   <Button
                     variant="ghost"
                     size="sm"
