@@ -3,9 +3,19 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { DailyChecklistType } from '@prisma/client';
 
+interface ChecklistTypeInfo {
+  type: DailyChecklistType;
+  isComplete: boolean;
+}
+
 interface DateChecklistInfo {
   types: DailyChecklistType[];
+  typeDetails: ChecklistTypeInfo[];
   hasData: boolean;
+  hasDayChecklist: boolean;
+  hasNightChecklist: boolean;
+  dayChecklistComplete: boolean;
+  nightChecklistComplete: boolean;
 }
 
 /**
@@ -60,7 +70,12 @@ export async function GET(request: NextRequest) {
       'MONITORING_MALAM',
     ];
 
-    // Query all checklists for the month
+    // Day checklist types (08:00-20:00)
+    const dayChecklistTypes: DailyChecklistType[] = ['OPS_SIANG', 'MONITORING_SIANG'];
+    // Night checklist types (20:00-08:00 next day)
+    const nightChecklistTypes: DailyChecklistType[] = ['OPS_MALAM', 'MONITORING_MALAM'];
+
+    // Query all checklists for the month with item counts
     const checklists = await prisma.serverAccessDailyChecklist.findMany({
       where: {
         date: {
@@ -81,6 +96,11 @@ export async function GET(request: NextRequest) {
             name: true,
           },
         },
+        items: {
+          select: {
+            status: true,
+          },
+        },
       },
     });
 
@@ -91,15 +111,48 @@ export async function GET(request: NextRequest) {
       // Format date as YYYY-MM-DD
       const dateStr = checklist.date.toISOString().split('T')[0];
 
+      // Check if checklist is complete (all items COMPLETED or SKIPPED)
+      const totalItems = checklist.items.length;
+      const completedItems = checklist.items.filter(
+        (item) => item.status === 'COMPLETED' || item.status === 'SKIPPED'
+      ).length;
+      const isComplete = totalItems > 0 && completedItems === totalItems;
+
+      const isDayChecklist = dayChecklistTypes.includes(checklist.checklistType);
+      const isNightChecklist = nightChecklistTypes.includes(checklist.checklistType);
+
       if (!datesWithData[dateStr]) {
         datesWithData[dateStr] = {
           types: [],
+          typeDetails: [],
           hasData: true,
+          hasDayChecklist: false,
+          hasNightChecklist: false,
+          dayChecklistComplete: false,
+          nightChecklistComplete: false,
         };
       }
 
       if (!datesWithData[dateStr].types.includes(checklist.checklistType)) {
         datesWithData[dateStr].types.push(checklist.checklistType);
+        datesWithData[dateStr].typeDetails.push({
+          type: checklist.checklistType,
+          isComplete,
+        });
+      }
+
+      if (isDayChecklist) {
+        datesWithData[dateStr].hasDayChecklist = true;
+        if (isComplete) {
+          datesWithData[dateStr].dayChecklistComplete = true;
+        }
+      }
+
+      if (isNightChecklist) {
+        datesWithData[dateStr].hasNightChecklist = true;
+        if (isComplete) {
+          datesWithData[dateStr].nightChecklistComplete = true;
+        }
       }
     }
 

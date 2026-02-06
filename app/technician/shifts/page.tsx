@@ -185,7 +185,14 @@ export default function TechnicianShiftsPage() {
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
-  const [checklistCalendarData, setChecklistCalendarData] = useState<Record<string, { types: string[]; hasData: boolean }>>({});
+  const [checklistCalendarData, setChecklistCalendarData] = useState<Record<string, {
+    types: string[];
+    hasData: boolean;
+    hasDayChecklist: boolean;
+    hasNightChecklist: boolean;
+    dayChecklistComplete: boolean;
+    nightChecklistComplete: boolean;
+  }>>({});
   const [isDownloadingChecklist, setIsDownloadingChecklist] = useState<string | null>(null);
 
   // Check if user has an active working shift (not OFF, LEAVE, or HOLIDAY)
@@ -854,11 +861,65 @@ export default function TechnicianShiftsPage() {
               assignmentsByType[assignment.shiftType].push(assignment);
             });
 
-            const hasChecklistData = checklistCalendarData[dateStr]?.hasData;
-            // Only show download button on H+1 (past days, not today)
-            const todayStr = new Date().toISOString().split('T')[0];
-            const isPastDate = dateStr < todayStr;
-            const canDownload = hasChecklistData && isPastDate;
+            const checklistInfo = checklistCalendarData[dateStr];
+            const hasChecklistData = checklistInfo?.hasData;
+
+            // Calculate download availability based on checklist type and time
+            // Day checklists (OPS_SIANG, MONITORING_SIANG): available after 20:00 WITA same day or when complete
+            // Night checklists (OPS_MALAM, MONITORING_MALAM): available after 08:00 WITA next day or when complete
+            let canDownload = false;
+            if (hasChecklistData && checklistInfo) {
+              const now = new Date();
+              // Convert to WITA (UTC+8)
+              const witaOffset = 8 * 60; // minutes
+              const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+              const witaMinutes = utcMinutes + witaOffset;
+              const witaHour = Math.floor((witaMinutes % (24 * 60)) / 60);
+
+              // Get WITA date
+              let witaDateStr = now.toISOString().split('T')[0];
+              if (witaMinutes >= 24 * 60) {
+                const tomorrow = new Date(now);
+                tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+                witaDateStr = tomorrow.toISOString().split('T')[0];
+              }
+
+              // Check day checklist availability
+              let dayChecklistReady = false;
+              if (checklistInfo.hasDayChecklist) {
+                // Day checklist ready if: complete OR (same day and past 20:00) OR (past the date)
+                if (checklistInfo.dayChecklistComplete) {
+                  dayChecklistReady = true;
+                } else if (dateStr < witaDateStr) {
+                  dayChecklistReady = true; // Past date
+                } else if (dateStr === witaDateStr && witaHour >= 20) {
+                  dayChecklistReady = true; // Same day after 20:00
+                }
+              }
+
+              // Check night checklist availability
+              let nightChecklistReady = false;
+              if (checklistInfo.hasNightChecklist) {
+                // Night checklist ready if: complete OR (next day and past 08:00) OR (2+ days past)
+                if (checklistInfo.nightChecklistComplete) {
+                  nightChecklistReady = true;
+                } else {
+                  // Night shift on dateStr ends at 08:00 on dateStr+1
+                  const checklistDate = new Date(dateStr + 'T00:00:00Z');
+                  const nextDayStr = new Date(checklistDate.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+                  if (witaDateStr > nextDayStr) {
+                    nightChecklistReady = true; // 2+ days past
+                  } else if (witaDateStr === nextDayStr && witaHour >= 8) {
+                    nightChecklistReady = true; // Next day after 08:00
+                  }
+                }
+              }
+
+              // Can download if at least one checklist type is ready
+              canDownload = (checklistInfo.hasDayChecklist && dayChecklistReady) ||
+                           (checklistInfo.hasNightChecklist && nightChecklistReady);
+            }
 
             return (
               <div
@@ -869,7 +930,7 @@ export default function TechnicianShiftsPage() {
                   ${isToday ? 'border-blue-500 border-2' : 'border-gray-200 dark:border-gray-700'}
                 `}
               >
-                {/* Download checklist button - only shows on H+1 (past days) */}
+                {/* Download checklist button - shows when shift time is complete or checklist is done */}
                 {canDownload && (
                   <Button
                     variant="ghost"
