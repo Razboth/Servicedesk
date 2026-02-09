@@ -13,27 +13,26 @@ import {
   Loader2,
   Save,
   MonitorSmartphone,
+  MapPin,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 
-interface ATMAlert {
-  atmId: string;
-  terminalId: string;
-  location: string;
+interface ATMAlarm {
+  deviceId: string;
   alarmType: string;
-  alarmDescription?: string;
-  status: string;
-  timestamp: string;
+  location: string;
+  occurredAt?: string;
+  timeAgo?: string;
 }
 
 export interface ATMAlertData {
   fetchedAt: string;
   targetTime: string;
   totalAlerts: number;
-  alerts: ATMAlert[];
-  // New fields for snapshot data
+  alarms: ATMAlarm[];
+  // Fields for snapshot data
   snapshotId?: string;
   snapshotTime?: string;
   devicesAlarming?: number;
@@ -104,7 +103,7 @@ export function ATMAlertList({
         fetchedAt: result.snapshot.receivedAt,
         targetTime,
         totalAlerts: result.snapshot.alarmCount,
-        alerts: [], // Snapshot doesn't have individual alerts, just counts
+        alarms: result.alarms || [],
         snapshotId: result.snapshot.id,
         snapshotTime: result.snapshot.receivedAt,
         devicesAlarming: result.snapshot.devicesAlarming,
@@ -143,7 +142,7 @@ export function ATMAlertList({
           fetchedAt: result.snapshot.receivedAt,
           targetTime,
           totalAlerts: result.snapshot.alarmCount,
-          alerts: [],
+          alarms: result.alarms || [],
           snapshotId: result.snapshot.id,
           snapshotTime: result.snapshot.receivedAt,
           devicesAlarming: result.snapshot.devicesAlarming,
@@ -224,25 +223,63 @@ export function ATMAlertList({
                 </span>
               </div>
             ) : (
-              <div className="p-3 bg-red-50 dark:bg-red-950/30 rounded-lg">
-                <div className="flex items-center gap-2 mb-2">
-                  <AlertTriangle className="h-5 w-5 text-red-500" />
-                  <span className="text-sm font-medium text-red-700 dark:text-red-400">
-                    {data.devicesAlarming ?? data.totalAlerts} ATM dalam kondisi alarm
-                  </span>
+              <div className="space-y-2">
+                {/* Summary */}
+                <div className="p-3 bg-red-50 dark:bg-red-950/30 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertTriangle className="h-5 w-5 text-red-500" />
+                    <span className="text-sm font-medium text-red-700 dark:text-red-400">
+                      {data.devicesAlarming ?? data.totalAlerts} ATM dalam kondisi alarm
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge
+                      variant="outline"
+                      className="text-xs border-red-300 text-red-700 dark:border-red-700 dark:text-red-300"
+                    >
+                      <MonitorSmartphone className="h-3 w-3 mr-1" />
+                      {data.devicesAlarming ?? 0} Perangkat
+                    </Badge>
+                    <Badge variant="outline" className="text-xs">
+                      Total Alert: {data.totalAlerts}
+                    </Badge>
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <Badge
-                    variant="outline"
-                    className="text-xs border-red-300 text-red-700 dark:border-red-700 dark:text-red-300"
-                  >
-                    <MonitorSmartphone className="h-3 w-3 mr-1" />
-                    {data.devicesAlarming ?? 0} Perangkat
-                  </Badge>
-                  <Badge variant="outline" className="text-xs">
-                    Total Alert: {data.totalAlerts}
-                  </Badge>
-                </div>
+
+                {/* Alarm Details */}
+                {data.alarms && data.alarms.length > 0 && (
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                    {data.alarms.map((alarm, index) => (
+                      <div
+                        key={`${alarm.deviceId}-${alarm.alarmType}-${index}`}
+                        className="flex items-start gap-2 p-2 bg-red-50/50 dark:bg-red-950/20 rounded border border-red-100 dark:border-red-900"
+                      >
+                        <AlertTriangle className="h-3.5 w-3.5 text-red-500 mt-0.5 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-mono text-sm font-medium text-red-700 dark:text-red-300">
+                              {alarm.deviceId}
+                            </span>
+                            <Badge variant="outline" className="text-xs">
+                              {alarm.alarmType}
+                            </Badge>
+                            {alarm.timeAgo && (
+                              <span className="text-xs text-muted-foreground">
+                                {alarm.timeAgo}
+                              </span>
+                            )}
+                          </div>
+                          {alarm.location && (
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                              <MapPin className="h-3 w-3" />
+                              <span className="truncate">{alarm.location}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </>

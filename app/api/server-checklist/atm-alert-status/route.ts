@@ -13,10 +13,14 @@ export async function POST(request: NextRequest) {
 
     const now = getCurrentTimeWITA();
 
-    // Get current alarm statistics
-    const [alarmingDevices, totalAlarms] = await Promise.all([
+    // Get current alarm statistics and details
+    const [alarmingDevices, totalAlarms, currentAlarms] = await Promise.all([
       prisma.atmMonitorDevice.count({ where: { status: 'ALARM' } }),
       prisma.atmCurrentAlarm.count(),
+      prisma.atmCurrentAlarm.findMany({
+        orderBy: { occurredAt: 'desc' },
+        take: 50, // Limit to 50 alarms
+      }),
     ]);
 
     // Create a new snapshot with current data
@@ -31,6 +35,15 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Format alarm details
+    const alarmDetails = currentAlarms.map((alarm) => ({
+      deviceId: alarm.deviceId,
+      alarmType: alarm.alarmType,
+      location: alarm.location,
+      occurredAt: alarm.occurredAt,
+      timeAgo: alarm.timeAgo,
+    }));
+
     return NextResponse.json({
       success: true,
       snapshot: {
@@ -41,6 +54,7 @@ export async function POST(request: NextRequest) {
         devicesAlarming: snapshot.devicesAlarming,
         devicesCleared: snapshot.devicesCleared,
       },
+      alarms: alarmDetails,
       message: 'Snapshot berhasil dibuat dari data saat ini',
     });
   } catch (error) {
@@ -132,16 +146,45 @@ export async function GET(request: NextRequest) {
       }
 
       if (!nearestSnapshot) {
+        // No snapshot found, get current alarms as fallback
+        const currentAlarms = await prisma.atmCurrentAlarm.findMany({
+          orderBy: { occurredAt: 'desc' },
+          take: 50,
+        });
+
+        const alarmDetails = currentAlarms.map((alarm) => ({
+          deviceId: alarm.deviceId,
+          alarmType: alarm.alarmType,
+          location: alarm.location,
+          occurredAt: alarm.occurredAt,
+          timeAgo: alarm.timeAgo,
+        }));
+
         return NextResponse.json({
           found: false,
           targetTime,
           targetDate: targetDate.toISOString(),
           message: 'Tidak ada data snapshot dalam rentang waktu yang diminta',
+          currentAlarms: alarmDetails, // Include current alarms as reference
         });
       }
 
       const minDiff = Math.abs(new Date(nearestSnapshot.receivedAt).getTime() - targetDate.getTime());
       const diffMinutes = Math.round(minDiff / 60000);
+
+      // Get current alarms for detail display
+      const currentAlarms = await prisma.atmCurrentAlarm.findMany({
+        orderBy: { occurredAt: 'desc' },
+        take: 50,
+      });
+
+      const alarmDetails = currentAlarms.map((alarm) => ({
+        deviceId: alarm.deviceId,
+        alarmType: alarm.alarmType,
+        location: alarm.location,
+        occurredAt: alarm.occurredAt,
+        timeAgo: alarm.timeAgo,
+      }));
 
       return NextResponse.json({
         found: true,
@@ -157,6 +200,7 @@ export async function GET(request: NextRequest) {
           devicesAlarming: nearestSnapshot.devicesAlarming,
           devicesCleared: nearestSnapshot.devicesCleared,
         },
+        alarms: alarmDetails,
       });
     }
 
@@ -174,6 +218,20 @@ export async function GET(request: NextRequest) {
     const minDiff = Math.abs(new Date(nearestSnapshot.receivedAt).getTime() - targetDate.getTime());
     const diffMinutes = Math.round(minDiff / 60000);
 
+    // Get current alarms for detail display
+    const currentAlarms = await prisma.atmCurrentAlarm.findMany({
+      orderBy: { occurredAt: 'desc' },
+      take: 50,
+    });
+
+    const alarmDetails = currentAlarms.map((alarm) => ({
+      deviceId: alarm.deviceId,
+      alarmType: alarm.alarmType,
+      location: alarm.location,
+      occurredAt: alarm.occurredAt,
+      timeAgo: alarm.timeAgo,
+    }));
+
     return NextResponse.json({
       found: true,
       exact: diffMinutes <= 1,
@@ -188,6 +246,7 @@ export async function GET(request: NextRequest) {
         devicesAlarming: nearestSnapshot.devicesAlarming,
         devicesCleared: nearestSnapshot.devicesCleared,
       },
+      alarms: alarmDetails,
     });
   } catch (error) {
     console.error('Error fetching ATM alert status:', error);
