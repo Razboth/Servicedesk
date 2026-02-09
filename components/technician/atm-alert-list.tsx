@@ -60,11 +60,16 @@ export function ATMAlertList({
   const [data, setData] = useState<ATMAlertData | null>(value || null);
   const [noDataFound, setNoDataFound] = useState(false);
 
-  // Auto-fetch on mount if no value provided
+  // Auto-fetch on mount - always fetch to get alarm details
   useEffect(() => {
     if (value) {
       setData(value);
-      setInitialLoading(false);
+      // If value exists but has alarms count > 0 and no alarm details, fetch them
+      if ((value.devicesAlarming || value.totalAlerts) > 0 && (!value.alarms || value.alarms.length === 0)) {
+        fetchAlarmDetails();
+      } else {
+        setInitialLoading(false);
+      }
     } else {
       fetchNearestSnapshot();
     }
@@ -74,8 +79,31 @@ export function ATMAlertList({
   useEffect(() => {
     if (value) {
       setData(value);
+      // Fetch alarm details if missing
+      if ((value.devicesAlarming || value.totalAlerts) > 0 && (!value.alarms || value.alarms.length === 0)) {
+        fetchAlarmDetails();
+      }
     }
   }, [value]);
+
+  // Fetch just alarm details (for when snapshot data exists but alarms array is empty)
+  const fetchAlarmDetails = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/server-checklist/atm-alert-status?time=${targetTime}`);
+      if (!response.ok) return;
+
+      const result = await response.json();
+      if (result.alarms && result.alarms.length > 0) {
+        setData(prev => prev ? { ...prev, alarms: result.alarms } : prev);
+      }
+    } catch (error) {
+      console.error('Error fetching alarm details:', error);
+    } finally {
+      setLoading(false);
+      setInitialLoading(false);
+    }
+  };
 
   // Fetch nearest snapshot from the atm-alert-status API
   const fetchNearestSnapshot = async () => {
