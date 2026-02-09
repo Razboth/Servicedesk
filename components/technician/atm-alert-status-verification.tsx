@@ -11,6 +11,7 @@ import {
   RefreshCw,
   AlertCircle,
   MonitorSmartphone,
+  Download,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -46,6 +47,7 @@ export function AtmAlertStatusVerification({
   date,
 }: AtmAlertStatusVerificationProps) {
   const [isLoading, setIsLoading] = useState(true);
+  const [isFetchingCurrent, setIsFetchingCurrent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<AtmAlertStatusResponse | null>(null);
 
@@ -68,6 +70,35 @@ export function AtmAlertStatusVerification({
       setError(err instanceof Error ? err.message : 'Terjadi kesalahan');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchCurrentData = async () => {
+    setIsFetchingCurrent(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/server-checklist/atm-alert-status', {
+        method: 'POST',
+      });
+      if (!response.ok) {
+        throw new Error('Gagal mengambil data saat ini');
+      }
+      const result = await response.json();
+      if (result.success && result.snapshot) {
+        // Update the data with the new snapshot
+        setData({
+          found: true,
+          exact: true,
+          diffMinutes: 0,
+          targetTime,
+          targetDate: new Date().toISOString(),
+          snapshot: result.snapshot,
+        });
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Terjadi kesalahan');
+    } finally {
+      setIsFetchingCurrent(false);
     }
   };
 
@@ -115,6 +146,31 @@ export function AtmAlertStatusVerification({
         <p className="text-xs text-amber-600/80 dark:text-amber-400/80 mt-1">
           {data.message}
         </p>
+        {/* Fetch Current Data Button */}
+        <div className="mt-3 pt-3 border-t border-amber-200 dark:border-amber-800">
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/50"
+            onClick={fetchCurrentData}
+            disabled={isFetchingCurrent}
+          >
+            {isFetchingCurrent ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Mengambil data...
+              </>
+            ) : (
+              <>
+                <Download className="h-4 w-4 mr-2" />
+                Ambil Data Saat Ini
+              </>
+            )}
+          </Button>
+          <p className="text-xs text-amber-600/70 dark:text-amber-400/70 mt-1.5 text-center">
+            Timestamp: {format(new Date(), 'dd MMM yyyy, HH:mm:ss', { locale: id })} WITA
+          </p>
+        </div>
       </div>
     );
   }

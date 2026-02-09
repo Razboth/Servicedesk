@@ -3,6 +3,55 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { getCurrentTimeWITA } from '@/lib/time-lock';
 
+// POST - Create a snapshot from current ATM alarm data
+export async function POST(request: NextRequest) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const now = getCurrentTimeWITA();
+
+    // Get current alarm statistics
+    const [alarmingDevices, totalAlarms] = await Promise.all([
+      prisma.atmMonitorDevice.count({ where: { status: 'ALARM' } }),
+      prisma.atmCurrentAlarm.count(),
+    ]);
+
+    // Create a new snapshot with current data
+    const snapshot = await prisma.atmAlarmSnapshot.create({
+      data: {
+        timestamp: now,
+        receivedAt: now,
+        alarmCount: totalAlarms,
+        processedCount: totalAlarms,
+        devicesAlarming: alarmingDevices,
+        devicesCleared: 0,
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      snapshot: {
+        id: snapshot.id,
+        timestamp: snapshot.timestamp,
+        receivedAt: snapshot.receivedAt,
+        alarmCount: snapshot.alarmCount,
+        devicesAlarming: snapshot.devicesAlarming,
+        devicesCleared: snapshot.devicesCleared,
+      },
+      message: 'Snapshot berhasil dibuat dari data saat ini',
+    });
+  } catch (error) {
+    console.error('Error creating ATM snapshot:', error);
+    return NextResponse.json(
+      { error: 'Gagal membuat snapshot ATM' },
+      { status: 500 }
+    );
+  }
+}
+
 // GET - Get ATM alert status for a specific time slot
 export async function GET(request: NextRequest) {
   try {
