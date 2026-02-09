@@ -13,6 +13,7 @@ import {
   Clock,
   Loader2,
   Save,
+  Download,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -59,12 +60,9 @@ export function ATMAlertList({
     }
   }, [value]);
 
-  // Check if current time is within allowed fetch window (target time to +3 minutes)
-  const isWithinFetchWindow = () => {
-    const [hours, minutes] = targetTime.split(':').map(Number);
+  // Get current WITA time components
+  const getWITATime = () => {
     const now = new Date();
-
-    // Get current time in WITA (UTC+8)
     const witaOffset = 8 * 60; // minutes
     const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
     let witaMinutes = utcMinutes + witaOffset;
@@ -72,13 +70,29 @@ export function ATMAlertList({
 
     const witaHour = Math.floor(witaMinutes / 60);
     const witaMinute = witaMinutes % 60;
+    return { witaHour, witaMinute, witaMinutes };
+  };
+
+  // Check if current time is within allowed fetch window (target time to +3 minutes)
+  const isWithinFetchWindow = () => {
+    const [hours, minutes] = targetTime.split(':').map(Number);
+    const { witaMinutes } = getWITATime();
 
     const targetMinutes = hours * 60 + minutes;
-    const currentMinutes = witaHour * 60 + witaMinute;
 
     // Allow fetch from target time to +3 minutes
-    const diff = currentMinutes - targetMinutes;
+    const diff = witaMinutes - targetMinutes;
     return diff >= 0 && diff <= 3;
+  };
+
+  // Check if fetch window has passed (current time > target time + 3 minutes)
+  const hasFetchWindowPassed = () => {
+    const [hours, minutes] = targetTime.split(':').map(Number);
+    const { witaMinutes } = getWITATime();
+
+    const targetMinutes = hours * 60 + minutes;
+    const diff = witaMinutes - targetMinutes;
+    return diff > 3;
   };
 
   const getTimeWindowMessage = () => {
@@ -89,9 +103,9 @@ export function ATMAlertList({
     return `${targetTime} - ${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`;
   };
 
-  const fetchAlerts = async () => {
-    // Check if within fetch window
-    if (!isWithinFetchWindow()) {
+  const fetchAlerts = async (bypassWindow = false) => {
+    // Check if within fetch window (unless bypassing)
+    if (!bypassWindow && !isWithinFetchWindow()) {
       toast.error(`Data hanya bisa diambil pada jam ${getTimeWindowMessage()} WITA`);
       return;
     }
@@ -135,6 +149,9 @@ export function ATMAlertList({
       setLoading(false);
     }
   };
+
+  // Fetch current data (bypasses time window restriction)
+  const fetchCurrentData = () => fetchAlerts(true);
 
   const handleSubmit = () => {
     if (data) {
@@ -218,6 +235,36 @@ export function ATMAlertList({
             <p className="text-xs text-muted-foreground">
               Waktu pengambilan: <span className="font-medium">{getTimeWindowMessage()} WITA</span>
             </p>
+            {/* Show Fetch Current Data button when window has passed */}
+            {hasFetchWindowPassed() && !readOnly && (
+              <div className="mt-4 pt-4 border-t border-amber-200 dark:border-amber-800">
+                <p className="text-xs text-amber-600 dark:text-amber-400 mb-2">
+                  Waktu pengambilan sudah lewat. Anda bisa mengambil data saat ini:
+                </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/50"
+                  onClick={fetchCurrentData}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      Mengambil...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="h-4 w-4 mr-1" />
+                      Ambil Data Saat Ini
+                    </>
+                  )}
+                </Button>
+                <p className="text-xs text-amber-600/70 dark:text-amber-400/70 mt-2">
+                  Timestamp: {format(new Date(), 'dd MMM yyyy, HH:mm:ss', { locale: id })} WITA
+                </p>
+              </div>
+            )}
           </div>
         )}
 
