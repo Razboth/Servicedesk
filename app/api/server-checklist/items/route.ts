@@ -6,22 +6,33 @@ import { DailyChecklistType, ShiftType } from '@prisma/client';
 
 // Checklist types that require server access
 const SERVER_CHECKLIST_TYPES: DailyChecklistType[] = [
-  'SERVER_SIANG',
-  'SERVER_MALAM',
   'MONITORING_SIANG',
   'MONITORING_MALAM',
 ];
 
-// Checklist types for operational shift (no server access needed)
-const OPS_CHECKLIST_TYPES: DailyChecklistType[] = [
-  'HARIAN',
-  'AKHIR_HARI',
-  'OPS_SIANG',
-  'OPS_MALAM',
+// Shift types for OPS_SIANG (auto-assign to day shift staff)
+const OPS_SIANG_SHIFTS: ShiftType[] = [
+  'STANDBY_BRANCH',
+  'DAY_WEEKEND',
 ];
 
-// Shifts that can access HARIAN/AKHIR_HARI
-const HARIAN_SHIFTS: ShiftType[] = ['STANDBY_BRANCH'];
+// Shift types for OPS_MALAM (night shifts without server access)
+const OPS_MALAM_SHIFTS: ShiftType[] = [
+  'NIGHT_WEEKEND',
+];
+
+// Shift types for MONITORING_MALAM (night shifts with server access)
+const MONITORING_MALAM_SHIFTS: ShiftType[] = [
+  'NIGHT_WEEKDAY',
+  'NIGHT_WEEKEND',
+];
+
+// Night shift types for checking previous day shifts
+const NIGHT_STANDBY_SHIFTS: ShiftType[] = [
+  'NIGHT_WEEKDAY',
+  'NIGHT_WEEKEND',
+  'STANDBY_ONCALL',
+];
 
 // PUT - Update checklist items
 export async function PUT(request: NextRequest) {
@@ -74,48 +85,103 @@ export async function PUT(request: NextRequest) {
       actualChecklistType = firstItem?.checklist?.checklistType;
     }
 
-    // Access control based on checklist type
-    if (actualChecklistType && SERVER_CHECKLIST_TYPES.includes(actualChecklistType)) {
-      // Server checklists require server access
-      if (!staffProfile.hasServerAccess) {
-        return NextResponse.json(
-          { error: 'Anda tidak memiliki akses server' },
-          { status: 403 }
-        );
-      }
-    } else if (actualChecklistType && OPS_CHECKLIST_TYPES.includes(actualChecklistType)) {
-      // HARIAN/AKHIR_HARI require STANDBY_BRANCH shift
-      // Get today's date in WITA
-      const now = new Date();
-      const witaOffset = 8 * 60;
-      const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
-      const witaMinutes = utcMinutes + witaOffset;
+    // Get today's date in WITA and check shift
+    const nowDate = new Date();
+    const witaOffset = 8 * 60;
+    const utcMinutes = nowDate.getUTCHours() * 60 + nowDate.getUTCMinutes();
+    const witaMinutes = utcMinutes + witaOffset;
 
-      let witaYear = now.getUTCFullYear();
-      let witaMonth = now.getUTCMonth();
-      let witaDay = now.getUTCDate();
+    let witaYear = nowDate.getUTCFullYear();
+    let witaMonth = nowDate.getUTCMonth();
+    let witaDay = nowDate.getUTCDate();
+    const witaHour = Math.floor((witaMinutes % (24 * 60)) / 60);
+    const isEarlyMorning = witaHour >= 0 && witaHour < 8;
 
-      if (witaMinutes >= 24 * 60) {
-        const tempDate = new Date(Date.UTC(witaYear, witaMonth, witaDay + 1));
-        witaYear = tempDate.getUTCFullYear();
-        witaMonth = tempDate.getUTCMonth();
-        witaDay = tempDate.getUTCDate();
-      }
+    if (witaMinutes >= 24 * 60) {
+      const tempDate = new Date(Date.UTC(witaYear, witaMonth, witaDay + 1));
+      witaYear = tempDate.getUTCFullYear();
+      witaMonth = tempDate.getUTCMonth();
+      witaDay = tempDate.getUTCDate();
+    }
 
-      const todayUTC = new Date(Date.UTC(witaYear, witaMonth, witaDay, 0, 0, 0, 0));
+    const todayUTC = new Date(Date.UTC(witaYear, witaMonth, witaDay, 0, 0, 0, 0));
 
-      const currentShift = await prisma.shiftAssignment.findFirst({
+    // Look for shift assignment - during early morning, check previous day too for night shifts
+    let currentShift = await prisma.shiftAssignment.findFirst({
+      where: {
+        staffProfileId: staffProfile.id,
+        date: todayUTC,
+      },
+    });
+
+    // If no shift found and it's early morning, check previous day (for night shifts)
+    if (!currentShift && isEarlyMorning) {
+      const yesterdayUTC = new Date(todayUTC);
+      yesterdayUTC.setUTCDate(yesterdayUTC.getUTCDate() - 1);
+
+      currentShift = await prisma.shiftAssignment.findFirst({
         where: {
           staffProfileId: staffProfile.id,
-          date: todayUTC,
+          date: yesterdayUTC,
+          shiftType: { in: NIGHT_STANDBY_SHIFTS },
         },
       });
+    }
 
-      if (!currentShift || !HARIAN_SHIFTS.includes(currentShift.shiftType)) {
-        return NextResponse.json(
-          { error: 'Checklist ini hanya untuk shift STANDBY_BRANCH' },
-          { status: 403 }
-        );
+    // Access control based on checklist type
+    if (actualChecklistType) {
+      switch (actualChecklistType) {
+        case 'OPS_SIANG':
+          // OPS_SIANG: Only for STANDBY_BRANCH or DAY_WEEKEND
+          if (!currentShift || !OPS_SIANG_SHIFTS.includes(currentShift.shiftType)) {
+            return NextResponse.json(
+              { error: 'Checklist Ops Siang hanya untuk shift STANDBY_BRANCH atau DAY_WEEKEND' },
+              { status: 403 }
+            );
+          }
+          break;
+
+        case 'OPS_MALAM':
+          // OPS_MALAM: Only for NIGHT_WEEKEND (without server access)
+          if (staffProfile.hasServerAccess) {
+            return NextResponse.json(
+              { error: 'User dengan akses server sebaiknya menggunakan Checklist Monitoring Malam' },
+              { status: 403 }
+            );
+          }
+          if (!currentShift || !OPS_MALAM_SHIFTS.includes(currentShift.shiftType)) {
+            return NextResponse.json(
+              { error: 'Checklist Ops Malam hanya untuk shift NIGHT_WEEKEND' },
+              { status: 403 }
+            );
+          }
+          break;
+
+        case 'MONITORING_SIANG':
+          // MONITORING_SIANG: Requires server access
+          if (!staffProfile.hasServerAccess) {
+            return NextResponse.json(
+              { error: 'Checklist Monitoring Siang memerlukan akses server' },
+              { status: 403 }
+            );
+          }
+          break;
+
+        case 'MONITORING_MALAM':
+          // MONITORING_MALAM: Only for NIGHT_WEEKDAY or NIGHT_WEEKEND (with server access)
+          if (!staffProfile.hasServerAccess) {
+            return NextResponse.json(
+              { error: 'Checklist Monitoring Malam memerlukan akses server' },
+              { status: 403 }
+            );
+          }
+          if (!currentShift || !MONITORING_MALAM_SHIFTS.includes(currentShift.shiftType)) {
+            return NextResponse.json(
+              { error: 'Checklist Monitoring Malam hanya untuk shift NIGHT_WEEKDAY atau NIGHT_WEEKEND' },
+              { status: 403 }
+            );
+          }
+          break;
       }
     }
 
