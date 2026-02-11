@@ -187,6 +187,7 @@ export default function TechnicianShiftsPage() {
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
   const [checklistCalendarData, setChecklistCalendarData] = useState<Record<string, {
     types: string[];
+    typeDetails: { type: string; isComplete: boolean }[];
     hasData: boolean;
     hasDayChecklist: boolean;
     hasNightChecklist: boolean;
@@ -316,24 +317,31 @@ export default function TechnicianShiftsPage() {
     }
   };
 
-  const handleDownloadChecklist = async (dateStr: string) => {
-    setIsDownloadingChecklist(dateStr);
+  const handleDownloadChecklist = async (dateStr: string, checklistType?: string) => {
+    const downloadKey = checklistType ? `${dateStr}-${checklistType}` : dateStr;
+    setIsDownloadingChecklist(downloadKey);
     try {
-      const response = await fetch(`/api/server-checklist/export?date=${dateStr}`);
+      const url = checklistType
+        ? `/api/server-checklist/export?date=${dateStr}&type=${checklistType}`
+        : `/api/server-checklist/export?date=${dateStr}`;
+      const response = await fetch(url);
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || 'Export failed');
       }
 
       const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      const blobUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
-      a.download = `Checklist_${dateStr}.pdf`;
+      a.href = blobUrl;
+      const filename = checklistType
+        ? `${checklistType.replace(/_/g, '_')}_${dateStr}.pdf`
+        : `Checklist_All_${dateStr}.pdf`;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      window.URL.revokeObjectURL(blobUrl);
       toast.success('Checklist berhasil diunduh');
     } catch (error) {
       console.error('Error downloading checklist:', error);
@@ -341,6 +349,14 @@ export default function TechnicianShiftsPage() {
     } finally {
       setIsDownloadingChecklist(null);
     }
+  };
+
+  // Checklist type labels for download menu
+  const checklistTypeLabels: Record<string, string> = {
+    OPS_SIANG: 'Ops Siang',
+    OPS_MALAM: 'Ops Malam',
+    MONITORING_SIANG: 'Monitoring Siang',
+    MONITORING_MALAM: 'Monitoring Malam',
   };
 
   const determineAvailableTypes = async () => {
@@ -930,25 +946,69 @@ export default function TechnicianShiftsPage() {
                   ${isToday ? 'border-blue-500 border-2' : 'border-gray-200 dark:border-gray-700'}
                 `}
               >
-                {/* Download checklist button - shows when shift time is complete or checklist is done */}
-                {canDownload && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="absolute top-1 right-1 h-5 w-5 p-0 hover:bg-blue-100 dark:hover:bg-blue-900/50"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDownloadChecklist(dateStr);
-                    }}
-                    disabled={isDownloadingChecklist === dateStr}
-                    title="Download checklist PDF"
-                  >
-                    {isDownloadingChecklist === dateStr ? (
-                      <Loader2 className="h-3 w-3 animate-spin text-blue-500" />
-                    ) : (
-                      <FileDown className="h-3 w-3 text-blue-500" />
-                    )}
-                  </Button>
+                {/* Download checklist dropdown - shows when shift time is complete or checklist is done */}
+                {canDownload && checklistInfo && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="absolute top-1 right-1 h-5 w-5 p-0 hover:bg-blue-100 dark:hover:bg-blue-900/50"
+                        onClick={(e) => e.stopPropagation()}
+                        disabled={isDownloadingChecklist?.startsWith(dateStr)}
+                        title="Download checklist PDF"
+                      >
+                        {isDownloadingChecklist?.startsWith(dateStr) ? (
+                          <Loader2 className="h-3 w-3 animate-spin text-blue-500" />
+                        ) : (
+                          <FileDown className="h-3 w-3 text-blue-500" />
+                        )}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      {checklistInfo.typeDetails && checklistInfo.typeDetails.map((typeInfo) => (
+                        <DropdownMenuItem
+                          key={typeInfo.type}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDownloadChecklist(dateStr, typeInfo.type);
+                          }}
+                          disabled={isDownloadingChecklist === `${dateStr}-${typeInfo.type}`}
+                          className="flex items-center gap-2"
+                        >
+                          {isDownloadingChecklist === `${dateStr}-${typeInfo.type}` ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <FileDown className="h-3 w-3" />
+                          )}
+                          <span className="flex-1">{checklistTypeLabels[typeInfo.type] || typeInfo.type}</span>
+                          {typeInfo.isComplete && (
+                            <CheckCircle2 className="h-3 w-3 text-green-500" />
+                          )}
+                        </DropdownMenuItem>
+                      ))}
+                      {checklistInfo.typeDetails && checklistInfo.typeDetails.length > 1 && (
+                        <>
+                          <div className="border-t my-1" />
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDownloadChecklist(dateStr);
+                            }}
+                            disabled={isDownloadingChecklist === dateStr}
+                            className="flex items-center gap-2"
+                          >
+                            {isDownloadingChecklist === dateStr ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <FileSpreadsheet className="h-3 w-3" />
+                            )}
+                            <span>Semua Checklist</span>
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 )}
                 <div className={`font-bold text-sm mb-1 ${isToday ? 'text-blue-600 dark:text-blue-400' : ''}`}>
                   {day}

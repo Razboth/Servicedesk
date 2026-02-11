@@ -4,6 +4,8 @@ import { prisma } from '@/lib/prisma';
 import { DailyChecklistType } from '@prisma/client';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
+import * as fs from 'fs';
+import * as path from 'path';
 
 // Extend jsPDF type for autotable
 declare module 'jspdf' {
@@ -16,7 +18,8 @@ declare module 'jspdf' {
       styles?: Record<string, unknown>;
       headStyles?: Record<string, unknown>;
       columnStyles?: Record<number, Record<string, unknown>>;
-      margin?: { left?: number; right?: number };
+      margin?: { left?: number; right?: number; top?: number; bottom?: number };
+      didDrawPage?: (data: { pageNumber: number }) => void;
     }) => jsPDF;
     lastAutoTable?: { finalY: number };
   }
@@ -24,23 +27,47 @@ declare module 'jspdf' {
 
 // Checklist type labels in Indonesian
 const CHECKLIST_TYPE_LABELS: Record<DailyChecklistType, string> = {
-  OPS_SIANG: 'Checklist Ops Siang',
-  OPS_MALAM: 'Checklist Ops Malam',
-  MONITORING_SIANG: 'Checklist Monitoring Siang',
-  MONITORING_MALAM: 'Checklist Monitoring Malam',
+  OPS_SIANG: 'CHECKLIST OPS SIANG',
+  OPS_MALAM: 'CHECKLIST OPS MALAM',
+  MONITORING_SIANG: 'CHECKLIST MONITORING SIANG',
+  MONITORING_MALAM: 'CHECKLIST MONITORING MALAM',
+  HARIAN: 'CHECKLIST HARIAN',
+  AKHIR_HARI: 'CHECKLIST AKHIR HARI',
+  SERVER_SIANG: 'CHECKLIST SERVER SIANG',
+  SERVER_MALAM: 'CHECKLIST SERVER MALAM',
+};
+
+// Full checklist type descriptions
+const CHECKLIST_TYPE_DESCRIPTIONS: Record<DailyChecklistType, string> = {
+  OPS_SIANG: 'Checklist Operasional Shift Siang (08:00 - 20:00 WITA)',
+  OPS_MALAM: 'Checklist Operasional Shift Malam (20:00 - 08:00 WITA)',
+  MONITORING_SIANG: 'Checklist Monitoring Server Shift Siang (08:00 - 20:00 WITA)',
+  MONITORING_MALAM: 'Checklist Monitoring Server Shift Malam (20:00 - 08:00 WITA)',
   HARIAN: 'Checklist Harian',
   AKHIR_HARI: 'Checklist Akhir Hari',
   SERVER_SIANG: 'Checklist Server Siang',
   SERVER_MALAM: 'Checklist Server Malam',
 };
 
-// Status symbols
-const STATUS_SYMBOLS: Record<string, string> = {
-  COMPLETED: '[v]',
-  SKIPPED: '[-]',
-  PENDING: '[ ]',
-  IN_PROGRESS: '[~]',
+// Status symbols and text
+const STATUS_DISPLAY: Record<string, { symbol: string; text: string }> = {
+  COMPLETED: { symbol: 'V', text: 'Selesai' },
+  SKIPPED: { symbol: '-', text: 'Dilewati' },
+  PENDING: { symbol: ' ', text: 'Belum' },
+  IN_PROGRESS: { symbol: '~', text: 'Proses' },
 };
+
+// Load BSG logo as base64
+function getLogoBase64(): string | null {
+  try {
+    const logoPath = path.join(process.cwd(), 'public', 'logo-bsg.png');
+    const logoBuffer = fs.readFileSync(logoPath);
+    return `data:image/png;base64,${logoBuffer.toString('base64')}`;
+  } catch (error) {
+    console.error('Error loading BSG logo:', error);
+    return null;
+  }
+}
 
 /**
  * Format date to Indonesian locale
@@ -72,12 +99,262 @@ function formatDateTimeWITA(date: Date): string {
 }
 
 /**
+ * Format time to display format (HH:mm)
+ */
+function formatTimeDisplay(timeStr: string): string {
+  if (!timeStr) return '-';
+  // Handle "HH:mm" format
+  if (/^\d{2}:\d{2}$/.test(timeStr)) {
+    return timeStr;
+  }
+  return timeStr;
+}
+
+/**
+ * Generate PDF for a single checklist type
+ */
+function generateSingleChecklistPDF(
+  checklist: {
+    checklistType: DailyChecklistType;
+    date: Date;
+    status: string;
+    user: { name: string | null; email: string };
+    items: Array<{
+      title: string;
+      category: string | null;
+      status: string;
+      notes: string | null;
+      completedAt: Date | null;
+      order: number;
+    }>;
+  },
+  logoBase64: string | null
+): jsPDF {
+  // A4 dimensions: 210mm x 297mm
+  const pdf = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  });
+
+  const pageWidth = 210;
+  const pageHeight = 297;
+  const margin = 15;
+  const contentWidth = pageWidth - margin * 2;
+
+  // Colors
+  const primaryColor: [number, number, number] = [200, 30, 30]; // BSG Red
+  const darkGray: [number, number, number] = [50, 50, 50];
+  const lightGray: [number, number, number] = [128, 128, 128];
+  const headerBg: [number, number, number] = [240, 240, 240];
+
+  let yPos = margin;
+
+  // Helper function to add header on each page
+  const addHeader = () => {
+    // Logo (if available)
+    if (logoBase64) {
+      try {
+        pdf.addImage(logoBase64, 'PNG', margin, 10, 40, 16);
+      } catch {
+        // If logo fails, continue without it
+      }
+    }
+
+    // Company name and document title on right
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(...lightGray);
+    pdf.text('PT Bank SulutGo', pageWidth - margin, 15, { align: 'right' });
+    pdf.text('ServiceDesk Operations', pageWidth - margin, 20, { align: 'right' });
+
+    // Horizontal line under header
+    pdf.setDrawColor(...primaryColor);
+    pdf.setLineWidth(0.5);
+    pdf.line(margin, 30, pageWidth - margin, 30);
+
+    return 35;
+  };
+
+  // Add header and get starting Y position
+  yPos = addHeader();
+
+  // Document Title
+  pdf.setFontSize(16);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(...darkGray);
+  const title = CHECKLIST_TYPE_LABELS[checklist.checklistType] || checklist.checklistType;
+  pdf.text(title, pageWidth / 2, yPos, { align: 'center' });
+  yPos += 8;
+
+  // Description
+  pdf.setFontSize(10);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(...lightGray);
+  const description = CHECKLIST_TYPE_DESCRIPTIONS[checklist.checklistType] || '';
+  pdf.text(description, pageWidth / 2, yPos, { align: 'center' });
+  yPos += 12;
+
+  // Date
+  pdf.setFontSize(12);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(...darkGray);
+  pdf.text(formatDateIndonesian(checklist.date), pageWidth / 2, yPos, { align: 'center' });
+  yPos += 15;
+
+  // Info Box
+  pdf.setFillColor(...headerBg);
+  pdf.roundedRect(margin, yPos, contentWidth, 25, 2, 2, 'F');
+
+  // PIC Information
+  yPos += 6;
+  pdf.setFontSize(9);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(...lightGray);
+  pdf.text('Penanggung Jawab (PIC):', margin + 5, yPos);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(...darkGray);
+  pdf.setFontSize(11);
+  pdf.text(checklist.user.name || checklist.user.email, margin + 5, yPos + 5);
+
+  // Progress stats
+  const totalItems = checklist.items.length;
+  const completedItems = checklist.items.filter(
+    (item) => item.status === 'COMPLETED' || item.status === 'SKIPPED'
+  ).length;
+  const progress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+
+  pdf.setFontSize(9);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(...lightGray);
+  pdf.text('Progress:', pageWidth - margin - 45, yPos);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(...darkGray);
+  pdf.setFontSize(11);
+  pdf.text(`${completedItems}/${totalItems} (${progress}%)`, pageWidth - margin - 45, yPos + 5);
+
+  // Status
+  pdf.setFontSize(9);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(...lightGray);
+  pdf.text('Status:', pageWidth - margin - 45, yPos + 11);
+  const statusText = checklist.status === 'COMPLETED' ? 'SELESAI' :
+                     checklist.status === 'IN_PROGRESS' ? 'DALAM PROSES' : 'PENDING';
+  const statusColor: [number, number, number] = checklist.status === 'COMPLETED' ? [34, 139, 34] :
+                                                checklist.status === 'IN_PROGRESS' ? [255, 165, 0] : lightGray;
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(...statusColor);
+  pdf.text(statusText, pageWidth - margin - 45, yPos + 16);
+
+  yPos += 30;
+
+  // Group items by category (time slot)
+  const itemsByCategory: Record<string, typeof checklist.items> = {};
+  for (const item of checklist.items) {
+    const category = item.category || 'Umum';
+    if (!itemsByCategory[category]) {
+      itemsByCategory[category] = [];
+    }
+    itemsByCategory[category].push(item);
+  }
+
+  // Sort categories (handle night shift ordering)
+  const sortedCategories = Object.keys(itemsByCategory).sort((a, b) => {
+    const aHour = parseInt(a.split(':')[0]) || 0;
+    const bHour = parseInt(b.split(':')[0]) || 0;
+
+    const isNightChecklist =
+      checklist.checklistType === 'OPS_MALAM' ||
+      checklist.checklistType === 'MONITORING_MALAM';
+
+    if (isNightChecklist) {
+      const aAdjusted = aHour < 12 ? aHour + 24 : aHour;
+      const bAdjusted = bHour < 12 ? bHour + 24 : bHour;
+      return aAdjusted - bAdjusted;
+    }
+
+    return a.localeCompare(b);
+  });
+
+  // Build table data
+  const tableData: (string | number)[][] = [];
+
+  for (const category of sortedCategories) {
+    const items = itemsByCategory[category];
+    for (const item of items) {
+      const statusInfo = STATUS_DISPLAY[item.status] || STATUS_DISPLAY.PENDING;
+      const notes = item.notes || '-';
+      tableData.push([
+        formatTimeDisplay(category),
+        item.title,
+        statusInfo.symbol,
+        notes.length > 60 ? notes.substring(0, 60) + '...' : notes,
+      ]);
+    }
+  }
+
+  // Render items table
+  pdf.setTextColor(0);
+  pdf.autoTable({
+    startY: yPos,
+    head: [['Waktu', 'Item Checklist', 'Status', 'Catatan']],
+    body: tableData,
+    theme: 'grid',
+    styles: {
+      fontSize: 8,
+      cellPadding: 3,
+      lineColor: [200, 200, 200],
+      lineWidth: 0.1,
+    },
+    headStyles: {
+      fillColor: primaryColor,
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      halign: 'center',
+    },
+    columnStyles: {
+      0: { cellWidth: 18, halign: 'center' },
+      1: { cellWidth: 75 },
+      2: { cellWidth: 15, halign: 'center', fontStyle: 'bold' },
+      3: { cellWidth: 72 },
+    },
+    margin: { left: margin, right: margin, top: 35, bottom: 25 },
+    didDrawPage: () => {
+      // Add header on new pages
+      addHeader();
+    },
+  });
+
+  // Footer on all pages
+  const pageCount = pdf.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    pdf.setPage(i);
+
+    // Footer line
+    pdf.setDrawColor(...lightGray);
+    pdf.setLineWidth(0.3);
+    pdf.line(margin, pageHeight - 20, pageWidth - margin, pageHeight - 20);
+
+    // Footer text
+    pdf.setFontSize(7);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(...lightGray);
+    pdf.text('Bank SulutGo ServiceDesk - Laporan Checklist Operasional', margin, pageHeight - 15);
+    pdf.text(`Halaman ${i} dari ${pageCount}`, pageWidth / 2, pageHeight - 15, { align: 'center' });
+    pdf.text(`Dicetak: ${formatDateTimeWITA(new Date())}`, pageWidth - margin, pageHeight - 15, { align: 'right' });
+  }
+
+  return pdf;
+}
+
+/**
  * GET /api/server-checklist/export
  *
- * Generates PDF for all checklists on a specific date.
+ * Generates PDF for checklists on a specific date.
  *
  * Query params:
  * - date: string (YYYY-MM-DD, required)
+ * - type: string (OPS_SIANG, OPS_MALAM, MONITORING_SIANG, MONITORING_MALAM, optional - if not provided, returns all)
  *
  * Returns: PDF file blob
  */
@@ -90,6 +367,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const dateParam = searchParams.get('date');
+    const typeParam = searchParams.get('type') as DailyChecklistType | null;
 
     if (!dateParam) {
       return NextResponse.json(
@@ -115,14 +393,21 @@ export async function GET(request: NextRequest) {
       'MONITORING_MALAM',
     ];
 
-    // Fetch all checklists for this date
+    // Validate type parameter if provided
+    if (typeParam && !validTypes.includes(typeParam)) {
+      return NextResponse.json(
+        { error: 'Invalid checklist type. Valid types: OPS_SIANG, OPS_MALAM, MONITORING_SIANG, MONITORING_MALAM' },
+        { status: 400 }
+      );
+    }
+
+    // Fetch checklists based on type parameter
+    const whereClause = typeParam
+      ? { date: targetDate, checklistType: typeParam }
+      : { date: targetDate, checklistType: { in: validTypes } };
+
     const checklists = await prisma.serverAccessDailyChecklist.findMany({
-      where: {
-        date: targetDate,
-        checklistType: {
-          in: validTypes,
-        },
-      },
+      where: whereClause,
       include: {
         user: {
           select: {
@@ -143,148 +428,299 @@ export async function GET(request: NextRequest) {
     });
 
     if (checklists.length === 0) {
+      const errorMessage = typeParam
+        ? `No ${typeParam} checklist data found for this date`
+        : 'No checklist data found for this date';
       return NextResponse.json(
-        { error: 'No checklist data found for this date' },
+        { error: errorMessage },
         { status: 404 }
       );
     }
 
-    // Generate PDF
-    const pdf = new jsPDF();
-    let yPosition = 20;
+    // Load BSG logo
+    const logoBase64 = getLogoBase64();
 
-    // Header
-    pdf.setFontSize(18);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text('LAPORAN CHECKLIST HARIAN', 105, yPosition, { align: 'center' });
-    yPosition += 10;
+    let pdf: jsPDF;
+    let filename: string;
 
-    pdf.setFontSize(12);
-    pdf.setFont('helvetica', 'normal');
-    pdf.text(formatDateIndonesian(targetDate), 105, yPosition, { align: 'center' });
-    yPosition += 15;
-
-    // Line separator
-    pdf.setDrawColor(200);
-    pdf.line(20, yPosition, 190, yPosition);
-    yPosition += 10;
-
-    // Process each checklist
-    for (const checklist of checklists) {
-      // Check if we need a new page
-      if (yPosition > 250) {
-        pdf.addPage();
-        yPosition = 20;
-      }
-
-      // Checklist type header
-      pdf.setFontSize(14);
-      pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(0, 102, 204);
-      pdf.text(CHECKLIST_TYPE_LABELS[checklist.checklistType] || checklist.checklistType, 20, yPosition);
-      yPosition += 8;
-
-      // Staff info
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      pdf.setTextColor(100);
-      pdf.text(`Dikerjakan oleh: ${checklist.user.name || checklist.user.email}`, 20, yPosition);
-      yPosition += 6;
-
-      // Progress stats
-      const totalItems = checklist.items.length;
-      const completedItems = checklist.items.filter(
-        (item) => item.status === 'COMPLETED' || item.status === 'SKIPPED'
-      ).length;
-      const progress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
-
-      pdf.text(`Progress: ${completedItems}/${totalItems} item (${progress}%)`, 20, yPosition);
-      yPosition += 10;
-
-      // Group items by category (time slot)
-      const itemsByCategory: Record<string, typeof checklist.items> = {};
-      for (const item of checklist.items) {
-        const category = item.category || 'Umum';
-        if (!itemsByCategory[category]) {
-          itemsByCategory[category] = [];
-        }
-        itemsByCategory[category].push(item);
-      }
-
-      // Sort categories (handle night shift ordering)
-      const sortedCategories = Object.keys(itemsByCategory).sort((a, b) => {
-        const aHour = parseInt(a.split(':')[0]) || 0;
-        const bHour = parseInt(b.split(':')[0]) || 0;
-
-        // For night checklists, 22:00 comes before 00:00
-        const isNightChecklist =
-          checklist.checklistType === 'OPS_MALAM' ||
-          checklist.checklistType === 'MONITORING_MALAM';
-
-        if (isNightChecklist) {
-          const aAdjusted = aHour < 12 ? aHour + 24 : aHour;
-          const bAdjusted = bHour < 12 ? bHour + 24 : bHour;
-          return aAdjusted - bAdjusted;
-        }
-
-        return a.localeCompare(b);
+    if (typeParam) {
+      // Single checklist type - generate single PDF
+      const checklist = checklists[0];
+      pdf = generateSingleChecklistPDF(checklist, logoBase64);
+      const typeLabel = CHECKLIST_TYPE_LABELS[typeParam].replace(/\s+/g, '_');
+      filename = `${typeLabel}_${dateParam}.pdf`;
+    } else {
+      // Multiple checklist types - generate combined PDF
+      pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
       });
 
-      // Render items table
-      pdf.setTextColor(0);
-      const tableData: (string | number)[][] = [];
+      let isFirstChecklist = true;
 
-      for (const category of sortedCategories) {
-        const items = itemsByCategory[category];
-        for (const item of items) {
-          const status = STATUS_SYMBOLS[item.status] || '[ ]';
-          const notes = item.notes || '';
-          tableData.push([
-            category,
-            item.title,
-            status,
-            notes.substring(0, 50) + (notes.length > 50 ? '...' : ''),
-          ]);
+      for (const checklist of checklists) {
+        if (!isFirstChecklist) {
+          pdf.addPage();
+        }
+        isFirstChecklist = false;
+
+        // Generate single checklist content on current page
+        const singlePdf = generateSingleChecklistPDF(checklist, logoBase64);
+
+        // For combined PDF, we need to manually add content
+        // This is a simplified approach - copy each page from single PDF
+        const singlePageCount = singlePdf.getNumberOfPages();
+        for (let p = 1; p <= singlePageCount; p++) {
+          if (p > 1) {
+            pdf.addPage();
+          }
+          // Copy the page content by re-rendering
+          // Note: jsPDF doesn't support direct page copying, so we regenerate
         }
       }
 
-      pdf.autoTable({
-        startY: yPosition,
-        head: [['Waktu', 'Item', 'Status', 'Catatan']],
-        body: tableData,
-        theme: 'striped',
-        styles: { fontSize: 8, cellPadding: 2 },
-        headStyles: { fillColor: [66, 139, 202], textColor: 255 },
-        columnStyles: {
-          0: { cellWidth: 20 },
-          1: { cellWidth: 80 },
-          2: { cellWidth: 15 },
-          3: { cellWidth: 55 },
-        },
-        margin: { left: 20, right: 20 },
+      // Since direct page copying is complex, regenerate the combined PDF properly
+      pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
       });
 
-      yPosition = (pdf.lastAutoTable?.finalY || yPosition) + 15;
-    }
+      const pageWidth = 210;
+      const pageHeight = 297;
+      const margin = 15;
 
-    // Footer on last page
-    const pageCount = pdf.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      pdf.setPage(i);
-      pdf.setFontSize(8);
-      pdf.setTextColor(150);
-      pdf.text(
-        `Halaman ${i} dari ${pageCount}`,
-        105,
-        290,
-        { align: 'center' }
-      );
-      pdf.text(
-        `Dicetak: ${formatDateTimeWITA(new Date())}`,
-        190,
-        290,
-        { align: 'right' }
-      );
+      // Colors
+      const primaryColor: [number, number, number] = [200, 30, 30];
+      const darkGray: [number, number, number] = [50, 50, 50];
+      const lightGray: [number, number, number] = [128, 128, 128];
+
+      let totalPages = 0;
+      const pagesPerChecklist: number[] = [];
+
+      // First pass: count pages needed for each checklist
+      for (const checklist of checklists) {
+        const itemCount = checklist.items.length;
+        const estimatedPages = Math.ceil((itemCount * 8 + 100) / (pageHeight - 60));
+        pagesPerChecklist.push(Math.max(1, estimatedPages));
+        totalPages += Math.max(1, estimatedPages);
+      }
+
+      // Generate each checklist
+      let currentPage = 0;
+      for (let c = 0; c < checklists.length; c++) {
+        const checklist = checklists[c];
+
+        if (c > 0) {
+          pdf.addPage();
+        }
+
+        // Use the single checklist generator
+        const tempPdf = generateSingleChecklistPDF(checklist, logoBase64);
+        const tempPageCount = tempPdf.getNumberOfPages();
+
+        // For now, just regenerate in the main PDF
+        // This is simplified - in production, consider a more sophisticated approach
+
+        currentPage++;
+      }
+
+      // Actually, let's just use the single generator for each and handle page breaks
+      // Recreate PDF properly
+      pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+
+      for (let c = 0; c < checklists.length; c++) {
+        if (c > 0) {
+          pdf.addPage();
+        }
+
+        const checklist = checklists[c];
+        const contentWidth = pageWidth - margin * 2;
+        const headerBg: [number, number, number] = [240, 240, 240];
+
+        let yPos = margin;
+
+        // Header
+        if (logoBase64) {
+          try {
+            pdf.addImage(logoBase64, 'PNG', margin, 10, 40, 16);
+          } catch {
+            // Continue without logo
+          }
+        }
+
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(...lightGray);
+        pdf.text('PT Bank SulutGo', pageWidth - margin, 15, { align: 'right' });
+        pdf.text('ServiceDesk Operations', pageWidth - margin, 20, { align: 'right' });
+
+        pdf.setDrawColor(...primaryColor);
+        pdf.setLineWidth(0.5);
+        pdf.line(margin, 30, pageWidth - margin, 30);
+
+        yPos = 35;
+
+        // Title
+        pdf.setFontSize(16);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(...darkGray);
+        const title = CHECKLIST_TYPE_LABELS[checklist.checklistType] || checklist.checklistType;
+        pdf.text(title, pageWidth / 2, yPos, { align: 'center' });
+        yPos += 8;
+
+        // Description
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(...lightGray);
+        const description = CHECKLIST_TYPE_DESCRIPTIONS[checklist.checklistType] || '';
+        pdf.text(description, pageWidth / 2, yPos, { align: 'center' });
+        yPos += 12;
+
+        // Date
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(...darkGray);
+        pdf.text(formatDateIndonesian(checklist.date), pageWidth / 2, yPos, { align: 'center' });
+        yPos += 15;
+
+        // Info Box
+        pdf.setFillColor(...headerBg);
+        pdf.roundedRect(margin, yPos, contentWidth, 25, 2, 2, 'F');
+
+        yPos += 6;
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(...lightGray);
+        pdf.text('Penanggung Jawab (PIC):', margin + 5, yPos);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(...darkGray);
+        pdf.setFontSize(11);
+        pdf.text(checklist.user.name || checklist.user.email, margin + 5, yPos + 5);
+
+        const totalItems = checklist.items.length;
+        const completedItems = checklist.items.filter(
+          (item) => item.status === 'COMPLETED' || item.status === 'SKIPPED'
+        ).length;
+        const progress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(...lightGray);
+        pdf.text('Progress:', pageWidth - margin - 45, yPos);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(...darkGray);
+        pdf.setFontSize(11);
+        pdf.text(`${completedItems}/${totalItems} (${progress}%)`, pageWidth - margin - 45, yPos + 5);
+
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(...lightGray);
+        pdf.text('Status:', pageWidth - margin - 45, yPos + 11);
+        const statusText = checklist.status === 'COMPLETED' ? 'SELESAI' :
+                          checklist.status === 'IN_PROGRESS' ? 'DALAM PROSES' : 'PENDING';
+        const statusColor: [number, number, number] = checklist.status === 'COMPLETED' ? [34, 139, 34] :
+                                                      checklist.status === 'IN_PROGRESS' ? [255, 165, 0] : lightGray;
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(...statusColor);
+        pdf.text(statusText, pageWidth - margin - 45, yPos + 16);
+
+        yPos += 30;
+
+        // Group and sort items
+        const itemsByCategory: Record<string, typeof checklist.items> = {};
+        for (const item of checklist.items) {
+          const category = item.category || 'Umum';
+          if (!itemsByCategory[category]) {
+            itemsByCategory[category] = [];
+          }
+          itemsByCategory[category].push(item);
+        }
+
+        const sortedCategories = Object.keys(itemsByCategory).sort((a, b) => {
+          const aHour = parseInt(a.split(':')[0]) || 0;
+          const bHour = parseInt(b.split(':')[0]) || 0;
+
+          const isNightChecklist =
+            checklist.checklistType === 'OPS_MALAM' ||
+            checklist.checklistType === 'MONITORING_MALAM';
+
+          if (isNightChecklist) {
+            const aAdjusted = aHour < 12 ? aHour + 24 : aHour;
+            const bAdjusted = bHour < 12 ? bHour + 24 : bHour;
+            return aAdjusted - bAdjusted;
+          }
+
+          return a.localeCompare(b);
+        });
+
+        const tableData: (string | number)[][] = [];
+
+        for (const category of sortedCategories) {
+          const items = itemsByCategory[category];
+          for (const item of items) {
+            const statusInfo = STATUS_DISPLAY[item.status] || STATUS_DISPLAY.PENDING;
+            const notes = item.notes || '-';
+            tableData.push([
+              formatTimeDisplay(category),
+              item.title,
+              statusInfo.symbol,
+              notes.length > 60 ? notes.substring(0, 60) + '...' : notes,
+            ]);
+          }
+        }
+
+        pdf.setTextColor(0);
+        pdf.autoTable({
+          startY: yPos,
+          head: [['Waktu', 'Item Checklist', 'Status', 'Catatan']],
+          body: tableData,
+          theme: 'grid',
+          styles: {
+            fontSize: 8,
+            cellPadding: 3,
+            lineColor: [200, 200, 200],
+            lineWidth: 0.1,
+          },
+          headStyles: {
+            fillColor: primaryColor,
+            textColor: [255, 255, 255],
+            fontStyle: 'bold',
+            halign: 'center',
+          },
+          columnStyles: {
+            0: { cellWidth: 18, halign: 'center' },
+            1: { cellWidth: 75 },
+            2: { cellWidth: 15, halign: 'center', fontStyle: 'bold' },
+            3: { cellWidth: 72 },
+          },
+          margin: { left: margin, right: margin, top: 35, bottom: 25 },
+        });
+      }
+
+      // Add footer to all pages
+      const pageCount = pdf.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        pdf.setPage(i);
+
+        pdf.setDrawColor(...lightGray);
+        pdf.setLineWidth(0.3);
+        pdf.line(margin, pageHeight - 20, pageWidth - margin, pageHeight - 20);
+
+        pdf.setFontSize(7);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(...lightGray);
+        pdf.text('Bank SulutGo ServiceDesk - Laporan Checklist Operasional', margin, pageHeight - 15);
+        pdf.text(`Halaman ${i} dari ${pageCount}`, pageWidth / 2, pageHeight - 15, { align: 'center' });
+        pdf.text(`Dicetak: ${formatDateTimeWITA(new Date())}`, pageWidth - margin, pageHeight - 15, { align: 'right' });
+      }
+
+      filename = `Checklist_All_${dateParam}.pdf`;
     }
 
     // Generate PDF buffer
@@ -295,7 +731,7 @@ export async function GET(request: NextRequest) {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="Checklist_${dateParam}.pdf"`,
+        'Content-Disposition': `attachment; filename="${filename}"`,
       },
     });
   } catch (error) {

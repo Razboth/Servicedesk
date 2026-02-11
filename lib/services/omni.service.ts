@@ -188,8 +188,8 @@ export function mapTicketToOmniPayload(ticketData: OmniTicketData): OmniHelpdesk
                        ticketData.createdBy?.name ||
                        'Customer';
 
-  // Determine connection ID (use email or phone)
-  const connectID = customerEmail || customerPhone || ticketData.createdBy?.email || 'helpdesk@banksulutgo.co.id';
+  // Connection ID - hardcoded as per Omni/Sociomile configuration
+  const connectID = '69898d06b17d72292e5184ec';
 
   // Determine media transaksi (ATM ID or default)
   const mediaTransaksi = atmCode || 'BRANCH_PORTAL';
