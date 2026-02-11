@@ -154,7 +154,7 @@ export async function GET(request: NextRequest) {
         // Include active network incidents
         networkIncidents: {
           where: {
-            status: { in: ['OPEN', 'INVESTIGATING', 'IDENTIFIED'] }
+            status: { in: ['OPEN', 'IN_PROGRESS'] }
           },
           orderBy: { createdAt: 'desc' },
           take: 1,
