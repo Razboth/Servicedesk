@@ -88,7 +88,7 @@ export async function GET(
             name: true,
             supportGroupId: true,
             requiresApproval: true,
-            tier1Category: { select: { name: true } },
+            tier1Category: { select: { id: true, name: true } },
             tier2Subcategory: { select: { name: true } },
             tier3Item: { select: { name: true } },
             // Include 3-tier category IDs from service
@@ -461,14 +461,14 @@ export async function PATCH(
         service: {
           select: {
             name: true,
-            tier1Category: { select: { name: true } },
+            tier1Category: { select: { id: true, name: true } },
             tier2Subcategory: { select: { name: true } },
             tier3Item: { select: { name: true } }
           }
         },
-        createdBy: { 
-          select: { 
-            name: true, 
+        createdBy: {
+          select: {
+            name: true,
             email: true, 
             role: true, 
             avatar: true,

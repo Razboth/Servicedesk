@@ -401,9 +401,20 @@ export default function TicketDetailPage() {
   // Helper function to check if ticket is a Transaction Claims ticket
   const isTransactionClaimTicket = (ticket: Ticket | null): boolean => {
     if (!ticket) return false;
+
+    // Transaction Claims Category IDs (matching omni.service.ts)
+    const TRANSACTION_CLAIMS_CATEGORY_ID = 'cmekrqi45001qhluspcsta20x';
+    const ATM_SERVICES_CATEGORY_ID = 'cmekrqi3t001ghlusklheksqz';
+
+    const categoryId = ticket.service?.tier1Category?.id || '';
     const categoryName = (ticket.service?.tier1Category?.name || '').toLowerCase();
 
-    // Check by tier 1 category name (case-insensitive, flexible matching)
+    // Check by category ID first (most reliable)
+    if (categoryId === TRANSACTION_CLAIMS_CATEGORY_ID || categoryId === ATM_SERVICES_CATEGORY_ID) {
+      return true;
+    }
+
+    // Fallback: Check by tier 1 category name (case-insensitive, flexible matching)
     return categoryName.includes('transaction claim') ||
            categoryName.includes('klaim transaksi') ||
            categoryName.includes('atm service');
