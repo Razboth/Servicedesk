@@ -40,6 +40,7 @@ export interface OmniHelpdeskPayload {
   description?: string;          // Additional description (Optional)
   nomorTicketHelpdesk: number;   // Our ticket number (Required) - API expects Number
   noRegPengaduanCabang: number;  // Branch complaint number (Required) - API expects Number
+  namaTeknisi?: string;          // Technician name - "Belum di claim" on creation, actual name when claimed
 }
 
 /**
@@ -235,6 +236,7 @@ export function mapTicketToOmniPayload(ticketData: OmniTicketData): OmniHelpdesk
     description: ticketData.claimDescription || ticketData.description || undefined,
     nomorTicketHelpdesk: ticketNumberInt,
     noRegPengaduanCabang: ticketNumberInt,
+    namaTeknisi: 'Belum di claim',  // Default value on ticket creation
   };
 }
 
@@ -450,7 +452,8 @@ export interface OmniStatusUpdatePayload {
   sociomile_ticket_id: string;
   bsg_ticket_id: string;
   status: string;
-  agent: string;  // Required: Agent name performing the update
+  agent: string;           // Required: Agent name performing the update
+  namaTeknisi?: string;    // Technician name for tracking
 }
 
 /**
@@ -477,12 +480,14 @@ export function mapBsgStatusToOmni(bsgStatus: string): string | null {
  * @param sociomileTicketId - The Sociomile ticket ID
  * @param bsgTicketNumber - The BSG ServiceDesk ticket number (e.g., "16023")
  * @param bsgStatus - The new BSG status
+ * @param technicianName - The technician name performing the action
  * @returns Promise with Omni API response
  */
 export async function updateOmniTicketStatus(
   sociomileTicketId: string,
   bsgTicketNumber: string,
-  bsgStatus: string
+  bsgStatus: string,
+  technicianName?: string
 ): Promise<OmniStatusUpdateResponse> {
   if (!OMNI_API_TOKEN) {
     console.error('[Omni] API token not configured');
@@ -507,15 +512,17 @@ export async function updateOmniTicketStatus(
   // Extract numeric ticket number (e.g., "TKT-2025-16023" -> "16023")
   const numericTicketNumber = bsgTicketNumber.replace(/\D/g, '').slice(-5) || bsgTicketNumber;
 
-  // Build the update status URL (note: hyphenated 'update-status')
-  const OMNI_UPDATE_STATUS_URL = process.env.OMNI_UPDATE_STATUS_URL || 'https://api-sm.s45.in/bank-sulut/update-status';
+  // Build the update status URL - uses same domain as create, endpoint is "update-status" (with hyphen)
+  const OMNI_UPDATE_STATUS_URL = process.env.OMNI_UPDATE_STATUS_URL || OMNI_API_URL.replace('/create', '/update-status');
   const url = `${OMNI_UPDATE_STATUS_URL}?client_secret_key=${OMNI_API_TOKEN}`;
 
+  const agentName = technicianName || 'BSG-Helpdesk Automated';
   const payload: OmniStatusUpdatePayload = {
     sociomile_ticket_id: sociomileTicketId,
     bsg_ticket_id: numericTicketNumber,
     status: omniStatus,
-    agent: 'BSG-Helpdesk Automated'  // Required agent identifier
+    agent: agentName,
+    namaTeknisi: agentName,
   };
 
   console.log('[Omni] Updating ticket status:', {
@@ -615,12 +622,14 @@ export async function updateOmniTicketStatus(
  * @param ticketNumber - The BSG ticket number (e.g., "16023" or "TKT-2025-16023")
  * @param sociomileTicketId - The Sociomile ticket ID (if exists)
  * @param newStatus - The new BSG status
+ * @param technicianName - The technician name performing the action
  * @returns Promise with Omni response or null if not applicable
  */
 export async function syncStatusToOmniIfApplicable(
   ticketNumber: string,
   sociomileTicketId: string | null | undefined,
-  newStatus: string
+  newStatus: string,
+  technicianName?: string
 ): Promise<OmniStatusUpdateResponse | null> {
   // Check if Omni is enabled
   if (!isOmniEnabled()) {
@@ -635,5 +644,5 @@ export async function syncStatusToOmniIfApplicable(
   }
 
   // Sync the status using ticket number
-  return await updateOmniTicketStatus(sociomileTicketId, ticketNumber, newStatus);
+  return await updateOmniTicketStatus(sociomileTicketId, ticketNumber, newStatus, technicianName);
 }
