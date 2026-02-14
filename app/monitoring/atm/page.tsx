@@ -527,15 +527,15 @@ export default function ATMMonitoringPage() {
 
   // Generate alarm list text for copying
   const generateAlarmListText = () => {
-    // Get current time in WITA (Asia/Makassar timezone)
-    const now = new Date();
-    const formattedDate = now.toLocaleDateString('id-ID', {
+    // Use last alarm update time in WITA (Asia/Makassar timezone)
+    const dataTime = lastAlarmUpdate ? new Date(lastAlarmUpdate) : new Date();
+    const formattedDate = dataTime.toLocaleDateString('id-ID', {
       day: '2-digit',
       month: 'short',
       year: 'numeric',
       timeZone: 'Asia/Makassar'
     });
-    const formattedTime = now.toLocaleTimeString('id-ID', {
+    const formattedTime = dataTime.toLocaleTimeString('id-ID', {
       hour: '2-digit',
       minute: '2-digit',
       hour12: false,
