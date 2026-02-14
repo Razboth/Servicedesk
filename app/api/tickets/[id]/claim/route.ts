@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { sendTicketNotification } from '@/lib/services/email.service';
 import { emitTicketAssigned } from '@/lib/services/socket.service';
+import { syncStatusToOmniIfApplicable, isTransactionClaimService } from '@/lib/services/omni.service';
 
 // POST /api/tickets/[id]/claim - Claim an unassigned ticket
 export async function POST(
@@ -26,7 +27,12 @@ export async function POST(
     // Check if ticket exists and get its details including approval status
     const existingTicket = await prisma.ticket.findUnique({
       where: { id: ticketId },
-      include: {
+      select: {
+        id: true,
+        ticketNumber: true,
+        status: true,
+        assignedToId: true,
+        sociomileTicketId: true,
         assignedTo: true,
         createdBy: true,
         approvals: {
@@ -41,7 +47,8 @@ export async function POST(
         service: {
           select: {
             requiresApproval: true,
-            supportGroupId: true
+            supportGroupId: true,
+            tier1CategoryId: true
           }
         }
       }
@@ -218,6 +225,37 @@ export async function POST(
     emitTicketAssigned(updatedTicket, updatedTicket.assignedTo).catch(err =>
       console.error('Failed to emit assignment event:', err)
     );
+
+    // Debug: Log Omni sync check values
+    console.log('[Omni] Claim sync check:', {
+      ticketNumber: existingTicket.ticketNumber,
+      sociomileTicketId: existingTicket.sociomileTicketId,
+      tier1CategoryId: existingTicket.service?.tier1CategoryId,
+      isTransactionClaim: isTransactionClaimService(null, existingTicket.service?.tier1CategoryId)
+    });
+
+    // Sync status to Omni if this is a Transaction Claims ticket (non-blocking)
+    if (existingTicket.sociomileTicketId &&
+        isTransactionClaimService(null, existingTicket.service?.tier1CategoryId)) {
+      const technicianName = session.user.name || session.user.email || 'Unknown';
+      syncStatusToOmniIfApplicable(
+        existingTicket.ticketNumber,
+        existingTicket.sociomileTicketId,
+        newStatus,
+        technicianName
+      ).then(result => {
+        if (result) {
+          console.log('[Omni] Claim status sync result:', {
+            ticketNumber: existingTicket.ticketNumber,
+            technicianName,
+            success: result.success,
+            message: result.message
+          });
+        }
+      }).catch(err => {
+        console.error('[Omni] Failed to sync claim status:', err);
+      });
+    }
 
     return NextResponse.json({
       message: 'Ticket claimed successfully',
