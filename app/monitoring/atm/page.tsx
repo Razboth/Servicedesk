@@ -55,6 +55,8 @@ import {
   SignalLow,
   SignalZero,
   ExternalLink,
+  Copy,
+  ClipboardList,
 } from 'lucide-react';
 
 // Dynamically import map components to avoid SSR issues
@@ -256,6 +258,7 @@ export default function ATMMonitoringPage() {
   const [selectedATM, setSelectedATM] = useState<CombinedATM | null>(null);
   const [deviceHistory, setDeviceHistory] = useState<HistoryRecord[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
+  const [alarmListModalOpen, setAlarmListModalOpen] = useState(false);
   const [leafletIcon, setLeafletIcon] = useState<any>(null);
   const mapRef = React.useRef<any>(null);
   const markersRef = React.useRef<Map<string, any>>(new Map());
@@ -522,6 +525,69 @@ export default function ATMMonitoringPage() {
     }
   };
 
+  // Generate alarm list text for copying
+  const generateAlarmListText = () => {
+    // Get current time in WITA (Asia/Makassar timezone)
+    const now = new Date();
+    const formattedDate = now.toLocaleDateString('id-ID', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      timeZone: 'Asia/Makassar'
+    });
+    const formattedTime = now.toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: 'Asia/Makassar'
+    }).replace(':', '.');
+
+    const header = `Data Alarm ATM per ${formattedDate}, ${formattedTime} WITA\n${'='.repeat(45)}\n\n`;
+
+    // Get all ATMs with active alarms
+    const atmsWithAlarms = combinedATMs.filter(atm => atm.currentAlarms.length > 0);
+
+    if (atmsWithAlarms.length === 0) {
+      return header + 'Tidak ada alarm aktif saat ini.';
+    }
+
+    // Group ATMs by branch
+    const groupedByBranch = new Map<string, CombinedATM[]>();
+    atmsWithAlarms.forEach(atm => {
+      const branchName = atm.branch?.name || 'Cabang Tidak Diketahui';
+      if (!groupedByBranch.has(branchName)) {
+        groupedByBranch.set(branchName, []);
+      }
+      groupedByBranch.get(branchName)!.push(atm);
+    });
+
+    // Build output grouped by branch
+    const lines: string[] = [];
+    groupedByBranch.forEach((atms, branchName) => {
+      lines.push(`[${branchName}]`);
+      atms.forEach(atm => {
+        const alarmTypes = atm.currentAlarms.map(alarm => alarm.alarmType).join(', ');
+        const atmName = atm.location || atm.name || '';
+        lines.push(`${atm.code} ${atmName} - ${alarmTypes}`);
+      });
+      lines.push(''); // Empty line between branches
+    });
+
+    const totalAlarms = atmsWithAlarms.reduce((sum, atm) => sum + atm.currentAlarms.length, 0);
+
+    return header + lines.join('\n') + `Total: ${atmsWithAlarms.length} ATM, ${totalAlarms} alarm aktif`;
+  };
+
+  const handleCopyAlarmList = async () => {
+    const text = generateAlarmListText();
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('Daftar alarm berhasil disalin');
+    } catch (err) {
+      toast.error('Gagal menyalin ke clipboard');
+    }
+  };
+
   const formatTime = (dateString: string | null) => {
     if (!dateString) return '-';
     return new Date(dateString).toLocaleString('id-ID', {
@@ -583,6 +649,14 @@ export default function ATMMonitoringPage() {
           <Button onClick={handleManualRefresh} disabled={refreshing}>
             <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setAlarmListModalOpen(true)}
+            disabled={stats.alarming === 0}
+          >
+            <ClipboardList className="h-4 w-4 mr-2" />
+            Alarm List ({stats.alarming})
           </Button>
         </div>
       </div>
@@ -1357,6 +1431,34 @@ export default function ATMMonitoringPage() {
               </Tabs>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Alarm List Modal for Copying */}
+      <Dialog open={alarmListModalOpen} onOpenChange={setAlarmListModalOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ClipboardList className="h-5 w-5 text-red-600" />
+              Daftar Alarm ATM Aktif
+            </DialogTitle>
+            <DialogDescription>
+              Daftar semua alarm ATM yang sedang aktif. Klik tombol salin untuk menyalin ke clipboard.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4">
+            <div className="flex justify-end mb-3">
+              <Button onClick={handleCopyAlarmList} size="sm">
+                <Copy className="h-4 w-4 mr-2" />
+                Salin ke Clipboard
+              </Button>
+            </div>
+            <ScrollArea className="h-[400px] rounded-md border bg-muted/50 p-4">
+              <pre className="text-sm font-mono whitespace-pre-wrap">
+                {generateAlarmListText()}
+              </pre>
+            </ScrollArea>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
