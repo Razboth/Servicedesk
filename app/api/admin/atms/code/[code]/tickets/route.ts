@@ -197,7 +197,7 @@ export async function GET(
 
       technicalIssues = techTickets.map(ticket => ({
         id: ticket.id,
-        number: ticket.number,
+        number: ticket.ticketNumber,
         title: ticket.title,
         status: ticket.status,
         priority: ticket.priority,
@@ -323,7 +323,7 @@ export async function GET(
 
       claims = claimTickets.map(ticket => ({
         id: ticket.id,
-        number: ticket.number,
+        number: ticket.ticketNumber,
         title: ticket.title,
         status: ticket.status,
         priority: ticket.priority,
