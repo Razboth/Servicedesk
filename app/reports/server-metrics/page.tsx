@@ -20,6 +20,7 @@ import {
   Loader2,
   Cpu,
   MemoryStick,
+  Clock,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ServerOverviewCards } from '@/components/server-metrics/server-overview-cards';
@@ -158,6 +159,16 @@ export default function ServerMetricsPage() {
           <p className="text-muted-foreground">
             Monitor kesehatan dan performa server
           </p>
+          {analytics?.latestCollection && (
+            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+              <Clock className="h-3 w-3" />
+              Laporan terakhir:{' '}
+              {new Date(analytics.latestCollection.reportTimestamp).toLocaleString('id-ID', {
+                dateStyle: 'medium',
+                timeStyle: 'short',
+              })}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Select value={periodDays} onValueChange={setPeriodDays}>
