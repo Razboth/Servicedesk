@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     // Get latest collection for timestamp info
     const latestCollectionMeta = await prisma.metricCollection.findFirst({
       orderBy: { createdAt: 'desc' },
-      select: { id: true, fetchedAt: true, reportTimestamp: true, totalIps: true },
+      select: { id: true, fetchedAt: true, reportTimestamp: true, totalIps: true, createdAt: true },
     });
 
     // Get all active servers with their most recent metric
@@ -73,6 +73,7 @@ export async function GET(request: NextRequest) {
             fetchedAt: latestCollectionMeta.fetchedAt,
             reportTimestamp: latestCollectionMeta.reportTimestamp,
             totalIps: latestCollectionMeta.totalIps,
+            createdAt: latestCollectionMeta.createdAt,
           } : null,
         },
       });
@@ -230,6 +231,7 @@ export async function GET(request: NextRequest) {
           fetchedAt: latestCollectionMeta.fetchedAt,
           reportTimestamp: latestCollectionMeta.reportTimestamp,
           totalIps: latestCollectionMeta.totalIps,
+          createdAt: latestCollectionMeta.createdAt,
         } : null,
         periodDays: days,
       },

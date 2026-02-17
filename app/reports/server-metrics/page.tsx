@@ -80,6 +80,7 @@ interface AnalyticsData {
   latestCollection: {
     fetchedAt: string;
     reportTimestamp: string;
+    createdAt: string;
   } | null;
 }
 
@@ -163,7 +164,7 @@ export default function ServerMetricsPage() {
             <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
               <Clock className="h-3 w-3" />
               Laporan terakhir:{' '}
-              {new Date(analytics.latestCollection.reportTimestamp).toLocaleString('id-ID', {
+              {new Date(analytics.latestCollection.createdAt).toLocaleString('id-ID', {
                 dateStyle: 'medium',
                 timeStyle: 'short',
               })}
