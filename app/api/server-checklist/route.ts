@@ -261,7 +261,14 @@ export async function GET(request: NextRequest) {
     // === ACCESS CONTROL ===
     switch (checklistType) {
       case 'OPS_SIANG':
-        // OPS_SIANG: Auto-assign to day shift staff (STANDBY_BRANCH or DAY_WEEKEND)
+        // OPS_SIANG: Auto-assign to day shift staff WITHOUT server access (STANDBY_BRANCH or DAY_WEEKEND)
+        // Block server access staff - they should use MONITORING_SIANG instead
+        if (staffProfile.hasServerAccess) {
+          return NextResponse.json(
+            { error: 'OPS_SIANG hanya untuk staff tanpa akses server. Gunakan Checklist Monitoring Siang.' },
+            { status: 403 }
+          );
+        }
         if (!isOnOpsSiangShift) {
           return NextResponse.json(
             { error: 'Checklist Ops Siang hanya untuk staff shift STANDBY_BRANCH atau DAY_WEEKEND' },
