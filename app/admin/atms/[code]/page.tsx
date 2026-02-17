@@ -50,7 +50,10 @@ import {
   Network,
   Server,
   FileText,
-  Shield
+  Shield,
+  History,
+  CheckCircle2,
+  Bell
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
@@ -135,6 +138,45 @@ interface Ticket {
   };
 }
 
+interface AlarmRecord {
+  id: string;
+  alarmType: string;
+  location: string;
+  occurredAt: string;
+  clearedAt: string | null;
+  duration: number | null;
+  isActive: boolean;
+}
+
+interface CurrentAlarm {
+  id: string;
+  alarmType: string;
+  location: string;
+  occurredAt: string;
+  timeAgo: string | null;
+}
+
+interface AlarmData {
+  atmCode: string;
+  atmName: string;
+  device: {
+    id: string;
+    deviceId: string;
+    location: string | null;
+    status: string;
+    lastSeenAt: string;
+  } | null;
+  currentAlarms: CurrentAlarm[];
+  alarmHistory: AlarmRecord[];
+  statistics: {
+    totalAlarms: number;
+    activeAlarms: number;
+    avgDurationSeconds: number | null;
+    uptimePercentage30Days: number;
+    alarmTypeBreakdown: { alarmType: string; count: number }[];
+  };
+}
+
 export default function ATMDetailPage() {
   const params = useParams();
   const searchParams = useSearchParams();
@@ -148,6 +190,8 @@ export default function ATMDetailPage() {
   const [technicalIssues, setTechnicalIssues] = useState<Ticket[]>([]);
   const [claims, setClaims] = useState<Ticket[]>([]);
   const [ticketsLoading, setTicketsLoading] = useState(false);
+  const [alarmData, setAlarmData] = useState<AlarmData | null>(null);
+  const [alarmsLoading, setAlarmsLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     code: '',
@@ -168,12 +212,18 @@ export default function ATMDetailPage() {
   });
 
   useEffect(() => {
-    Promise.all([fetchATM(), fetchBranches()]);
+    Promise.all([fetchATM(), fetchBranches(), fetchAlarmData()]);
   }, [atmCode]);
 
   useEffect(() => {
     if (activeTab === 'tickets' || activeTab === 'claims') {
       fetchTickets();
+    }
+  }, [activeTab, atmCode]);
+
+  useEffect(() => {
+    if (activeTab === 'incidents') {
+      fetchAlarmData();
     }
   }, [activeTab, atmCode]);
 
@@ -233,6 +283,67 @@ export default function ATMDetailPage() {
     } finally {
       setTicketsLoading(false);
     }
+  };
+
+  const fetchAlarmData = async () => {
+    try {
+      setAlarmsLoading(true);
+      const response = await fetch(`/api/admin/atms/code/${atmCode}/alarms?days=30&limit=100`);
+      if (!response.ok) throw new Error('Failed to fetch alarm data');
+      const data = await response.json();
+      if (data.success) {
+        setAlarmData(data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching alarm data:', error);
+    } finally {
+      setAlarmsLoading(false);
+    }
+  };
+
+  // Format duration from seconds to readable format
+  const formatDuration = (seconds: number | null): string => {
+    if (seconds === null) return '-';
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    if (hours > 24) {
+      const days = Math.floor(hours / 24);
+      return `${days}d ${hours % 24}h ${minutes}m`;
+    }
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    }
+    return `${minutes}m`;
+  };
+
+  // Get alarm type icon
+  const getAlarmIcon = (alarmType: string) => {
+    const type = alarmType.toLowerCase();
+    if (type.includes('communication') || type.includes('offline')) {
+      return <WifiOff className="h-4 w-4" />;
+    }
+    if (type.includes('cash') || type.includes('cassette')) {
+      return <Banknote className="h-4 w-4" />;
+    }
+    if (type.includes('card') || type.includes('mcrw')) {
+      return <CreditCard className="h-4 w-4" />;
+    }
+    return <AlertTriangle className="h-4 w-4" />;
+  };
+
+  // Get alarm color class
+  const getAlarmColor = (alarmType: string): string => {
+    const type = alarmType.toLowerCase();
+    if (type.includes('communication') || type.includes('offline')) {
+      return 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800';
+    }
+    if (type.includes('error')) {
+      return 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800';
+    }
+    if (type.includes('warning') || type.includes('low')) {
+      return 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800';
+    }
+    return 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800';
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -358,7 +469,7 @@ export default function ATMDetailPage() {
     { id: 'network', label: 'Network & Monitoring', icon: Network },
     { id: 'tickets', label: 'Technical Issues', icon: Wrench, count: atm._count.technicalIssueTickets },
     { id: 'claims', label: 'ATM Claims', icon: Banknote, count: atm._count.claimTickets },
-    { id: 'incidents', label: 'Incidents', icon: AlertTriangle, count: atm._count.incidents },
+    { id: 'incidents', label: 'Alarm History', icon: History, count: alarmData?.statistics?.activeAlarms },
   ];
 
   return (
@@ -422,8 +533,8 @@ export default function ATMDetailPage() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground mb-1">Active Incidents</p>
-                  <p className="text-3xl font-bold">{atm._count.incidents}</p>
+                  <p className="text-sm font-medium text-muted-foreground mb-1">Active Alarms</p>
+                  <p className="text-3xl font-bold">{alarmData?.statistics?.activeAlarms ?? 0}</p>
                 </div>
                 <div className="h-12 w-12 rounded-full bg-orange-100 dark:bg-orange-500/10 flex items-center justify-center">
                   <AlertTriangle className="h-6 w-6 text-orange-600 dark:text-orange-500" />
@@ -1029,65 +1140,230 @@ export default function ATMDetailPage() {
           </Card>
         )}
 
-        {/* Incidents Tab */}
+        {/* Alarm History Tab */}
         {activeTab === 'incidents' && (
-          <Card className="shadow-sm">
-            <CardHeader className="border-b bg-muted/30">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-primary" />
-                <CardTitle>ATM Incidents</CardTitle>
+          <div className="space-y-6">
+            {alarmsLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
-              <CardDescription>
-                Active network and monitoring incidents for ATM {atm.code}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-6">
-              {atm.incidents.length > 0 ? (
-                <div className="rounded-lg border overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/50">
-                        <TableHead className="font-semibold">Type</TableHead>
-                        <TableHead className="font-semibold">Severity</TableHead>
-                        <TableHead className="font-semibold">Description</TableHead>
-                        <TableHead className="font-semibold">Detected At</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {atm.incidents.map((incident) => (
-                        <TableRow key={incident.id} className="hover:bg-muted/30">
-                          <TableCell>
-                            <Badge variant="outline">{incident.type}</Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={
-                              incident.severity === 'CRITICAL' || incident.severity === 'HIGH'
-                                ? 'destructive'
-                                : incident.severity === 'MEDIUM' ? 'warning' : 'secondary'
-                            }>
-                              {incident.severity}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="max-w-[400px] truncate" title={incident.description}>
-                            {incident.description}
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {formatWITA(incident.createdAt)}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              ) : (
-                <div className="text-center py-12 border rounded-lg bg-muted/20">
-                  <AlertTriangle className="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" />
-                  <p className="text-muted-foreground">No active incidents</p>
-                  <p className="text-sm text-muted-foreground mt-1">All systems are operating normally</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+            ) : (
+              <>
+                {/* Alarm Statistics Summary */}
+                {alarmData && (
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <Card className="border-l-4 border-l-red-500">
+                      <CardContent className="pt-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-muted-foreground">Active Alarms</p>
+                            <p className="text-2xl font-bold">{alarmData.statistics.activeAlarms}</p>
+                          </div>
+                          <Bell className="h-8 w-8 text-red-500" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card className="border-l-4 border-l-amber-500">
+                      <CardContent className="pt-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-muted-foreground">Total (30 days)</p>
+                            <p className="text-2xl font-bold">{alarmData.alarmHistory.length}</p>
+                          </div>
+                          <History className="h-8 w-8 text-amber-500" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card className="border-l-4 border-l-blue-500">
+                      <CardContent className="pt-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-muted-foreground">Avg Duration</p>
+                            <p className="text-2xl font-bold">
+                              {alarmData.statistics.avgDurationSeconds
+                                ? formatDuration(alarmData.statistics.avgDurationSeconds)
+                                : '-'}
+                            </p>
+                          </div>
+                          <Clock className="h-8 w-8 text-blue-500" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card className="border-l-4 border-l-green-500">
+                      <CardContent className="pt-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-muted-foreground">Uptime (30d)</p>
+                            <p className="text-2xl font-bold">{alarmData.statistics.uptimePercentage30Days}%</p>
+                          </div>
+                          <CheckCircle2 className="h-8 w-8 text-green-500" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+
+                {/* Current Active Alarms */}
+                {alarmData && alarmData.currentAlarms.length > 0 && (
+                  <Card className="shadow-sm border-red-200 dark:border-red-800">
+                    <CardHeader className="border-b bg-red-50 dark:bg-red-900/20">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="h-5 w-5 text-red-600" />
+                        <CardTitle className="text-red-600">Active Alarms ({alarmData.currentAlarms.length})</CardTitle>
+                      </div>
+                      <CardDescription>
+                        Currently active alarms that require attention
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                      <div className="space-y-3">
+                        {alarmData.currentAlarms.map((alarm) => (
+                          <div
+                            key={alarm.id}
+                            className={`p-4 rounded-lg border-2 ${getAlarmColor(alarm.alarmType)}`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className="p-2 bg-white/50 dark:bg-black/20 rounded">
+                                {getAlarmIcon(alarm.alarmType)}
+                              </div>
+                              <div className="flex-1">
+                                <p className="font-semibold">{alarm.alarmType}</p>
+                                {alarm.location && (
+                                  <p className="text-sm opacity-75">Location: {alarm.location}</p>
+                                )}
+                                <div className="flex items-center gap-4 mt-2 text-sm">
+                                  <span className="flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    {formatWITA(alarm.occurredAt)}
+                                  </span>
+                                  {alarm.timeAgo && (
+                                    <span className="opacity-75">{alarm.timeAgo}</span>
+                                  )}
+                                </div>
+                              </div>
+                              <Badge variant="destructive" className="animate-pulse">
+                                Active
+                              </Badge>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Alarm History Table */}
+                <Card className="shadow-sm">
+                  <CardHeader className="border-b bg-muted/30">
+                    <div className="flex items-center gap-2">
+                      <History className="h-5 w-5 text-primary" />
+                      <CardTitle>Alarm History (Last 30 Days)</CardTitle>
+                    </div>
+                    <CardDescription>
+                      Historical alarm records for ATM {atm.code}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-6">
+                    {alarmData && alarmData.alarmHistory.length > 0 ? (
+                      <div className="rounded-lg border overflow-hidden">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-muted/50">
+                              <TableHead className="font-semibold">Alarm Type</TableHead>
+                              <TableHead className="font-semibold">Occurred At</TableHead>
+                              <TableHead className="font-semibold">Cleared At</TableHead>
+                              <TableHead className="font-semibold">Duration</TableHead>
+                              <TableHead className="font-semibold">Status</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {alarmData.alarmHistory.map((record) => (
+                              <TableRow key={record.id} className="hover:bg-muted/30">
+                                <TableCell>
+                                  <div className="flex items-center gap-2">
+                                    {getAlarmIcon(record.alarmType)}
+                                    <span className="text-sm font-medium">{record.alarmType}</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-sm">
+                                  {formatWITA(record.occurredAt)}
+                                </TableCell>
+                                <TableCell className="text-sm">
+                                  {record.clearedAt ? (
+                                    <span className="text-green-600 dark:text-green-400">
+                                      {formatWITA(record.clearedAt)}
+                                    </span>
+                                  ) : (
+                                    <span className="text-muted-foreground">-</span>
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-sm font-mono">
+                                  {formatDuration(record.duration)}
+                                </TableCell>
+                                <TableCell>
+                                  {record.isActive ? (
+                                    <Badge variant="destructive" className="animate-pulse">
+                                      Active
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="success" className="gap-1">
+                                      <CheckCircle2 className="h-3 w-3" />
+                                      Cleared
+                                    </Badge>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    ) : (
+                      <div className="text-center py-12 border rounded-lg bg-muted/20">
+                        <CheckCircle2 className="h-12 w-12 text-green-500/50 mx-auto mb-3" />
+                        <p className="text-muted-foreground">No alarm history</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {alarmData?.device
+                            ? 'No alarms recorded in the last 30 days'
+                            : 'ATM monitoring device not found. The ATM may not be connected to the alarm monitoring system.'}
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Alarm Type Breakdown */}
+                {alarmData && alarmData.statistics.alarmTypeBreakdown.length > 0 && (
+                  <Card className="shadow-sm">
+                    <CardHeader className="border-b bg-muted/30">
+                      <div className="flex items-center gap-2">
+                        <Activity className="h-5 w-5 text-primary" />
+                        <CardTitle>Alarm Type Breakdown</CardTitle>
+                      </div>
+                      <CardDescription>
+                        Distribution of alarm types for this ATM
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                      <div className="flex flex-wrap gap-2">
+                        {alarmData.statistics.alarmTypeBreakdown.map((item) => (
+                          <Badge
+                            key={item.alarmType}
+                            className={`${getAlarmColor(item.alarmType)} flex items-center gap-1 px-3 py-1`}
+                          >
+                            {getAlarmIcon(item.alarmType)}
+                            <span>{item.alarmType}</span>
+                            <span className="ml-1 px-1.5 py-0.5 bg-white/50 dark:bg-black/20 rounded text-xs font-bold">
+                              {item.count}
+                            </span>
+                          </Badge>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </>
+            )}
+          </div>
         )}
       </div>
     </div>
