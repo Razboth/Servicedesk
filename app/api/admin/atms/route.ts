@@ -160,11 +160,11 @@ export async function GET(request: NextRequest) {
           take: 1,
           select: {
             id: true,
-            title: true,
+            type: true,
+            description: true,
             status: true,
             severity: true,
             createdAt: true,
-            acknowledgedAt: true,
             resolvedAt: true
           }
         }

@@ -12,7 +12,8 @@ export async function GET(request: NextRequest) {
 
     const searchParams = request.nextUrl.searchParams;
     const search = searchParams.get('search') || '';
-    const isActive = searchParams.get('isActive');
+    // Support both 'isActive' and 'active' parameter names
+    const isActive = searchParams.get('isActive') || searchParams.get('active');
     const serviceType = searchParams.get('serviceType');
 
     const where: any = {};
