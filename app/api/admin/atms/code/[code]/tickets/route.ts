@@ -144,31 +144,27 @@ export async function GET(
     ];
 
     if (type === 'technical' || type === 'all') {
-      // Get technical issue tickets - match by field value OR title/description
-      const techWhereConditions: any[] = [];
-
-      // Match by ATM code field value
-      if (atmCodeMatchConditions.length > 0) {
-        techWhereConditions.push({
-          serviceId: { in: techIssueServiceIds },
-          fieldValues: { some: { OR: atmCodeMatchConditions } }
-        });
-      }
-
-      // Match by title/description
-      techWhereConditions.push({
-        serviceId: { in: techIssueServiceIds },
-        OR: titleMatchConditions
-      });
-
+      // Build query to match the working count query structure from main route
+      // Structure: serviceId at top level, OR for matching conditions
       const techWhere = {
         ...baseWhere,
-        OR: techWhereConditions
+        serviceId: { in: techIssueServiceIds },
+        OR: [
+          // Match by ATM code field value
+          ...(atmCodeMatchConditions.length > 0 ? [{
+            fieldValues: { some: { OR: atmCodeMatchConditions } }
+          }] : []),
+          // Match by title/description
+          { title: { contains: atm.code } },
+          { description: { contains: atm.code } }
+        ]
       };
 
       console.log('[ATM Tickets] Technical Issues Query:', JSON.stringify(techWhere, null, 2));
+      console.log('[ATM Tickets] techIssueServiceIds:', techIssueServiceIds.length);
 
       const techCount = techIssueServiceIds.length > 0 ? await prisma.ticket.count({ where: techWhere }) : 0;
+      console.log('[ATM Tickets] Technical Issues Count:', techCount);
 
       const techTickets = techIssueServiceIds.length > 0 ? await prisma.ticket.findMany({
         where: techWhere,
@@ -281,10 +277,12 @@ export async function GET(
       };
 
       console.log('[ATM Tickets] Claims Query:', JSON.stringify(claimWhere, null, 2));
+      console.log('[ATM Tickets] claimWhereConditions length:', claimWhereConditions.length);
 
       const claimCount = claimWhereConditions.length > 0
         ? await prisma.ticket.count({ where: claimWhere })
         : 0;
+      console.log('[ATM Tickets] Claims Count:', claimCount);
 
       const claimTickets = claimWhereConditions.length > 0
         ? await prisma.ticket.findMany({
