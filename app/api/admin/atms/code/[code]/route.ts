@@ -99,17 +99,37 @@ export async function GET(
       orderBy: { checkedAt: 'desc' }
     });
 
-    // Get ticket counts for this ATM
-    const atmCodeField = await prisma.fieldTemplate.findFirst({
-      where: {
-        OR: [
-          { name: 'atm_code' },
-          { name: 'kode_atm' },
-          { name: 'atmCode' },
-          { label: { contains: 'ATM', mode: 'insensitive' } }
-        ]
-      }
-    });
+    // Get ALL atm_code fields from BOTH FieldTemplate AND ServiceField tables
+    const [fieldTemplates, serviceFields] = await Promise.all([
+      prisma.fieldTemplate.findMany({
+        where: {
+          OR: [
+            { name: 'atm_code' },
+            { name: 'kode_atm' },
+            { name: 'atmCode' },
+            { label: { contains: 'Kode ATM', mode: 'insensitive' } },
+            { label: { contains: 'Terminal ID', mode: 'insensitive' } }
+          ]
+        },
+        select: { id: true }
+      }),
+      prisma.serviceField.findMany({
+        where: {
+          OR: [
+            { name: 'atm_code' },
+            { name: 'kode_atm' },
+            { name: 'atmCode' },
+            { label: { contains: 'Kode ATM', mode: 'insensitive' } },
+            { label: { contains: 'Terminal ID', mode: 'insensitive' } }
+          ]
+        },
+        select: { id: true }
+      })
+    ]);
+    const atmCodeFieldIds = [
+      ...fieldTemplates.map(f => f.id),
+      ...serviceFields.map(f => f.id)
+    ];
 
     let technicalIssueCount = 0;
     let claimCount = 0;
@@ -141,13 +161,16 @@ export async function GET(
     });
     const claimServiceIds = claimServices.map(s => s.id);
 
-    // Build ATM code match condition for field values
-    const atmCodeMatchConditions = atmCodeField ? [
-      { fieldId: atmCodeField.id, value: atm.code },
-      { fieldId: atmCodeField.id, value: { startsWith: atm.code + ' ' } },
-      { fieldId: atmCodeField.id, value: { startsWith: atm.code + '-' } },
-      { fieldId: atmCodeField.id, value: { contains: atm.code } }
-    ] : [];
+    // Build ATM code match conditions for ALL field IDs
+    const atmCodeMatchConditions: any[] = [];
+    atmCodeFieldIds.forEach(fieldId => {
+      atmCodeMatchConditions.push(
+        { fieldId, value: atm.code },
+        { fieldId, value: { startsWith: atm.code + ' ' } },
+        { fieldId, value: { startsWith: atm.code + '-' } },
+        { fieldId, value: { contains: atm.code } }
+      );
+    });
 
     // Count technical issues
     if (techIssueServiceIds.length > 0) {

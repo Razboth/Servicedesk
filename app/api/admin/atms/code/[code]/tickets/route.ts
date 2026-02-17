@@ -50,19 +50,39 @@ export async function GET(
       );
     }
 
-    // Get the atm_code field template - try multiple possible names
-    const atmCodeField = await prisma.fieldTemplate.findFirst({
-      where: {
-        OR: [
-          { name: 'atm_code' },
-          { name: 'kode_atm' },
-          { name: 'atmCode' },
-          { label: { contains: 'ATM', mode: 'insensitive' } }
-        ]
-      }
-    });
+    // Get ALL atm_code fields from BOTH FieldTemplate AND ServiceField tables
+    const [fieldTemplates, serviceFields] = await Promise.all([
+      prisma.fieldTemplate.findMany({
+        where: {
+          OR: [
+            { name: 'atm_code' },
+            { name: 'kode_atm' },
+            { name: 'atmCode' },
+            { label: { contains: 'Kode ATM', mode: 'insensitive' } },
+            { label: { contains: 'Terminal ID', mode: 'insensitive' } }
+          ]
+        },
+        select: { id: true }
+      }),
+      prisma.serviceField.findMany({
+        where: {
+          OR: [
+            { name: 'atm_code' },
+            { name: 'kode_atm' },
+            { name: 'atmCode' },
+            { label: { contains: 'Kode ATM', mode: 'insensitive' } },
+            { label: { contains: 'Terminal ID', mode: 'insensitive' } }
+          ]
+        },
+        select: { id: true }
+      })
+    ]);
+    const atmCodeFieldIds = [
+      ...fieldTemplates.map(f => f.id),
+      ...serviceFields.map(f => f.id)
+    ];
 
-    console.log('[ATM Tickets] ATM Code Field:', atmCodeField?.id, atmCodeField?.name);
+    console.log('[ATM Tickets] ATM Code Fields:', atmCodeFieldIds.length, '(FieldTemplates:', fieldTemplates.length, ', ServiceFields:', serviceFields.length, ')');
 
     let technicalIssues: any[] = [];
     let claims: any[] = [];
@@ -105,13 +125,16 @@ export async function GET(
     const claimServiceIds = claimServices.map(s => s.id);
     console.log('[ATM Tickets] Claim Services:', claimServices.map(s => s.name));
 
-    // Build ATM code match conditions (same structure as count query)
-    const atmCodeMatchConditions = atmCodeField ? [
-      { fieldId: atmCodeField.id, value: atm.code },
-      { fieldId: atmCodeField.id, value: { startsWith: atm.code + ' ' } },
-      { fieldId: atmCodeField.id, value: { startsWith: atm.code + '-' } },
-      { fieldId: atmCodeField.id, value: { contains: atm.code } }
-    ] : [];
+    // Build ATM code match conditions for ALL field IDs
+    const atmCodeMatchConditions: any[] = [];
+    atmCodeFieldIds.forEach(fieldId => {
+      atmCodeMatchConditions.push(
+        { fieldId, value: atm.code },
+        { fieldId, value: { startsWith: atm.code + ' ' } },
+        { fieldId, value: { startsWith: atm.code + '-' } },
+        { fieldId, value: { contains: atm.code } }
+      );
+    });
 
     // Title/description match conditions
     const titleMatchConditions = [
