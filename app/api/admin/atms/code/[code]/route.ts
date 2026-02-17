@@ -165,30 +165,65 @@ export async function GET(
       });
     }
 
-    // Count claims
-    if (claimServiceIds.length > 0 || atmCodeMatchConditions.length > 0) {
+    // Count claims - match by atmClaimVerification, claim services, or any service with "Claim"/"Selisih" in name
+    const claimCountConditions: any[] = [];
+
+    // Match by atmClaimVerification with ATM code in field values
+    if (atmCodeMatchConditions.length > 0) {
+      claimCountConditions.push({
+        atmClaimVerification: { isNot: null },
+        fieldValues: { some: { OR: atmCodeMatchConditions } }
+      });
+    }
+
+    // Match by atmClaimVerification with ATM code in title/description
+    claimCountConditions.push({
+      atmClaimVerification: { isNot: null },
+      OR: [
+        { title: { contains: atm.code } },
+        { description: { contains: atm.code } }
+      ]
+    });
+
+    // Match by claim service with ATM code
+    if (claimServiceIds.length > 0 && atmCodeMatchConditions.length > 0) {
+      claimCountConditions.push({
+        serviceId: { in: claimServiceIds },
+        fieldValues: { some: { OR: atmCodeMatchConditions } }
+      });
+    }
+
+    // Match by claim service with ATM code in title/description
+    if (claimServiceIds.length > 0) {
+      claimCountConditions.push({
+        serviceId: { in: claimServiceIds },
+        OR: [
+          { title: { contains: atm.code } },
+          { description: { contains: atm.code } }
+        ]
+      });
+    }
+
+    // Match any ticket with ATM code field AND service name containing "Claim" or "Selisih"
+    if (atmCodeMatchConditions.length > 0) {
+      claimCountConditions.push({
+        fieldValues: { some: { OR: atmCodeMatchConditions } },
+        service: { name: { contains: 'Claim', mode: 'insensitive' } }
+      });
+      claimCountConditions.push({
+        fieldValues: { some: { OR: atmCodeMatchConditions } },
+        service: { name: { contains: 'Selisih', mode: 'insensitive' } }
+      });
+      claimCountConditions.push({
+        fieldValues: { some: { OR: atmCodeMatchConditions } },
+        service: { name: { contains: 'Penarikan Tunai', mode: 'insensitive' } }
+      });
+    }
+
+    if (claimCountConditions.length > 0) {
       claimCount = await prisma.ticket.count({
         where: {
-          OR: [
-            // Match by claim service with ATM code
-            ...(claimServiceIds.length > 0 && atmCodeMatchConditions.length > 0 ? [{
-              serviceId: { in: claimServiceIds },
-              fieldValues: { some: { OR: atmCodeMatchConditions } }
-            }] : []),
-            // Match by atmClaimVerification with ATM code
-            ...(atmCodeMatchConditions.length > 0 ? [{
-              atmClaimVerification: { isNot: null },
-              fieldValues: { some: { OR: atmCodeMatchConditions } }
-            }] : []),
-            // Match by claim service with ATM code in title
-            ...(claimServiceIds.length > 0 ? [{
-              serviceId: { in: claimServiceIds },
-              OR: [
-                { title: { contains: atm.code } },
-                { description: { contains: atm.code } }
-              ]
-            }] : [])
-          ].filter(c => Object.keys(c).length > 0)
+          OR: claimCountConditions.filter(c => Object.keys(c).length > 0)
         }
       });
     }

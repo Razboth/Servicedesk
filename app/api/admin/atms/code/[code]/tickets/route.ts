@@ -196,21 +196,27 @@ export async function GET(
     }
 
     if (type === 'claim' || type === 'all') {
-      // Get ATM claim tickets - match by service name OR atmClaimVerification OR field values
+      // Get ATM claim tickets - ANY ticket with atmClaimVerification that has ATM code
       const claimWhereConditions: any[] = [];
 
-      // Match by claim service with ATM code field
-      if (claimServiceIds.length > 0 && atmCodeMatchConditions.length > 0) {
+      // Match by atmClaimVerification with ATM code in field values
+      if (atmCodeMatchConditions.length > 0) {
         claimWhereConditions.push({
-          serviceId: { in: claimServiceIds },
+          atmClaimVerification: { isNot: null },
           fieldValues: { some: { OR: atmCodeMatchConditions } }
         });
       }
 
-      // Match by atmClaimVerification with ATM code field
-      if (atmCodeMatchConditions.length > 0) {
+      // Match by atmClaimVerification with ATM code in title/description
+      claimWhereConditions.push({
+        atmClaimVerification: { isNot: null },
+        OR: titleMatchConditions
+      });
+
+      // Match by claim service with ATM code in field values (regardless of atmClaimVerification)
+      if (claimServiceIds.length > 0 && atmCodeMatchConditions.length > 0) {
         claimWhereConditions.push({
-          atmClaimVerification: { isNot: null },
+          serviceId: { in: claimServiceIds },
           fieldValues: { some: { OR: atmCodeMatchConditions } }
         });
       }
@@ -223,15 +229,32 @@ export async function GET(
         });
       }
 
-      // Match by atmClaimVerification with ATM code in title/description
-      claimWhereConditions.push({
-        atmClaimVerification: { isNot: null },
-        OR: titleMatchConditions
-      });
+      // ALSO: Match ANY ticket that has the ATM code field matching this ATM
+      // (This catches tickets that haven't been processed as claims yet but have the ATM code)
+      if (atmCodeMatchConditions.length > 0) {
+        claimWhereConditions.push({
+          fieldValues: { some: { OR: atmCodeMatchConditions } },
+          service: {
+            name: { contains: 'Claim', mode: 'insensitive' }
+          }
+        });
+        claimWhereConditions.push({
+          fieldValues: { some: { OR: atmCodeMatchConditions } },
+          service: {
+            name: { contains: 'Selisih', mode: 'insensitive' }
+          }
+        });
+        claimWhereConditions.push({
+          fieldValues: { some: { OR: atmCodeMatchConditions } },
+          service: {
+            name: { contains: 'Penarikan Tunai', mode: 'insensitive' }
+          }
+        });
+      }
 
       const claimWhere = {
         ...baseWhere,
-        OR: claimWhereConditions
+        OR: claimWhereConditions.filter(c => Object.keys(c).length > 0)
       };
 
       console.log('[ATM Tickets] Claims Query:', JSON.stringify(claimWhere, null, 2));
