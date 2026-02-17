@@ -201,17 +201,13 @@ export async function GET(request: NextRequest) {
       },
       include: {
         staffProfile: {
-          include: {
+          select: {
+            hasServerAccess: true,
             user: {
               select: {
                 id: true,
                 name: true,
                 email: true,
-                staffProfile: {
-                  select: {
-                    hasServerAccess: true,
-                  },
-                },
               },
             },
           },
@@ -243,7 +239,7 @@ export async function GET(request: NextRequest) {
       }
 
       const userId = assignment.staffProfile.user.id;
-      const hasServerAccess = assignment.staffProfile.user.staffProfile?.hasServerAccess || false;
+      const hasServerAccess = assignment.staffProfile.hasServerAccess || false;
 
       // OPS_SIANG: STANDBY_BRANCH, DAY_WEEKEND
       if (['STANDBY_BRANCH', 'DAY_WEEKEND'].includes(assignment.shiftType)) {
