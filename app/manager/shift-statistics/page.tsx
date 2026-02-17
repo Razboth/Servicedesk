@@ -41,6 +41,7 @@ import {
   ServerCog,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 interface ChecklistData {
   type: string;
@@ -101,6 +102,7 @@ export default function ShiftStatisticsPage() {
   const [loading, setLoading] = useState(true);
   const [statistics, setStatistics] = useState<Statistics | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
+  const [downloadingChecklist, setDownloadingChecklist] = useState<string | null>(null);
 
   // Date range - default to current week
   const today = new Date();
@@ -180,6 +182,36 @@ export default function ShiftStatisticsPage() {
       day: 'numeric',
       month: 'short',
     });
+  };
+
+  const handleDownloadChecklist = async (dateStr: string, checklistType: string) => {
+    const downloadKey = `${dateStr}-${checklistType}`;
+    setDownloadingChecklist(downloadKey);
+    try {
+      const url = `/api/server-checklist/export?date=${dateStr}&type=${checklistType}`;
+      const response = await fetch(url);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Export failed');
+      }
+
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      const filename = `${checklistType}_${dateStr}.pdf`;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(blobUrl);
+      toast.success('Checklist berhasil diunduh');
+    } catch (error) {
+      console.error('Error downloading checklist:', error);
+      toast.error(error instanceof Error ? error.message : 'Gagal mengunduh checklist');
+    } finally {
+      setDownloadingChecklist(null);
+    }
   };
 
   if (!session?.user?.role || !['MANAGER_IT', 'ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
@@ -395,16 +427,28 @@ export default function ShiftStatisticsPage() {
 
           {/* Tabs for Details */}
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-4">
-              <TabsTrigger value="overview">
-                <Calendar className="h-4 w-4 mr-2" />
+            <TabsList className="w-full justify-start flex-wrap h-auto gap-1 bg-transparent p-0 mb-4">
+              <TabsTrigger
+                value="overview"
+                className={cn(
+                  "data-[state=active]:shadow-sm gap-2",
+                  "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                )}
+              >
+                <Calendar className="h-4 w-4" />
                 Per Tanggal
               </TabsTrigger>
-              <TabsTrigger value="missing">
-                <AlertTriangle className="h-4 w-4 mr-2" />
+              <TabsTrigger
+                value="missing"
+                className={cn(
+                  "data-[state=active]:shadow-sm gap-2",
+                  "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                )}
+              >
+                <AlertTriangle className="h-4 w-4" />
                 Tidak Lengkap
                 {statistics.summary.missingChecklistsCount > 0 && (
-                  <Badge variant="destructive" className="ml-2">
+                  <Badge variant="destructive" className="ml-1 text-xs">
                     {statistics.summary.missingChecklistsCount}
                   </Badge>
                 )}
@@ -456,11 +500,27 @@ export default function ShiftStatisticsPage() {
                                         {checklist.typeLabel}
                                       </span>
                                     </div>
-                                    {checklist.isComplete ? (
-                                      <CheckCircle2 className="h-4 w-4 text-green-600" />
-                                    ) : (
-                                      <Clock className="h-4 w-4 text-amber-600" />
-                                    )}
+                                    <div className="flex items-center gap-2">
+                                      {checklist.isComplete ? (
+                                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                      ) : (
+                                        <Clock className="h-4 w-4 text-amber-600" />
+                                      )}
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 w-7 p-0"
+                                        onClick={() => handleDownloadChecklist(dateData.date, checklist.type)}
+                                        disabled={downloadingChecklist === `${dateData.date}-${checklist.type}`}
+                                        title="Download checklist PDF"
+                                      >
+                                        {downloadingChecklist === `${dateData.date}-${checklist.type}` ? (
+                                          <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                          <Download className="h-4 w-4" />
+                                        )}
+                                      </Button>
+                                    </div>
                                   </div>
                                   <div className="space-y-1 text-sm">
                                     <div className="flex items-center justify-between text-muted-foreground">
