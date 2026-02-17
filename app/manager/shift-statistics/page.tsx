@@ -56,6 +56,12 @@ interface ChecklistData {
     email: string;
     branch: { id: string; name: string } | null;
   };
+  claims: {
+    userId: string;
+    userName: string | null;
+    status: string;
+    progress: number;
+  }[];
 }
 
 interface DateChecklist {
@@ -470,6 +476,25 @@ export default function ShiftStatisticsPage() {
                                         {checklist.completedItems}/{checklist.totalItems} ({checklist.progress}%)
                                       </span>
                                     </div>
+                                    {checklist.claims.length > 0 && (
+                                      <div className="pt-1 border-t mt-1">
+                                        <span className="text-xs text-muted-foreground">Klaim:</span>
+                                        {checklist.claims.map((claim, cIdx) => (
+                                          <div
+                                            key={cIdx}
+                                            className="text-xs flex items-center justify-between"
+                                          >
+                                            <span>{claim.userName}</span>
+                                            <Badge
+                                              variant={claim.status === 'COMPLETED' ? 'default' : 'secondary'}
+                                              className="text-xs"
+                                            >
+                                              {claim.progress}%
+                                            </Badge>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               );

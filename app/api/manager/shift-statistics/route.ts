@@ -95,6 +95,17 @@ export async function GET(request: NextRequest) {
             },
           },
         },
+        claims: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+        },
         items: {
           select: {
             status: true,
@@ -124,6 +135,12 @@ export async function GET(request: NextRequest) {
           email: string;
           branch: { id: string; name: string } | null;
         };
+        claims: {
+          userId: string;
+          userName: string | null;
+          status: string;
+          progress: number;
+        }[];
       }[];
     }> = {};
 
@@ -164,6 +181,14 @@ export async function GET(request: NextRequest) {
           email: checklist.user.email,
           branch: checklist.user.branch,
         },
+        claims: checklist.claims.map((claim) => ({
+          userId: claim.userId,
+          userName: claim.user.name,
+          status: claim.status,
+          progress: claim.completedItems && claim.totalItems
+            ? Math.round((claim.completedItems / claim.totalItems) * 100)
+            : 0,
+        })),
       });
     }
 
