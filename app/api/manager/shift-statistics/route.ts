@@ -138,8 +138,7 @@ export async function GET(request: NextRequest) {
         claims: {
           userId: string;
           userName: string | null;
-          status: string;
-          progress: number;
+          claimedAt: string;
         }[];
       }[];
     }> = {};
@@ -184,10 +183,7 @@ export async function GET(request: NextRequest) {
         claims: checklist.claims.map((claim) => ({
           userId: claim.userId,
           userName: claim.user.name,
-          status: claim.status,
-          progress: claim.completedItems && claim.totalItems
-            ? Math.round((claim.completedItems / claim.totalItems) * 100)
-            : 0,
+          claimedAt: claim.claimedAt.toISOString(),
         })),
       });
     }

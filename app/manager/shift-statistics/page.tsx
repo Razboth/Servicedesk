@@ -59,8 +59,7 @@ interface ChecklistData {
   claims: {
     userId: string;
     userName: string | null;
-    status: string;
-    progress: number;
+    claimedAt: string;
   }[];
 }
 
@@ -485,12 +484,6 @@ export default function ShiftStatisticsPage() {
                                             className="text-xs flex items-center justify-between"
                                           >
                                             <span>{claim.userName}</span>
-                                            <Badge
-                                              variant={claim.status === 'COMPLETED' ? 'default' : 'secondary'}
-                                              className="text-xs"
-                                            >
-                                              {claim.progress}%
-                                            </Badge>
                                           </div>
                                         ))}
                                       </div>
