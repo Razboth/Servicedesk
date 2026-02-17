@@ -105,23 +105,41 @@ function sortNightChecklistItems<T extends { category: string; order: number }>(
  * Get today's date for checklist (handles midnight crossover for night shift)
  * For night checklists (OPS_MALAM, MONITORING_MALAM) at 00:00-07:59,
  * we use the previous day's date since the shift started the day before
+ *
+ * Returns UTC date at midnight to ensure consistency with PostgreSQL DATE storage
  */
 function getChecklistDate(checklistType: DailyChecklistType): Date {
-  const witaTime = getCurrentTimeWITA();
-  const today = new Date(witaTime);
-  today.setHours(0, 0, 0, 0);
+  const now = new Date();
+  const witaOffset = 8 * 60; // WITA is UTC+8 in minutes
+  const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+  const witaMinutes = utcMinutes + witaOffset;
+  const witaHour = Math.floor((witaMinutes % (24 * 60)) / 60);
+
+  // Calculate WITA date
+  let witaYear = now.getUTCFullYear();
+  let witaMonth = now.getUTCMonth();
+  let witaDay = now.getUTCDate();
+
+  // If WITA time crosses midnight (into next day)
+  if (witaMinutes >= 24 * 60) {
+    const tempDate = new Date(Date.UTC(witaYear, witaMonth, witaDay + 1));
+    witaYear = tempDate.getUTCFullYear();
+    witaMonth = tempDate.getUTCMonth();
+    witaDay = tempDate.getUTCDate();
+  }
 
   // For night checklists between 00:00-07:59, use previous day's date
   // because the night shift started the previous evening
   const isNightChecklist = checklistType === 'OPS_MALAM' || checklistType === 'MONITORING_MALAM';
-  if (isNightChecklist) {
-    const hour = witaTime.getHours();
-    if (hour < 8) {
-      today.setDate(today.getDate() - 1);
-    }
+  if (isNightChecklist && witaHour < 8) {
+    const prevDate = new Date(Date.UTC(witaYear, witaMonth, witaDay - 1));
+    witaYear = prevDate.getUTCFullYear();
+    witaMonth = prevDate.getUTCMonth();
+    witaDay = prevDate.getUTCDate();
   }
 
-  return today;
+  // Return UTC date at midnight for the WITA date
+  return new Date(Date.UTC(witaYear, witaMonth, witaDay, 0, 0, 0, 0));
 }
 
 /**
