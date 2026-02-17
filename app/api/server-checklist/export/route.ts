@@ -3,26 +3,13 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { DailyChecklistType } from '@prisma/client';
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import * as fs from 'fs';
 import * as path from 'path';
 
-// Extend jsPDF type for autotable
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: (options: {
-      startY?: number;
-      head?: string[][];
-      body?: (string | number)[][];
-      theme?: string;
-      styles?: Record<string, unknown>;
-      headStyles?: Record<string, unknown>;
-      columnStyles?: Record<number, Record<string, unknown>>;
-      margin?: { left?: number; right?: number; top?: number; bottom?: number };
-      didDrawPage?: (data: { pageNumber: number }) => void;
-    }) => jsPDF;
-    lastAutoTable?: { finalY: number };
-  }
+// Type for getting last autoTable position
+interface AutoTableDoc extends jsPDF {
+  lastAutoTable?: { finalY: number };
 }
 
 // Checklist type labels in Indonesian
@@ -295,7 +282,7 @@ function generateSingleChecklistPDF(
 
   // Render items table
   pdf.setTextColor(0);
-  pdf.autoTable({
+  autoTable(pdf, {
     startY: yPos,
     head: [['Waktu', 'Item Checklist', 'Status', 'Catatan']],
     body: tableData,
@@ -676,7 +663,7 @@ export async function GET(request: NextRequest) {
         }
 
         pdf.setTextColor(0);
-        pdf.autoTable({
+        autoTable(pdf, {
           startY: yPos,
           head: [['Waktu', 'Item Checklist', 'Status', 'Catatan']],
           body: tableData,
