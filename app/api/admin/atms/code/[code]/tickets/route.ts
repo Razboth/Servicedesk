@@ -105,49 +105,43 @@ export async function GET(
     const claimServiceIds = claimServices.map(s => s.id);
     console.log('[ATM Tickets] Claim Services:', claimServices.map(s => s.name));
 
-    // Build the ATM code matching condition
-    // The field value might be just the code or include additional info like "2005 - ATM Name"
-    const atmCodeMatchCondition = atmCodeField ? {
-      fieldValues: {
-        some: {
-          fieldId: atmCodeField.id,
-          OR: [
-            { value: atm.code },
-            { value: { startsWith: atm.code + ' ' } },
-            { value: { startsWith: atm.code + '-' } },
-            { value: { contains: atm.code } }
-          ]
-        }
-      }
-    } : {};
+    // Build ATM code match conditions (same structure as count query)
+    const atmCodeMatchConditions = atmCodeField ? [
+      { fieldId: atmCodeField.id, value: atm.code },
+      { fieldId: atmCodeField.id, value: { startsWith: atm.code + ' ' } },
+      { fieldId: atmCodeField.id, value: { startsWith: atm.code + '-' } },
+      { fieldId: atmCodeField.id, value: { contains: atm.code } }
+    ] : [];
 
-    // Also check title for ATM code reference
-    const titleMatchCondition = {
-      OR: [
-        { title: { contains: atm.code } },
-        { title: { contains: `ATM ${atm.code}` } },
-        { description: { contains: atm.code } }
-      ]
-    };
+    // Title/description match conditions
+    const titleMatchConditions = [
+      { title: { contains: atm.code } },
+      { title: { contains: `ATM ${atm.code}` } },
+      { description: { contains: atm.code } }
+    ];
 
     if (type === 'technical' || type === 'all') {
       // Get technical issue tickets - match by field value OR title/description
+      const techWhereConditions: any[] = [];
+
+      // Match by ATM code field value
+      if (atmCodeMatchConditions.length > 0) {
+        techWhereConditions.push({
+          serviceId: { in: techIssueServiceIds },
+          fieldValues: { some: { OR: atmCodeMatchConditions } }
+        });
+      }
+
+      // Match by title/description
+      techWhereConditions.push({
+        serviceId: { in: techIssueServiceIds },
+        OR: titleMatchConditions
+      });
+
       const techWhere = {
         ...baseWhere,
-        serviceId: { in: techIssueServiceIds },
-        OR: [
-          atmCodeMatchCondition.fieldValues ? { fieldValues: atmCodeMatchCondition.fieldValues } : {},
-          ...titleMatchCondition.OR
-        ].filter(c => Object.keys(c).length > 0)
+        OR: techWhereConditions
       };
-
-      // If no matching conditions, use field values only
-      if (!techWhere.OR || techWhere.OR.length === 0) {
-        delete techWhere.OR;
-        if (atmCodeMatchCondition.fieldValues) {
-          Object.assign(techWhere, { fieldValues: atmCodeMatchCondition.fieldValues });
-        }
-      }
 
       console.log('[ATM Tickets] Technical Issues Query:', JSON.stringify(techWhere, null, 2));
 
@@ -203,34 +197,50 @@ export async function GET(
 
     if (type === 'claim' || type === 'all') {
       // Get ATM claim tickets - match by service name OR atmClaimVerification OR field values
+      const claimWhereConditions: any[] = [];
+
+      // Match by claim service with ATM code field
+      if (claimServiceIds.length > 0 && atmCodeMatchConditions.length > 0) {
+        claimWhereConditions.push({
+          serviceId: { in: claimServiceIds },
+          fieldValues: { some: { OR: atmCodeMatchConditions } }
+        });
+      }
+
+      // Match by atmClaimVerification with ATM code field
+      if (atmCodeMatchConditions.length > 0) {
+        claimWhereConditions.push({
+          atmClaimVerification: { isNot: null },
+          fieldValues: { some: { OR: atmCodeMatchConditions } }
+        });
+      }
+
+      // Match by claim service with ATM code in title/description
+      if (claimServiceIds.length > 0) {
+        claimWhereConditions.push({
+          serviceId: { in: claimServiceIds },
+          OR: titleMatchConditions
+        });
+      }
+
+      // Match by atmClaimVerification with ATM code in title/description
+      claimWhereConditions.push({
+        atmClaimVerification: { isNot: null },
+        OR: titleMatchConditions
+      });
+
       const claimWhere = {
         ...baseWhere,
-        OR: [
-          // Match by claim service
-          claimServiceIds.length > 0 ? {
-            serviceId: { in: claimServiceIds },
-            ...(atmCodeMatchCondition.fieldValues ? { fieldValues: atmCodeMatchCondition.fieldValues } : {})
-          } : null,
-          // Match by atmClaimVerification existing
-          {
-            atmClaimVerification: { isNot: null },
-            ...(atmCodeMatchCondition.fieldValues ? { fieldValues: atmCodeMatchCondition.fieldValues } : {})
-          },
-          // Match by title/description containing ATM code for claims
-          claimServiceIds.length > 0 ? {
-            serviceId: { in: claimServiceIds },
-            OR: titleMatchCondition.OR
-          } : null
-        ].filter(Boolean)
+        OR: claimWhereConditions
       };
 
       console.log('[ATM Tickets] Claims Query:', JSON.stringify(claimWhere, null, 2));
 
-      const claimCount = claimWhere.OR && claimWhere.OR.length > 0
+      const claimCount = claimWhereConditions.length > 0
         ? await prisma.ticket.count({ where: claimWhere })
         : 0;
 
-      const claimTickets = claimWhere.OR && claimWhere.OR.length > 0
+      const claimTickets = claimWhereConditions.length > 0
         ? await prisma.ticket.findMany({
             where: claimWhere,
             skip: type === 'claim' ? skip : 0,
