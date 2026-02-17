@@ -21,9 +21,9 @@ export async function GET(request: NextRequest) {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
-    // Get latest collection for timestamp info
+    // Get latest collection by report date (not ingest date)
     const latestCollectionMeta = await prisma.metricCollection.findFirst({
-      orderBy: { createdAt: 'desc' },
+      orderBy: { reportTimestamp: 'desc' },
       select: { id: true, fetchedAt: true, reportTimestamp: true, totalIps: true, createdAt: true },
     });
 
