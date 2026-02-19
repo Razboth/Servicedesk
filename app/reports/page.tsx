@@ -92,6 +92,17 @@ const standardReports: Report[] = [
     badge: 'Popular',
     lastRun: 'Live'
   },
+  {
+    title: 'Executive Summary Report',
+    description: 'Comprehensive monthly executive report with KPIs, SLA compliance, charts, top performers, and PDF export',
+    href: '/reports/executive-summary',
+    icon: BarChart3,
+    type: 'standard',
+    roles: ['MANAGER', 'ADMIN'],
+    category: REPORT_CATEGORIES.ESSENTIAL,
+    badge: 'New',
+    lastRun: 'Live'
+  },
   // Service Reports
   {
     title: 'Service Status Breakdown',
