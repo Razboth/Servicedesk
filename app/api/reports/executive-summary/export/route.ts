@@ -85,7 +85,6 @@ export async function GET(request: NextRequest) {
       },
       include: {
         service: {
-          select: { name: true },
           include: { tier1Category: { select: { name: true } } },
         },
         assignedTo: { select: { id: true, name: true } },
