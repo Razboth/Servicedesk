@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
         ]
       },
       include: {
-        creator: {
+        createdBy: {
           select: {
             id: true,
             name: true,
@@ -278,9 +278,9 @@ export async function GET(request: NextRequest) {
         serviceItem: ticket.service?.tier3Item?.name || ticket.service?.name || 'N/A',
         serviceName: ticket.service?.name || 'N/A',
         supportGroup: ticket.service?.supportGroup?.name || 'N/A',
-        creatorName: ticket.creator?.name || 'N/A',
-        creatorEmail: ticket.creator?.email || 'N/A',
-        creatorEmployeeId: ticket.creator?.employeeId || 'N/A',
+        creatorName: ticket.createdBy?.name || 'N/A',
+        creatorEmail: ticket.createdBy?.email || 'N/A',
+        creatorEmployeeId: ticket.createdBy?.employeeId || 'N/A',
         branchName: ticket.branch?.name || 'N/A',
         branchCode: ticket.branch?.code || 'N/A',
         assignedToName: ticket.assignedTo?.name || 'Unassigned',
