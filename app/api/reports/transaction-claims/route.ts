@@ -14,6 +14,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const startDateParam = searchParams.get('startDate');
     const endDateParam = searchParams.get('endDate');
+    const transactionStartDateParam = searchParams.get('transactionStartDate');
+    const transactionEndDateParam = searchParams.get('transactionEndDate');
     const format = searchParams.get('format'); // 'csv' or 'xlsx' for export
 
     // Parse dates and set to start/end of day to capture full range
@@ -41,14 +43,30 @@ export async function GET(request: NextRequest) {
       endDate.setHours(23, 59, 59, 999);
     }
 
+    // Parse transaction date filters (Tanggal Transaksi)
+    let transactionStartDate: Date | null = null;
+    let transactionEndDate: Date | null = null;
+
+    if (transactionStartDateParam) {
+      transactionStartDate = new Date(transactionStartDateParam);
+      transactionStartDate.setHours(0, 0, 0, 0);
+    }
+
+    if (transactionEndDateParam) {
+      transactionEndDate = new Date(transactionEndDateParam);
+      transactionEndDate.setHours(23, 59, 59, 999);
+    }
+
     console.log('Transaction Claims Report - Date Range:', {
       startDate: startDate.toISOString(),
       endDate: endDate.toISOString(),
       startDateParam,
-      endDateParam
+      endDateParam,
+      transactionStartDate: transactionStartDate?.toISOString(),
+      transactionEndDate: transactionEndDate?.toISOString()
     });
 
-    // Get tickets with "Transaction Claims" category (both old and new system)
+    // Get tickets with "Transaction Claims" category (new 3-tier system)
     // Also include tickets with "claim" or "klaim" in the service name
     const tickets = await prisma.ticket.findMany({
       where: {
@@ -57,14 +75,7 @@ export async function GET(request: NextRequest) {
           lte: endDate
         },
         OR: [
-          // Old categorization system - Transaction Claims/Claim
-          {
-            category: {
-              contains: 'Transaction Claim',
-              mode: 'insensitive'
-            }
-          },
-          // New 3-tier categorization system - tier1 category
+          // New 3-tier categorization system - tier1 category contains Transaction Claim
           {
             service: {
               tier1Category: {
@@ -183,6 +194,17 @@ export async function GET(request: NextRequest) {
             responseTime: true,
             resolutionTime: true
           }
+        },
+        fieldValues: {
+          include: {
+            field: {
+              select: {
+                name: true,
+                label: true,
+                type: true
+              }
+            }
+          }
         }
       },
       orderBy: {
@@ -190,64 +212,116 @@ export async function GET(request: NextRequest) {
       }
     });
 
+    // Filter by transaction date if provided
+    let filteredTickets = tickets;
+    if (transactionStartDate || transactionEndDate) {
+      filteredTickets = tickets.filter(ticket => {
+        // Find transaction_date field value
+        const transactionDateField = ticket.fieldValues.find(fv =>
+          fv.field.name === 'transaction_date' ||
+          fv.field.name === 'tanggal_transaksi' ||
+          fv.field.label.toLowerCase().includes('tanggal transaksi')
+        );
+
+        if (!transactionDateField?.value) return false;
+
+        try {
+          const transactionDate = new Date(transactionDateField.value);
+          if (isNaN(transactionDate.getTime())) return false;
+
+          if (transactionStartDate && transactionDate < transactionStartDate) return false;
+          if (transactionEndDate && transactionDate > transactionEndDate) return false;
+          return true;
+        } catch {
+          return false;
+        }
+      });
+    }
+
     console.log('Transaction Claims Report - Results:', {
       totalTickets: tickets.length,
-      ticketNumbers: tickets.slice(0, 5).map(t => t.ticketNumber),
-      categories: tickets.slice(0, 5).map(t => ({
-        oldCategory: t.category,
-        newCategory: t.service?.tier1Category?.name
+      filteredTickets: filteredTickets.length,
+      ticketNumbers: filteredTickets.slice(0, 5).map(t => t.ticketNumber),
+      services: filteredTickets.slice(0, 5).map(t => ({
+        serviceName: t.service?.name,
+        tier1Category: t.service?.tier1Category?.name
       }))
     });
 
+    // Helper function to extract field value
+    const getFieldValue = (ticket: typeof filteredTickets[0], fieldNames: string[]) => {
+      const fieldValue = ticket.fieldValues.find(fv =>
+        fieldNames.some(name =>
+          fv.field.name === name ||
+          fv.field.label.toLowerCase().includes(name.toLowerCase())
+        )
+      );
+      return fieldValue?.value || null;
+    };
+
     // Transform data for export or display
-    const ticketsData = tickets.map(ticket => ({
-      ticketNumber: ticket.ticketNumber,
-      subject: ticket.subject,
-      description: ticket.description,
-      status: ticket.status,
-      priority: ticket.priority,
-      category: ticket.category || ticket.service?.tier1Category?.name || 'N/A',
-      subcategory: ticket.subcategory || ticket.service?.tier2Subcategory?.name || 'N/A',
-      serviceItem: ticket.service?.tier3Item?.name || ticket.service?.name || 'N/A',
-      serviceName: ticket.service?.name || 'N/A',
-      supportGroup: ticket.service?.supportGroup?.name || 'N/A',
-      creatorName: ticket.creator?.name || 'N/A',
-      creatorEmail: ticket.creator?.email || 'N/A',
-      creatorEmployeeId: ticket.creator?.employeeId || 'N/A',
-      branchName: ticket.branch?.name || 'N/A',
-      branchCode: ticket.branch?.code || 'N/A',
-      assignedToName: ticket.assignedTo?.name || 'Unassigned',
-      assignedToEmail: ticket.assignedTo?.email || 'N/A',
-      assignedToEmployeeId: ticket.assignedTo?.employeeId || 'N/A',
-      createdAt: ticket.createdAt.toISOString(),
-      updatedAt: ticket.updatedAt?.toISOString() || 'N/A',
-      resolvedAt: ticket.resolvedAt?.toISOString() || 'Not Resolved',
-      closedAt: ticket.closedAt?.toISOString() || 'Not Closed',
-      estimatedHours: ticket.estimatedHours || 0,
-      actualHours: ticket.actualHours || 0,
-      progressPercentage: ticket.progressPercentage || 0,
-      responseDeadline: ticket.slaTracking?.responseDeadline?.toISOString() || 'N/A',
-      resolutionDeadline: ticket.slaTracking?.resolutionDeadline?.toISOString() || 'N/A',
-      isResponseBreached: ticket.slaTracking?.isResponseBreached ? 'Yes' : 'No',
-      isResolutionBreached: ticket.slaTracking?.isResolutionBreached ? 'Yes' : 'No',
-      responseTime: ticket.slaTracking?.responseTime || 0,
-      resolutionTime: ticket.slaTracking?.resolutionTime || 0,
-      approvalStatus: ticket.approvals && ticket.approvals.length > 0
-        ? ticket.approvals[0].status
-        : 'N/A',
-      lastComment: ticket.comments && ticket.comments.length > 0
-        ? ticket.comments[0].content
-        : 'No comments',
-      lastCommentDate: ticket.comments && ticket.comments.length > 0
-        ? ticket.comments[0].createdAt.toISOString()
-        : 'N/A'
-    }));
+    const ticketsData = filteredTickets.map(ticket => {
+      // Extract transaction date from field values
+      const transactionDateValue = getFieldValue(ticket, ['transaction_date', 'tanggal_transaksi', 'tanggal transaksi']);
+      const customerNameValue = getFieldValue(ticket, ['customer_name', 'nama_nasabah', 'nama nasabah']);
+      const transactionAmountValue = getFieldValue(ticket, ['transaction_amount', 'nominal_transaksi', 'nominal transaksi']);
+      const accountNumberValue = getFieldValue(ticket, ['account_number', 'nomor_rekening', 'nomor rekening']);
+
+      return {
+        ticketNumber: ticket.ticketNumber,
+        subject: ticket.title || ticket.description?.substring(0, 100) || 'N/A',
+        description: ticket.description,
+        status: ticket.status,
+        priority: ticket.priority,
+        category: ticket.service?.tier1Category?.name || 'N/A',
+        subcategory: ticket.service?.tier2Subcategory?.name || 'N/A',
+        serviceItem: ticket.service?.tier3Item?.name || ticket.service?.name || 'N/A',
+        serviceName: ticket.service?.name || 'N/A',
+        supportGroup: ticket.service?.supportGroup?.name || 'N/A',
+        creatorName: ticket.creator?.name || 'N/A',
+        creatorEmail: ticket.creator?.email || 'N/A',
+        creatorEmployeeId: ticket.creator?.employeeId || 'N/A',
+        branchName: ticket.branch?.name || 'N/A',
+        branchCode: ticket.branch?.code || 'N/A',
+        assignedToName: ticket.assignedTo?.name || 'Unassigned',
+        assignedToEmail: ticket.assignedTo?.email || 'N/A',
+        assignedToEmployeeId: ticket.assignedTo?.employeeId || 'N/A',
+        createdAt: ticket.createdAt.toISOString(),
+        updatedAt: ticket.updatedAt?.toISOString() || 'N/A',
+        resolvedAt: ticket.resolvedAt?.toISOString() || 'Not Resolved',
+        closedAt: ticket.closedAt?.toISOString() || 'Not Closed',
+        estimatedHours: ticket.estimatedHours || 0,
+        actualHours: ticket.actualHours || 0,
+        progressPercentage: 0,
+        responseDeadline: ticket.slaTracking?.[0]?.responseDeadline?.toISOString() || 'N/A',
+        resolutionDeadline: ticket.slaTracking?.[0]?.resolutionDeadline?.toISOString() || 'N/A',
+        isResponseBreached: ticket.slaTracking?.[0]?.isResponseBreached ? 'Yes' : 'No',
+        isResolutionBreached: ticket.slaTracking?.[0]?.isResolutionBreached ? 'Yes' : 'No',
+        responseTime: ticket.slaTracking?.[0]?.responseTime || 0,
+        resolutionTime: ticket.slaTracking?.[0]?.resolutionTime || 0,
+        approvalStatus: ticket.approvals && ticket.approvals.length > 0
+          ? ticket.approvals[0].status
+          : 'N/A',
+        lastComment: ticket.comments && ticket.comments.length > 0
+          ? ticket.comments[0].content
+          : 'No comments',
+        lastCommentDate: ticket.comments && ticket.comments.length > 0
+          ? ticket.comments[0].createdAt.toISOString()
+          : 'N/A',
+        // Transaction claim specific fields
+        transactionDate: transactionDateValue,
+        customerName: customerNameValue || ticket.customerName || 'N/A',
+        transactionAmount: transactionAmountValue,
+        accountNumber: accountNumberValue
+      };
+    });
 
     // If export format is requested, return CSV or XLSX data
     if (format === 'csv') {
       const csvHeaders = [
         'Ticket Number', 'Subject', 'Description', 'Status', 'Priority',
         'Category', 'Subcategory', 'Service Item', 'Service Name', 'Support Group',
+        'Customer Name', 'Account Number', 'Transaction Date', 'Transaction Amount',
         'Creator Name', 'Creator Email', 'Creator Employee ID',
         'Branch Name', 'Branch Code',
         'Assigned To', 'Assigned Email', 'Assigned Employee ID',
@@ -261,8 +335,8 @@ export async function GET(request: NextRequest) {
 
       const csvRows = ticketsData.map(ticket => [
         ticket.ticketNumber,
-        `"${ticket.subject.replace(/"/g, '""')}"`,
-        `"${ticket.description.replace(/"/g, '""')}"`,
+        `"${(ticket.subject || '').replace(/"/g, '""')}"`,
+        `"${(ticket.description || '').replace(/"/g, '""')}"`,
         ticket.status,
         ticket.priority,
         ticket.category,
@@ -270,6 +344,10 @@ export async function GET(request: NextRequest) {
         ticket.serviceItem,
         ticket.serviceName,
         ticket.supportGroup,
+        ticket.customerName || 'N/A',
+        ticket.accountNumber || 'N/A',
+        ticket.transactionDate || 'N/A',
+        ticket.transactionAmount || 'N/A',
         ticket.creatorName,
         ticket.creatorEmail,
         ticket.creatorEmployeeId,
@@ -292,7 +370,7 @@ export async function GET(request: NextRequest) {
         ticket.responseTime,
         ticket.resolutionTime,
         ticket.approvalStatus,
-        `"${ticket.lastComment.replace(/"/g, '""')}"`,
+        `"${(ticket.lastComment || '').replace(/"/g, '""')}"`,
         ticket.lastCommentDate
       ].join(','));
 
@@ -313,6 +391,7 @@ export async function GET(request: NextRequest) {
         [
           'Ticket Number', 'Subject', 'Description', 'Status', 'Priority',
           'Category', 'Subcategory', 'Service Item', 'Service Name', 'Support Group',
+          'Customer Name', 'Account Number', 'Transaction Date', 'Transaction Amount',
           'Creator Name', 'Creator Email', 'Creator Employee ID',
           'Branch Name', 'Branch Code',
           'Assigned To', 'Assigned Email', 'Assigned Employee ID',
@@ -335,6 +414,10 @@ export async function GET(request: NextRequest) {
           ticket.serviceItem,
           ticket.serviceName,
           ticket.supportGroup,
+          ticket.customerName || 'N/A',
+          ticket.accountNumber || 'N/A',
+          ticket.transactionDate || 'N/A',
+          ticket.transactionAmount || 'N/A',
           ticket.creatorName,
           ticket.creatorEmail,
           ticket.creatorEmployeeId,
@@ -421,32 +504,32 @@ export async function GET(request: NextRequest) {
 
     // Calculate summary statistics
     const summary = {
-      totalTickets: tickets.length,
-      byStatus: tickets.reduce((acc, ticket) => {
+      totalTickets: filteredTickets.length,
+      byStatus: filteredTickets.reduce((acc, ticket) => {
         acc[ticket.status] = (acc[ticket.status] || 0) + 1;
         return acc;
       }, {} as Record<string, number>),
-      byPriority: tickets.reduce((acc, ticket) => {
+      byPriority: filteredTickets.reduce((acc, ticket) => {
         acc[ticket.priority] = (acc[ticket.priority] || 0) + 1;
         return acc;
       }, {} as Record<string, number>),
-      byBranch: tickets.reduce((acc, ticket) => {
+      byBranch: filteredTickets.reduce((acc, ticket) => {
         const branchName = ticket.branch?.name || 'Unknown';
         acc[branchName] = (acc[branchName] || 0) + 1;
         return acc;
       }, {} as Record<string, number>),
-      bySupportGroup: tickets.reduce((acc, ticket) => {
+      bySupportGroup: filteredTickets.reduce((acc, ticket) => {
         const groupName = ticket.service?.supportGroup?.name || 'Unassigned';
         acc[groupName] = (acc[groupName] || 0) + 1;
         return acc;
       }, {} as Record<string, number>),
-      resolvedTickets: tickets.filter(t => ['RESOLVED', 'CLOSED'].includes(t.status)).length,
-      avgResolutionTime: tickets.filter(t => t.actualHours).length > 0
-        ? tickets.filter(t => t.actualHours).reduce((sum, t) => sum + (t.actualHours || 0), 0) / tickets.filter(t => t.actualHours).length
+      resolvedTickets: filteredTickets.filter(t => ['RESOLVED', 'CLOSED'].includes(t.status)).length,
+      avgResolutionTime: filteredTickets.filter(t => t.actualHours).length > 0
+        ? filteredTickets.filter(t => t.actualHours).reduce((sum, t) => sum + (t.actualHours || 0), 0) / filteredTickets.filter(t => t.actualHours).length
         : 0,
       slaBreaches: {
-        response: tickets.filter(t => t.slaTracking?.isResponseBreached).length,
-        resolution: tickets.filter(t => t.slaTracking?.isResolutionBreached).length
+        response: filteredTickets.filter(t => t.slaTracking?.[0]?.isResponseBreached).length,
+        resolution: filteredTickets.filter(t => t.slaTracking?.[0]?.isResolutionBreached).length
       }
     };
 

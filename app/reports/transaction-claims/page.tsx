@@ -19,13 +19,14 @@ import {
   AlertCircle,
   CheckCircle,
   X,
-  Download,
   FileSpreadsheet,
   Building,
   User,
   TrendingUp,
   TrendingDown,
-  Activity
+  Activity,
+  Calendar,
+  CreditCard
 } from 'lucide-react'
 import { format } from 'date-fns'
 
@@ -65,6 +66,11 @@ interface TransactionClaimsReportData {
     approvalStatus: string
     lastComment: string
     lastCommentDate: string
+    // Transaction claim specific fields
+    transactionDate: string | null
+    customerName: string | null
+    transactionAmount: string | null
+    accountNumber: string | null
   }>
   summary: {
     totalTickets: number
@@ -102,9 +108,13 @@ export default function TransactionClaimsReport() {
   })
   const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0])
 
+  // Transaction date filter (Tanggal Transaksi)
+  const [transactionStartDate, setTransactionStartDate] = useState('')
+  const [transactionEndDate, setTransactionEndDate] = useState('')
+
   useEffect(() => {
     fetchData()
-  }, [startDate, endDate])
+  }, [startDate, endDate, transactionStartDate, transactionEndDate])
 
   const fetchData = async () => {
     try {
@@ -113,6 +123,14 @@ export default function TransactionClaimsReport() {
         startDate: new Date(startDate).toISOString(),
         endDate: new Date(endDate + 'T23:59:59').toISOString()
       })
+
+      // Add transaction date filters if provided
+      if (transactionStartDate) {
+        params.append('transactionStartDate', new Date(transactionStartDate).toISOString())
+      }
+      if (transactionEndDate) {
+        params.append('transactionEndDate', new Date(transactionEndDate + 'T23:59:59').toISOString())
+      }
 
       const response = await fetch(`/api/reports/transaction-claims?${params}`)
       if (!response.ok) throw new Error('Failed to fetch data')
@@ -126,14 +144,22 @@ export default function TransactionClaimsReport() {
     }
   }
 
-  const exportData = async (format: 'csv' | 'xlsx') => {
+  const exportData = async (exportFormat: 'csv' | 'xlsx') => {
     try {
       setExporting(true)
       const params = new URLSearchParams({
         startDate: new Date(startDate).toISOString(),
         endDate: new Date(endDate + 'T23:59:59').toISOString(),
-        format
+        format: exportFormat
       })
+
+      // Add transaction date filters if provided
+      if (transactionStartDate) {
+        params.append('transactionStartDate', new Date(transactionStartDate).toISOString())
+      }
+      if (transactionEndDate) {
+        params.append('transactionEndDate', new Date(transactionEndDate + 'T23:59:59').toISOString())
+      }
 
       const response = await fetch(`/api/reports/transaction-claims?${params}`)
       if (!response.ok) throw new Error('Export failed')
@@ -142,7 +168,7 @@ export default function TransactionClaimsReport() {
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      const ext = format === 'xlsx' ? 'xlsx' : 'csv'
+      const ext = exportFormat === 'xlsx' ? 'xlsx' : 'csv'
       a.download = `transaction-claims-report-${format(new Date(), 'yyyy-MM-dd')}.${ext}`
       a.click()
       window.URL.revokeObjectURL(url)
@@ -405,30 +431,80 @@ export default function TransactionClaimsReport() {
 
         {filtersExpanded && (
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Start Date
-                </label>
-                <Input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="touch-target"
-                />
-              </div>
+            {/* Ticket Created Date Filter */}
+            <div>
+              <h4 className="text-sm font-medium text-foreground mb-3">Tanggal Dibuat Tiket</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Dari Tanggal
+                  </label>
+                  <Input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="touch-target"
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  End Date
-                </label>
-                <Input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="touch-target"
-                />
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Sampai Tanggal
+                  </label>
+                  <Input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="touch-target"
+                  />
+                </div>
               </div>
+            </div>
+
+            {/* Transaction Date Filter (Tanggal Transaksi) */}
+            <div className="pt-4 border-t">
+              <h4 className="text-sm font-medium text-foreground mb-3">Tanggal Transaksi</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Dari Tanggal
+                  </label>
+                  <Input
+                    type="date"
+                    value={transactionStartDate}
+                    onChange={(e) => setTransactionStartDate(e.target.value)}
+                    className="touch-target"
+                    placeholder="Filter by transaction date"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Sampai Tanggal
+                  </label>
+                  <Input
+                    type="date"
+                    value={transactionEndDate}
+                    onChange={(e) => setTransactionEndDate(e.target.value)}
+                    className="touch-target"
+                    placeholder="Filter by transaction date"
+                  />
+                </div>
+              </div>
+              {(transactionStartDate || transactionEndDate) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setTransactionStartDate('')
+                    setTransactionEndDate('')
+                  }}
+                  className="mt-2 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-3 w-3 mr-1" />
+                  Clear Transaction Date Filter
+                </Button>
+              )}
             </div>
 
             {/* Quick date presets */}
@@ -517,10 +593,10 @@ export default function TransactionClaimsReport() {
                     <TableHead className="font-semibold">Status</TableHead>
                     <TableHead className="font-semibold">Priority</TableHead>
                     <TableHead className="font-semibold">Branch</TableHead>
-                    <TableHead className="font-semibold">Creator</TableHead>
-                    <TableHead className="font-semibold">Assigned To</TableHead>
+                    <TableHead className="font-semibold">Customer</TableHead>
+                    <TableHead className="font-semibold">Tgl Transaksi</TableHead>
+                    <TableHead className="font-semibold text-right">Nominal</TableHead>
                     <TableHead className="font-semibold">Created</TableHead>
-                    <TableHead className="font-semibold text-right">Resolution Time</TableHead>
                     <TableHead className="font-semibold">SLA Status</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -547,25 +623,27 @@ export default function TransactionClaimsReport() {
                       <TableCell>
                         <div className="flex items-center gap-1.5 text-muted-foreground">
                           <User className="h-3.5 w-3.5 shrink-0" />
-                          <span className="text-sm truncate max-w-[120px]" title={ticket.creatorName}>
-                            {ticket.creatorName}
+                          <span className="text-sm truncate max-w-[120px]" title={ticket.customerName || ticket.creatorName}>
+                            {ticket.customerName || ticket.creatorName}
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground truncate max-w-[120px]">
-                        {ticket.assignedToName || 'Unassigned'}
+                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                        {ticket.transactionDate ? (
+                          format(new Date(ticket.transactionDate), 'dd MMM yyyy')
+                        ) : (
+                          <span className="text-muted-foreground/50">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm text-right font-medium">
+                        {ticket.transactionAmount ? (
+                          <span>Rp {Number(ticket.transactionAmount).toLocaleString('id-ID')}</span>
+                        ) : (
+                          <span className="text-muted-foreground/50">-</span>
+                        )}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                        {format(new Date(ticket.createdAt), 'MMM dd, yyyy')}
-                      </TableCell>
-                      <TableCell className="text-sm text-right">
-                        {ticket.resolutionTime ? (
-                          <Badge variant="secondary" className="font-mono">
-                            {ticket.resolutionTime.toFixed(1)}h
-                          </Badge>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
+                        {format(new Date(ticket.createdAt), 'dd MMM yyyy')}
                       </TableCell>
                       <TableCell>
                         {ticket.isResponseBreached === 'Yes' || ticket.isResolutionBreached === 'Yes' ? (
