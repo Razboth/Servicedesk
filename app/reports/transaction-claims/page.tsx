@@ -629,7 +629,7 @@ export default function TransactionClaimsReport() {
                         </div>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                        {ticket.transactionDate ? (
+                        {ticket.transactionDate && !isNaN(new Date(ticket.transactionDate).getTime()) ? (
                           format(new Date(ticket.transactionDate), 'dd MMM yyyy')
                         ) : (
                           <span className="text-muted-foreground/50">-</span>
@@ -643,7 +643,9 @@ export default function TransactionClaimsReport() {
                         )}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                        {format(new Date(ticket.createdAt), 'dd MMM yyyy')}
+                        {ticket.createdAt && !isNaN(new Date(ticket.createdAt).getTime())
+                          ? format(new Date(ticket.createdAt), 'dd MMM yyyy')
+                          : '-'}
                       </TableCell>
                       <TableCell>
                         {ticket.isResponseBreached === 'Yes' || ticket.isResolutionBreached === 'Yes' ? (
