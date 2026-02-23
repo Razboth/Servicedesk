@@ -111,8 +111,7 @@ export async function GET(request: NextRequest) {
           select: {
             id: true,
             name: true,
-            email: true,
-            employeeId: true
+            email: true
           }
         },
         branch: {
@@ -154,8 +153,7 @@ export async function GET(request: NextRequest) {
           select: {
             id: true,
             name: true,
-            email: true,
-            employeeId: true
+            email: true
           }
         },
         approvals: {
@@ -280,12 +278,12 @@ export async function GET(request: NextRequest) {
         supportGroup: ticket.service?.supportGroup?.name || 'N/A',
         creatorName: ticket.createdBy?.name || 'N/A',
         creatorEmail: ticket.createdBy?.email || 'N/A',
-        creatorEmployeeId: ticket.createdBy?.employeeId || 'N/A',
+        creatorEmployeeId: 'N/A',
         branchName: ticket.branch?.name || 'N/A',
         branchCode: ticket.branch?.code || 'N/A',
         assignedToName: ticket.assignedTo?.name || 'Unassigned',
         assignedToEmail: ticket.assignedTo?.email || 'N/A',
-        assignedToEmployeeId: ticket.assignedTo?.employeeId || 'N/A',
+        assignedToEmployeeId: 'N/A',
         createdAt: ticket.createdAt.toISOString(),
         updatedAt: ticket.updatedAt?.toISOString() || 'N/A',
         resolvedAt: ticket.resolvedAt?.toISOString() || 'Not Resolved',
