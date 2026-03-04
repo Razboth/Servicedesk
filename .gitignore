@@ -95,3 +95,10 @@ dev.db
 
 # Offline map tiles (large files, downloaded separately)
 public/tiles/
+
+# Documentation files (generated locally)
+*.docx
+*.pdf
+*.xlsx
+sfd_diagrams/
+erd_diagrams/
