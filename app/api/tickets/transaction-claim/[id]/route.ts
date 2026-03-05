@@ -9,25 +9,51 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Check for API key header first
-    const apiKeyHeader = request.headers.get('X-API-Key') || request.headers.get('Authorization')?.replace('Bearer ', '');
+    // Check for API key header first (case-insensitive)
+    const apiKeyHeader = request.headers.get('x-api-key') ||
+                         request.headers.get('X-API-Key') ||
+                         request.headers.get('authorization')?.replace('Bearer ', '') ||
+                         request.headers.get('Authorization')?.replace('Bearer ', '');
+
+    console.log('[Transaction Claim API] Auth check:', {
+      hasApiKeyHeader: !!apiKeyHeader,
+      headerKeys: Array.from(request.headers.keys())
+    });
+
     let isAuthenticated = false;
 
     if (apiKeyHeader) {
       // API key authentication
       const authResult = await authenticateApiKey(request);
+      console.log('[Transaction Claim API] API Key auth result:', {
+        authenticated: authResult.authenticated,
+        error: authResult.error,
+        hasApiKey: !!authResult.apiKey,
+        permissions: authResult.apiKey?.permissions
+      });
+
       if (!authResult.authenticated) {
         return createApiErrorResponse(authResult.error || 'Unauthorized', 401);
       }
 
       // Check permission for reading tickets
-      if (!checkApiPermission(authResult.apiKey!, 'tickets:read')) {
+      const hasPermission = checkApiPermission(authResult.apiKey!, 'tickets:read');
+      console.log('[Transaction Claim API] Permission check:', {
+        required: 'tickets:read',
+        hasPermission
+      });
+
+      if (!hasPermission) {
         return createApiErrorResponse('Insufficient permissions to read tickets', 403);
       }
       isAuthenticated = true;
     } else {
       // Session authentication
       const session = await auth();
+      console.log('[Transaction Claim API] Session auth:', {
+        hasSession: !!session,
+        userId: session?.user?.id
+      });
       if (session?.user?.id) {
         isAuthenticated = true;
       }
