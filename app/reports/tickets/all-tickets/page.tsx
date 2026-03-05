@@ -91,6 +91,7 @@ interface ReportData {
     items: Array<{ id: string; name: string }>
     branches: Array<{ id: string; name: string; code: string }>
     technicians: Array<{ id: string; name: string; email: string }>
+    supportGroups: Array<{ id: string; name: string; code: string }>
   }
 }
 
@@ -140,6 +141,7 @@ export default function AllTicketsReport() {
   const [tier3ItemId, setTier3ItemId] = useState('ALL')
   const [branchId, setBranchId] = useState('ALL')
   const [technicianId, setTechnicianId] = useState('ALL')
+  const [supportGroupId, setSupportGroupId] = useState('ALL')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [sortBy, setSortBy] = useState('createdAt')
@@ -174,11 +176,12 @@ export default function AllTicketsReport() {
     if (tier3ItemId !== 'ALL') count++
     if (branchId !== 'ALL') count++
     if (technicianId !== 'ALL') count++
+    if (supportGroupId !== 'ALL') count++
     if (startDate) count++
     if (endDate) count++
     if (searchTerm) count++
     return count
-  }, [status, priority, tier1CategoryId, tier2SubcategoryId, tier3ItemId, branchId, technicianId, startDate, endDate, searchTerm])
+  }, [status, priority, tier1CategoryId, tier2SubcategoryId, tier3ItemId, branchId, technicianId, supportGroupId, startDate, endDate, searchTerm])
 
   // Auto-search with debounce
   useEffect(() => {
@@ -194,7 +197,7 @@ export default function AllTicketsReport() {
 
   useEffect(() => {
     fetchData()
-  }, [page, status, priority, tier1CategoryId, tier2SubcategoryId, tier3ItemId, branchId, technicianId, startDate, endDate, sortBy, sortOrder])
+  }, [page, status, priority, tier1CategoryId, tier2SubcategoryId, tier3ItemId, branchId, technicianId, supportGroupId, startDate, endDate, sortBy, sortOrder])
 
   // Cascading tier handlers
   const handleTier1Change = (value: string) => {
@@ -221,6 +224,7 @@ export default function AllTicketsReport() {
         ...(tier3ItemId !== 'ALL' && { tier3ItemId }),
         ...(branchId !== 'ALL' && { branchId }),
         ...(technicianId !== 'ALL' && { technicianId }),
+        ...(supportGroupId !== 'ALL' && { supportGroupId }),
         ...(startDate && { startDate }),
         ...(endDate && { endDate }),
         ...(searchTerm && { search: searchTerm }),
@@ -249,6 +253,7 @@ export default function AllTicketsReport() {
     setTier3ItemId('ALL')
     setBranchId('ALL')
     setTechnicianId('ALL')
+    setSupportGroupId('ALL')
     setStartDate('')
     setEndDate('')
     setSortBy('createdAt')
@@ -273,6 +278,7 @@ export default function AllTicketsReport() {
             tier3ItemId: tier3ItemId !== 'ALL' ? tier3ItemId : undefined,
             branchId: branchId !== 'ALL' ? branchId : undefined,
             technicianId: technicianId !== 'ALL' ? technicianId : undefined,
+            supportGroupId: supportGroupId !== 'ALL' ? supportGroupId : undefined,
             startDate,
             endDate,
             searchTerm
@@ -1039,7 +1045,7 @@ export default function AllTicketsReport() {
             )}
 
             {/* Secondary Filters */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 pt-2 border-t border-border">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 pt-2 border-t border-border">
               {data && (
                 <>
                   <div className="space-y-2">
@@ -1053,6 +1059,25 @@ export default function AllTicketsReport() {
                       allOption={true}
                       allOptionLabel="All Branches"
                     />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      Support Group
+                    </label>
+                    <Select value={supportGroupId} onValueChange={setSupportGroupId}>
+                      <SelectTrigger className="touch-target" aria-label="Filter by support group">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ALL">All Support Groups</SelectItem>
+                        {data.filters.supportGroups.map((group) => (
+                          <SelectItem key={group.id} value={group.id}>
+                            {group.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div className="space-y-2">

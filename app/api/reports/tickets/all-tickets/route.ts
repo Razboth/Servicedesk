@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
     const tier3ItemId = searchParams.get('tier3ItemId');
     const technicianId = searchParams.get('technicianId');
     const branchId = searchParams.get('branchId');
+    const supportGroupId = searchParams.get('supportGroupId');
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const searchTerm = searchParams.get('search');
@@ -188,7 +189,17 @@ export async function GET(request: NextRequest) {
         branchId: branchId
       };
     }
-    
+
+    // Support group filter - filter by service's support group
+    if (supportGroupId && supportGroupId !== 'ALL') {
+      const supportGroupFilter = { service: { supportGroupId: supportGroupId } };
+      if (whereClause.AND) {
+        whereClause.AND.push(supportGroupFilter);
+      } else {
+        whereClause.AND = [supportGroupFilter];
+      }
+    }
+
     // Date range filter - based on createdAt
     if (startDate || endDate) {
       whereClause.createdAt = {};
@@ -420,11 +431,16 @@ export async function GET(request: NextRequest) {
         orderBy: { name: 'asc' }
       }),
       technicians: await prisma.user.findMany({
-        where: { 
+        where: {
           role: { in: ['TECHNICIAN', 'SECURITY_ANALYST'] },
           isActive: true
         },
         select: { id: true, name: true, email: true },
+        orderBy: { name: 'asc' }
+      }),
+      supportGroups: await prisma.supportGroup.findMany({
+        where: { isActive: true },
+        select: { id: true, name: true, code: true },
         orderBy: { name: 'asc' }
       })
     };
@@ -676,6 +692,16 @@ export async function POST(request: NextRequest) {
         ...whereClause.createdBy,
         branchId: filters.branchId
       };
+    }
+
+    // Support group filter - filter by service's support group
+    if (filters.supportGroupId && filters.supportGroupId !== 'ALL') {
+      const supportGroupFilter = { service: { supportGroupId: filters.supportGroupId } };
+      if (whereClause.AND) {
+        whereClause.AND.push(supportGroupFilter);
+      } else {
+        whereClause.AND = [supportGroupFilter];
+      }
     }
 
     // Date range filter
