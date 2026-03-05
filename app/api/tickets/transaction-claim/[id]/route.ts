@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { authenticateApiKey, checkApiPermission } from '@/lib/auth-api';
 
 // GET /api/tickets/transaction-claim/[id] - Get transaction claim ticket details
 export async function GET(
@@ -8,9 +9,30 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Try session auth first
     const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    let isAuthenticated = !!session?.user?.id;
+
+    // If no session, try API key authentication
+    if (!isAuthenticated) {
+      const authResult = await authenticateApiKey(request);
+      if (authResult.authenticated) {
+        // Check permission for reading tickets
+        if (!checkApiPermission(authResult.apiKey!, 'tickets:read')) {
+          return NextResponse.json(
+            { error: 'Insufficient permissions to read tickets' },
+            { status: 403 }
+          );
+        }
+        isAuthenticated = true;
+      }
+    }
+
+    if (!isAuthenticated) {
+      return NextResponse.json(
+        { error: 'Unauthorized. Provide a valid session or API key.' },
+        { status: 401 }
+      );
     }
 
     const { id } = await params;
