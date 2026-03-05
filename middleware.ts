@@ -54,7 +54,12 @@ export async function middleware(request: NextRequest) {
     const apiKeyAuthRoutes = [
       '/api/monitoring/',
       '/api/omnichannel/',
-      '/api/server-metrics/'
+      '/api/server-metrics/',
+      '/api/tickets/transaction-claim/',
+      '/api/tickets/atm-claim',
+      '/api/tickets/status',
+      '/api/tickets/by-number/',
+      '/api/tickets/batch-status'
     ];
     const isApiKeyAuthRoute = apiKeyAuthRoutes.some(route => pathname.startsWith(route));
     if (isApiKeyAuthRoute) {
