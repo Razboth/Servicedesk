@@ -31,8 +31,20 @@ import {
   Building,
   FileText,
   Filter,
-  RefreshCw
+  RefreshCw,
+  Copy,
+  Check,
+  MessageSquareText
 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
 import * as XLSX from 'xlsx';
@@ -76,6 +88,8 @@ export default function OperationalExtensionReportPage() {
   const [branches, setBranches] = useState<any[]>([]);
   const [dateFrom, setDateFrom] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [dateTo, setDateTo] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     fetchBranches();
@@ -182,6 +196,53 @@ export default function OperationalExtensionReportPage() {
     XLSX.writeFile(wb, `Perpanjangan_Operasional_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
   };
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return 'Selamat pagi';
+    if (hour >= 12 && hour < 15) return 'Selamat siang';
+    if (hour >= 15 && hour < 18) return 'Selamat sore';
+    return 'Selamat malam';
+  };
+
+  const generateReportTemplate = () => {
+    if (filteredTickets.length === 0) return '';
+
+    // Get the date from the first ticket or use today
+    const reportDate = filteredTickets.length > 0
+      ? new Date(filteredTickets[0].createdAt)
+      : new Date();
+
+    const dayName = format(reportDate, 'EEEE', { locale: localeId });
+    const dateFormatted = format(reportDate, 'd MMMM yyyy', { locale: localeId });
+
+    let template = `${getGreeting()},\n\n`;
+    template += `Mohon izin menginfokan permintaan perpanjangan waktu operasional cabang/capem pada hari ${dayName} tanggal ${dateFormatted}:\n\n`;
+
+    filteredTickets.forEach((ticket, index) => {
+      const jamSelesai = getFieldValue(ticket, 'jam_selesai');
+      const alasan = getFieldValue(ticket, 'alasan_operasional');
+      const branchName = ticket.branch.name;
+      const ticketNumber = ticket.ticketNumber;
+
+      template += `${index + 1}. ${branchName} s/d jam ${jamSelesai} WITA dengan alasan "${alasan}" (${ticketNumber}).\n`;
+    });
+
+    template += `\nDemikian disampaikan, terima kasih.`;
+
+    return template;
+  };
+
+  const copyToClipboard = async () => {
+    const template = generateReportTemplate();
+    try {
+      await navigator.clipboard.writeText(template);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
   const stats = {
     total: filteredTickets.length,
     open: filteredTickets.filter(t => t.status === 'OPEN').length,
@@ -196,10 +257,48 @@ export default function OperationalExtensionReportPage() {
         description="Daftar permintaan perpanjangan waktu operasional cabang"
         icon={<Clock className="h-6 w-6" />}
         action={
-          <Button onClick={exportToExcel} disabled={filteredTickets.length === 0}>
-            <FileSpreadsheet className="h-4 w-4 mr-2" />
-            Export Excel
-          </Button>
+          <div className="flex gap-2">
+            <Dialog open={reportDialogOpen} onOpenChange={setReportDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" disabled={filteredTickets.length === 0}>
+                  <MessageSquareText className="h-4 w-4 mr-2" />
+                  Report
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Template Laporan Perpanjangan Operasional</DialogTitle>
+                  <DialogDescription>
+                    Salin template ini untuk dilaporkan
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <Textarea
+                    readOnly
+                    value={generateReportTemplate()}
+                    className="min-h-[300px] font-mono text-sm"
+                  />
+                  <Button onClick={copyToClipboard} className="w-full">
+                    {copied ? (
+                      <>
+                        <Check className="h-4 w-4 mr-2" />
+                        Tersalin!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4 mr-2" />
+                        Salin Template
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+            <Button onClick={exportToExcel} disabled={filteredTickets.length === 0}>
+              <FileSpreadsheet className="h-4 w-4 mr-2" />
+              Export Excel
+            </Button>
+          </div>
         }
       />
 
