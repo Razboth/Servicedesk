@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { authenticateApiKey, checkApiPermission } from '@/lib/auth-api';
+import { authenticateApiKey, checkApiPermission, createApiErrorResponse } from '@/lib/auth-api';
 
 // GET /api/tickets/transaction-claim/[id] - Get transaction claim ticket details
 export async function GET(
@@ -9,21 +9,26 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Try session auth first
-    const session = await auth();
-    let isAuthenticated = !!session?.user?.id;
+    // Check for API key header first
+    const apiKeyHeader = request.headers.get('X-API-Key') || request.headers.get('Authorization')?.replace('Bearer ', '');
+    let isAuthenticated = false;
 
-    // If no session, try API key authentication
-    if (!isAuthenticated) {
+    if (apiKeyHeader) {
+      // API key authentication
       const authResult = await authenticateApiKey(request);
-      if (authResult.authenticated) {
-        // Check permission for reading tickets
-        if (!checkApiPermission(authResult.apiKey!, 'tickets:read')) {
-          return NextResponse.json(
-            { error: 'Insufficient permissions to read tickets' },
-            { status: 403 }
-          );
-        }
+      if (!authResult.authenticated) {
+        return createApiErrorResponse(authResult.error || 'Unauthorized', 401);
+      }
+
+      // Check permission for reading tickets
+      if (!checkApiPermission(authResult.apiKey!, 'tickets:read')) {
+        return createApiErrorResponse('Insufficient permissions to read tickets', 403);
+      }
+      isAuthenticated = true;
+    } else {
+      // Session authentication
+      const session = await auth();
+      if (session?.user?.id) {
         isAuthenticated = true;
       }
     }
