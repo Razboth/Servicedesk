@@ -219,12 +219,22 @@ export default function OperationalExtensionReportPage() {
     template += `Mohon izin menginfokan permintaan perpanjangan waktu operasional cabang/capem pada hari ${dayName} tanggal ${dateFormatted}:\n\n`;
 
     filteredTickets.forEach((ticket, index) => {
-      const jamSelesai = getFieldValue(ticket, 'jam_selesai');
+      const jamSelesaiRaw = getFieldValue(ticket, 'jam_selesai');
+      // Extract only the time part (HH:mm) if it's a datetime string
+      let jamSelesai = jamSelesaiRaw;
+      if (jamSelesaiRaw && jamSelesaiRaw.includes('T')) {
+        // Format: 2026-03-05T22:00 -> 22:00
+        const timePart = jamSelesaiRaw.split('T')[1];
+        jamSelesai = timePart ? timePart.substring(0, 5) : jamSelesaiRaw;
+      } else if (jamSelesaiRaw && jamSelesaiRaw.includes(':')) {
+        // Already in time format, just take HH:mm
+        jamSelesai = jamSelesaiRaw.substring(0, 5);
+      }
       const alasan = getFieldValue(ticket, 'alasan_operasional');
       const branchName = ticket.branch.name;
       const ticketNumber = ticket.ticketNumber;
 
-      template += `${index + 1}. ${branchName} s/d jam ${jamSelesai} WITA dengan alasan "${alasan}" (${ticketNumber}).\n`;
+      template += `${index + 1}. ${branchName} s/d jam ${jamSelesai} WITA dengan alasan "${alasan}" (tiket ${ticketNumber}).\n`;
     });
 
     template += `\nDemikian disampaikan, terima kasih.`;
