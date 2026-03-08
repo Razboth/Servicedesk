@@ -174,7 +174,8 @@ export async function GET(request: NextRequest) {
           responseTime,
           packetLoss,
           hasActiveIncident: atm.networkIncidents.length > 0,
-          activeIncident: atm.networkIncidents[0] || null
+          activeIncident: atm.networkIncidents[0] || null,
+          showInAlarmReport: atm.showInAlarmReport
         });
       }
     }

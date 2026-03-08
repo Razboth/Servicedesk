@@ -14,6 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
@@ -57,6 +59,7 @@ import {
   ExternalLink,
   Copy,
   ClipboardList,
+  EyeOff,
 } from 'lucide-react';
 
 // Dynamically import map components to avoid SSR issues
@@ -112,6 +115,7 @@ interface NetworkATM {
   packetLoss: number | null;
   hasActiveIncident: boolean;
   activeIncident: any | null;
+  showInAlarmReport: boolean;
 }
 
 interface AlarmDevice {
@@ -128,6 +132,7 @@ interface CombinedATM extends NetworkATM {
   currentAlarms: CurrentAlarm[];
   alarmDeviceId: string | null;
   lastAlarmUpdate: string | null;
+  showInAlarmReport: boolean;
 }
 
 interface AlarmTypeBreakdown {
@@ -360,6 +365,7 @@ export default function ATMMonitoringPage() {
         currentAlarms: alarmDevice?.currentAlarms || [],
         alarmDeviceId: alarmDevice?.deviceId || null,
         lastAlarmUpdate: alarmDevice?.lastSeenAt || null,
+        showInAlarmReport: atm.showInAlarmReport ?? true,
       };
     });
   }, [networkATMs, alarmDevices]);
@@ -413,6 +419,7 @@ export default function ATMMonitoringPage() {
       slow: combinedATMs.filter((a) => a.status === 'SLOW').length,
       stale: combinedATMs.filter((a) => a.status === 'STALE' || a.status === 'UNKNOWN').length,
       alarming: combinedATMs.filter((a) => a.alarmStatus === 'ALARM').length,
+      alarmingVisible: combinedATMs.filter((a) => a.alarmStatus === 'ALARM' && a.showInAlarmReport !== false).length,
       healthy: combinedATMs.filter((a) => a.alarmStatus === 'ONLINE').length,
     };
   }, [combinedATMs]);
@@ -525,6 +532,38 @@ export default function ATMMonitoringPage() {
     }
   };
 
+  const handleToggleAlarmVisibility = async (atm: CombinedATM, showInAlarmReport: boolean) => {
+    try {
+      const response = await fetch(`/api/admin/atms/${atm.id}/alarm-visibility`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ showInAlarmReport }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update ATM alarm visibility');
+      }
+
+      // Update local state
+      setNetworkATMs(prev => prev.map(a =>
+        a.id === atm.id ? { ...a, showInAlarmReport } : a
+      ));
+
+      // Update selected ATM if it's the one being toggled
+      if (selectedATM?.id === atm.id) {
+        setSelectedATM({ ...selectedATM, showInAlarmReport });
+      }
+
+      toast.success(showInAlarmReport
+        ? 'ATM akan ditampilkan di daftar alarm'
+        : 'ATM disembunyikan dari daftar alarm'
+      );
+    } catch (error) {
+      console.error('Error toggling alarm visibility:', error);
+      toast.error('Gagal mengubah visibilitas alarm ATM');
+    }
+  };
+
   // Generate alarm list text for copying
   const generateAlarmListText = () => {
     // Use last alarm update time in WITA (Asia/Makassar timezone)
@@ -544,8 +583,8 @@ export default function ATMMonitoringPage() {
 
     const header = `Data Alarm ATM per ${formattedDate}, ${formattedTime} WITA\n${'='.repeat(45)}\n\n`;
 
-    // Get all ATMs with active alarms
-    const atmsWithAlarms = combinedATMs.filter(atm => atm.currentAlarms.length > 0);
+    // Get all ATMs with active alarms (only those visible in alarm reports)
+    const atmsWithAlarms = combinedATMs.filter(atm => atm.currentAlarms.length > 0 && atm.showInAlarmReport !== false);
 
     if (atmsWithAlarms.length === 0) {
       return header + 'Tidak ada alarm aktif saat ini.';
@@ -653,10 +692,10 @@ export default function ATMMonitoringPage() {
           <Button
             variant="outline"
             onClick={() => setAlarmListModalOpen(true)}
-            disabled={stats.alarming === 0}
+            disabled={stats.alarmingVisible === 0}
           >
             <ClipboardList className="h-4 w-4 mr-2" />
-            Alarm List ({stats.alarming})
+            Alarm List ({stats.alarmingVisible})
           </Button>
         </div>
       </div>
@@ -1078,6 +1117,13 @@ export default function ATMMonitoringPage() {
                             ALARM
                           </Badge>
                         )}
+                        {/* Hidden from alarm list indicator */}
+                        {!atm.showInAlarmReport && (
+                          <Badge variant="outline" className="text-xs text-muted-foreground">
+                            <EyeOff className="h-3 w-3 mr-1" />
+                            Hidden
+                          </Badge>
+                        )}
                       </div>
                     </div>
 
@@ -1278,6 +1324,27 @@ export default function ATMMonitoringPage() {
                       </CardContent>
                     </Card>
                   </div>
+
+                  {/* Alarm Report Visibility Toggle */}
+                  <Card className="mt-4">
+                    <CardContent className="pt-4">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="alarm-visibility" className="text-sm font-medium">
+                            Tampilkan di Daftar Alarm
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            ATM ini akan muncul di daftar alarm aktif saat ada alarm
+                          </p>
+                        </div>
+                        <Switch
+                          id="alarm-visibility"
+                          checked={selectedATM.showInAlarmReport}
+                          onCheckedChange={(checked) => handleToggleAlarmVisibility(selectedATM, checked)}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
                 </TabsContent>
 
                 {/* Alarms Tab */}

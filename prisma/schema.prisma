@@ -581,19 +581,20 @@ model SLATracking {
 }
 
 model ATM {
-  id               String              @id @default(cuid())
-  code             String              @unique
-  name             String
-  branchId         String
-  ipAddress        String?
-  location         String?
-  latitude         Float?
-  longitude        Float?
-  isActive         Boolean             @default(true)
-  createdAt        DateTime            @default(now())
-  updatedAt        DateTime            @updatedAt
-  networkMedia     NetworkMedia?
-  networkVendor    String?
+  id                String              @id @default(cuid())
+  code              String              @unique
+  name              String
+  branchId          String
+  ipAddress         String?
+  location          String?
+  latitude          Float?
+  longitude         Float?
+  isActive          Boolean             @default(true)
+  showInAlarmReport Boolean             @default(true) // Show this ATM in alarm reports/lists
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  networkMedia      NetworkMedia?
+  networkVendor     String?
   // New fields for enhanced ATM management
   atmBrand         String?             // Manufacturer: Diebold, Diebold Nixdorf, Hyosung, Wincor, etc.
   atmType          String?             // Model/series (e.g., Wincor Pro Cash 2050xe)
