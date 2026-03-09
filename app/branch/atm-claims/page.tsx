@@ -18,7 +18,9 @@ import {
   FileText,
   RefreshCw,
   Home,
-  Network
+  Network,
+  ArrowDownToLine,
+  ArrowUpFromLine
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -61,6 +63,7 @@ interface ATMClaim {
 }
 
 type TabValue = 'internal' | 'external';
+type TransactionTypeFilter = 'ALL' | 'WITHDRAWAL' | 'DEPOSIT';
 
 export default function BranchATMClaimsPage() {
   const { data: session } = useSession();
@@ -68,6 +71,7 @@ export default function BranchATMClaimsPage() {
   const [claims, setClaims] = useState<ATMClaim[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabValue>('internal');
+  const [transactionTypeFilter, setTransactionTypeFilter] = useState<TransactionTypeFilter>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
   const [statistics, setStatistics] = useState<any>({
     total: 0,
@@ -92,6 +96,9 @@ export default function BranchATMClaimsPage() {
       if (searchTerm) {
         params.append('search', searchTerm);
       }
+      if (transactionTypeFilter !== 'ALL') {
+        params.append('transactionType', transactionTypeFilter);
+      }
 
       const response = await fetch(`/api/branch/atm-claims?${params}`);
       const data = await response.json();
@@ -111,7 +118,7 @@ export default function BranchATMClaimsPage() {
 
   useEffect(() => {
     fetchClaims();
-  }, [activeTab, searchTerm]);
+  }, [activeTab, searchTerm, transactionTypeFilter]);
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -151,6 +158,24 @@ export default function BranchATMClaimsPage() {
       return <Badge variant="warning">Verification in Progress</Badge>;
     }
     return <Badge variant="secondary">Pending Verification</Badge>;
+  };
+
+  const getTransactionTypeBadge = (claim: ATMClaim) => {
+    const isDeposit = claim.title?.includes('SETOR TUNAI') || claim.title?.includes('CRM');
+    if (isDeposit) {
+      return (
+        <Badge className="bg-green-100 text-green-800 hover:bg-green-100 gap-1">
+          <ArrowUpFromLine className="w-3 h-3" />
+          Setor Tunai
+        </Badge>
+      );
+    }
+    return (
+      <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 gap-1">
+        <ArrowDownToLine className="w-3 h-3" />
+        Penarikan
+      </Badge>
+    );
   };
 
   // Simplified Tab Component with standard styling
@@ -290,6 +315,41 @@ export default function BranchATMClaimsPage() {
         </Card>
       </div>
 
+      {/* Transaction Type Filter */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-muted-foreground mr-2">Jenis Transaksi:</span>
+            <Button
+              variant={transactionTypeFilter === 'ALL' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setTransactionTypeFilter('ALL')}
+              className="gap-2"
+            >
+              Semua
+            </Button>
+            <Button
+              variant={transactionTypeFilter === 'WITHDRAWAL' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setTransactionTypeFilter('WITHDRAWAL')}
+              className="gap-2"
+            >
+              <ArrowDownToLine className="w-4 h-4" />
+              Penarikan Tunai
+            </Button>
+            <Button
+              variant={transactionTypeFilter === 'DEPOSIT' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setTransactionTypeFilter('DEPOSIT')}
+              className="gap-2"
+            >
+              <ArrowUpFromLine className="w-4 h-4" />
+              Setor Tunai
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Search and Filter Section */}
       <div className="flex gap-4">
         <div className="relative flex-1">
@@ -349,6 +409,7 @@ export default function BranchATMClaimsPage() {
                         <h3 className="font-bold text-lg">
                           {claim.ticketNumber}
                         </h3>
+                        {getTransactionTypeBadge(claim)}
                         <Badge variant={getPriorityColor(claim.priority)}>
                           {claim.priority}
                         </Badge>

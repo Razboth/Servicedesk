@@ -7,6 +7,11 @@ import {
   mapTicketToOmniPayload,
   OmniTicketData
 } from '@/lib/services/omni.service';
+import {
+  TransactionType,
+  isValidClaimType,
+  TRANSACTION_TYPE_LABELS
+} from '@/lib/constants/claim-types';
 
 // GET /api/branch/atm-claims - List ATM claims for branch
 export async function GET(request: NextRequest) {
@@ -59,6 +64,7 @@ export async function GET(request: NextRequest) {
     const priority = searchParams.get('priority');
     const source = searchParams.get('source'); // 'internal' or 'external'
     const claimType = searchParams.get('claimType'); // 'atm', 'payment', 'purchase'
+    const transactionType = searchParams.get('transactionType'); // 'WITHDRAWAL' or 'DEPOSIT'
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
 
@@ -195,6 +201,23 @@ export async function GET(request: NextRequest) {
 
     if (priority) {
       where.priority = priority;
+    }
+
+    // Filter by transaction type (WITHDRAWAL or DEPOSIT)
+    if (transactionType === 'DEPOSIT') {
+      // Deposit claims have CRM SETOR TUNAI in title or metadata
+      where.OR = [
+        ...(where.OR || []),
+        { title: { contains: 'SETOR TUNAI', mode: 'insensitive' } },
+        { title: { contains: 'CRM', mode: 'insensitive' } }
+      ];
+    } else if (transactionType === 'WITHDRAWAL') {
+      // Withdrawal claims - exclude deposit claims
+      where.NOT = {
+        OR: [
+          { title: { contains: 'SETOR TUNAI', mode: 'insensitive' } }
+        ]
+      };
     }
 
     // Fetch claims with pagination
@@ -513,6 +536,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       atmCode,
+      transactionType = 'WITHDRAWAL' as TransactionType,
       customerName,
       customerAccount,
       customerPhone,
@@ -525,6 +549,16 @@ export async function POST(request: NextRequest) {
       claimDescription
     } = body;
 
+    // Validate transaction type
+    const validTransactionType: TransactionType = transactionType === 'DEPOSIT' ? 'DEPOSIT' : 'WITHDRAWAL';
+
+    // Validate claim type matches transaction type
+    if (!isValidClaimType(claimType, validTransactionType)) {
+      return NextResponse.json({
+        error: `Jenis klaim "${claimType}" tidak valid untuk ${TRANSACTION_TYPE_LABELS[validTransactionType]}`
+      }, { status: 400 });
+    }
+
     // Find ATM and its branch
     const atm = await prisma.aTM.findUnique({
       where: { code: atmCode },
@@ -535,14 +569,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'ATM not found' }, { status: 404 });
     }
 
-    // Get ATM Claim service - support both English and Indonesian spelling
-    const service = await prisma.service.findFirst({
+    // For deposit claims, validate that ATM is a CRM
+    if (validTransactionType === 'DEPOSIT' && atm.atmCategory !== 'CRM') {
+      return NextResponse.json({
+        error: 'Setor Tunai hanya dapat dilakukan pada mesin CRM (Cash Recycling Machine)'
+      }, { status: 400 });
+    }
+
+    // Get appropriate service based on transaction type
+    const serviceSearchTerms = validTransactionType === 'DEPOSIT'
+      ? [
+          { name: { contains: 'Setor Tunai', mode: 'insensitive' as const } },
+          { name: { contains: 'CRM Claim', mode: 'insensitive' as const } },
+          { name: { contains: 'Deposit Claim', mode: 'insensitive' as const } }
+        ]
+      : [
+          { name: { contains: 'ATM Claim', mode: 'insensitive' as const } },
+          { name: { contains: 'ATM Klaim', mode: 'insensitive' as const } },
+          { name: { contains: 'Penarikan Tunai Internal', mode: 'insensitive' as const } }
+        ];
+
+    let service = await prisma.service.findFirst({
       where: {
-        OR: [
-          { name: { contains: 'ATM Claim', mode: 'insensitive' } },
-          { name: { contains: 'ATM Klaim', mode: 'insensitive' } },
-          { name: { contains: 'Penarikan Tunai Internal', mode: 'insensitive' } }
-        ],
+        OR: serviceSearchTerms,
         isActive: true
       },
       include: {
@@ -552,9 +601,30 @@ export async function POST(request: NextRequest) {
       }
     });
 
+    // Fallback to ATM Claim service if deposit-specific service not found
+    if (!service && validTransactionType === 'DEPOSIT') {
+      service = await prisma.service.findFirst({
+        where: {
+          OR: [
+            { name: { contains: 'ATM Claim', mode: 'insensitive' } },
+            { name: { contains: 'ATM Klaim', mode: 'insensitive' } },
+            { name: { contains: 'Penarikan Tunai Internal', mode: 'insensitive' } }
+          ],
+          isActive: true
+        },
+        include: {
+          fields: {
+            orderBy: { order: 'asc' }
+          }
+        }
+      });
+    }
+
     if (!service) {
       return NextResponse.json({
-        error: 'ATM Claim service not configured. Please ensure "Penarikan Tunai Internal - ATM Klaim" service exists and is active.'
+        error: validTransactionType === 'DEPOSIT'
+          ? 'CRM Setor Tunai service not configured. Please ensure the service exists and is active.'
+          : 'ATM Claim service not configured. Please ensure "Penarikan Tunai Internal - ATM Klaim" service exists and is active.'
       }, { status: 400 });
     }
 
@@ -567,6 +637,7 @@ export async function POST(request: NextRequest) {
     // Map form data to service field values
     const fieldValueMappings: Record<string, any> = {
       'atm_code': atmCode,
+      'transaction_type': validTransactionType,
       'transaction_ref': transactionRef || '',
       'card_last_4': cardLast4,
       'customer_account': customerAccount,
@@ -578,6 +649,11 @@ export async function POST(request: NextRequest) {
       'owner_branch': `${atm.branch.code} - ${atm.branch.name}`,
       'reporting_channel': 'BRANCH_STAFF' // Default channel for branch-created claims
     };
+
+    // Generate ticket title based on transaction type
+    const ticketTitle = validTransactionType === 'DEPOSIT'
+      ? `CRM SETOR TUNAI CLAIM - ${atmCode}`
+      : `ATM INTERNAL CLAIM - ${atmCode}`;
 
     // Create field values for the ticket
     const fieldValues: any[] = [];
@@ -601,11 +677,16 @@ export async function POST(request: NextRequest) {
       const maxTicketNumber = maxResult[0]?.maxNum ? Number(maxResult[0].maxNum) : 0;
       const ticketNumber = String(maxTicketNumber + 1);
 
+      const machineLabel = validTransactionType === 'DEPOSIT' ? 'CRM' : 'ATM';
+      const transactionLabel = validTransactionType === 'DEPOSIT' ? 'Setor Tunai' : 'Penarikan Tunai';
+
       return tx.ticket.create({
         data: {
           ticketNumber,
-          title: `ATM INTERNAL CLAIM - ${atmCode}`,
+          title: ticketTitle,
           description: `
+**Jenis Transaksi:** ${transactionLabel}
+
 **Customer Information:**
 - Name: ${customerName}
 - Account: ${customerAccount}
@@ -614,10 +695,11 @@ ${customerEmail ? `- Email: ${customerEmail}` : ''}
 ${cardLast4 ? `- Card (Last 4): ${cardLast4}` : ''}
 
 **Transaction Details:**
+- Type: ${transactionLabel}
 - Amount: Rp ${Number(transactionAmount).toLocaleString('id-ID')}
 - Date: ${new Date(transactionDate).toLocaleString('id-ID')}
 ${transactionRef ? `- Reference: ${transactionRef}` : ''}
-- ATM: ${atmCode} - ${atm.location}
+- ${machineLabel}: ${atmCode} - ${atm.location}
 
 **Claim Details:**
 ${claimDescription}
@@ -627,8 +709,11 @@ ${claimDescription}
           priority: transactionAmount > 1000000 ? 'HIGH' : 'MEDIUM',
           status: service.requiresApproval ? 'PENDING_APPROVAL' : 'OPEN',
           createdById: session.user.id,
-          branchId: atm.branchId, // Route to ATM owner branch
+          branchId: atm.branchId, // Route to ATM/CRM owner branch
           category: 'SERVICE_REQUEST',
+          metadata: {
+            transactionType: validTransactionType // Store transaction type in metadata
+          },
           fieldValues: fieldValues.length > 0 ? {
             create: fieldValues
           } : undefined

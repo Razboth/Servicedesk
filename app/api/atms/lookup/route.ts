@@ -22,13 +22,18 @@ export async function GET(request: NextRequest) {
 
     const searchParams = request.nextUrl.searchParams;
     const atmCode = searchParams.get('code');
+    const category = searchParams.get('category'); // Filter by ATMCategory (ATM or CRM)
+
+    // Build category filter if provided
+    const categoryFilter = category ? { atmCategory: category as 'ATM' | 'CRM' } : {};
 
     // If searching for a specific ATM by code
     if (atmCode) {
       const atm = await prisma.aTM.findFirst({
-        where: { 
+        where: {
           code: atmCode.toUpperCase(),
-          isActive: true 
+          isActive: true,
+          ...categoryFilter
         },
         include: {
           branch: {
@@ -47,6 +52,7 @@ export async function GET(request: NextRequest) {
           code: atm.code,
           name: atm.name,
           location: atm.location || '',
+          atmCategory: atm.atmCategory,
           branch: {
             id: atm.branch.id,
             name: atm.branch.name,
@@ -72,9 +78,9 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Fetch all active ATMs with branch information
+    // Fetch all active ATMs with branch information (filtered by category if specified)
     const atms = await prisma.aTM.findMany({
-      where: { isActive: true },
+      where: { isActive: true, ...categoryFilter },
       include: {
         branch: {
           select: { 
@@ -97,6 +103,7 @@ export async function GET(request: NextRequest) {
       atmId: atm.id,
       atmName: atm.name,
       location: atm.location || '',
+      atmCategory: atm.atmCategory,
       branchId: atm.branchId,
       branchName: atm.branch.name,
       branchCode: atm.branch.code,
@@ -120,6 +127,7 @@ export async function GET(request: NextRequest) {
         atmId: atm.id,
         atmName: atm.name,
         location: atm.location || '',
+        atmCategory: atm.atmCategory,
         branchId: atm.branchId,
         branchName: atm.branch.name,
         branchCode: atm.branch.code,

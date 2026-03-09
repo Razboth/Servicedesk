@@ -564,13 +564,14 @@ export default function ATMMonitoringPage() {
     }
   };
 
-  // Generate alarm list text for copying
+  // Generate alarm list text for copying (WhatsApp-friendly format)
   const generateAlarmListText = () => {
     // Use last alarm update time in WITA (Asia/Makassar timezone)
     const dataTime = lastAlarmUpdate ? new Date(lastAlarmUpdate) : new Date();
     const formattedDate = dataTime.toLocaleDateString('id-ID', {
-      day: '2-digit',
-      month: 'short',
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
       year: 'numeric',
       timeZone: 'Asia/Makassar'
     });
@@ -581,14 +582,25 @@ export default function ATMMonitoringPage() {
       timeZone: 'Asia/Makassar'
     }).replace(':', '.');
 
-    const header = `Data Alarm ATM per ${formattedDate}, ${formattedTime} WITA\n${'='.repeat(45)}\n\n`;
-
     // Get all ATMs with active alarms (only those visible in alarm reports)
     const atmsWithAlarms = combinedATMs.filter(atm => atm.currentAlarms.length > 0 && atm.showInAlarmReport !== false);
+    const totalAlarms = atmsWithAlarms.reduce((sum, atm) => sum + atm.currentAlarms.length, 0);
+
+    // Build header with WhatsApp formatting
+    const lines: string[] = [];
+    lines.push(`🚨 *ALARM ATM AKTIF*`);
+    lines.push(`📅 ${formattedDate}`);
+    lines.push(`🕐 Pukul ${formattedTime} WITA`);
+    lines.push('');
 
     if (atmsWithAlarms.length === 0) {
-      return header + 'Tidak ada alarm aktif saat ini.';
+      lines.push('✅ Tidak ada alarm aktif saat ini.');
+      return lines.join('\n');
     }
+
+    // Summary line
+    lines.push(`📊 *${atmsWithAlarms.length} ATM* | *${totalAlarms} Alarm*`);
+    lines.push('━━━━━━━━━━━━━━━━━━━━');
 
     // Group ATMs by branch
     const groupedByBranch = new Map<string, CombinedATM[]>();
@@ -600,21 +612,33 @@ export default function ATMMonitoringPage() {
       groupedByBranch.get(branchName)!.push(atm);
     });
 
+    // Sort branches alphabetically
+    const sortedBranches = Array.from(groupedByBranch.keys()).sort();
+
     // Build output grouped by branch
-    const lines: string[] = [];
-    groupedByBranch.forEach((atms, branchName) => {
-      lines.push(`[${branchName}]`);
+    sortedBranches.forEach(branchName => {
+      const atms = groupedByBranch.get(branchName)!;
+      lines.push('');
+      lines.push(`🏢 *${branchName}*`);
+
       atms.forEach(atm => {
-        const alarmTypes = atm.currentAlarms.map(alarm => alarm.alarmType).join(', ');
         const atmName = atm.location || atm.name || '';
-        lines.push(`${atm.code} ${atmName} - ${alarmTypes}`);
+        const alarmList = atm.currentAlarms.map(alarm => {
+          const timeInfo = alarm.timeAgo ? ` _(${alarm.timeAgo})_` : '';
+          return `${alarm.alarmType}${timeInfo}`;
+        }).join(', ');
+
+        lines.push(`▸ *${atm.code}* ${atmName}`);
+        lines.push(`   ⚠️ ${alarmList}`);
       });
-      lines.push(''); // Empty line between branches
     });
 
-    const totalAlarms = atmsWithAlarms.reduce((sum, atm) => sum + atm.currentAlarms.length, 0);
+    // Footer message
+    lines.push('');
+    lines.push('━━━━━━━━━━━━━━━━━━━━');
+    lines.push('📢 _Para PIC terkait harap menindaklanjuti dan konfirmasi kembali, terima kasih._ 🙏');
 
-    return header + lines.join('\n') + `Total: ${atmsWithAlarms.length} ATM, ${totalAlarms} alarm aktif`;
+    return lines.join('\n');
   };
 
   const handleCopyAlarmList = async () => {

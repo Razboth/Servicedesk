@@ -11,39 +11,39 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
-import { 
-  ArrowLeft, 
-  Save, 
-  CreditCard, 
-  User, 
-  Phone, 
+import {
+  ArrowLeft,
+  Save,
+  CreditCard,
+  User,
+  Phone,
   Calendar,
   DollarSign,
   FileText,
   AlertCircle,
-  Building2
+  Building2,
+  ArrowDownToLine,
+  ArrowUpFromLine
 } from 'lucide-react';
+import {
+  TransactionType,
+  WITHDRAWAL_CLAIM_TYPES,
+  DEPOSIT_CLAIM_TYPES,
+  getClaimTypes
+} from '@/lib/constants/claim-types';
 
 interface ATM {
   id: string;
   code: string;
   name?: string;
   location: string;
+  atmCategory?: 'ATM' | 'CRM';
   branch: {
     id: string;
     name: string;
     code: string;
   };
 }
-
-const CLAIM_TYPES = [
-  { value: 'CARD_CAPTURED', label: 'Kartu Tertelan' },
-  { value: 'CASH_NOT_DISPENSED', label: 'Uang Tidak Keluar' },
-  { value: 'WRONG_AMOUNT', label: 'Nominal Tidak Sesuai' },
-  { value: 'DOUBLE_DEBIT', label: 'Terdebet Ganda' },
-  { value: 'TIMEOUT', label: 'Transaksi Timeout' },
-  { value: 'OTHER', label: 'Lainnya' }
-];
 
 export default function CreateATMClaimPage() {
   const { data: session } = useSession();
@@ -54,6 +54,10 @@ export default function CreateATMClaimPage() {
   const [selectedATM, setSelectedATM] = useState<ATM | null>(null);
   const [showATMWarning, setShowATMWarning] = useState(false);
   const [matchedATMs, setMatchedATMs] = useState<ATM[]>([]);
+  const [transactionType, setTransactionType] = useState<TransactionType>('WITHDRAWAL');
+
+  // Get current claim types based on transaction type
+  const currentClaimTypes = getClaimTypes(transactionType);
   
   const [formData, setFormData] = useState({
     customerName: '',
@@ -71,6 +75,7 @@ export default function CreateATMClaimPage() {
 
   // Quick templates for common cases
   const applyTemplate = (type: string) => {
+    // Withdrawal templates
     switch (type) {
       case 'CARD_CAPTURED':
         setFormData(prev => ({
@@ -93,6 +98,35 @@ export default function CreateATMClaimPage() {
           claimDescription: 'Nasabah melakukan penarikan tunai sebesar Rp [nominal]. Uang yang keluar tidak sesuai dengan nominal yang diminta. Nasabah menerima Rp [nominal aktual].'
         }));
         break;
+      // Deposit templates
+      case 'SALDO_BELUM_MASUK':
+        setFormData(prev => ({
+          ...prev,
+          claimType: 'SALDO_BELUM_MASUK',
+          claimDescription: 'Nasabah melakukan setor tunai pada mesin CRM. Uang sudah dimasukkan dan struk keluar menunjukkan transaksi berhasil, namun saldo rekening belum bertambah sesuai nominal setoran.'
+        }));
+        break;
+      case 'NOMINAL_TIDAK_SESUAI':
+        setFormData(prev => ({
+          ...prev,
+          claimType: 'NOMINAL_TIDAK_SESUAI',
+          claimDescription: 'Nasabah melakukan setor tunai sebesar Rp [nominal]. Saldo yang masuk ke rekening tidak sesuai dengan jumlah uang yang dimasukkan. Saldo bertambah Rp [nominal aktual].'
+        }));
+        break;
+      case 'UANG_TIDAK_KEMBALI':
+        setFormData(prev => ({
+          ...prev,
+          claimType: 'UANG_TIDAK_KEMBALI',
+          claimDescription: 'Nasabah melakukan setor tunai pada mesin CRM. Uang ditolak oleh mesin namun tidak keluar/dikembalikan kepada nasabah.'
+        }));
+        break;
+      case 'MESIN_ERROR':
+        setFormData(prev => ({
+          ...prev,
+          claimType: 'MESIN_ERROR',
+          claimDescription: 'Nasabah melakukan setor tunai pada mesin CRM. Setelah uang dimasukkan, mesin mengalami error/hang. Uang tidak dikembalikan dan transaksi tidak berhasil.'
+        }));
+        break;
     }
   };
 
@@ -103,9 +137,12 @@ export default function CreateATMClaimPage() {
     setMatchedATMs([]);
     setSelectedATM(null);
 
+    // Build query params - filter by CRM category when Setor Tunai is selected
+    const categoryParam = transactionType === 'DEPOSIT' ? '&category=CRM' : '';
+
     try {
       // First try exact code match
-      let response = await fetch(`/api/atms/lookup?code=${atmCode.toUpperCase()}`);
+      let response = await fetch(`/api/atms/lookup?code=${atmCode.toUpperCase()}${categoryParam}`);
 
       if (response.ok) {
         const data = await response.json();
@@ -118,7 +155,7 @@ export default function CreateATMClaimPage() {
       }
 
       // No exact match - search by name, location, and branch with multi-criteria support
-      response = await fetch(`/api/atms/lookup`);
+      response = await fetch(`/api/atms/lookup${categoryParam ? '?' + categoryParam.substring(1) : ''}`);
       const allATMs = await response.json();
 
       // Split search term into multiple keywords for multi-criteria matching
@@ -138,24 +175,28 @@ export default function CreateATMClaimPage() {
       });
 
       if (matches && matches.length > 0) {
-        // Fetch full data for all matches
+        // Fetch full data for all matches (include category filter)
         const matchedATMsData = await Promise.all(
           matches.map(async (match: any) => {
-            const res = await fetch(`/api/atms/lookup?code=${match.value}`);
+            const res = await fetch(`/api/atms/lookup?code=${match.value}${categoryParam}`);
             return res.json();
           })
         );
 
-        setMatchedATMs(matchedATMsData);
+        // Filter out null results (ATMs that don't match category)
+        const validMatches = matchedATMsData.filter(atm => atm && atm.id);
+        setMatchedATMs(validMatches);
 
         // If only one match, select it automatically
-        if (matchedATMsData.length === 1) {
-          selectATM(matchedATMsData[0]);
+        if (validMatches.length === 1) {
+          selectATM(validMatches[0]);
+        } else if (validMatches.length > 1) {
+          toast.info(`Ditemukan ${validMatches.length} ${transactionType === 'DEPOSIT' ? 'CRM' : 'ATM'} yang cocok. Silakan pilih salah satu.`);
         } else {
-          toast.info(`Ditemukan ${matchedATMsData.length} ATM yang cocok. Silakan pilih salah satu.`);
+          toast.error(transactionType === 'DEPOSIT' ? 'CRM tidak ditemukan' : 'ATM tidak ditemukan');
         }
       } else {
-        toast.error('ATM tidak ditemukan');
+        toast.error(transactionType === 'DEPOSIT' ? 'CRM tidak ditemukan. Pastikan mesin mendukung Setor Tunai.' : 'ATM tidak ditemukan');
         setMatchedATMs([]);
       }
     } catch (error) {
@@ -195,6 +236,7 @@ export default function CreateATMClaimPage() {
     try {
       const payload = {
         atmCode: selectedATM.code,
+        transactionType,
         ...formData,
         transactionAmount: parseFloat(formData.transactionAmount),
         transactionDate: `${formData.transactionDate}T${formData.transactionTime || '00:00'}:00`
@@ -209,7 +251,7 @@ export default function CreateATMClaimPage() {
       const data = await response.json();
 
       if (response.ok) {
-        toast.success('Klaim ATM berhasil dibuat');
+        toast.success(transactionType === 'DEPOSIT' ? 'Klaim Setor Tunai berhasil dibuat' : 'Klaim ATM berhasil dibuat');
 
         if (data.routing?.isInterBranch) {
           toast.info(
@@ -241,33 +283,99 @@ export default function CreateATMClaimPage() {
           Kembali
         </Button>
         <div>
-          <h1 className="text-3xl font-bold">Buat Klaim ATM</h1>
-          <p className="text-gray-600">Input klaim nasabah untuk ATM</p>
+          <h1 className="text-3xl font-bold">
+            {transactionType === 'DEPOSIT' ? 'Buat Klaim Setor Tunai' : 'Buat Klaim ATM'}
+          </h1>
+          <p className="text-gray-600">
+            {transactionType === 'DEPOSIT'
+              ? 'Input klaim nasabah untuk transaksi setor tunai di CRM'
+              : 'Input klaim nasabah untuk transaksi penarikan tunai di ATM'}
+          </p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* ATM Selection */}
+        {/* Transaction Type Selection */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CreditCard className="w-5 h-5" />
-              Informasi ATM
+              Jenis Transaksi
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setTransactionType('WITHDRAWAL');
+                  setSelectedATM(null);
+                  setMatchedATMs([]);
+                  setAtmCode('');
+                  setFormData(prev => ({ ...prev, claimType: '', claimDescription: '' }));
+                }}
+                className={`p-4 rounded-lg border-2 transition-all flex items-center gap-3 ${
+                  transactionType === 'WITHDRAWAL'
+                    ? 'border-blue-500 bg-blue-50 text-blue-900'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <ArrowDownToLine className={`w-6 h-6 ${transactionType === 'WITHDRAWAL' ? 'text-blue-600' : 'text-gray-400'}`} />
+                <div className="text-left">
+                  <div className="font-semibold">Penarikan Tunai</div>
+                  <div className="text-sm text-gray-500">Klaim ATM (semua mesin)</div>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setTransactionType('DEPOSIT');
+                  setSelectedATM(null);
+                  setMatchedATMs([]);
+                  setAtmCode('');
+                  setFormData(prev => ({ ...prev, claimType: '', claimDescription: '' }));
+                }}
+                className={`p-4 rounded-lg border-2 transition-all flex items-center gap-3 ${
+                  transactionType === 'DEPOSIT'
+                    ? 'border-green-500 bg-green-50 text-green-900'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <ArrowUpFromLine className={`w-6 h-6 ${transactionType === 'DEPOSIT' ? 'text-green-600' : 'text-gray-400'}`} />
+                <div className="text-left">
+                  <div className="font-semibold">Setor Tunai</div>
+                  <div className="text-sm text-gray-500">Klaim CRM (Cash Recycling Machine)</div>
+                </div>
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ATM/CRM Selection */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="w-5 h-5" />
+              {transactionType === 'DEPOSIT' ? 'Informasi CRM' : 'Informasi ATM'}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex gap-2">
               <div className="flex-1">
-                <Label htmlFor="atmCode">Kode / Nama / Lokasi / Cabang ATM *</Label>
+                <Label htmlFor="atmCode">
+                  Kode / Nama / Lokasi / Cabang {transactionType === 'DEPOSIT' ? 'CRM' : 'ATM'} *
+                </Label>
                 <Input
                   id="atmCode"
                   value={atmCode}
                   onChange={(e) => setAtmCode(e.target.value)}
-                  placeholder="Cari berdasarkan kode, nama, lokasi, atau cabang"
+                  placeholder={`Cari ${transactionType === 'DEPOSIT' ? 'CRM' : 'ATM'} berdasarkan kode, nama, lokasi, atau cabang`}
                   required
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Contoh: ATM-001234 atau "Indomaret" atau "Indomaret Gorontalo" atau "Mall Manado"
+                  {transactionType === 'DEPOSIT'
+                    ? 'Hanya mesin CRM (Cash Recycling Machine) yang dapat melakukan setor tunai'
+                    : 'Contoh: ATM-001234 atau "Indomaret" atau "Indomaret Gorontalo" atau "Mall Manado"'}
                 </p>
               </div>
               <Button
@@ -285,7 +393,7 @@ export default function CreateATMClaimPage() {
             {matchedATMs.length > 1 && !selectedATM && (
               <div className="space-y-2">
                 <p className="text-sm font-medium text-gray-700">
-                  Pilih ATM yang sesuai ({matchedATMs.length} hasil):
+                  Pilih {transactionType === 'DEPOSIT' ? 'CRM' : 'ATM'} yang sesuai ({matchedATMs.length} hasil):
                 </p>
                 <div className="space-y-2 max-h-64 overflow-y-auto">
                   {matchedATMs.map((atm) => (
@@ -314,11 +422,13 @@ export default function CreateATMClaimPage() {
               </div>
             )}
 
-            {/* Selected ATM display */}
+            {/* Selected ATM/CRM display */}
             {selectedATM && (
               <div className="p-4 bg-green-50 border-2 border-green-200 rounded-lg space-y-2">
                 <div className="flex items-center justify-between">
-                  <div className="font-semibold text-green-900">✓ ATM Dipilih</div>
+                  <div className="font-semibold text-green-900">
+                    ✓ {transactionType === 'DEPOSIT' ? 'CRM' : 'ATM'} Dipilih
+                  </div>
                   {matchedATMs.length > 1 && (
                     <Button
                       type="button"
@@ -330,7 +440,7 @@ export default function CreateATMClaimPage() {
                       }}
                       className="text-gray-600 hover:text-gray-900"
                     >
-                      Ganti ATM
+                      Ganti {transactionType === 'DEPOSIT' ? 'CRM' : 'ATM'}
                     </Button>
                   )}
                 </div>
@@ -354,7 +464,7 @@ export default function CreateATMClaimPage() {
               <Alert className="border-yellow-200 bg-yellow-50">
                 <AlertCircle className="h-4 w-4 text-yellow-600" />
                 <AlertDescription className="text-yellow-800">
-                  ATM milik Cabang {selectedATM?.branch.name}.
+                  {transactionType === 'DEPOSIT' ? 'CRM' : 'ATM'} milik Cabang {selectedATM?.branch.name}.
                   Klaim akan diteruskan ke cabang tersebut untuk diproses.
                 </AlertDescription>
               </Alert>
@@ -519,7 +629,7 @@ export default function CreateATMClaimPage() {
             {/* Quick Templates */}
             <div className="flex gap-2 flex-wrap">
               <span className="text-sm text-gray-600">Template Cepat:</span>
-              {CLAIM_TYPES.slice(0, 3).map(type => (
+              {currentClaimTypes.slice(0, 3).map(type => (
                 <Button
                   key={type.value}
                   type="button"
@@ -542,7 +652,7 @@ export default function CreateATMClaimPage() {
                   <SelectValue placeholder="Pilih jenis klaim" />
                 </SelectTrigger>
                 <SelectContent>
-                  {CLAIM_TYPES.map(type => (
+                  {currentClaimTypes.map(type => (
                     <SelectItem key={type.value} value={type.value}>
                       {type.label}
                     </SelectItem>
