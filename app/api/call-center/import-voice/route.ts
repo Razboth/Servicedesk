@@ -242,7 +242,10 @@ async function sendToSociomile(record: TicketRecord): Promise<{ success: boolean
 
     console.log(`Sending ticket ${record.ticket_id} to Omni:`, JSON.stringify(payload, null, 2))
 
-    const response = await fetch(`${SOCIOMILE_API_URL}?client_secret_key=${SOCIOMILE_TOKEN}`, {
+    const apiUrl = `${SOCIOMILE_API_URL}?client_secret_key=${SOCIOMILE_TOKEN}`
+    console.log(`API URL: ${apiUrl}`)
+
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -250,9 +253,20 @@ async function sendToSociomile(record: TicketRecord): Promise<{ success: boolean
       body: JSON.stringify(payload)
     })
 
-    const result = await response.json()
+    // Get response text first to handle non-JSON responses
+    const responseText = await response.text()
+    console.log(`Response status: ${response.status}, body: ${responseText}`)
 
-    console.log(`Response for ticket ${record.ticket_id}:`, JSON.stringify(result, null, 2))
+    let result: any
+    try {
+      result = JSON.parse(responseText)
+    } catch {
+      // Response is not JSON
+      return {
+        success: false,
+        error: `API returned non-JSON response (${response.status}): ${responseText.substring(0, 200)}`
+      }
+    }
 
     if (response.ok && result.success) {
       return {
@@ -261,14 +275,15 @@ async function sendToSociomile(record: TicketRecord): Promise<{ success: boolean
         ticketNumber: result.data?.ticket_number
       }
     } else {
+      const errorMsg = result.message || result.error || result.msg || JSON.stringify(result)
       return {
         success: false,
-        error: result.message || result.error || JSON.stringify(result)
+        error: `API Error (${response.status}): ${errorMsg}`
       }
     }
   } catch (error) {
     console.error(`Error sending ticket ${record.ticket_id}:`, error)
-    return { success: false, error: error instanceof Error ? error.message : 'Failed to send to Sociomile' }
+    return { success: false, error: `Network error: ${error instanceof Error ? error.message : 'Failed to connect to Sociomile'}` }
   }
 }
 
