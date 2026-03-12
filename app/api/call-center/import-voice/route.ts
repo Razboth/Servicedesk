@@ -3,8 +3,8 @@ import { auth } from '@/lib/auth'
 import * as XLSX from 'xlsx'
 import { format } from 'date-fns'
 
-const SOCIOMILE_API_URL = 'https://api-sm.s45.in/bank-sulut/create'
-const SOCIOMILE_TOKEN = process.env.SOCIOMILE_TOKEN || 'B24d5b9c371171869a17a1c178bbf9e6'
+const SOCIOMILE_API_URL = 'https://api-ng.sociomile.net/bank-sulut/create'
+const SOCIOMILE_TOKEN = process.env.SOCIOMILE_TOKEN || 'dd5c25815ea64c1c15cf6eef3ee527ea'
 
 // Interface matching report_ticket.xlsx structure
 interface TicketRecord {
