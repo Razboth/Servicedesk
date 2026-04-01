@@ -38,14 +38,13 @@ export async function GET(request: NextRequest) {
       const users = await prisma.user.findMany({
         where: {
           isActive: true,
-          role: { in: ['TECHNICIAN', 'SUPERVISOR', 'MANAGER_IT'] },
+          role: { in: ['TECHNICIAN', 'MANAGER_IT', 'ADMIN'] },
         },
         select: {
           id: true,
           name: true,
           username: true,
           role: true,
-          unit: true,
         },
         orderBy: { name: 'asc' },
       });

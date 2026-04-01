@@ -55,7 +55,6 @@ interface User {
   name: string;
   username: string;
   role: string;
-  unit?: string;
 }
 
 interface Assignment {
