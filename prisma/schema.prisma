@@ -9,26 +9,26 @@ datasource db {
 }
 
 model User {
-  id                     String                 @id @default(cuid())
-  email                  String                 @unique
-  name                   String
-  password               String?
-  role                   UserRole               @default(USER)
-  branchId               String?
-  isActive               Boolean                @default(true)
-  createdAt              DateTime               @default(now())
-  updatedAt              DateTime               @updatedAt
-  phone                  String?
-  avatar                 String?                // Avatar identifier or URL
-  supportGroupId         String?
-  lastActivity           DateTime               @default(now())
-  lastLoginAttempt       DateTime?
-  lockedAt               DateTime?
-  loginAttempts          Int                    @default(0)
-  username               String                 @unique
-  isFirstLogin           Boolean                @default(true)
-  mustChangePassword     Boolean                @default(true)
-  passwordChangedAt      DateTime?
+  id                 String    @id @default(cuid())
+  email              String    @unique
+  name               String
+  password           String?
+  role               UserRole  @default(USER)
+  branchId           String?
+  isActive           Boolean   @default(true)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  phone              String?
+  avatar             String? // Avatar identifier or URL
+  supportGroupId     String?
+  lastActivity       DateTime  @default(now())
+  lastLoginAttempt   DateTime?
+  lockedAt           DateTime?
+  loginAttempts      Int       @default(0)
+  username           String    @unique
+  isFirstLogin       Boolean   @default(true)
+  mustChangePassword Boolean   @default(true)
+  passwordChangedAt  DateTime?
 
   // Email notification preferences
   emailNotifyOnTicketCreated  Boolean @default(true)
@@ -37,85 +37,91 @@ model User {
   emailNotifyOnTicketResolved Boolean @default(true)
   emailNotifyOnComment        Boolean @default(true)
 
-  createdApiKeys         ApiKey[]               @relation("ApiKeyCreatedBy")
-  linkedApiKeys          ApiKey[]               @relation("ApiKeyLinkedUser")
-  accounts               Account[]
-  verifiedClaims         ATMClaimVerification[]
-  auditLogs              AuditLog[]
-  createdBranchTasks     BranchAssignment[]     @relation("AssignedByBranchTasks")
-  assignedBranchTasks    BranchAssignment[]     @relation("AssignedBranchTasks")
-  branchCommunications   BranchCommunication[]
-  createdReports         CustomReport[]         @relation("ReportCreator")
-  knowledgeArticles      KnowledgeArticle[]
-  knowledgeAttachments   KnowledgeAttachment[]
-  knowledgeComments      KnowledgeComment[]
-  knowledgeFeedback      KnowledgeFeedback[]
-  knowledgeVersions      KnowledgeVersion[]
-  assignedLegacyTickets  LegacyTicket[]         @relation("LegacyTicketAssignee")
-  convertedLegacyTickets LegacyTicket[]         @relation("LegacyTicketConverter")
-  createdLegacyTickets   LegacyTicket[]         @relation("LegacyTicketCreator")
-  notifications          Notification[]
-  executedReports        ReportExecution[]      @relation("ReportExecutor")
-  favoriteReports        ReportFavorite[]       @relation("ReportFavorites")
-  serviceUsage           ServiceUsage[]
-  sessions               Session[]
-  approvals              TicketApproval[]
-  comments               TicketComment[]
-  ticketKnowledge        TicketKnowledge[]
-  completedTasks         TicketTask[]
-  assignedTickets        Ticket[]               @relation("TicketAssignee")
-  createdTickets         Ticket[]               @relation("TicketCreator")
-  favoriteCategories     UserFavoriteCategory[]
-  favoriteServices       UserFavoriteService[]
-  assignedVendorTickets  VendorTicket[]         @relation("VendorTicketAssignedBy")
-  assignedPCAssets       PCAsset[]              @relation("AssignedPCAssets")
-  createdPCAssets        PCAsset[]              @relation("CreatedPCAssets")
-  pcServiceLogs          PCServiceLog[]
-  hardeningChecklists    HardeningChecklist[]
-  assignedOSLicenses     OSLicense[]            @relation("OSLicenseAssignedUser")
-  createdOSLicenses      OSLicense[]            @relation("OSLicenseCreatedBy")
-  assignedOfficeLicenses OfficeLicense[]        @relation("OfficeLicenseAssignedUser")
-  createdOfficeLicenses  OfficeLicense[]        @relation("OfficeLicenseCreatedBy")
-  assignedAntivirusLicenses AntivirusLicense[]  @relation("AntivirusLicenseAssignedUser")
-  createdOperatingSystems OperatingSystem[]     @relation("OSCreatedBy")
-  createdOfficeProducts  OfficeProduct[]        @relation("OfficeCreatedBy")
-  passwordResetTokens    PasswordResetToken[]
-  dailyTaskLists         DailyTaskList[]
+  createdApiKeys            ApiKey[]               @relation("ApiKeyCreatedBy")
+  linkedApiKeys             ApiKey[]               @relation("ApiKeyLinkedUser")
+  accounts                  Account[]
+  verifiedClaims            ATMClaimVerification[]
+  auditLogs                 AuditLog[]
+  createdBranchTasks        BranchAssignment[]     @relation("AssignedByBranchTasks")
+  assignedBranchTasks       BranchAssignment[]     @relation("AssignedBranchTasks")
+  branchCommunications      BranchCommunication[]
+  createdReports            CustomReport[]         @relation("ReportCreator")
+  knowledgeArticles         KnowledgeArticle[]
+  knowledgeAttachments      KnowledgeAttachment[]
+  knowledgeComments         KnowledgeComment[]
+  knowledgeFeedback         KnowledgeFeedback[]
+  knowledgeVersions         KnowledgeVersion[]
+  assignedLegacyTickets     LegacyTicket[]         @relation("LegacyTicketAssignee")
+  convertedLegacyTickets    LegacyTicket[]         @relation("LegacyTicketConverter")
+  createdLegacyTickets      LegacyTicket[]         @relation("LegacyTicketCreator")
+  notifications             Notification[]
+  executedReports           ReportExecution[]      @relation("ReportExecutor")
+  favoriteReports           ReportFavorite[]       @relation("ReportFavorites")
+  serviceUsage              ServiceUsage[]
+  sessions                  Session[]
+  approvals                 TicketApproval[]
+  comments                  TicketComment[]
+  ticketKnowledge           TicketKnowledge[]
+  completedTasks            TicketTask[]
+  assignedTickets           Ticket[]               @relation("TicketAssignee")
+  createdTickets            Ticket[]               @relation("TicketCreator")
+  favoriteCategories        UserFavoriteCategory[]
+  favoriteServices          UserFavoriteService[]
+  assignedVendorTickets     VendorTicket[]         @relation("VendorTicketAssignedBy")
+  assignedPCAssets          PCAsset[]              @relation("AssignedPCAssets")
+  createdPCAssets           PCAsset[]              @relation("CreatedPCAssets")
+  pcServiceLogs             PCServiceLog[]
+  hardeningChecklists       HardeningChecklist[]
+  assignedOSLicenses        OSLicense[]            @relation("OSLicenseAssignedUser")
+  createdOSLicenses         OSLicense[]            @relation("OSLicenseCreatedBy")
+  assignedOfficeLicenses    OfficeLicense[]        @relation("OfficeLicenseAssignedUser")
+  createdOfficeLicenses     OfficeLicense[]        @relation("OfficeLicenseCreatedBy")
+  assignedAntivirusLicenses AntivirusLicense[]     @relation("AntivirusLicenseAssignedUser")
+  createdOperatingSystems   OperatingSystem[]      @relation("OSCreatedBy")
+  createdOfficeProducts     OfficeProduct[]        @relation("OfficeCreatedBy")
+  passwordResetTokens       PasswordResetToken[]
+  dailyTaskLists            DailyTaskList[]
 
   // Audit and security tracking
-  auditSessions          UserAuditSession[]
-  profileChanges         ProfileChangeLog[]  @relation("ProfileChanges")
-  profileChangesBy       ProfileChangeLog[]  @relation("ProfileChangedBy")
+  auditSessions    UserAuditSession[]
+  profileChanges   ProfileChangeLog[] @relation("ProfileChanges")
+  profileChangesBy ProfileChangeLog[] @relation("ProfileChangedBy")
 
   // Knowledge base collaboration
-  knowledgeCollaborations KnowledgeCollaborator[] @relation("CollaboratorUser")
-  invitedCollaborators    KnowledgeCollaborator[] @relation("InvitedByUser")
-  knowledgeActivities     KnowledgeActivity[]
+  knowledgeCollaborations     KnowledgeCollaborator[]      @relation("CollaboratorUser")
+  invitedCollaborators        KnowledgeCollaborator[]      @relation("InvitedByUser")
+  knowledgeActivities         KnowledgeActivity[]
   knowledgeCommentAttachments KnowledgeCommentAttachment[]
-  knowledgeServiceLinks   KnowledgeServiceLink[]  @relation("KnowledgeLinkUser")
+  knowledgeServiceLinks       KnowledgeServiceLink[]       @relation("KnowledgeLinkUser")
 
   // KMS Enhanced features
-  knowledgeAccessLogs       KnowledgeAccessLog[]
-  ownedArticles             KnowledgeArticle[]            @relation("ArticleOwner")
-  reviewedArticles          KnowledgeArticle[]            @relation("ArticleReviewer")
-  approvedVersions          KnowledgeVersion[]            @relation("VersionApprover")
+  knowledgeAccessLogs          KnowledgeAccessLog[]
+  ownedArticles                KnowledgeArticle[]            @relation("ArticleOwner")
+  reviewedArticles             KnowledgeArticle[]            @relation("ArticleReviewer")
+  approvedVersions             KnowledgeVersion[]            @relation("VersionApprover")
   knowledgePermissionTemplates KnowledgePermissionTemplate[]
 
   // Announcements
-  createdAnnouncements   Announcement[]         @relation("AnnouncementCreator")
-  updatedAnnouncements   Announcement[]         @relation("AnnouncementUpdater")
-  viewedAnnouncements    AnnouncementView[]
+  createdAnnouncements Announcement[]     @relation("AnnouncementCreator")
+  updatedAnnouncements Announcement[]     @relation("AnnouncementUpdater")
+  viewedAnnouncements  AnnouncementView[]
 
   // Shift management
   shiftProfile           StaffShiftProfile?
   serverAccessChecklists ServerAccessDailyChecklist[] @relation("ServerAccessChecklists")
-  checklistClaims        ChecklistClaim[]        @relation("ChecklistClaims")
+  checklistClaims        ChecklistClaim[]             @relation("ChecklistClaims")
+
+  // Checklist V2 relations
+  checklistAssignmentsV2    ChecklistAssignmentV2[] @relation("ChecklistAssignmentsV2")
+  checklistItemsCompletedV2 ChecklistItemV2[]       @relation("ChecklistItemsCompletedV2")
+  outgoingHandoversV2       ShiftHandoverV2[]       @relation("OutgoingHandoversV2")
+  incomingHandoversV2       ShiftHandoverV2[]       @relation("IncomingHandoversV2")
 
   // Import tracking
-  importLogs             ImportLog[]            @relation("ImportLogCreatedBy")
+  importLogs ImportLog[] @relation("ImportLogCreatedBy")
 
-  branch                 Branch?                @relation(fields: [branchId], references: [id])
-  supportGroup           SupportGroup?          @relation(fields: [supportGroupId], references: [id])
+  branch       Branch?       @relation(fields: [branchId], references: [id])
+  supportGroup SupportGroup? @relation(fields: [supportGroupId], references: [id])
 
   @@map("users")
 }
@@ -159,29 +165,29 @@ model VerificationToken {
 }
 
 model Branch {
-  id                     String                @id @default(cuid())
+  id                     String                   @id @default(cuid())
   name                   String
-  code                   String                @unique
+  code                   String                   @unique
   address                String?
   city                   String?
   province               String?
-  isActive               Boolean               @default(true)
-  createdAt              DateTime              @default(now())
-  updatedAt              DateTime              @updatedAt
+  isActive               Boolean                  @default(true)
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
   backupIpAddress        String?
   ipAddress              String?
-  monitoringEnabled      Boolean               @default(false)
+  monitoringEnabled      Boolean                  @default(false)
   networkMedia           NetworkMedia?
   networkVendor          String?
   latitude               Float?
   longitude              Float?
   atms                   ATM[]
   branchAssignments      BranchAssignment[]
-  sentCommunications     BranchCommunication[] @relation("SentCommunications")
-  receivedCommunications BranchCommunication[] @relation("ReceivedCommunications")
+  sentCommunications     BranchCommunication[]    @relation("SentCommunications")
+  receivedCommunications BranchCommunication[]    @relation("ReceivedCommunications")
   legacyTickets          LegacyTicket[]
   networkIncidents       NetworkIncident[]
-  pingResults            NetworkPingResult[]   @relation("BranchPingResults")
+  pingResults            NetworkPingResult[]      @relation("BranchPingResults")
   serviceUsage           ServiceUsage[]
   tickets                Ticket[]
   users                  User[]
@@ -198,18 +204,18 @@ model Branch {
 }
 
 model ServiceCategory {
-  id          String                 @id @default(cuid())
-  name        String
-  description String?
-  parentId    String?
-  level       Int                    @default(1)
-  isActive    Boolean                @default(true)
-  createdAt   DateTime               @default(now())
-  updatedAt   DateTime               @updatedAt
-  parent      ServiceCategory?       @relation("CategoryHierarchy", fields: [parentId], references: [id])
-  children    ServiceCategory[]      @relation("CategoryHierarchy")
-  services    Service[]
-  favoritedBy UserFavoriteCategory[]
+  id             String                 @id @default(cuid())
+  name           String
+  description    String?
+  parentId       String?
+  level          Int                    @default(1)
+  isActive       Boolean                @default(true)
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  parent         ServiceCategory?       @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children       ServiceCategory[]      @relation("CategoryHierarchy")
+  services       Service[]
+  favoritedBy    UserFavoriteCategory[]
   knowledgeLinks KnowledgeServiceLink[]
 
   @@map("service_categories")
@@ -331,86 +337,86 @@ model ServiceFieldTemplate {
 }
 
 model Ticket {
-  id                     String                @id @default(cuid())
-  ticketNumber           String                @unique
+  id                     String               @id @default(cuid())
+  ticketNumber           String               @unique
   title                  String
   description            String
   serviceId              String
   categoryId             String?
   subcategoryId          String?
   itemId                 String?
-  priority               TicketPriority        @default(MEDIUM)
-  status                 TicketStatus          @default(OPEN)
+  priority               TicketPriority       @default(MEDIUM)
+  status                 TicketStatus         @default(OPEN)
   createdById            String
   assignedToId           String?
   branchId               String?
-  isConfidential         Boolean               @default(false)
+  isConfidential         Boolean              @default(false)
   issueClassification    IssueClassification?
   rootCause              String?
   preventiveMeasures     String?
-  knowledgeBaseCreated   Boolean               @default(false)
+  knowledgeBaseCreated   Boolean              @default(false)
   estimatedHours         Int?
   actualHours            Float?
   resolutionNotes        String?
-  createdAt              DateTime              @default(now())
-  updatedAt              DateTime              @updatedAt
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
   resolvedAt             DateTime?
   closedAt               DateTime?
-  claimedAt              DateTime?             // When ticket was claimed by technician
-  firstResponseAt        DateTime?             // When first response was made by technician
-  slaStartAt             DateTime?             // SLA starts from approval or creation (for non-approval tickets)
-  slaPausedAt            DateTime?             // When SLA was paused (PENDING_VENDOR)
-  slaPausedTotal         Int                   @default(0) // Total paused milliseconds
-  category               TicketCategory        @default(INCIDENT)
+  claimedAt              DateTime? // When ticket was claimed by technician
+  firstResponseAt        DateTime? // When first response was made by technician
+  slaStartAt             DateTime? // SLA starts from approval or creation (for non-approval tickets)
+  slaPausedAt            DateTime? // When SLA was paused (PENDING_VENDOR)
+  slaPausedTotal         Int                  @default(0) // Total paused milliseconds
+  category               TicketCategory       @default(INCIDENT)
   securityClassification String?
   securityFindings       Json?
   supportGroupId         String?
   importBatchId          String?
   importedAt             DateTime?
-  isLegacy               Boolean               @default(false)
+  isLegacy               Boolean              @default(false)
   legacyData             Json?
   legacySystem           String?
   legacyTicketId         String?
 
   // Omnichannel fields
-  sourceChannel          String?               // WhatsApp, Email, Chat, etc.
-  channelReferenceId     String?               // External reference from channel
-  customerName           String?
-  customerEmail          String?
-  customerPhone          String?
-  customerIdentifier     String?               // CIF, Account number, etc.
-  metadata               Json?                 // Additional omnichannel data
+  sourceChannel      String? // WhatsApp, Email, Chat, etc.
+  channelReferenceId String? // External reference from channel
+  customerName       String?
+  customerEmail      String?
+  customerPhone      String?
+  customerIdentifier String? // CIF, Account number, etc.
+  metadata           Json? // Additional omnichannel data
 
   // Sociomile/Omni integration fields
-  sociomileTicketId      String?               // Sociomile ticket ID from Omni API
-  sociomileTicketNumber  Int?                  // Sociomile ticket number from Omni API
+  sociomileTicketId     String? // Sociomile ticket ID from Omni API
+  sociomileTicketNumber Int? // Sociomile ticket number from Omni API
 
-  atmClaimVerification   ATMClaimVerification?
-  ATMIncident            ATMIncident[]
-  auditLogs              AuditLog[]
-  branchAssignments      BranchAssignment[]
-  branchCommunications   BranchCommunication[]
-  legacyTicketMapping    LegacyTicket?         @relation("LegacyTicketMapping")
-  networkIncidents       NetworkIncident[]
-  omnichannelLogs        OmnichannelLog[]
-  serviceUsage           ServiceUsage[]
-  slaTracking            SLATracking[]
-  approvals              TicketApproval[]
-  attachments            TicketAttachment[]
-  comments               TicketComment[]
-  fieldValues            TicketFieldValue[]
-  knowledgeArticles      TicketKnowledge[]
-  tasks                  TicketTask[]
-  dailyTasks             DailyTask[]
-  pcServiceLogs          PCServiceLog[]
-  assignedTo             User?                 @relation("TicketAssignee", fields: [assignedToId], references: [id])
-  branch                 Branch?               @relation(fields: [branchId], references: [id])
-  createdBy              User                  @relation("TicketCreator", fields: [createdById], references: [id])
-  migrationBatch         MigrationBatch?       @relation(fields: [importBatchId], references: [id])
-  service                Service               @relation(fields: [serviceId], references: [id])
-  supportGroup           SupportGroup?         @relation(fields: [supportGroupId], references: [id])
-  vendorTickets          VendorTicket[]
-  shiftIssues            ShiftIssue[]
+  atmClaimVerification ATMClaimVerification?
+  ATMIncident          ATMIncident[]
+  auditLogs            AuditLog[]
+  branchAssignments    BranchAssignment[]
+  branchCommunications BranchCommunication[]
+  legacyTicketMapping  LegacyTicket?         @relation("LegacyTicketMapping")
+  networkIncidents     NetworkIncident[]
+  omnichannelLogs      OmnichannelLog[]
+  serviceUsage         ServiceUsage[]
+  slaTracking          SLATracking[]
+  approvals            TicketApproval[]
+  attachments          TicketAttachment[]
+  comments             TicketComment[]
+  fieldValues          TicketFieldValue[]
+  knowledgeArticles    TicketKnowledge[]
+  tasks                TicketTask[]
+  dailyTasks           DailyTask[]
+  pcServiceLogs        PCServiceLog[]
+  assignedTo           User?                 @relation("TicketAssignee", fields: [assignedToId], references: [id])
+  branch               Branch?               @relation(fields: [branchId], references: [id])
+  createdBy            User                  @relation("TicketCreator", fields: [createdById], references: [id])
+  migrationBatch       MigrationBatch?       @relation(fields: [importBatchId], references: [id])
+  service              Service               @relation(fields: [serviceId], references: [id])
+  supportGroup         SupportGroup?         @relation(fields: [supportGroupId], references: [id])
+  vendorTickets        VendorTicket[]
+  shiftIssues          ShiftIssue[]
 
   @@index([serviceId])
   @@index([status])
@@ -596,17 +602,17 @@ model ATM {
   networkMedia      NetworkMedia?
   networkVendor     String?
   // New fields for enhanced ATM management
-  atmBrand         String?             // Manufacturer: Diebold, Diebold Nixdorf, Hyosung, Wincor, etc.
-  atmType          String?             // Model/series (e.g., Wincor Pro Cash 2050xe)
-  atmCategory      ATMCategory         @default(ATM)
-  serialNumber     String?             // Hardware serial number
-  notes            String?             // Additional notes
+  atmBrand          String? // Manufacturer: Diebold, Diebold Nixdorf, Hyosung, Wincor, etc.
+  atmType           String? // Model/series (e.g., Wincor Pro Cash 2050xe)
+  atmCategory       ATMCategory         @default(ATM)
+  serialNumber      String? // Hardware serial number
+  notes             String? // Additional notes
   // Relations
-  incidents        ATMIncident[]
-  monitoringLogs   ATMMonitoringLog[]
-  branch           Branch              @relation(fields: [branchId], references: [id])
-  networkIncidents NetworkIncident[]
-  pingResults      NetworkPingResult[] @relation("ATMPingResults")
+  incidents         ATMIncident[]
+  monitoringLogs    ATMMonitoringLog[]
+  branch            Branch              @relation(fields: [branchId], references: [id])
+  networkIncidents  NetworkIncident[]
+  pingResults       NetworkPingResult[] @relation("ATMPingResults")
 
   @@map("atms")
 }
@@ -644,22 +650,22 @@ model ATMIncident {
 }
 
 model Vendor {
-  id              String         @id @default(cuid())
-  code            String         @unique
-  name            String
-  contactName     String?
-  contactEmail    String?
-  contactPhone    String?
-  address         String?
-  website         String?
-  supportHours    String?
-  slaResponseTime Int?           // in hours
-  slaResolutionTime Int?         // in hours
-  notes           String?
-  isActive        Boolean        @default(true)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  vendorTickets   VendorTicket[]
+  id                String         @id @default(cuid())
+  code              String         @unique
+  name              String
+  contactName       String?
+  contactEmail      String?
+  contactPhone      String?
+  address           String?
+  website           String?
+  supportHours      String?
+  slaResponseTime   Int? // in hours
+  slaResolutionTime Int? // in hours
+  notes             String?
+  isActive          Boolean        @default(true)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  vendorTickets     VendorTicket[]
 
   @@map("vendors")
 }
@@ -710,7 +716,7 @@ model LoginAttempt {
   attemptedAt   DateTime            @default(now())
   lockTriggered Boolean             @default(false)
   failureReason LoginFailureReason? // Detailed reason for failed login
-  deviceInfo    Json?               // Browser, OS, device type info
+  deviceInfo    Json? // Browser, OS, device type info
 
   @@index([email, attemptedAt])
   @@index([ipAddress, attemptedAt])
@@ -724,15 +730,15 @@ model UserAuditSession {
   sessionToken String    @unique
   ipAddress    String?
   userAgent    String?
-  deviceInfo   Json?     // Browser, OS, device type
-  location     String?   // Geo-location if available
+  deviceInfo   Json? // Browser, OS, device type
+  location     String? // Geo-location if available
   loginAt      DateTime  @default(now())
   logoutAt     DateTime?
   isActive     Boolean   @default(true)
-  logoutReason String?   // manual, timeout, forced, session_expired
+  logoutReason String? // manual, timeout, forced, session_expired
   isNewDevice  Boolean   @default(false)
 
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, isActive])
   @@index([loginAt])
@@ -741,18 +747,18 @@ model UserAuditSession {
 
 // Track profile changes for audit
 model ProfileChangeLog {
-  id         String   @id @default(cuid())
-  userId     String
-  fieldName  String   // email, phone, name, avatar, role
-  oldValue   String?
-  newValue   String?
-  changedBy  String   // ID of user who made the change
-  ipAddress  String?
-  userAgent  String?
-  createdAt  DateTime @default(now())
+  id        String   @id @default(cuid())
+  userId    String
+  fieldName String // email, phone, name, avatar, role
+  oldValue  String?
+  newValue  String?
+  changedBy String // ID of user who made the change
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
 
-  user       User     @relation("ProfileChanges", fields: [userId], references: [id], onDelete: Cascade)
-  changedByUser User  @relation("ProfileChangedBy", fields: [changedBy], references: [id])
+  user          User @relation("ProfileChanges", fields: [userId], references: [id], onDelete: Cascade)
+  changedByUser User @relation("ProfileChangedBy", fields: [changedBy], references: [id])
 
   @@index([userId, createdAt])
   @@map("profile_change_logs")
@@ -769,7 +775,7 @@ model PasswordResetToken {
   userAgent String?
   createdAt DateTime  @default(now())
 
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([token])
   @@index([userId])
@@ -795,29 +801,29 @@ model SupportGroup {
 }
 
 model KnowledgeArticle {
-  id             String                @id @default(cuid())
-  title          String
-  content        String
-  categoryId     String?
-  tags           String[]
-  createdAt      DateTime              @default(now())
-  updatedAt      DateTime              @updatedAt
-  authorId       String
-  expiresAt      DateTime?
-  helpful        Int                   @default(0)
-  isActive       Boolean               @default(true)
-  itemId         String?
-  notHelpful     Int                   @default(0)
-  publishedAt    DateTime?
-  slug           String                @unique
-  status         KnowledgeStatus       @default(DRAFT)
-  subcategoryId  String?
-  summary        String?
-  views          Int                   @default(0)
+  id            String          @id @default(cuid())
+  title         String
+  content       String
+  categoryId    String?
+  tags          String[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  authorId      String
+  expiresAt     DateTime?
+  helpful       Int             @default(0)
+  isActive      Boolean         @default(true)
+  itemId        String?
+  notHelpful    Int             @default(0)
+  publishedAt   DateTime?
+  slug          String          @unique
+  status        KnowledgeStatus @default(DRAFT)
+  subcategoryId String?
+  summary       String?
+  views         Int             @default(0)
 
   // Visibility settings
-  visibility        KnowledgeVisibility   @default(EVERYONE)
-  visibleToRoles    String[]              // Array of UserRole values (USER, TECHNICIAN, MANAGER, etc.)
+  visibility     KnowledgeVisibility @default(EVERYONE)
+  visibleToRoles String[] // Array of UserRole values (USER, TECHNICIAN, MANAGER, etc.)
 
   author         User                  @relation(fields: [authorId], references: [id])
   category       Category?             @relation(fields: [categoryId], references: [id])
@@ -830,21 +836,21 @@ model KnowledgeArticle {
   relatedTickets TicketKnowledge[]
 
   // Content Governance
-  ownerId               String?
-  reviewFrequencyDays   Int?
-  nextReviewDate        DateTime?
-  lastReviewedAt        DateTime?
-  lastReviewedBy        String?
-  isStale               Boolean               @default(false)
+  ownerId             String?
+  reviewFrequencyDays Int?
+  nextReviewDate      DateTime?
+  lastReviewedAt      DateTime?
+  lastReviewedBy      String?
+  isStale             Boolean   @default(false)
 
   // Relations
-  collaborators    KnowledgeCollaborator[]
-  serviceLinks     KnowledgeServiceLink[]
-  activities       KnowledgeActivity[]
-  visibleBranches  KnowledgeVisibleBranch[]
-  accessLogs       KnowledgeAccessLog[]
-  owner            User?                     @relation("ArticleOwner", fields: [ownerId], references: [id])
-  lastReviewer     User?                     @relation("ArticleReviewer", fields: [lastReviewedBy], references: [id])
+  collaborators   KnowledgeCollaborator[]
+  serviceLinks    KnowledgeServiceLink[]
+  activities      KnowledgeActivity[]
+  visibleBranches KnowledgeVisibleBranch[]
+  accessLogs      KnowledgeAccessLog[]
+  owner           User?                    @relation("ArticleOwner", fields: [ownerId], references: [id])
+  lastReviewer    User?                    @relation("ArticleReviewer", fields: [lastReviewedBy], references: [id])
 
   @@index([status, isActive])
   @@index([isStale])
@@ -858,13 +864,13 @@ model KnowledgeArticle {
 }
 
 model KnowledgeVisibleBranch {
-  id        String           @id @default(cuid())
+  id        String   @id @default(cuid())
   articleId String
   branchId  String
-  createdAt DateTime         @default(now())
+  createdAt DateTime @default(now())
 
-  article   KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  branch    Branch           @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  article KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  branch  Branch           @relation(fields: [branchId], references: [id], onDelete: Cascade)
 
   @@unique([articleId, branchId])
   @@index([branchId])
@@ -994,17 +1000,17 @@ model NetworkIncident {
 }
 
 model MaintenanceWindow {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   title       String
   description String?
-  entityType  String?   // 'BRANCH', 'ATM', or null for global
-  entityId    String?   // Specific entity, or null for type-wide
+  entityType  String? // 'BRANCH', 'ATM', or null for global
+  entityId    String? // Specific entity, or null for type-wide
   startTime   DateTime
   endTime     DateTime
-  isActive    Boolean   @default(true)
+  isActive    Boolean  @default(true)
   createdById String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@index([startTime, endTime])
   @@index([entityType, entityId])
@@ -1135,7 +1141,7 @@ model UserFavoriteCategory {
 }
 
 model KnowledgeVersion {
-  id          String           @id @default(cuid())
+  id          String   @id @default(cuid())
   articleId   String
   version     Int
   title       String
@@ -1143,16 +1149,16 @@ model KnowledgeVersion {
   summary     String?
   changeNotes String?
   authorId    String
-  createdAt   DateTime         @default(now())
+  createdAt   DateTime @default(now())
 
   // Version approval
-  isStable    Boolean          @default(false)
-  approvedBy  String?
-  approvedAt  DateTime?
+  isStable   Boolean   @default(false)
+  approvedBy String?
+  approvedAt DateTime?
 
-  article     KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  author      User             @relation(fields: [authorId], references: [id])
-  approver    User?            @relation("VersionApprover", fields: [approvedBy], references: [id])
+  article  KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  author   User             @relation(fields: [authorId], references: [id])
+  approver User?            @relation("VersionApprover", fields: [approvedBy], references: [id])
 
   @@unique([articleId, version])
   @@index([articleId, createdAt])
@@ -1534,7 +1540,7 @@ enum UserRole {
   USER
   TECHNICIAN
   MANAGER
-  MANAGER_IT      // IT Manager with shift management access
+  MANAGER_IT // IT Manager with shift management access
   ADMIN
   SECURITY_ANALYST
 }
@@ -1692,10 +1698,10 @@ enum KnowledgeStatus {
 }
 
 enum KnowledgeVisibility {
-  EVERYONE    // Semua pengguna dapat melihat
-  BY_ROLE     // Hanya role tertentu
-  BY_BRANCH   // Hanya cabang tertentu
-  PRIVATE     // Hanya author dan collaborators
+  EVERYONE // Semua pengguna dapat melihat
+  BY_ROLE // Hanya role tertentu
+  BY_BRANCH // Hanya cabang tertentu
+  PRIVATE // Hanya author dan collaborators
 }
 
 enum ReportType {
@@ -1863,80 +1869,80 @@ enum HardeningCategory {
 
 // PC Asset Management Models
 model PCAsset {
-  id                    String            @id @default(cuid())
-  pcName                String            @unique
-  brand                 String
-  model                 String?
-  serialNumber          String?
+  id           String  @id @default(cuid())
+  pcName       String  @unique
+  brand        String
+  model        String?
+  serialNumber String?
 
   // Hardware specifications
-  processor             String
-  ram                   Int               // RAM in GB (e.g., 16 for 16GB)
-  formFactor            PCFormFactor?     // Laptop, Desktop, AIO, Workstation, etc.
-  storageType           PCStorageType?    // HDD, SSD, NVMe, Hybrid
-  storageCapacity       String?           // e.g., "512GB"
-  storageDevices        Json?             // Array of {type: "SSD/HDD", size: "512GB", brand: "Samsung"} - for multiple drives
-  macAddress            String?
-  ipAddress             String?
+  processor       String
+  ram             Int // RAM in GB (e.g., 16 for 16GB)
+  formFactor      PCFormFactor? // Laptop, Desktop, AIO, Workstation, etc.
+  storageType     PCStorageType? // HDD, SSD, NVMe, Hybrid
+  storageCapacity String? // e.g., "512GB"
+  storageDevices  Json? // Array of {type: "SSD/HDD", size: "512GB", brand: "Samsung"} - for multiple drives
+  macAddress      String?
+  ipAddress       String?
 
   // Location and assignment
-  branchId              String
-  department            String?           // Department within the branch
-  assignedToId          String?
-  assignedUserName      String?           // For quick display without join
-  status                PCAssetStatus     @default(IN_USE)
+  branchId         String
+  department       String? // Department within the branch
+  assignedToId     String?
+  assignedUserName String? // For quick display without join
+  status           PCAssetStatus @default(IN_USE)
 
   // Purchase information
-  purchaseDate          DateTime?
-  purchaseOrderNumber   String?
-  warrantyExpiry        DateTime?
-  assetTag              String?           @unique
+  purchaseDate        DateTime?
+  purchaseOrderNumber String?
+  warrantyExpiry      DateTime?
+  assetTag            String?   @unique
 
   // Operating System
-  operatingSystemId     String?           // Reference to OperatingSystem
-  osLicenseType         OSLicenseType?    // OEM, Volume, Retail, etc.
-  osProductKey          String?           // Encrypted product key
-  osInstallationDate    DateTime?         // When OS was installed
-  osSerialNumber        String?           // Keep for serial number if needed
+  operatingSystemId  String? // Reference to OperatingSystem
+  osLicenseType      OSLicenseType? // OEM, Volume, Retail, etc.
+  osProductKey       String? // Encrypted product key
+  osInstallationDate DateTime? // When OS was installed
+  osSerialNumber     String? // Keep for serial number if needed
 
   // Office Suite
-  officeProductId       String?           // Reference to OfficeProduct
-  officeLicenseType     OfficeLicenseType? // Keep for license type tracking
-  officeLicenseAccount  String?           // Email associated with license
-  officeLicenseStatus   OfficeLicenseStatus? // Active, Expired, Unlicensed
-  officeSerialNumber    String?           // Keep for serial number if needed
+  officeProductId      String? // Reference to OfficeProduct
+  officeLicenseType    OfficeLicenseType? // Keep for license type tracking
+  officeLicenseAccount String? // Email associated with license
+  officeLicenseStatus  OfficeLicenseStatus? // Active, Expired, Unlicensed
+  officeSerialNumber   String? // Keep for serial number if needed
 
   // Security - Antivirus
-  antivirusName         String?
-  antivirusVersion      String?
+  antivirusName          String?
+  antivirusVersion       String?
   antivirusLicenseExpiry DateTime?
-  avRealTimeProtection  Boolean?          @default(true)
-  avDefinitionDate      DateTime?         // Virus definition last updated
+  avRealTimeProtection   Boolean?  @default(true)
+  avDefinitionDate       DateTime? // Virus definition last updated
 
   // Security - Hardening
-  lastHardeningDate     DateTime?
-  hardeningCompliant    Boolean           @default(false)
+  lastHardeningDate  DateTime?
+  hardeningCompliant Boolean   @default(false)
 
   // Metadata
-  isActive              Boolean           @default(true)
-  createdAt             DateTime          @default(now())
-  updatedAt             DateTime          @updatedAt
-  createdById           String
-  lastAuditDate         DateTime?
-  notes                 String?
-  
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  createdById   String
+  lastAuditDate DateTime?
+  notes         String?
+
   // Relations
-  branch                Branch            @relation(fields: [branchId], references: [id])
-  assignedTo            User?             @relation("AssignedPCAssets", fields: [assignedToId], references: [id])
-  createdBy             User              @relation("CreatedPCAssets", fields: [createdById], references: [id])
-  operatingSystem       OperatingSystem?  @relation(fields: [operatingSystemId], references: [id])
-  officeProduct         OfficeProduct?    @relation(fields: [officeProductId], references: [id])
-  serviceLogs           PCServiceLog[]
-  hardeningChecklists   HardeningChecklist[]
-  osLicenses            OSLicense[]
-  officeLicenses        OfficeLicense[]
-  antivirusLicenses     AntivirusLicense[]
-  
+  branch              Branch               @relation(fields: [branchId], references: [id])
+  assignedTo          User?                @relation("AssignedPCAssets", fields: [assignedToId], references: [id])
+  createdBy           User                 @relation("CreatedPCAssets", fields: [createdById], references: [id])
+  operatingSystem     OperatingSystem?     @relation(fields: [operatingSystemId], references: [id])
+  officeProduct       OfficeProduct?       @relation(fields: [officeProductId], references: [id])
+  serviceLogs         PCServiceLog[]
+  hardeningChecklists HardeningChecklist[]
+  osLicenses          OSLicense[]
+  officeLicenses      OfficeLicense[]
+  antivirusLicenses   AntivirusLicense[]
+
   @@index([branchId])
   @@index([assignedToId])
   @@index([isActive])
@@ -1950,32 +1956,32 @@ model PCAsset {
 }
 
 model PCServiceLog {
-  id                    String            @id @default(cuid())
-  pcAssetId             String
-  ticketId              String?
-  serviceType           PCServiceType
-  performedById         String
-  performedAt           DateTime          @default(now())
+  id            String        @id @default(cuid())
+  pcAssetId     String
+  ticketId      String?
+  serviceType   PCServiceType
+  performedById String
+  performedAt   DateTime      @default(now())
 
   // Service details
-  issueReported         String?           // Issue reported by user
-  description           String            // Action taken / description
-  findings              String?
-  recommendations       String?
-  beforeStatus          Json?             // Snapshot of PC status before service
-  afterStatus           Json?             // Snapshot of PC status after service
-  attachments           Json?             // Array of file paths/URLs
+  issueReported   String? // Issue reported by user
+  description     String // Action taken / description
+  findings        String?
+  recommendations String?
+  beforeStatus    Json? // Snapshot of PC status before service
+  afterStatus     Json? // Snapshot of PC status after service
+  attachments     Json? // Array of file paths/URLs
 
   // Cost and status tracking
-  cost                  Decimal?          @db.Decimal(15, 2) // Cost in IDR
-  status                ServiceLogStatus  @default(OPEN)
-  technicianName        String?           // For quick display
+  cost           Decimal?         @db.Decimal(15, 2) // Cost in IDR
+  status         ServiceLogStatus @default(OPEN)
+  technicianName String? // For quick display
 
   // Relations
-  pcAsset               PCAsset           @relation(fields: [pcAssetId], references: [id], onDelete: Cascade)
-  ticket                Ticket?           @relation(fields: [ticketId], references: [id])
-  performedBy           User              @relation(fields: [performedById], references: [id])
-  hardeningChecklist    HardeningChecklist?
+  pcAsset            PCAsset             @relation(fields: [pcAssetId], references: [id], onDelete: Cascade)
+  ticket             Ticket?             @relation(fields: [ticketId], references: [id])
+  performedBy        User                @relation(fields: [performedById], references: [id])
+  hardeningChecklist HardeningChecklist?
 
   @@index([pcAssetId, performedAt])
   @@index([ticketId])
@@ -1985,80 +1991,80 @@ model PCServiceLog {
 }
 
 model HardeningTemplate {
-  id                    String            @id @default(cuid())
-  name                  String            @unique
-  description           String?
-  osType                String            // e.g., "Windows 11", "Ubuntu 22.04"
-  version               String            @default("1.0")
-  isActive              Boolean           @default(true)
-  createdAt             DateTime          @default(now())
-  updatedAt             DateTime          @updatedAt
-  
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  osType      String // e.g., "Windows 11", "Ubuntu 22.04"
+  version     String   @default("1.0")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
   // Relations
-  checklistItems        HardeningChecklistItem[]
-  hardeningChecklists   HardeningChecklist[]
-  
+  checklistItems      HardeningChecklistItem[]
+  hardeningChecklists HardeningChecklist[]
+
   @@map("hardening_templates")
 }
 
 model HardeningChecklistItem {
-  id                    String            @id @default(cuid())
-  templateId            String
-  category              HardeningCategory
-  itemCode              String            // e.g., "UA-001" for User Account item 001
-  title                 String
-  description           String?
-  isRequired            Boolean           @default(true)
-  order                 Int               @default(0)
-  verificationSteps     String?           // How to verify this item is compliant
-  remediationSteps      String?           // How to fix if non-compliant
-  
+  id                String            @id @default(cuid())
+  templateId        String
+  category          HardeningCategory
+  itemCode          String // e.g., "UA-001" for User Account item 001
+  title             String
+  description       String?
+  isRequired        Boolean           @default(true)
+  order             Int               @default(0)
+  verificationSteps String? // How to verify this item is compliant
+  remediationSteps  String? // How to fix if non-compliant
+
   // Relations
-  template              HardeningTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
-  checklistResults      HardeningChecklistResult[]
-  
+  template         HardeningTemplate          @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  checklistResults HardeningChecklistResult[]
+
   @@unique([templateId, itemCode])
   @@index([templateId, category])
   @@map("hardening_checklist_items")
 }
 
 model HardeningChecklist {
-  id                    String            @id @default(cuid())
-  pcAssetId             String
-  templateId            String
-  serviceLogId          String?           @unique
-  performedById         String
-  startedAt             DateTime          @default(now())
-  completedAt           DateTime?
-  complianceScore       Float?            // Percentage of compliant items
-  status                String            @default("IN_PROGRESS") // IN_PROGRESS, COMPLETED, CANCELLED
-  notes                 String?
-  
+  id              String    @id @default(cuid())
+  pcAssetId       String
+  templateId      String
+  serviceLogId    String?   @unique
+  performedById   String
+  startedAt       DateTime  @default(now())
+  completedAt     DateTime?
+  complianceScore Float? // Percentage of compliant items
+  status          String    @default("IN_PROGRESS") // IN_PROGRESS, COMPLETED, CANCELLED
+  notes           String?
+
   // Relations
-  pcAsset               PCAsset           @relation(fields: [pcAssetId], references: [id], onDelete: Cascade)
-  template              HardeningTemplate @relation(fields: [templateId], references: [id])
-  serviceLog            PCServiceLog?     @relation(fields: [serviceLogId], references: [id])
-  performedBy           User              @relation(fields: [performedById], references: [id])
-  checklistResults      HardeningChecklistResult[]
-  
+  pcAsset          PCAsset                    @relation(fields: [pcAssetId], references: [id], onDelete: Cascade)
+  template         HardeningTemplate          @relation(fields: [templateId], references: [id])
+  serviceLog       PCServiceLog?              @relation(fields: [serviceLogId], references: [id])
+  performedBy      User                       @relation(fields: [performedById], references: [id])
+  checklistResults HardeningChecklistResult[]
+
   @@index([pcAssetId, startedAt])
   @@index([status])
   @@map("hardening_checklists")
 }
 
 model HardeningChecklistResult {
-  id                    String            @id @default(cuid())
-  checklistId           String
-  checklistItemId       String
-  isCompliant           Boolean
-  notes                 String?
-  evidence              Json?             // Screenshots or other evidence
-  checkedAt             DateTime          @default(now())
-  
+  id              String   @id @default(cuid())
+  checklistId     String
+  checklistItemId String
+  isCompliant     Boolean
+  notes           String?
+  evidence        Json? // Screenshots or other evidence
+  checkedAt       DateTime @default(now())
+
   // Relations
-  checklist             HardeningChecklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
-  checklistItem         HardeningChecklistItem @relation(fields: [checklistItemId], references: [id])
-  
+  checklist     HardeningChecklist     @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  checklistItem HardeningChecklistItem @relation(fields: [checklistItemId], references: [id])
+
   @@unique([checklistId, checklistItemId])
   @@map("hardening_checklist_results")
 }
@@ -2068,38 +2074,38 @@ model HardeningChecklistResult {
 // ============================================
 
 model OSLicense {
-  id                    String            @id @default(cuid())
-  name                  String            // License name/description
-  osName                String            // e.g., Windows 11 Pro, Windows Server 2022
-  osVersion             String?           // e.g., 22H2, 21H1
-  licenseType           OSLicenseType     // OEM, FPP, OLP, etc.
-  licenseKey            String?           @unique // Product key
-  purchaseDate          DateTime?
-  expiryDate            DateTime?
-  cost                  Float?
-  vendor                String?           // Where purchased from
-  invoiceNumber         String?
-  maxActivations        Int               @default(1)
-  currentActivations    Int               @default(0)
-  isActive              Boolean           @default(true)
-  notes                 String?           @db.Text
-  
+  id                 String        @id @default(cuid())
+  name               String // License name/description
+  osName             String // e.g., Windows 11 Pro, Windows Server 2022
+  osVersion          String? // e.g., 22H2, 21H1
+  licenseType        OSLicenseType // OEM, FPP, OLP, etc.
+  licenseKey         String?       @unique // Product key
+  purchaseDate       DateTime?
+  expiryDate         DateTime?
+  cost               Float?
+  vendor             String? // Where purchased from
+  invoiceNumber      String?
+  maxActivations     Int           @default(1)
+  currentActivations Int           @default(0)
+  isActive           Boolean       @default(true)
+  notes              String?       @db.Text
+
   // Assignment tracking
-  assignedToPC          String?           // Can be assigned to specific PC
-  assignedToBranch      String?           // Or assigned to branch
-  assignedToUser        String?           // Or assigned to user
-  
+  assignedToPC     String? // Can be assigned to specific PC
+  assignedToBranch String? // Or assigned to branch
+  assignedToUser   String? // Or assigned to user
+
   // Relations
-  pcAsset               PCAsset?          @relation(fields: [assignedToPC], references: [id], onDelete: SetNull)
-  branch                Branch?           @relation(fields: [assignedToBranch], references: [id], onDelete: SetNull)
-  user                  User?             @relation("OSLicenseAssignedUser", fields: [assignedToUser], references: [id], onDelete: SetNull)
-  
+  pcAsset PCAsset? @relation(fields: [assignedToPC], references: [id], onDelete: SetNull)
+  branch  Branch?  @relation(fields: [assignedToBranch], references: [id], onDelete: SetNull)
+  user    User?    @relation("OSLicenseAssignedUser", fields: [assignedToUser], references: [id], onDelete: SetNull)
+
   // Audit fields
-  createdAt             DateTime          @default(now())
-  updatedAt             DateTime          @updatedAt
-  createdBy             String?
-  createdByUser         User?             @relation("OSLicenseCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
-  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdBy     String?
+  createdByUser User?    @relation("OSLicenseCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+
   @@index([licenseType, isActive])
   @@index([osName])
   @@index([assignedToPC])
@@ -2112,42 +2118,42 @@ model OSLicense {
 // ============================================
 
 model OfficeLicense {
-  id                    String            @id @default(cuid())
-  name                  String            // License name/description
-  productName           String            // e.g., Office 365, Office 2021 LTSC
-  productType           OfficeProductType // OFFICE_365, OFFICE_2021_LTSC, etc.
-  licenseType           OfficeLicenseType // SUBSCRIPTION, PERPETUAL, etc.
-  licenseKey            String?           @unique // Product key or subscription ID
-  subscriptionId        String?           // For subscription-based licenses
-  purchaseDate          DateTime?
-  expiryDate            DateTime?
-  renewalDate           DateTime?         // For subscriptions
-  cost                  Float?
-  costPeriod            String?           // Monthly, Yearly, One-time
-  vendor                String?           // Where purchased from
-  invoiceNumber         String?
-  maxUsers              Int               @default(1)
-  currentUsers          Int               @default(0)
-  isActive              Boolean           @default(true)
-  autoRenew             Boolean           @default(false)
-  notes                 String?           @db.Text
-  
+  id             String            @id @default(cuid())
+  name           String // License name/description
+  productName    String // e.g., Office 365, Office 2021 LTSC
+  productType    OfficeProductType // OFFICE_365, OFFICE_2021_LTSC, etc.
+  licenseType    OfficeLicenseType // SUBSCRIPTION, PERPETUAL, etc.
+  licenseKey     String?           @unique // Product key or subscription ID
+  subscriptionId String? // For subscription-based licenses
+  purchaseDate   DateTime?
+  expiryDate     DateTime?
+  renewalDate    DateTime? // For subscriptions
+  cost           Float?
+  costPeriod     String? // Monthly, Yearly, One-time
+  vendor         String? // Where purchased from
+  invoiceNumber  String?
+  maxUsers       Int               @default(1)
+  currentUsers   Int               @default(0)
+  isActive       Boolean           @default(true)
+  autoRenew      Boolean           @default(false)
+  notes          String?           @db.Text
+
   // Assignment tracking
-  assignedToPC          String?           // Can be assigned to specific PC
-  assignedToBranch      String?           // Or assigned to branch
-  assignedToUser        String?           // Or assigned to user
-  
+  assignedToPC     String? // Can be assigned to specific PC
+  assignedToBranch String? // Or assigned to branch
+  assignedToUser   String? // Or assigned to user
+
   // Relations
-  pcAsset               PCAsset?          @relation(fields: [assignedToPC], references: [id], onDelete: SetNull)
-  branch                Branch?           @relation(fields: [assignedToBranch], references: [id], onDelete: SetNull)
-  user                  User?             @relation("OfficeLicenseAssignedUser", fields: [assignedToUser], references: [id], onDelete: SetNull)
-  
+  pcAsset PCAsset? @relation(fields: [assignedToPC], references: [id], onDelete: SetNull)
+  branch  Branch?  @relation(fields: [assignedToBranch], references: [id], onDelete: SetNull)
+  user    User?    @relation("OfficeLicenseAssignedUser", fields: [assignedToUser], references: [id], onDelete: SetNull)
+
   // Audit fields
-  createdAt             DateTime          @default(now())
-  updatedAt             DateTime          @updatedAt
-  createdBy             String?
-  createdByUser         User?             @relation("OfficeLicenseCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
-  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdBy     String?
+  createdByUser User?    @relation("OfficeLicenseCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+
   @@index([productType, isActive])
   @@index([licenseType])
   @@index([assignedToPC])
@@ -2161,46 +2167,45 @@ model OfficeLicense {
 // ============================================
 
 model AntivirusLicense {
-  id                    String            @id @default(cuid())
-  name                  String            // License name/description
-  productName           String            // e.g., Kaspersky, Norton, McAfee, Windows Defender
-  productVersion        String?           // e.g., 2024, 21.0.1
-  licenseType           String            // SUBSCRIPTION, PERPETUAL, TRIAL
-  licenseKey            String?           @unique // Product key or license code
-  subscriptionId        String?           // For subscription-based licenses
-  purchaseDate          DateTime?
-  expiryDate            DateTime?
-  renewalDate           DateTime?         // For subscriptions
-  cost                  Float?
-  costPeriod            String?           // Monthly, Yearly, One-time
-  vendor                String?           // Where purchased from
-  invoiceNumber         String?
-  maxDevices            Int               @default(1)
-  currentDevices        Int               @default(0)
-  isActive              Boolean           @default(true)
-  autoRenew             Boolean           @default(false)
-  notes                 String?           @db.Text
-  
+  id             String    @id @default(cuid())
+  name           String // License name/description
+  productName    String // e.g., Kaspersky, Norton, McAfee, Windows Defender
+  productVersion String? // e.g., 2024, 21.0.1
+  licenseType    String // SUBSCRIPTION, PERPETUAL, TRIAL
+  licenseKey     String?   @unique // Product key or license code
+  subscriptionId String? // For subscription-based licenses
+  purchaseDate   DateTime?
+  expiryDate     DateTime?
+  renewalDate    DateTime? // For subscriptions
+  cost           Float?
+  costPeriod     String? // Monthly, Yearly, One-time
+  vendor         String? // Where purchased from
+  invoiceNumber  String?
+  maxDevices     Int       @default(1)
+  currentDevices Int       @default(0)
+  isActive       Boolean   @default(true)
+  autoRenew      Boolean   @default(false)
+  notes          String?   @db.Text
+
   // Assignment tracking
-  assignedToPC          String?           // Can be assigned to specific PC
-  assignedToBranch      String?           // Or assigned to branch
-  assignedToUser        String?           // Or assigned to user
-  
+  assignedToPC     String? // Can be assigned to specific PC
+  assignedToBranch String? // Or assigned to branch
+  assignedToUser   String? // Or assigned to user
+
   // Relations
-  pcAsset               PCAsset?          @relation(fields: [assignedToPC], references: [id], onDelete: SetNull)
-  branch                Branch?           @relation(fields: [assignedToBranch], references: [id], onDelete: SetNull)
-  user                  User?             @relation("AntivirusLicenseAssignedUser", fields: [assignedToUser], references: [id], onDelete: SetNull)
-  
+  pcAsset PCAsset? @relation(fields: [assignedToPC], references: [id], onDelete: SetNull)
+  branch  Branch?  @relation(fields: [assignedToBranch], references: [id], onDelete: SetNull)
+  user    User?    @relation("AntivirusLicenseAssignedUser", fields: [assignedToUser], references: [id], onDelete: SetNull)
+
   // Timestamps
-  createdAt             DateTime          @default(now())
-  updatedAt             DateTime          @updatedAt
-  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Indexes
   @@index([expiryDate])
   @@index([assignedToPC])
   @@index([assignedToBranch])
   @@index([isActive])
-  
   @@map("antivirus_licenses")
 }
 
@@ -2209,25 +2214,25 @@ model AntivirusLicense {
 // ============================================
 
 model OperatingSystem {
-  id                    String            @id @default(cuid())
-  name                  String            // e.g., "Windows 10 Pro", "Windows 11 Enterprise"
-  version               String?           // e.g., "22H2", "21H1"
-  type                  OSType            // WINDOWS, LINUX, MACOS, OTHER
-  architecture          String?           // e.g., "x64", "x86", "ARM"
-  edition               String?           // e.g., "Pro", "Enterprise", "Home"
-  isActive              Boolean           @default(true)
-  description           String?           @db.Text
-  sortOrder             Int               @default(0)
-  
+  id           String  @id @default(cuid())
+  name         String // e.g., "Windows 10 Pro", "Windows 11 Enterprise"
+  version      String? // e.g., "22H2", "21H1"
+  type         OSType // WINDOWS, LINUX, MACOS, OTHER
+  architecture String? // e.g., "x64", "x86", "ARM"
+  edition      String? // e.g., "Pro", "Enterprise", "Home"
+  isActive     Boolean @default(true)
+  description  String? @db.Text
+  sortOrder    Int     @default(0)
+
   // Relations
-  pcAssets              PCAsset[]
-  
+  pcAssets PCAsset[]
+
   // Metadata
-  createdAt             DateTime          @default(now())
-  updatedAt             DateTime          @updatedAt
-  createdById           String?
-  createdBy             User?             @relation("OSCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  createdBy   User?    @relation("OSCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
   @@unique([name, version])
   @@index([type, isActive])
   @@index([sortOrder])
@@ -2235,24 +2240,24 @@ model OperatingSystem {
 }
 
 model OfficeProduct {
-  id                    String            @id @default(cuid())
-  name                  String            // e.g., "Office 365", "Office LTSC 2021"
-  version               String?           // e.g., "2021", "2024", "365"
-  type                  OfficeType        // MICROSOFT_365, LTSC, LIBRE_OFFICE, OPEN_OFFICE, WPS, OTHER
-  edition               String?           // e.g., "Professional Plus", "Standard", "Home & Business"
-  isActive              Boolean           @default(true)
-  description           String?           @db.Text
-  sortOrder             Int               @default(0)
-  
+  id          String     @id @default(cuid())
+  name        String // e.g., "Office 365", "Office LTSC 2021"
+  version     String? // e.g., "2021", "2024", "365"
+  type        OfficeType // MICROSOFT_365, LTSC, LIBRE_OFFICE, OPEN_OFFICE, WPS, OTHER
+  edition     String? // e.g., "Professional Plus", "Standard", "Home & Business"
+  isActive    Boolean    @default(true)
+  description String?    @db.Text
+  sortOrder   Int        @default(0)
+
   // Relations
-  pcAssets              PCAsset[]
-  
+  pcAssets PCAsset[]
+
   // Metadata
-  createdAt             DateTime          @default(now())
-  updatedAt             DateTime          @updatedAt
-  createdById           String?
-  createdBy             User?             @relation("OfficeCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  createdBy   User?    @relation("OfficeCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
   @@unique([name, version])
   @@index([type, isActive])
   @@index([sortOrder])
@@ -2279,13 +2284,13 @@ enum OfficeType {
 }
 
 model DailyTaskList {
-  id            String      @id @default(cuid())
-  technicianId  String
-  date          DateTime    @db.Date
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  technician    User        @relation(fields: [technicianId], references: [id])
-  tasks         DailyTask[]
+  id           String      @id @default(cuid())
+  technicianId String
+  date         DateTime    @db.Date
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  technician   User        @relation(fields: [technicianId], references: [id])
+  tasks        DailyTask[]
 
   @@unique([technicianId, date])
   @@index([technicianId, date])
@@ -2293,24 +2298,24 @@ model DailyTaskList {
 }
 
 model DailyTask {
-  id              String         @id @default(cuid())
-  taskListId      String
-  ticketId        String?        // Optional link to ticket
-  title           String
-  description     String?
-  category        DailyTaskCategory @default(OTHER)
-  status          DailyTaskStatus   @default(PENDING)
-  priority        TicketPriority?
-  startTime       DateTime?
-  endTime         DateTime?
-  actualMinutes   Int?
-  notes           String?        @db.Text
-  order           Int            @default(0)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  id            String            @id @default(cuid())
+  taskListId    String
+  ticketId      String? // Optional link to ticket
+  title         String
+  description   String?
+  category      DailyTaskCategory @default(OTHER)
+  status        DailyTaskStatus   @default(PENDING)
+  priority      TicketPriority?
+  startTime     DateTime?
+  endTime       DateTime?
+  actualMinutes Int?
+  notes         String?           @db.Text
+  order         Int               @default(0)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
 
-  taskList        DailyTaskList  @relation(fields: [taskListId], references: [id], onDelete: Cascade)
-  ticket          Ticket?        @relation(fields: [ticketId], references: [id])
+  taskList DailyTaskList @relation(fields: [taskListId], references: [id], onDelete: Cascade)
+  ticket   Ticket?       @relation(fields: [ticketId], references: [id])
 
   @@index([taskListId])
   @@map("daily_tasks")
@@ -2336,21 +2341,21 @@ enum DailyTaskStatus {
 
 // Knowledge Base Collaborators
 model KnowledgeCollaborator {
-  id          String           @id @default(cuid())
-  articleId   String
-  userId      String
-  role        CollaboratorRole @default(EDITOR)
-  invitedBy   String
-  invitedAt   DateTime         @default(now())
-  acceptedAt  DateTime?
+  id         String           @id @default(cuid())
+  articleId  String
+  userId     String
+  role       CollaboratorRole @default(EDITOR)
+  invitedBy  String
+  invitedAt  DateTime         @default(now())
+  acceptedAt DateTime?
 
   // Time-limited access
   expiresAt   DateTime?
-  permissions String[]         // Granular permissions: ['view', 'edit', 'comment', 'manage']
+  permissions String[] // Granular permissions: ['view', 'edit', 'comment', 'manage']
 
-  article     KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  user        User             @relation("CollaboratorUser", fields: [userId], references: [id])
-  inviter     User             @relation("InvitedByUser", fields: [invitedBy], references: [id])
+  article KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  user    User             @relation("CollaboratorUser", fields: [userId], references: [id])
+  inviter User             @relation("InvitedByUser", fields: [invitedBy], references: [id])
 
   @@unique([articleId, userId])
   @@index([userId])
@@ -2366,17 +2371,17 @@ enum CollaboratorRole {
 
 // Knowledge Service Linking
 model KnowledgeServiceLink {
-  id            String           @id @default(cuid())
-  articleId     String
-  serviceId     String?
-  categoryId    String?
-  linkedBy      String
-  linkedAt      DateTime         @default(now())
+  id         String   @id @default(cuid())
+  articleId  String
+  serviceId  String?
+  categoryId String?
+  linkedBy   String
+  linkedAt   DateTime @default(now())
 
-  article       KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  service       Service?         @relation(fields: [serviceId], references: [id])
-  category      ServiceCategory? @relation(fields: [categoryId], references: [id])
-  user          User             @relation("KnowledgeLinkUser", fields: [linkedBy], references: [id])
+  article  KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  service  Service?         @relation(fields: [serviceId], references: [id])
+  category ServiceCategory? @relation(fields: [categoryId], references: [id])
+  user     User             @relation("KnowledgeLinkUser", fields: [linkedBy], references: [id])
 
   @@unique([articleId, serviceId])
   @@unique([articleId, categoryId])
@@ -2387,16 +2392,16 @@ model KnowledgeServiceLink {
 
 // Knowledge Activity Timeline
 model KnowledgeActivity {
-  id          String       @id @default(cuid())
-  articleId   String
-  userId      String
-  action      String       // created, edited, commented, linked_service, added_collaborator, etc
-  details     Json?        // Store action-specific details
-  metadata    Json?        // Store old/new values for edits
-  createdAt   DateTime     @default(now())
+  id        String   @id @default(cuid())
+  articleId String
+  userId    String
+  action    String // created, edited, commented, linked_service, added_collaborator, etc
+  details   Json? // Store action-specific details
+  metadata  Json? // Store old/new values for edits
+  createdAt DateTime @default(now())
 
-  article     KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  user        User             @relation(fields: [userId], references: [id])
+  article KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  user    User             @relation(fields: [userId], references: [id])
 
   @@index([articleId, createdAt])
   @@index([userId])
@@ -2405,19 +2410,19 @@ model KnowledgeActivity {
 
 // Access Logs for Knowledge Articles
 model KnowledgeAccessLog {
-  id          String       @id @default(cuid())
+  id          String     @id @default(cuid())
   articleId   String
   userId      String
-  accessedAt  DateTime     @default(now())
-  accessType  AccessType   @default(VIEW)
+  accessedAt  DateTime   @default(now())
+  accessType  AccessType @default(VIEW)
   ipAddress   String?
   userAgent   String?
-  duration    Int?         // Seconds spent viewing
-  referrer    String?      // Where user came from
-  searchQuery String?      // If accessed via search
+  duration    Int? // Seconds spent viewing
+  referrer    String? // Where user came from
+  searchQuery String? // If accessed via search
 
-  article     KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  user        User             @relation(fields: [userId], references: [id])
+  article KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  user    User             @relation(fields: [userId], references: [id])
 
   @@index([articleId, accessedAt])
   @@index([userId, accessedAt])
@@ -2433,22 +2438,22 @@ enum AccessType {
 
 // Permission Templates for Knowledge Articles
 model KnowledgePermissionTemplate {
-  id           String   @id @default(cuid())
-  name         String   @unique
-  description  String?
-  permissions  Json     // { visibility, roles, permissions, durationDays }
-  isDefault    Boolean  @default(false)
-  createdBy    String
-  createdAt    DateTime @default(now())
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  permissions Json // { visibility, roles, permissions, durationDays }
+  isDefault   Boolean  @default(false)
+  createdBy   String
+  createdAt   DateTime @default(now())
 
-  creator      User     @relation(fields: [createdBy], references: [id])
+  creator User @relation(fields: [createdBy], references: [id])
 
   @@map("knowledge_permission_templates")
 }
 
 // Comment Attachments
 model KnowledgeCommentAttachment {
-  id           String           @id @default(cuid())
+  id           String   @id @default(cuid())
   commentId    String
   filename     String
   originalName String
@@ -2456,10 +2461,10 @@ model KnowledgeCommentAttachment {
   size         Int
   path         String
   uploadedBy   String
-  createdAt    DateTime         @default(now())
+  createdAt    DateTime @default(now())
 
-  comment      KnowledgeComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
-  uploader     User             @relation(fields: [uploadedBy], references: [id])
+  comment  KnowledgeComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  uploader User             @relation(fields: [uploadedBy], references: [id])
 
   @@index([commentId])
   @@map("knowledge_comment_attachments")
@@ -2467,25 +2472,25 @@ model KnowledgeCommentAttachment {
 
 // Announcement System
 model Announcement {
-  id           String               @id @default(cuid())
-  title        String
-  content      String?              @db.Text
-  type         AnnouncementType     @default(GENERAL)
-  priority     AnnouncementPriority @default(NORMAL)
-  startDate    DateTime
-  endDate      DateTime
-  isActive     Boolean              @default(true)
-  isGlobal     Boolean              @default(true) // If true, shown to all branches
-  createdBy    String
-  updatedBy    String?
-  createdAt    DateTime             @default(now())
-  updatedAt    DateTime             @updatedAt
+  id        String               @id @default(cuid())
+  title     String
+  content   String?              @db.Text
+  type      AnnouncementType     @default(GENERAL)
+  priority  AnnouncementPriority @default(NORMAL)
+  startDate DateTime
+  endDate   DateTime
+  isActive  Boolean              @default(true)
+  isGlobal  Boolean              @default(true) // If true, shown to all branches
+  createdBy String
+  updatedBy String?
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
 
-  creator      User                 @relation("AnnouncementCreator", fields: [createdBy], references: [id])
-  updater      User?                @relation("AnnouncementUpdater", fields: [updatedBy], references: [id])
-  images       AnnouncementImage[]
-  views        AnnouncementView[]
-  branches     AnnouncementBranch[] // Branch-specific targeting
+  creator  User                 @relation("AnnouncementCreator", fields: [createdBy], references: [id])
+  updater  User?                @relation("AnnouncementUpdater", fields: [updatedBy], references: [id])
+  images   AnnouncementImage[]
+  views    AnnouncementView[]
+  branches AnnouncementBranch[] // Branch-specific targeting
 
   @@index([isActive, startDate, endDate])
   @@index([createdBy])
@@ -2509,31 +2514,31 @@ enum AnnouncementPriority {
 }
 
 model AnnouncementImage {
-  id             String       @id @default(cuid())
+  id             String   @id @default(cuid())
   announcementId String
   filename       String
   originalName   String
   mimeType       String
   size           Int
   path           String
-  order          Int          @default(0)
+  order          Int      @default(0)
   caption        String?
-  createdAt      DateTime     @default(now())
+  createdAt      DateTime @default(now())
 
-  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
 
   @@index([announcementId])
   @@map("announcement_images")
 }
 
 model AnnouncementView {
-  id             String       @id @default(cuid())
+  id             String   @id @default(cuid())
   announcementId String
   userId         String
-  viewedAt       DateTime     @default(now())
+  viewedAt       DateTime @default(now())
 
-  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
-  user           User         @relation(fields: [userId], references: [id])
+  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id])
 
   @@unique([announcementId, userId])
   @@index([userId])
@@ -2542,13 +2547,13 @@ model AnnouncementView {
 
 // Branch-specific announcements
 model AnnouncementBranch {
-  id             String       @id @default(cuid())
+  id             String   @id @default(cuid())
   announcementId String
   branchId       String
-  createdAt      DateTime     @default(now())
+  createdAt      DateTime @default(now())
 
-  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
-  branch         Branch       @relation(fields: [branchId], references: [id])
+  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  branch       Branch       @relation(fields: [branchId], references: [id])
 
   @@unique([announcementId, branchId])
   @@index([branchId])
@@ -2557,21 +2562,21 @@ model AnnouncementBranch {
 
 // Omnichannel Integration Tracking
 model OmnichannelLog {
-  id               String    @id @default(cuid())
-  apiKeyId         String
-  channel          String    // WhatsApp, Email, Chat, etc.
-  serviceType      String    // CLAIM, COMPLAINT, INQUIRY, etc.
-  requestData      Json      // Full request payload
-  responseData     Json?     // Response sent back
-  ticketId         String?   // Created ticket ID if successful
-  status           String    // PROCESSING, SUCCESS, FAILED, DUPLICATE, ERROR
-  errorMessage     String?
-  ipAddress        String?
-  responseTime     Int?      // Response time in milliseconds
-  createdAt        DateTime  @default(now())
+  id           String   @id @default(cuid())
+  apiKeyId     String
+  channel      String // WhatsApp, Email, Chat, etc.
+  serviceType  String // CLAIM, COMPLAINT, INQUIRY, etc.
+  requestData  Json // Full request payload
+  responseData Json? // Response sent back
+  ticketId     String? // Created ticket ID if successful
+  status       String // PROCESSING, SUCCESS, FAILED, DUPLICATE, ERROR
+  errorMessage String?
+  ipAddress    String?
+  responseTime Int? // Response time in milliseconds
+  createdAt    DateTime @default(now())
 
-  apiKey           ApiKey    @relation(fields: [apiKeyId], references: [id])
-  ticket           Ticket?   @relation(fields: [ticketId], references: [id])
+  apiKey ApiKey  @relation(fields: [apiKeyId], references: [id])
+  ticket Ticket? @relation(fields: [ticketId], references: [id])
 
   @@index([apiKeyId])
   @@index([ticketId])
@@ -2582,22 +2587,22 @@ model OmnichannelLog {
 
 // Webhook Queue for async callbacks
 model WebhookQueue {
-  id               String    @id @default(cuid())
-  url              String
-  method           String    @default("POST")
-  headers          Json?
-  payload          Json
-  status           String    @default("PENDING") // PENDING, PROCESSING, SUCCESS, FAILED
-  retryCount       Int       @default(0)
-  maxRetries       Int       @default(3)
-  lastAttemptAt    DateTime?
-  nextRetryAt      DateTime?
-  responseStatus   Int?
-  responseBody     String?
-  error            String?
-  scheduledFor     DateTime
-  processedAt      DateTime?
-  createdAt        DateTime  @default(now())
+  id             String    @id @default(cuid())
+  url            String
+  method         String    @default("POST")
+  headers        Json?
+  payload        Json
+  status         String    @default("PENDING") // PENDING, PROCESSING, SUCCESS, FAILED
+  retryCount     Int       @default(0)
+  maxRetries     Int       @default(3)
+  lastAttemptAt  DateTime?
+  nextRetryAt    DateTime?
+  responseStatus Int?
+  responseBody   String?
+  error          String?
+  scheduledFor   DateTime
+  processedAt    DateTime?
+  createdAt      DateTime  @default(now())
 
   @@index([status, scheduledFor])
   @@index([createdAt])
@@ -2610,37 +2615,37 @@ model WebhookQueue {
 
 // Staff member shift schedule preferences and capabilities
 model StaffShiftProfile {
-  id                    String            @id @default(cuid())
-  userId                String            @unique
-  branchId              String
+  id       String @id @default(cuid())
+  userId   String @unique
+  branchId String
 
   // Shift capabilities (Type 1-5)
-  canWorkType1          Boolean           @default(false)  // Type 1: NIGHT_WEEKDAY (20:00-07:59) - Weekdays
-  canWorkType2          Boolean           @default(false)  // Type 2: DAY_WEEKEND (08:00-19:00) - Weekends/Holidays
-  canWorkType3          Boolean           @default(false)  // Type 3: NIGHT_WEEKEND (20:00-07:59) - Weekends/Holidays
-  canWorkType4          Boolean           @default(false)  // Type 4: STANDBY_ONCALL - Everyday (Server only)
-  canWorkType5          Boolean           @default(false)  // Type 5: STANDBY_BRANCH - Everyday (Non-server only)
-  hasServerAccess       Boolean           @default(false)  // (Legacy - may be removed later)
-  hasSabbathRestriction Boolean           @default(false)  // Cannot work Friday night/Saturday
+  canWorkType1          Boolean @default(false) // Type 1: NIGHT_WEEKDAY (20:00-07:59) - Weekdays
+  canWorkType2          Boolean @default(false) // Type 2: DAY_WEEKEND (08:00-19:00) - Weekends/Holidays
+  canWorkType3          Boolean @default(false) // Type 3: NIGHT_WEEKEND (20:00-07:59) - Weekends/Holidays
+  canWorkType4          Boolean @default(false) // Type 4: STANDBY_ONCALL - Everyday (Server only)
+  canWorkType5          Boolean @default(false) // Type 5: STANDBY_BRANCH - Everyday (Non-server only)
+  hasServerAccess       Boolean @default(false) // (Legacy - may be removed later)
+  hasSabbathRestriction Boolean @default(false) // Cannot work Friday night/Saturday
 
   // Preference settings
-  preferredShiftType    StaffShiftType?   // NIGHT, WEEKEND_DAY, MIXED
-  maxNightShiftsPerMonth Int              @default(5)
-  minDaysBetweenNightShifts Int           @default(3)
+  preferredShiftType        StaffShiftType? // NIGHT, WEEKEND_DAY, MIXED
+  maxNightShiftsPerMonth    Int             @default(5)
+  minDaysBetweenNightShifts Int             @default(3)
 
   // Month continuity tracking
-  lastMonthEndShift     ShiftType?        // Last shift type from previous month
-  carryOverOffDays      Int               @default(0) // Off days to carry to next month
-  lastMonthNightCount   Int               @default(0)
+  lastMonthEndShift   ShiftType? // Last shift type from previous month
+  carryOverOffDays    Int        @default(0) // Off days to carry to next month
+  lastMonthNightCount Int        @default(0)
 
   // Metadata
-  isActive              Boolean           @default(true)
-  createdAt             DateTime          @default(now())
-  updatedAt             DateTime          @updatedAt
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  user                  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  branch                Branch            @relation(fields: [branchId], references: [id])
+  user                  User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branch                Branch             @relation(fields: [branchId], references: [id])
   shiftAssignments      ShiftAssignment[]
   leaveRequests         LeaveRequest[]
   onCallAssignments     OnCallAssignment[]
@@ -2654,30 +2659,30 @@ model StaffShiftProfile {
 
 // Monthly shift schedule for a branch
 model ShiftSchedule {
-  id                    String            @id @default(cuid())
-  branchId              String
-  month                 Int               // 1-12
-  year                  Int
-  status                ScheduleStatus    @default(DRAFT)
-  generatedAt           DateTime?
-  publishedAt           DateTime?
-  publishedBy           String?
+  id          String         @id @default(cuid())
+  branchId    String
+  month       Int // 1-12
+  year        Int
+  status      ScheduleStatus @default(DRAFT)
+  generatedAt DateTime?
+  publishedAt DateTime?
+  publishedBy String?
 
   // Generation settings
-  generationRules       Json?             // Store generation parameters
-  notes                 String?           @db.Text
+  generationRules Json? // Store generation parameters
+  notes           String? @db.Text
 
   // Metadata
-  createdAt             DateTime          @default(now())
-  updatedAt             DateTime          @updatedAt
-  createdBy             String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String
 
   // Relations
-  branch                Branch            @relation(fields: [branchId], references: [id])
-  shiftAssignments      ShiftAssignment[]
-  onCallAssignments     OnCallAssignment[]
-  holidays              Holiday[]
-  leaveRequests         LeaveRequest[]    @relation("ScheduleLeaves")
+  branch            Branch             @relation(fields: [branchId], references: [id])
+  shiftAssignments  ShiftAssignment[]
+  onCallAssignments OnCallAssignment[]
+  holidays          Holiday[]
+  leaveRequests     LeaveRequest[]     @relation("ScheduleLeaves")
 
   @@index([branchId, month, year])
   @@index([branchId, status])
@@ -2687,37 +2692,37 @@ model ShiftSchedule {
 
 // Individual shift assignment
 model ShiftAssignment {
-  id                    String            @id @default(cuid())
-  scheduleId            String
-  staffProfileId        String
-  date                  DateTime          @db.Date
-  shiftType             ShiftType
+  id             String    @id @default(cuid())
+  scheduleId     String
+  staffProfileId String
+  date           DateTime  @db.Date
+  shiftType      ShiftType
 
   // Shift details
-  startTime             DateTime?
-  endTime               DateTime?
-  isAutoGenerated       Boolean           @default(true)
-  isManualOverride      Boolean           @default(false)
+  startTime        DateTime?
+  endTime          DateTime?
+  isAutoGenerated  Boolean   @default(true)
+  isManualOverride Boolean   @default(false)
 
   // Status tracking
-  status                ShiftStatus       @default(SCHEDULED)
-  attendanceMarked      Boolean           @default(false)
-  checkInTime           DateTime?
-  checkOutTime          DateTime?
+  status           ShiftStatus @default(SCHEDULED)
+  attendanceMarked Boolean     @default(false)
+  checkInTime      DateTime?
+  checkOutTime     DateTime?
 
   // Notes
-  notes                 String?
-  managerNotes          String?           @db.Text
+  notes        String?
+  managerNotes String? @db.Text
 
   // Metadata
-  createdAt             DateTime          @default(now())
-  updatedAt             DateTime          @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  schedule              ShiftSchedule     @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
-  staffProfile          StaffShiftProfile @relation(fields: [staffProfileId], references: [id])
-  swapRequests          ShiftSwapRequest[]
-  shiftReport           ShiftReport?
+  schedule     ShiftSchedule      @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  staffProfile StaffShiftProfile  @relation(fields: [staffProfileId], references: [id])
+  swapRequests ShiftSwapRequest[]
+  shiftReport  ShiftReport?
 
   @@unique([scheduleId, staffProfileId, date])
   @@index([scheduleId, date])
@@ -2728,27 +2733,27 @@ model ShiftAssignment {
 
 // On-call backup assignments
 model OnCallAssignment {
-  id                    String            @id @default(cuid())
-  scheduleId            String
-  staffProfileId        String
-  date                  DateTime          @db.Date
+  id             String   @id @default(cuid())
+  scheduleId     String
+  staffProfileId String
+  date           DateTime @db.Date
 
   // On-call details
-  reason                String?           // Why on-call needed (e.g., "Weekend day shift - no server access")
-  isPrimary             Boolean           @default(true)
+  reason    String? // Why on-call needed (e.g., "Weekend day shift - no server access")
+  isPrimary Boolean @default(true)
 
   // Status
-  wasActivated          Boolean           @default(false)
-  activatedAt           DateTime?
-  activationNotes       String?
+  wasActivated    Boolean   @default(false)
+  activatedAt     DateTime?
+  activationNotes String?
 
   // Metadata
-  createdAt             DateTime          @default(now())
-  updatedAt             DateTime          @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  schedule              ShiftSchedule     @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
-  staffProfile          StaffShiftProfile @relation(fields: [staffProfileId], references: [id])
+  schedule     ShiftSchedule     @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  staffProfile StaffShiftProfile @relation(fields: [staffProfileId], references: [id])
 
   @@index([scheduleId, date])
   @@index([staffProfileId, date])
@@ -2757,36 +2762,36 @@ model OnCallAssignment {
 
 // Leave and absence requests
 model LeaveRequest {
-  id                    String            @id @default(cuid())
-  staffProfileId        String
-  leaveType             LeaveType
-  scheduleId            String?           // Link to schedule for planning purposes
+  id             String    @id @default(cuid())
+  staffProfileId String
+  leaveType      LeaveType
+  scheduleId     String? // Link to schedule for planning purposes
 
   // Date range
-  startDate             DateTime          @db.Date
-  endDate               DateTime          @db.Date
-  totalDays             Int
+  startDate DateTime @db.Date
+  endDate   DateTime @db.Date
+  totalDays Int
 
   // Request details
-  reason                String?           @db.Text
-  contactNumber         String?
-  emergencyContact      String?
+  reason           String? @db.Text
+  contactNumber    String?
+  emergencyContact String?
 
   // Approval workflow
-  status                LeaveStatus       @default(PENDING)
-  approvedBy            String?
-  approvedAt            DateTime?
-  rejectedBy            String?
-  rejectedAt            DateTime?
-  rejectionReason       String?
+  status          LeaveStatus @default(PENDING)
+  approvedBy      String?
+  approvedAt      DateTime?
+  rejectedBy      String?
+  rejectedAt      DateTime?
+  rejectionReason String?
 
   // Metadata
-  createdAt             DateTime          @default(now())
-  updatedAt             DateTime          @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  staffProfile          StaffShiftProfile @relation(fields: [staffProfileId], references: [id])
-  schedule              ShiftSchedule?    @relation("ScheduleLeaves", fields: [scheduleId], references: [id])
+  staffProfile StaffShiftProfile @relation(fields: [staffProfileId], references: [id])
+  schedule     ShiftSchedule?    @relation("ScheduleLeaves", fields: [scheduleId], references: [id])
 
   @@index([staffProfileId, status])
   @@index([startDate, endDate])
@@ -2796,26 +2801,26 @@ model LeaveRequest {
 
 // Branch/company holidays
 model Holiday {
-  id                    String            @id @default(cuid())
-  scheduleId            String?           // Optional link to specific schedule
-  name                  String
-  date                  DateTime          @db.Date
-  isRecurring           Boolean           @default(false)
-  holidayType           HolidayType       @default(PUBLIC)
+  id          String      @id @default(cuid())
+  scheduleId  String? // Optional link to specific schedule
+  name        String
+  date        DateTime    @db.Date
+  isRecurring Boolean     @default(false)
+  holidayType HolidayType @default(PUBLIC)
 
   // Shift implications
-  affectsNightShift     Boolean           @default(true)
-  affectsWeekendShift   Boolean           @default(true)
-  requiresMinimalStaff  Boolean           @default(false)
-  minimalStaffCount     Int?
+  affectsNightShift    Boolean @default(true)
+  affectsWeekendShift  Boolean @default(true)
+  requiresMinimalStaff Boolean @default(false)
+  minimalStaffCount    Int?
 
   // Metadata
-  notes                 String?
-  createdAt             DateTime          @default(now())
-  updatedAt             DateTime          @updatedAt
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  schedule              ShiftSchedule?    @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  schedule ShiftSchedule? @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
 
   @@index([date])
   @@index([scheduleId, date])
@@ -2824,41 +2829,41 @@ model Holiday {
 
 // Shift swap requests between staff
 model ShiftSwapRequest {
-  id                    String            @id @default(cuid())
-  initiatorProfileId    String
-  recipientProfileId    String
+  id                 String @id @default(cuid())
+  initiatorProfileId String
+  recipientProfileId String
 
   // Shift details
-  shiftAssignmentId     String
-  proposedDate          DateTime?         @db.Date // If proposing a specific date in return
+  shiftAssignmentId String
+  proposedDate      DateTime? @db.Date // If proposing a specific date in return
 
   // Request details
-  reason                String            @db.Text
-  swapType              ShiftSwapType     @default(ONE_TO_ONE) // ONE_TO_ONE, GIVE_AWAY, TRADE
+  reason   String        @db.Text
+  swapType ShiftSwapType @default(ONE_TO_ONE) // ONE_TO_ONE, GIVE_AWAY, TRADE
 
   // Workflow status
-  status                SwapRequestStatus @default(PENDING_RECIPIENT)
-  recipientResponse     String?
-  recipientRespondedAt  DateTime?
+  status               SwapRequestStatus @default(PENDING_RECIPIENT)
+  recipientResponse    String?
+  recipientRespondedAt DateTime?
 
   // Manager approval
-  approvalRequired      Boolean           @default(true)
-  approvedBy            String?
-  approvedAt            DateTime?
-  rejectedBy            String?
-  rejectedAt            DateTime?
-  rejectionReason       String?
-  managerNotes          String?
+  approvalRequired Boolean   @default(true)
+  approvedBy       String?
+  approvedAt       DateTime?
+  rejectedBy       String?
+  rejectedAt       DateTime?
+  rejectionReason  String?
+  managerNotes     String?
 
   // Metadata
-  createdAt             DateTime          @default(now())
-  updatedAt             DateTime          @updatedAt
-  completedAt           DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
 
   // Relations
-  initiatorProfile      StaffShiftProfile @relation("SwapInitiator", fields: [initiatorProfileId], references: [id])
-  recipientProfile      StaffShiftProfile @relation("SwapRecipient", fields: [recipientProfileId], references: [id])
-  shiftAssignment       ShiftAssignment   @relation(fields: [shiftAssignmentId], references: [id])
+  initiatorProfile StaffShiftProfile @relation("SwapInitiator", fields: [initiatorProfileId], references: [id])
+  recipientProfile StaffShiftProfile @relation("SwapRecipient", fields: [recipientProfileId], references: [id])
+  shiftAssignment  ShiftAssignment   @relation(fields: [shiftAssignmentId], references: [id])
 
   @@index([initiatorProfileId, status])
   @@index([recipientProfileId, status])
@@ -2868,28 +2873,28 @@ model ShiftSwapRequest {
 
 // Shift templates for quick schedule generation
 model ShiftTemplate {
-  id                    String            @id @default(cuid())
-  name                  String
-  description           String?
-  branchId              String?           // Null = global template
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+  branchId    String? // Null = global template
 
   // Template rules
-  templateRules         Json              // Store generation rules, rotation patterns
-  weekdayNightCount     Int               @default(1) // Staff per weekday night
-  weekendDayCount       Int               @default(2) // Staff per weekend day
-  weekendNightCount     Int               @default(3) // Staff per weekend night
+  templateRules     Json // Store generation rules, rotation patterns
+  weekdayNightCount Int  @default(1) // Staff per weekday night
+  weekendDayCount   Int  @default(2) // Staff per weekend day
+  weekendNightCount Int  @default(3) // Staff per weekend night
 
   // Constraints
-  targetNightsPerMonth  Int               @default(5)
-  minGapBetweenNights   Int               @default(3)
-  requireOffAfterNight  Boolean           @default(true)
+  targetNightsPerMonth Int     @default(5)
+  minGapBetweenNights  Int     @default(3)
+  requireOffAfterNight Boolean @default(true)
 
   // Metadata
-  isActive              Boolean           @default(true)
-  isDefault             Boolean           @default(false)
-  createdAt             DateTime          @default(now())
-  updatedAt             DateTime          @updatedAt
-  createdBy             String
+  isActive  Boolean  @default(true)
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String
 
   @@index([branchId, isActive])
   @@map("shift_templates")
@@ -2897,24 +2902,24 @@ model ShiftTemplate {
 
 // Enums for shift management
 enum StaffShiftType {
-  NIGHT           // Prefers night shifts (weekday or weekend)
-  DAY             // Prefers day shifts (weekend/holiday)
-  STANDBY         // Prefers standby shifts (on-call or branch ops)
-  MIXED           // No preference, can do any shift
+  NIGHT // Prefers night shifts (weekday or weekend)
+  DAY // Prefers day shifts (weekend/holiday)
+  STANDBY // Prefers standby shifts (on-call or branch ops)
+  MIXED // No preference, can do any shift
 }
 
 enum ShiftType {
   // Working shifts
-  NIGHT_WEEKDAY        // 20:00-07:59 (Next Day) - Weekdays only - 1 staff - Auto OFF H+1
-  DAY_WEEKEND          // 08:00-19:00 (Same Day) - Weekends/Holidays only - 1 staff
-  NIGHT_WEEKEND        // 20:00-07:59 (Next Day) - Weekends/Holidays only - 1 staff
-  STANDBY_ONCALL       // On-call standby - Everyday - 1 staff
-  STANDBY_BRANCH       // Branch operational standby - Everyday - 1 staff
+  NIGHT_WEEKDAY // 20:00-07:59 (Next Day) - Weekdays only - 1 staff - Auto OFF H+1
+  DAY_WEEKEND // 08:00-19:00 (Same Day) - Weekends/Holidays only - 1 staff
+  NIGHT_WEEKEND // 20:00-07:59 (Next Day) - Weekends/Holidays only - 1 staff
+  STANDBY_ONCALL // On-call standby - Everyday - 1 staff
+  STANDBY_BRANCH // Branch operational standby - Everyday - 1 staff
 
   // Non-working
-  OFF                  // Day off
-  LEAVE                // On leave
-  HOLIDAY              // Public holiday
+  OFF // Day off
+  LEAVE // On leave
+  HOLIDAY // Public holiday
 }
 
 enum ScheduleStatus {
@@ -2961,23 +2966,23 @@ enum HolidayType {
 }
 
 enum ShiftSwapType {
-  ONE_TO_ONE      // Swap shifts with specific date
-  GIVE_AWAY       // Give shift away, no return needed
-  TRADE           // Trade shift for a different date
+  ONE_TO_ONE // Swap shifts with specific date
+  GIVE_AWAY // Give shift away, no return needed
+  TRADE // Trade shift for a different date
 }
 
 enum SwapRequestStatus {
-  PENDING_RECIPIENT   // Waiting for recipient to accept
-  PENDING_MANAGER     // Waiting for manager approval
-  APPROVED            // Approved and completed
-  REJECTED            // Rejected by recipient or manager
-  CANCELLED           // Cancelled by initiator
+  PENDING_RECIPIENT // Waiting for recipient to accept
+  PENDING_MANAGER // Waiting for manager approval
+  APPROVED // Approved and completed
+  REJECTED // Rejected by recipient or manager
+  CANCELLED // Cancelled by initiator
 }
 
 // Shift categories for checklist grouping
 enum ShiftCategory {
-  MONITORING          // Night shifts + weekend day (20:00-07:59, 08:00-19:00 weekend)
-  OPERATIONAL         // Daytime operational (08:00 to branch close)
+  MONITORING // Night shifts + weekend day (20:00-07:59, 08:00-19:00 weekend)
+  OPERATIONAL // Daytime operational (08:00 to branch close)
 }
 
 // ============================================
@@ -2986,44 +2991,44 @@ enum ShiftCategory {
 
 // Server metrics received from external server (daily at 6 AM)
 model ServerMetrics {
-  id                    String          @id @default(cuid())
-  serverId              String?
-  serverName            String?
+  id         String  @id @default(cuid())
+  serverId   String?
+  serverName String?
 
   // CPU metrics
-  cpuUsagePercent       Float?
-  cpuCores              Int?
-  cpuLoadAvg1m          Float?
-  cpuLoadAvg5m          Float?
-  cpuLoadAvg15m         Float?
+  cpuUsagePercent Float?
+  cpuCores        Int?
+  cpuLoadAvg1m    Float?
+  cpuLoadAvg5m    Float?
+  cpuLoadAvg15m   Float?
 
   // RAM metrics
-  ramTotalGB            Float?
-  ramUsedGB             Float?
-  ramUsagePercent       Float?
+  ramTotalGB      Float?
+  ramUsedGB       Float?
+  ramUsagePercent Float?
 
   // Disk metrics
-  diskTotalGB           Float?
-  diskUsedGB            Float?
-  diskUsagePercent      Float?
+  diskTotalGB      Float?
+  diskUsedGB       Float?
+  diskUsagePercent Float?
 
   // Network metrics
   networkInBytesPerSec  Float?
   networkOutBytesPerSec Float?
 
   // Uptime metrics
-  uptimeSeconds         Int?
-  lastBootTime          DateTime?
+  uptimeSeconds Int?
+  lastBootTime  DateTime?
 
   // Additional flexible metrics
-  additionalMetrics     Json?
+  additionalMetrics Json?
 
   // Metadata
-  collectedAt           DateTime        @default(now())
-  sourceIp              String?
+  collectedAt DateTime @default(now())
+  sourceIp    String?
 
   // Relations
-  shiftReports          ShiftReport[]
+  shiftReports ShiftReport[]
 
   @@index([collectedAt])
   @@index([serverId, collectedAt])
@@ -3032,14 +3037,14 @@ model ServerMetrics {
 
 // Server registry - stores server identification info for monitoring
 model MonitoredServer {
-  id            String   @id @default(cuid())
-  ipAddress     String   @unique
-  serverName    String?
-  description   String?  @db.Text
-  category      String?  // e.g., "Production", "Development", "Database"
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id          String   @id @default(cuid())
+  ipAddress   String   @unique
+  serverName  String?
+  description String?  @db.Text
+  category    String? // e.g., "Production", "Development", "Database"
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   // Relations
   metricSnapshots ServerMetricSnapshot[]
@@ -3051,20 +3056,20 @@ model MonitoredServer {
 
 // Individual metric snapshot per server per collection
 model ServerMetricSnapshot {
-  id              String   @id @default(cuid())
-  serverId        String
-  collectionId    String   // Groups snapshots from same API call
+  id           String @id @default(cuid())
+  serverId     String
+  collectionId String // Groups snapshots from same API call
 
-  cpuPercent      Float?
-  memoryPercent   Float?
-  storage         Json?    // Array of {partition, usage}
+  cpuPercent    Float?
+  memoryPercent Float?
+  storage       Json? // Array of {partition, usage}
 
-  timestamp       DateTime // From external system
-  collectedAt     DateTime @default(now()) // When we received it
+  timestamp   DateTime // From external system
+  collectedAt DateTime @default(now()) // When we received it
 
   // Relations
-  server          MonitoredServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
-  collection      MetricCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  server     MonitoredServer  @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  collection MetricCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
 
   @@index([serverId, collectedAt])
   @@index([collectionId])
@@ -3080,7 +3085,7 @@ model MetricCollection {
   createdAt       DateTime @default(now())
 
   // Relations
-  snapshots       ServerMetricSnapshot[]
+  snapshots ServerMetricSnapshot[]
 
   @@index([createdAt])
   @@map("metric_collections")
@@ -3088,32 +3093,32 @@ model MetricCollection {
 
 // Shift report container (one per shift assignment)
 model ShiftReport {
-  id                    String              @id @default(cuid())
-  shiftAssignmentId     String              @unique
-  status                ShiftReportStatus   @default(DRAFT)
-  startedAt             DateTime            @default(now())
-  completedAt           DateTime?
-  serverMetricsId       String?
+  id                String            @id @default(cuid())
+  shiftAssignmentId String            @unique
+  status            ShiftReportStatus @default(DRAFT)
+  startedAt         DateTime          @default(now())
+  completedAt       DateTime?
+  serverMetricsId   String?
 
   // Summary fields (filled when completing)
-  summary               String?             @db.Text
-  handoverNotes         String?             @db.Text
-  issuesEncountered     String?             @db.Text
-  pendingActions        String?             @db.Text
+  summary           String? @db.Text
+  handoverNotes     String? @db.Text
+  issuesEncountered String? @db.Text
+  pendingActions    String? @db.Text
 
   // General notes/catatan
-  notes                 String?             @db.Text
+  notes String? @db.Text
 
   // Metadata
-  createdAt             DateTime            @default(now())
-  updatedAt             DateTime            @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  shiftAssignment       ShiftAssignment     @relation(fields: [shiftAssignmentId], references: [id], onDelete: Cascade)
-  serverMetrics         ServerMetrics?      @relation(fields: [serverMetricsId], references: [id])
-  checklistItems        ShiftChecklistItem[]
-  backupChecklist       ShiftBackupChecklist[]
-  issues                ShiftIssue[]
+  shiftAssignment ShiftAssignment        @relation(fields: [shiftAssignmentId], references: [id], onDelete: Cascade)
+  serverMetrics   ServerMetrics?         @relation(fields: [serverMetricsId], references: [id])
+  checklistItems  ShiftChecklistItem[]
+  backupChecklist ShiftBackupChecklist[]
+  issues          ShiftIssue[]
 
   @@index([shiftAssignmentId])
   @@index([status])
@@ -3122,24 +3127,24 @@ model ShiftReport {
 
 // Individual checklist items within a shift report
 model ShiftChecklistItem {
-  id                    String                  @id @default(cuid())
-  shiftReportId         String
-  category              ShiftChecklistCategory
-  title                 String
-  description           String?
-  order                 Int                     @default(0)
-  isRequired            Boolean                 @default(true)
-  status                ShiftChecklistStatus    @default(PENDING)
-  completedAt           DateTime?
-  notes                 String?                 @db.Text
-  unlockTime            String?                 // Time-lock: "HH:mm" format, item locked until this time
+  id            String                 @id @default(cuid())
+  shiftReportId String
+  category      ShiftChecklistCategory
+  title         String
+  description   String?
+  order         Int                    @default(0)
+  isRequired    Boolean                @default(true)
+  status        ShiftChecklistStatus   @default(PENDING)
+  completedAt   DateTime?
+  notes         String?                @db.Text
+  unlockTime    String? // Time-lock: "HH:mm" format, item locked until this time
 
   // Metadata
-  createdAt             DateTime                @default(now())
-  updatedAt             DateTime                @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  shiftReport           ShiftReport             @relation(fields: [shiftReportId], references: [id], onDelete: Cascade)
+  shiftReport ShiftReport @relation(fields: [shiftReportId], references: [id], onDelete: Cascade)
 
   @@index([shiftReportId, category])
   @@index([shiftReportId, order])
@@ -3148,20 +3153,20 @@ model ShiftChecklistItem {
 
 // Templates for checklist items (per shift type/category)
 model ShiftChecklistTemplate {
-  id                    String                  @id @default(cuid())
-  shiftType             ShiftType?              // Null = applies to all shift types
-  shiftCategory         ShiftCategory?          // Null = applies to all categories (MONITORING/OPERATIONAL)
-  category              ShiftChecklistCategory
-  title                 String
-  description           String?
-  order                 Int                     @default(0)
-  isRequired            Boolean                 @default(true)
-  isActive              Boolean                 @default(true)
-  unlockTime            String?                 // Time-lock: "HH:mm" format, item locked until this time
+  id            String                 @id @default(cuid())
+  shiftType     ShiftType? // Null = applies to all shift types
+  shiftCategory ShiftCategory? // Null = applies to all categories (MONITORING/OPERATIONAL)
+  category      ShiftChecklistCategory
+  title         String
+  description   String?
+  order         Int                    @default(0)
+  isRequired    Boolean                @default(true)
+  isActive      Boolean                @default(true)
+  unlockTime    String? // Time-lock: "HH:mm" format, item locked until this time
 
   // Metadata
-  createdAt             DateTime                @default(now())
-  updatedAt             DateTime                @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([shiftType, shiftCategory, category, isActive])
   @@map("shift_checklist_templates")
@@ -3169,21 +3174,21 @@ model ShiftChecklistTemplate {
 
 // Backup database checklist for shift report
 model ShiftBackupChecklist {
-  id                    String                  @id @default(cuid())
-  shiftReportId         String
-  databaseName          String                  // Name of the database
-  description           String?                 // Optional description
-  isChecked             Boolean                 @default(false)
-  checkedAt             DateTime?
-  notes                 String?                 @db.Text
-  order                 Int                     @default(0)
+  id            String    @id @default(cuid())
+  shiftReportId String
+  databaseName  String // Name of the database
+  description   String? // Optional description
+  isChecked     Boolean   @default(false)
+  checkedAt     DateTime?
+  notes         String?   @db.Text
+  order         Int       @default(0)
 
   // Metadata
-  createdAt             DateTime                @default(now())
-  updatedAt             DateTime                @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  shiftReport           ShiftReport             @relation(fields: [shiftReportId], references: [id], onDelete: Cascade)
+  shiftReport ShiftReport @relation(fields: [shiftReportId], references: [id], onDelete: Cascade)
 
   @@index([shiftReportId])
   @@map("shift_backup_checklist")
@@ -3191,15 +3196,15 @@ model ShiftBackupChecklist {
 
 // Backup database templates (master list of databases to check)
 model ShiftBackupTemplate {
-  id                    String                  @id @default(cuid())
-  databaseName          String                  @unique
-  description           String?
-  order                 Int                     @default(0)
-  isActive              Boolean                 @default(true)
+  id           String  @id @default(cuid())
+  databaseName String  @unique
+  description  String?
+  order        Int     @default(0)
+  isActive     Boolean @default(true)
 
   // Metadata
-  createdAt             DateTime                @default(now())
-  updatedAt             DateTime                @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([isActive, order])
   @@map("shift_backup_templates")
@@ -3207,26 +3212,26 @@ model ShiftBackupTemplate {
 
 // Issues tracking for shift report (masalah selesai & berjalan)
 model ShiftIssue {
-  id                    String                  @id @default(cuid())
-  shiftReportId         String
-  title                 String
-  description           String?                 @db.Text
-  status                ShiftIssueStatus        @default(ONGOING)
-  priority              IssuePriority           @default(MEDIUM)
-  resolvedAt            DateTime?
-  resolution            String?                 @db.Text
+  id            String           @id @default(cuid())
+  shiftReportId String
+  title         String
+  description   String?          @db.Text
+  status        ShiftIssueStatus @default(ONGOING)
+  priority      IssuePriority    @default(MEDIUM)
+  resolvedAt    DateTime?
+  resolution    String?          @db.Text
 
   // Optional linked ticket
-  ticketId              String?
-  ticketNumber          String?
+  ticketId     String?
+  ticketNumber String?
 
   // Metadata
-  createdAt             DateTime                @default(now())
-  updatedAt             DateTime                @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  shiftReport           ShiftReport             @relation(fields: [shiftReportId], references: [id], onDelete: Cascade)
-  ticket                Ticket?                 @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+  shiftReport ShiftReport @relation(fields: [shiftReportId], references: [id], onDelete: Cascade)
+  ticket      Ticket?     @relation(fields: [ticketId], references: [id], onDelete: SetNull)
 
   @@index([shiftReportId, status])
   @@index([ticketId])
@@ -3241,9 +3246,9 @@ enum ShiftReportStatus {
 }
 
 enum ShiftChecklistCategory {
-  SYSTEM_MONITORING     // Pemantauan Sistem
-  TICKET_MANAGEMENT     // Manajemen Tiket
-  HANDOVER_TASKS        // Serah Terima
+  SYSTEM_MONITORING // Pemantauan Sistem
+  TICKET_MANAGEMENT // Manajemen Tiket
+  HANDOVER_TASKS // Serah Terima
 }
 
 enum ShiftChecklistStatus {
@@ -3254,8 +3259,8 @@ enum ShiftChecklistStatus {
 }
 
 enum ShiftIssueStatus {
-  ONGOING               // Masalah Berjalan
-  RESOLVED              // Masalah Selesai
+  ONGOING // Masalah Berjalan
+  RESOLVED // Masalah Selesai
 }
 
 enum IssuePriority {
@@ -3271,10 +3276,10 @@ enum IssuePriority {
 
 // Categories for server access checklist
 enum ServerChecklistCategory {
-  BACKUP_VERIFICATION   // Verifikasi backup database
-  SERVER_HEALTH         // Kesehatan server
-  SECURITY_CHECK        // Pemeriksaan keamanan
-  MAINTENANCE           // Tugas pemeliharaan
+  BACKUP_VERIFICATION // Verifikasi backup database
+  SERVER_HEALTH // Kesehatan server
+  SECURITY_CHECK // Pemeriksaan keamanan
+  MAINTENANCE // Tugas pemeliharaan
 }
 
 // Status for server checklist
@@ -3287,34 +3292,34 @@ enum ServerChecklistStatus {
 // Types of daily checklists
 enum DailyChecklistType {
   // Legacy types (keep for backward compatibility)
-  HARIAN                // Shift Ops daily tasks (08:00 - branch closed)
-  SERVER_SIANG          // Server daytime (08:00-20:00) - any server access staff
-  SERVER_MALAM          // Server nighttime (20:01-07:59) - shift standby only
-  AKHIR_HARI            // End of day handover before night shift
+  HARIAN // Shift Ops daily tasks (08:00 - branch closed)
+  SERVER_SIANG // Server daytime (08:00-20:00) - any server access staff
+  SERVER_MALAM // Server nighttime (20:01-07:59) - shift standby only
+  AKHIR_HARI // End of day handover before night shift
 
   // New types (based on access, not shift)
-  OPS_SIANG             // Checklist Ops 08:00-20:00 (A, B_2 - no server access)
-  OPS_MALAM             // Checklist Ops 22:00-06:00 (D_2 - no server access)
-  MONITORING_SIANG      // Checklist Monitoring 08:00-20:00 (E, B_1, D_1 - server access)
-  MONITORING_MALAM      // Checklist Monitoring 22:00-06:00 (C, D_1 - server access)
+  OPS_SIANG // Checklist Ops 08:00-20:00 (A, B_2 - no server access)
+  OPS_MALAM // Checklist Ops 22:00-06:00 (D_2 - no server access)
+  MONITORING_SIANG // Checklist Monitoring 08:00-20:00 (E, B_1, D_1 - server access)
+  MONITORING_MALAM // Checklist Monitoring 22:00-06:00 (C, D_1 - server access)
 }
 
 // Templates for server access checklist items
 model ServerAccessChecklistTemplate {
-  id                    String                  @id @default(cuid())
-  title                 String
-  description           String?
-  category              String                  // Time-based category: "08:00", "10:00", etc.
-  checklistType         DailyChecklistType      @default(SERVER_SIANG) // Which checklist this belongs to
-  order                 Int                     @default(0)
-  isRequired            Boolean                 @default(true)
-  isActive              Boolean                 @default(true)
-  unlockTime            String?                 // Time-lock: "HH:mm" format
-  inputType             ChecklistInputType      @default(CHECKBOX) // Type of input for this item
+  id            String             @id @default(cuid())
+  title         String
+  description   String?
+  category      String // Time-based category: "08:00", "10:00", etc.
+  checklistType DailyChecklistType @default(SERVER_SIANG) // Which checklist this belongs to
+  order         Int                @default(0)
+  isRequired    Boolean            @default(true)
+  isActive      Boolean            @default(true)
+  unlockTime    String? // Time-lock: "HH:mm" format
+  inputType     ChecklistInputType @default(CHECKBOX) // Type of input for this item
 
   // Metadata
-  createdAt             DateTime                @default(now())
-  updatedAt             DateTime                @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([checklistType, category, isActive, order])
   @@map("server_access_checklist_templates")
@@ -3322,22 +3327,22 @@ model ServerAccessChecklistTemplate {
 
 // Daily server access checklist instance (one per user per day per type)
 model ServerAccessDailyChecklist {
-  id                    String                  @id @default(cuid())
-  userId                String                  // Original creator/owner
-  date                  DateTime                @db.Date
-  checklistType         DailyChecklistType      @default(SERVER_SIANG) // Type of checklist
-  status                ServerChecklistStatus   @default(PENDING)
-  completedAt           DateTime?
-  notes                 String?                 @db.Text
+  id            String                @id @default(cuid())
+  userId        String // Original creator/owner
+  date          DateTime              @db.Date
+  checklistType DailyChecklistType    @default(SERVER_SIANG) // Type of checklist
+  status        ServerChecklistStatus @default(PENDING)
+  completedAt   DateTime?
+  notes         String?               @db.Text
 
   // Metadata
-  createdAt             DateTime                @default(now())
-  updatedAt             DateTime                @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  user                  User                    @relation("ServerAccessChecklists", fields: [userId], references: [id], onDelete: Cascade)
-  items                 ServerAccessChecklistItem[]
-  claims                ChecklistClaim[]        // Multiple users can claim this checklist
+  user   User                        @relation("ServerAccessChecklists", fields: [userId], references: [id], onDelete: Cascade)
+  items  ServerAccessChecklistItem[]
+  claims ChecklistClaim[] // Multiple users can claim this checklist
 
   @@unique([userId, date, checklistType]) // Unique per user + date + type
   @@index([userId, date, checklistType])
@@ -3347,29 +3352,29 @@ model ServerAccessDailyChecklist {
 
 // Individual items in a server access daily checklist
 model ServerAccessChecklistItem {
-  id                    String                  @id @default(cuid())
-  checklistId           String
-  title                 String
-  description           String?
-  category              String                  // Time-based category: "08:00", "10:00", etc.
-  order                 Int                     @default(0)
-  isRequired            Boolean                 @default(true)
-  status                ShiftChecklistStatus    @default(PENDING)
-  completedAt           DateTime?
-  completedBy           String?                 // User ID who completed this item
-  notes                 String?                 @db.Text
-  unlockTime            String?                 // Time-lock: "HH:mm" format
+  id          String               @id @default(cuid())
+  checklistId String
+  title       String
+  description String?
+  category    String // Time-based category: "08:00", "10:00", etc.
+  order       Int                  @default(0)
+  isRequired  Boolean              @default(true)
+  status      ShiftChecklistStatus @default(PENDING)
+  completedAt DateTime?
+  completedBy String? // User ID who completed this item
+  notes       String?              @db.Text
+  unlockTime  String? // Time-lock: "HH:mm" format
 
   // Data storage for special item types
-  inputType             ChecklistInputType      @default(CHECKBOX)
-  data                  Json?                   // Stores: Grafana %, ATM list, tickets, timestamps, etc.
+  inputType ChecklistInputType @default(CHECKBOX)
+  data      Json? // Stores: Grafana %, ATM list, tickets, timestamps, etc.
 
   // Metadata
-  createdAt             DateTime                @default(now())
-  updatedAt             DateTime                @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  checklist             ServerAccessDailyChecklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  checklist ServerAccessDailyChecklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
 
   @@index([checklistId, category])
   @@index([checklistId, order])
@@ -3378,27 +3383,27 @@ model ServerAccessChecklistItem {
 
 // Input types for checklist items
 enum ChecklistInputType {
-  CHECKBOX              // Simple yes/no confirmation
-  TIMESTAMP             // Record a timestamp (branch open/close)
-  GRAFANA_STATUS        // 10 service percentages input
-  ATM_ALERT             // Auto-fetch ATM alert list
-  PENDING_TICKETS       // Auto-fetch pending tickets
-  APP_STATUS            // Core/Surrounding/Supporting status
-  AVAILABILITY_STATUS   // Koneksi, Akses Aplikasi status
-  TEXT_INPUT            // Free text input (handover notes)
-  SERVER_METRICS        // Fetch server metrics and generate PDF report
+  CHECKBOX // Simple yes/no confirmation
+  TIMESTAMP // Record a timestamp (branch open/close)
+  GRAFANA_STATUS // 10 service percentages input
+  ATM_ALERT // Auto-fetch ATM alert list
+  PENDING_TICKETS // Auto-fetch pending tickets
+  APP_STATUS // Core/Surrounding/Supporting status
+  AVAILABILITY_STATUS // Koneksi, Akses Aplikasi status
+  TEXT_INPUT // Free text input (handover notes)
+  SERVER_METRICS // Fetch server metrics and generate PDF report
 }
 
 // Collaborative checklist claim (multiple users can claim same checklist)
 model ChecklistClaim {
-  id                    String                  @id @default(cuid())
-  checklistId           String
-  userId                String
-  claimedAt             DateTime                @default(now())
+  id          String   @id @default(cuid())
+  checklistId String
+  userId      String
+  claimedAt   DateTime @default(now())
 
   // Relations
-  checklist             ServerAccessDailyChecklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
-  user                  User                    @relation("ChecklistClaims", fields: [userId], references: [id], onDelete: Cascade)
+  checklist ServerAccessDailyChecklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  user      User                       @relation("ChecklistClaims", fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([checklistId, userId])
   @@index([checklistId])
@@ -3406,11 +3411,159 @@ model ChecklistClaim {
   @@map("checklist_claims")
 }
 
+// ============================================
+// CHECKLIST V2 - New Implementation
+// ============================================
+
+// Unit/Department for checklist assignment
+enum ChecklistUnit {
+  IT_OPERATIONS // IT daily operations (Checklist Harian IT)
+  MONITORING // Shift monitoring (P2OT style)
+}
+
+// Shift types for checklist scheduling
+enum ChecklistShiftType {
+  HARIAN_KANTOR // Weekday office hours (08:00-17:00)
+  STANDBY_LEMBUR // Weekday overtime (17:00-20:00)
+  SHIFT_MALAM // Night shift (20:00-08:00)
+  SHIFT_SIANG_WEEKEND // Weekend/holiday day (08:00-20:00)
+}
+
+// Role in checklist assignment
+enum ChecklistRole {
+  STAFF
+  SUPERVISOR
+}
+
+// Status for individual checklist items (V2)
+enum ChecklistItemStatusV2 {
+  PENDING // Not yet done
+  COMPLETED // V - Done/OK
+  FAILED // X - Error/Failed
+  NOT_APPLICABLE // - (dash) - N/A
+  NEEDS_ATTENTION // ! - Needs follow up
+}
+
+// Templates for V2 checklist items
+model ChecklistTemplateV2 {
+  id           String             @id @default(cuid())
+  unit         ChecklistUnit
+  shiftType    ChecklistShiftType
+  section      String // A, B, C, D, E
+  sectionTitle String // "MONITORING AWAL HARI (07:00-08:00)"
+  itemNumber   Int
+  title        String
+  description  String?
+  toolSystem   String? // "Grafana", "ServiceDesk", etc.
+  timeSlot     String? // "08:00", "10:00", etc. for periodic items
+  isRequired   Boolean            @default(true)
+  order        Int
+  isActive     Boolean            @default(true)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  @@index([unit, shiftType, isActive])
+  @@index([section, order])
+  @@map("checklist_templates_v2")
+}
+
+// Daily checklist instance (one per date + unit + shift type)
+model DailyChecklistV2 {
+  id          String                @id @default(cuid())
+  date        DateTime              @db.Date
+  unit        ChecklistUnit
+  shiftType   ChecklistShiftType
+  status      ServerChecklistStatus @default(PENDING)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  completedAt DateTime?
+
+  items        ChecklistItemV2[]
+  assignments  ChecklistAssignmentV2[]
+  handoverFrom ShiftHandoverV2[]       @relation("HandoverFrom")
+  handoverTo   ShiftHandoverV2[]       @relation("HandoverTo")
+
+  @@unique([date, unit, shiftType])
+  @@index([date, status])
+  @@map("daily_checklists_v2")
+}
+
+// Assignment of users to checklists (Staff or Supervisor)
+model ChecklistAssignmentV2 {
+  id          String        @id @default(cuid())
+  checklistId String
+  userId      String
+  role        ChecklistRole
+  assignedAt  DateTime      @default(now())
+
+  checklist DailyChecklistV2 @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  user      User             @relation("ChecklistAssignmentsV2", fields: [userId], references: [id])
+
+  @@unique([checklistId, userId])
+  @@index([userId])
+  @@map("checklist_assignments_v2")
+}
+
+// Individual items in a daily checklist (V2)
+model ChecklistItemV2 {
+  id            String                @id @default(cuid())
+  checklistId   String
+  templateId    String?
+  section       String
+  sectionTitle  String
+  itemNumber    Int
+  title         String
+  description   String?
+  toolSystem    String?
+  timeSlot      String? // For periodic items and time-lock
+  isRequired    Boolean               @default(true)
+  order         Int
+  status        ChecklistItemStatusV2 @default(PENDING)
+  completedAt   DateTime?
+  completedById String?
+  notes         String?               @db.Text
+
+  checklist   DailyChecklistV2 @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  completedBy User?            @relation("ChecklistItemsCompletedV2", fields: [completedById], references: [id])
+
+  @@index([checklistId, section])
+  @@index([checklistId, order])
+  @@map("checklist_items_v2")
+}
+
+// Shift handover log between shifts
+model ShiftHandoverV2 {
+  id              String    @id @default(cuid())
+  date            DateTime  @db.Date
+  fromChecklistId String
+  toChecklistId   String?
+  outgoingPicId   String
+  incomingPicId   String?
+  systemStatus    String    @db.Text // JSON: overall system status
+  openIssues      String?   @db.Text // JSON: list of pending issues
+  notes           String?   @db.Text
+  handoverTime    DateTime  @default(now())
+  acknowledgedAt  DateTime?
+
+  fromChecklist DailyChecklistV2  @relation("HandoverFrom", fields: [fromChecklistId], references: [id])
+  toChecklist   DailyChecklistV2? @relation("HandoverTo", fields: [toChecklistId], references: [id])
+  outgoingPic   User              @relation("OutgoingHandoversV2", fields: [outgoingPicId], references: [id])
+  incomingPic   User?             @relation("IncomingHandoversV2", fields: [incomingPicId], references: [id])
+
+  @@index([date])
+  @@index([outgoingPicId])
+  @@map("shift_handovers_v2")
+}
+
+// ============================================
+// END CHECKLIST V2
+// ============================================
+
 // Import/Export tracking
 enum ImportMode {
-  ADD_ONLY         // Only create new records, skip existing
-  UPDATE_ONLY      // Only update existing records, skip new
-  REPLACE_ALL      // Clear existing data, import fresh
+  ADD_ONLY // Only create new records, skip existing
+  UPDATE_ONLY // Only update existing records, skip new
+  REPLACE_ALL // Clear existing data, import fresh
   CREATE_OR_UPDATE // Create new and update existing (default)
 }
 
@@ -3424,26 +3577,26 @@ enum ImportStatus {
 }
 
 model ImportLog {
-  id             String       @id @default(cuid())
-  entityType     String       // 'ATM', 'BRANCH', 'USER', 'SERVICE', etc.
-  importMode     ImportMode   @default(CREATE_OR_UPDATE)
-  fileName       String
-  fileSize       Int
-  totalRows      Int
-  processedRows  Int          @default(0)
-  createdRows    Int          @default(0)
-  updatedRows    Int          @default(0)
-  skippedRows    Int          @default(0)
-  errorRows      Int          @default(0)
-  status         ImportStatus @default(PENDING)
-  errors         Json?        // Array of error messages
-  startedAt      DateTime?
-  completedAt    DateTime?
-  createdById    String
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  id            String       @id @default(cuid())
+  entityType    String // 'ATM', 'BRANCH', 'USER', 'SERVICE', etc.
+  importMode    ImportMode   @default(CREATE_OR_UPDATE)
+  fileName      String
+  fileSize      Int
+  totalRows     Int
+  processedRows Int          @default(0)
+  createdRows   Int          @default(0)
+  updatedRows   Int          @default(0)
+  skippedRows   Int          @default(0)
+  errorRows     Int          @default(0)
+  status        ImportStatus @default(PENDING)
+  errors        Json? // Array of error messages
+  startedAt     DateTime?
+  completedAt   DateTime?
+  createdById   String
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
-  createdBy      User         @relation("ImportLogCreatedBy", fields: [createdById], references: [id])
+  createdBy User @relation("ImportLogCreatedBy", fields: [createdById], references: [id])
 
   @@index([entityType, status])
   @@index([createdById])
@@ -3461,16 +3614,16 @@ enum AtmMonitorStatus {
 }
 
 model AtmMonitorDevice {
-  id              String             @id @default(cuid())
-  deviceId        String             @unique  // Normalized device ID (e.g., "0126" from "00126")
-  location        String?
-  status          AtmMonitorStatus   @default(ONLINE)
-  lastSeenAt      DateTime           @default(now())
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
+  id         String           @id @default(cuid())
+  deviceId   String           @unique // Normalized device ID (e.g., "0126" from "00126")
+  location   String?
+  status     AtmMonitorStatus @default(ONLINE)
+  lastSeenAt DateTime         @default(now())
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
 
-  currentAlarms   AtmCurrentAlarm[]
-  alarmHistory    AtmAlarmHistory[]
+  currentAlarms AtmCurrentAlarm[]
+  alarmHistory  AtmAlarmHistory[]
 
   @@index([status])
   @@index([lastSeenAt])
@@ -3479,35 +3632,35 @@ model AtmMonitorDevice {
 
 // Current active alarms (cleared when device goes online)
 model AtmCurrentAlarm {
-  id          String             @id @default(cuid())
-  deviceId    String
-  alarmType   String
-  location    String
-  occurredAt  DateTime
-  timeAgo     String?
-  createdAt   DateTime           @default(now())
+  id         String   @id @default(cuid())
+  deviceId   String
+  alarmType  String
+  location   String
+  occurredAt DateTime
+  timeAgo    String?
+  createdAt  DateTime @default(now())
 
-  device      AtmMonitorDevice   @relation(fields: [deviceId], references: [deviceId], onDelete: Cascade)
+  device AtmMonitorDevice @relation(fields: [deviceId], references: [deviceId], onDelete: Cascade)
 
-  @@unique([deviceId, alarmType])  // One alarm type per device
+  @@unique([deviceId, alarmType]) // One alarm type per device
   @@index([alarmType])
   @@map("atm_current_alarms")
 }
 
 // Historical record of all alarms
 model AtmAlarmHistory {
-  id          String             @id @default(cuid())
-  deviceId    String
-  alarmType   String
-  location    String
-  occurredAt  DateTime
-  clearedAt   DateTime?
-  duration    Int?               // Duration in seconds until cleared
-  snapshotId  String?
-  createdAt   DateTime           @default(now())
+  id         String    @id @default(cuid())
+  deviceId   String
+  alarmType  String
+  location   String
+  occurredAt DateTime
+  clearedAt  DateTime?
+  duration   Int? // Duration in seconds until cleared
+  snapshotId String?
+  createdAt  DateTime  @default(now())
 
-  device      AtmMonitorDevice   @relation(fields: [deviceId], references: [deviceId], onDelete: Cascade)
-  snapshot    AtmAlarmSnapshot?  @relation(fields: [snapshotId], references: [id])
+  device   AtmMonitorDevice  @relation(fields: [deviceId], references: [deviceId], onDelete: Cascade)
+  snapshot AtmAlarmSnapshot? @relation(fields: [snapshotId], references: [id])
 
   @@index([deviceId, createdAt])
   @@index([alarmType])
@@ -3518,15 +3671,15 @@ model AtmAlarmHistory {
 
 // Track each JSON push/snapshot for auditing
 model AtmAlarmSnapshot {
-  id              String            @id @default(cuid())
-  timestamp       DateTime          // From the JSON timestamp field
-  alarmCount      Int               // Original count from JSON
-  processedCount  Int               // After filtering empty values
-  devicesAlarming Int               // Unique devices with alarms
-  devicesCleared  Int               // Devices that went online
-  receivedAt      DateTime          @default(now())
+  id              String   @id @default(cuid())
+  timestamp       DateTime // From the JSON timestamp field
+  alarmCount      Int // Original count from JSON
+  processedCount  Int // After filtering empty values
+  devicesAlarming Int // Unique devices with alarms
+  devicesCleared  Int // Devices that went online
+  receivedAt      DateTime @default(now())
 
-  alarmHistory    AtmAlarmHistory[]
+  alarmHistory AtmAlarmHistory[]
 
   @@index([timestamp])
   @@index([receivedAt])
