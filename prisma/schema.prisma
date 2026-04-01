@@ -112,6 +112,8 @@ model User {
   checklistClaims        ChecklistClaim[]             @relation("ChecklistClaims")
 
   // Checklist V2 relations
+  checklistStandbyV2        ChecklistStandbyV2?     @relation("ChecklistStandbyV2")
+  checklistStandbyAddedV2   ChecklistStandbyV2[]    @relation("ChecklistStandbyAddedByV2")
   checklistAssignmentsV2    ChecklistAssignmentV2[] @relation("ChecklistAssignmentsV2")
   checklistItemsCompletedV2 ChecklistItemV2[]       @relation("ChecklistItemsCompletedV2")
   outgoingHandoversV2       ShiftHandoverV2[]       @relation("OutgoingHandoversV2")
@@ -3486,6 +3488,22 @@ model DailyChecklistV2 {
   @@unique([date, unit, shiftType])
   @@index([date, status])
   @@map("daily_checklists_v2")
+}
+
+// Active standby pool - users available to be assigned to checklists
+model ChecklistStandbyV2 {
+  id        String        @id @default(cuid())
+  userId    String        @unique
+  unit      ChecklistUnit // Which unit they can be assigned to
+  isActive  Boolean       @default(true)
+  addedAt   DateTime      @default(now())
+  addedById String
+
+  user    User @relation("ChecklistStandbyV2", fields: [userId], references: [id])
+  addedBy User @relation("ChecklistStandbyAddedByV2", fields: [addedById], references: [id])
+
+  @@index([unit, isActive])
+  @@map("checklist_standby_v2")
 }
 
 // Assignment of users to checklists (Staff or Supervisor)

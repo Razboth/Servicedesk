@@ -33,21 +33,30 @@ export async function GET(request: NextRequest) {
     const shiftType = searchParams.get('shiftType') as ChecklistShiftType | null;
     const getUsers = searchParams.get('getUsers') === 'true';
 
-    // If requesting available users
+    // If requesting available users (from standby pool)
     if (getUsers) {
-      const users = await prisma.user.findMany({
+      const unitFilter = searchParams.get('forUnit') as ChecklistUnit | null;
+
+      // Get users from standby pool
+      const standbyUsers = await prisma.checklistStandbyV2.findMany({
         where: {
           isActive: true,
+          ...(unitFilter && { unit: unitFilter }),
         },
-        select: {
-          id: true,
-          name: true,
-          username: true,
-          role: true,
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              username: true,
+              role: true,
+            },
+          },
         },
-        orderBy: { name: 'asc' },
+        orderBy: { user: { name: 'asc' } },
       });
 
+      const users = standbyUsers.map((s) => s.user);
       return NextResponse.json({ users });
     }
 

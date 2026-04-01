@@ -145,9 +145,12 @@ export default function ChecklistAssignmentsPage() {
     }
   }, [selectedDate, filterUnit, filterShift]);
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (forUnit?: ChecklistUnit) => {
     try {
-      const response = await fetch('/api/v2/checklist/admin/assignments?getUsers=true');
+      const params = new URLSearchParams({ getUsers: 'true' });
+      if (forUnit) params.append('forUnit', forUnit);
+
+      const response = await fetch(`/api/v2/checklist/admin/assignments?${params}`);
       if (response.ok) {
         const data = await response.json();
         setUsers(data.users || []);
@@ -160,7 +163,6 @@ export default function ChecklistAssignmentsPage() {
   useEffect(() => {
     if (session?.user?.id) {
       fetchChecklists();
-      fetchUsers();
     }
   }, [session, fetchChecklists]);
 
@@ -178,6 +180,7 @@ export default function ChecklistAssignmentsPage() {
     setAssignTarget({ unit, shiftType, date: selectedDate, checklistId });
     setSelectedUserId('');
     setSelectedRole('STAFF');
+    fetchUsers(unit); // Fetch users for this specific unit
     setShowAssignDialog(true);
   };
 
