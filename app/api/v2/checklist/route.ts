@@ -232,6 +232,7 @@ export async function GET(request: NextRequest) {
         items: sortedItems,
         sections: Object.values(sections),
       },
+      currentUserId: session.user.id,
       userAssignment,
       isAssigned: !!userAssignment,
       canEdit: !!userAssignment && userAssignment.role === 'STAFF',
