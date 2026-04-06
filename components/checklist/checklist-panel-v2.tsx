@@ -121,6 +121,14 @@ export function ChecklistPanelV2({ unit, shiftType, onStatsUpdate }: ChecklistPa
           cache: 'no-store',
         });
 
+        // Debug log
+        const debugData = await response.clone().json();
+        console.log('[Checklist Debug] Total items:', debugData.checklist?.items?.length || 0);
+        if (debugData.checklist?.items) {
+          const sectionC = debugData.checklist.items.filter((i: any) => i.section === 'C');
+          console.log('[Checklist Debug] Section C items:', sectionC.length);
+        }
+
         if (response.status === 403) {
           const data = await response.json();
           setError(data.error || 'Akses ditolak');
