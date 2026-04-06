@@ -3,12 +3,26 @@ import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
 
+// Get current date in WITA timezone (UTC+8) - returns date at midnight UTC
+function getWITADate(): Date {
+  const now = new Date()
+  // Get WITA time
+  const utcTime = now.getTime() + now.getTimezoneOffset() * 60 * 1000
+  const witaTime = new Date(utcTime + 8 * 60 * 60 * 1000)
+  // Extract year, month, day from WITA time and create UTC midnight date
+  const year = witaTime.getFullYear()
+  const month = witaTime.getMonth()
+  const day = witaTime.getDate()
+  // Create a date at midnight UTC for this WITA date
+  return new Date(Date.UTC(year, month, day, 0, 0, 0, 0))
+}
+
 async function main() {
   console.log('🌱 Seeding Checklist V2 Test Data...\n')
 
   const hashedPassword = await bcrypt.hash('Test123!', 10)
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  const today = getWITADate()
+  console.log(`📅 Using WITA date: ${today.toISOString().split('T')[0]}\n`)
 
   // Test users configuration
   const testUsers = [
