@@ -5,7 +5,8 @@ import { ChecklistItemStatusV2, ChecklistShiftType } from '@prisma/client';
 import { isItemUnlocked, getCurrentTimeWITA } from '@/lib/time-lock';
 
 interface ItemUpdate {
-  id: string;
+  id?: string;
+  itemId?: string;  // Support both id and itemId from client
   status?: ChecklistItemStatusV2;
   notes?: string;
 }
@@ -31,8 +32,15 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Get all items to validate
-    const itemIds = items.map(i => i.id);
+    // Get all items to validate (support both id and itemId)
+    const itemIds = items.map(i => i.id || i.itemId).filter(Boolean) as string[];
+
+    if (itemIds.length === 0) {
+      return NextResponse.json(
+        { error: 'No valid item IDs provided' },
+        { status: 400 }
+      );
+    }
     const existingItems = await prisma.checklistItemV2.findMany({
       where: { id: { in: itemIds } },
       include: {
@@ -77,9 +85,10 @@ export async function PUT(request: NextRequest) {
     };
 
     for (const update of items) {
-      const existingItem = existingItems.find(i => i.id === update.id);
+      const updateId = update.id || update.itemId;
+      const existingItem = existingItems.find(i => i.id === updateId);
       if (!existingItem) {
-        results.failed.push({ id: update.id, reason: 'Item not found' });
+        results.failed.push({ id: updateId || 'unknown', reason: 'Item not found' });
         continue;
       }
 
@@ -87,13 +96,14 @@ export async function PUT(request: NextRequest) {
       const isNightChecklist = existingItem.checklist.shiftType === 'SHIFT_MALAM';
       if (existingItem.timeSlot && !isItemUnlocked(existingItem.timeSlot, currentTime, isNightChecklist)) {
         results.failed.push({
-          id: update.id,
+          id: updateId || 'unknown',
           reason: `Item is locked until ${existingItem.timeSlot}`,
         });
         continue;
       }
 
-      results.success.push(update);
+      // Normalize the update to use 'id' for consistency
+      results.success.push({ ...update, id: updateId });
     }
 
     // Update successful items
