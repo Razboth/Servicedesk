@@ -90,14 +90,11 @@ export default function ChecklistV2Page() {
 
     setExportingPdf(true);
     try {
-      // Fetch checklist data
-      const response = await fetch(
-        `/api/v2/checklist/items?checklistId=&unit=${selectedUnit}&shiftType=${selectedShift}&date=${selectedDate}`
-      );
-
-      // First try to get checklist ID
+      // Fetch fresh checklist data with cache busting
+      const timestamp = Date.now();
       const checklistResponse = await fetch(
-        `/api/v2/checklist?unit=${selectedUnit}&shiftType=${selectedShift}&date=${selectedDate}`
+        `/api/v2/checklist?unit=${selectedUnit}&shiftType=${selectedShift}&date=${selectedDate}&_t=${timestamp}`,
+        { cache: 'no-store' }
       );
 
       if (!checklistResponse.ok) {
