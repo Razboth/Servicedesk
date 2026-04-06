@@ -117,7 +117,9 @@ export function ChecklistPanelV2({ unit, shiftType, onStatsUpdate }: ChecklistPa
         }
         setError(null);
 
-        const response = await fetch(`/api/v2/checklist?unit=${unit}&shiftType=${shiftType}`);
+        const response = await fetch(`/api/v2/checklist?unit=${unit}&shiftType=${shiftType}&_t=${Date.now()}`, {
+          cache: 'no-store',
+        });
 
         if (response.status === 403) {
           const data = await response.json();

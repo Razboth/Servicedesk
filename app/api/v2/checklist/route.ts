@@ -4,6 +4,10 @@ import { prisma } from '@/lib/prisma';
 import { ChecklistUnit, ChecklistShiftType, ChecklistRole, ServerChecklistStatus } from '@prisma/client';
 import { isItemUnlocked, getLockStatusMessage, getCurrentTimeWITA } from '@/lib/time-lock';
 
+// Force dynamic rendering - no caching
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 /**
  * Determine if current time is daytime (08:00-19:59) or nighttime (20:00-07:59)
  */
@@ -171,7 +175,7 @@ export async function GET(request: NextRequest) {
         ],
       });
 
-      return NextResponse.json({
+      const response = NextResponse.json({
         checklist: null,
         templateCount: templates.length,
         canCreate: templates.length > 0,
@@ -180,6 +184,8 @@ export async function GET(request: NextRequest) {
         date: checklistDate.toISOString().split('T')[0],
         currentTime: getCurrentTimeWITA().toISOString(),
       });
+      response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+      return response;
     }
 
     // Check if current user is assigned
@@ -226,7 +232,7 @@ export async function GET(request: NextRequest) {
     ).length;
     const progress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       checklist: {
         ...checklist,
         items: sortedItems,
@@ -245,6 +251,12 @@ export async function GET(request: NextRequest) {
       date: checklistDate.toISOString().split('T')[0],
       currentTime: getCurrentTimeWITA().toISOString(),
     });
+
+    // Prevent caching
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+
+    return response;
   } catch (error) {
     console.error('[Checklist V2] GET error:', error);
     return NextResponse.json(
