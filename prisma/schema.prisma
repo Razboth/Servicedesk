@@ -111,6 +111,10 @@ model User {
   serverAccessChecklists ServerAccessDailyChecklist[] @relation("ServerAccessChecklists")
   checklistClaims        ChecklistClaim[]             @relation("ChecklistClaims")
 
+  // Checklist V2 - User specialization
+  checklistType ChecklistType? // User's checklist type specialization
+  canBeBuddy    Boolean        @default(false) // Can be assigned as standby buddy
+
   // Checklist V2 relations
   checklistStandbyV2        ChecklistStandbyV2?     @relation("ChecklistStandbyV2")
   checklistStandbyAddedV2   ChecklistStandbyV2[]    @relation("ChecklistStandbyAddedByV2")
@@ -118,6 +122,11 @@ model User {
   checklistItemsCompletedV2 ChecklistItemV2[]       @relation("ChecklistItemsCompletedV2")
   outgoingHandoversV2       ShiftHandoverV2[]       @relation("OutgoingHandoversV2")
   incomingHandoversV2       ShiftHandoverV2[]       @relation("IncomingHandoversV2")
+
+  // Shift Assignment V2 relations (for buddy system)
+  primaryShiftAssignments ShiftAssignmentV2[] @relation("ShiftPrimary")
+  buddyShiftAssignments   ShiftAssignmentV2[] @relation("ShiftBuddy")
+  createdShiftAssignments ShiftAssignmentV2[] @relation("ShiftCreatedBy")
 
   // Import tracking
   importLogs ImportLog[] @relation("ImportLogCreatedBy")
@@ -3417,18 +3426,17 @@ model ChecklistClaim {
 // CHECKLIST V2 - New Implementation
 // ============================================
 
-// Unit/Department for checklist assignment
-enum ChecklistUnit {
-  IT_OPERATIONS // IT daily operations (Checklist Harian IT)
-  MONITORING // Shift monitoring (P2OT style)
+// Checklist type based on specialization
+enum ChecklistType {
+  IT_INFRASTRUKTUR // IT & Infrastructure monitoring
+  KEAMANAN_SIBER // Cyber Security (KKS)
+  FRAUD_COMPLIANCE // Fraud & Compliance
 }
 
-// Shift types for checklist scheduling
+// Shift types for checklist scheduling (2 shifts)
 enum ChecklistShiftType {
-  HARIAN_KANTOR // Weekday office hours (08:00-17:00)
-  STANDBY_LEMBUR // Weekday overtime (17:00-20:00)
+  SHIFT_SIANG // Day shift (08:00-20:00)
   SHIFT_MALAM // Night shift (20:00-08:00)
-  SHIFT_SIANG_WEEKEND // Weekend/holiday day (08:00-20:00)
 }
 
 // Role in checklist assignment
@@ -3448,61 +3456,63 @@ enum ChecklistItemStatusV2 {
 
 // Templates for V2 checklist items
 model ChecklistTemplateV2 {
-  id           String             @id @default(cuid())
-  unit         ChecklistUnit
-  shiftType    ChecklistShiftType
-  section      String // A, B, C, D, E
-  sectionTitle String // "MONITORING AWAL HARI (07:00-08:00)"
-  itemNumber   Int
-  title        String
-  description  String?
-  toolSystem   String? // "Grafana", "ServiceDesk", etc.
-  timeSlot     String? // "08:00", "10:00", etc. for periodic items
-  isRequired   Boolean            @default(true)
-  order        Int
-  isActive     Boolean            @default(true)
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
+  id            String             @id @default(cuid())
+  checklistType ChecklistType
+  shiftType     ChecklistShiftType
+  section       String // A, B, C, D, E
+  sectionTitle  String // "MONITORING AWAL HARI (07:00-08:00)"
+  itemNumber    Int
+  title         String
+  description   String?
+  toolSystem    String? // "Grafana", "ServiceDesk", etc.
+  timeSlot      String? // "08:00", "10:00", etc. for periodic items
+  isRequired    Boolean            @default(true)
+  order         Int
+  isActive      Boolean            @default(true)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
 
-  @@index([unit, shiftType, isActive])
+  @@index([checklistType, shiftType, isActive])
   @@index([section, order])
   @@map("checklist_templates_v2")
 }
 
-// Daily checklist instance (one per date + unit + shift type)
+// Daily checklist instance (one per date + checklistType + shift type)
 model DailyChecklistV2 {
-  id          String                @id @default(cuid())
-  date        DateTime              @db.Date
-  unit        ChecklistUnit
-  shiftType   ChecklistShiftType
-  status      ServerChecklistStatus @default(PENDING)
-  createdAt   DateTime              @default(now())
-  updatedAt   DateTime              @updatedAt
-  completedAt DateTime?
+  id            String                @id @default(cuid())
+  date          DateTime              @db.Date
+  checklistType ChecklistType
+  shiftType     ChecklistShiftType
+  status        ServerChecklistStatus @default(PENDING)
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  completedAt   DateTime?
 
   items        ChecklistItemV2[]
   assignments  ChecklistAssignmentV2[]
   handoverFrom ShiftHandoverV2[]       @relation("HandoverFrom")
   handoverTo   ShiftHandoverV2[]       @relation("HandoverTo")
 
-  @@unique([date, unit, shiftType])
+  @@unique([date, checklistType, shiftType])
   @@index([date, status])
   @@map("daily_checklists_v2")
 }
 
 // Active standby pool - users available to be assigned to checklists
 model ChecklistStandbyV2 {
-  id        String        @id @default(cuid())
-  userId    String        @unique
-  unit      ChecklistUnit // Which unit they can be assigned to
-  isActive  Boolean       @default(true)
-  addedAt   DateTime      @default(now())
-  addedById String
+  id            String        @id @default(cuid())
+  userId        String        @unique
+  checklistType ChecklistType
+  canBePrimary  Boolean       @default(true) // Can be assigned as primary
+  canBeBuddy    Boolean       @default(true) // Can be assigned as buddy
+  isActive      Boolean       @default(true)
+  addedAt       DateTime      @default(now())
+  addedById     String
 
   user    User @relation("ChecklistStandbyV2", fields: [userId], references: [id])
   addedBy User @relation("ChecklistStandbyAddedByV2", fields: [addedById], references: [id])
 
-  @@index([unit, isActive])
+  @@index([checklistType, isActive])
   @@map("checklist_standby_v2")
 }
 
@@ -3571,6 +3581,42 @@ model ShiftHandoverV2 {
   @@index([date])
   @@index([outgoingPicId])
   @@map("shift_handovers_v2")
+}
+
+// Shift assignment - 1 primary + 1 buddy per shift per day
+model ShiftAssignmentV2 {
+  id        String             @id @default(cuid())
+  date      DateTime           @db.Date
+  shiftType ChecklistShiftType // SHIFT_SIANG or SHIFT_MALAM
+
+  // Primary person
+  primaryUserId String
+  primaryType   ChecklistType // Which checklist type they fill
+
+  // Standby buddy (can be different type)
+  buddyUserId String?
+  buddyType   ChecklistType? // Buddy's own checklist type (for reference)
+
+  // Takeover tracking
+  takenOver       Boolean   @default(false)
+  takenOverAt     DateTime?
+  takenOverReason String?   @db.Text
+
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String
+
+  // Relations
+  primaryUser User  @relation("ShiftPrimary", fields: [primaryUserId], references: [id])
+  buddyUser   User? @relation("ShiftBuddy", fields: [buddyUserId], references: [id])
+  createdBy   User  @relation("ShiftCreatedBy", fields: [createdById], references: [id])
+
+  @@unique([date, shiftType]) // Only 1 assignment per shift per day
+  @@index([date])
+  @@index([primaryUserId])
+  @@index([buddyUserId])
+  @@map("shift_assignments_v2")
 }
 
 // ============================================

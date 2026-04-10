@@ -3,6 +3,10 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { startOfMonth, endOfMonth, subMonths } from 'date-fns';
 
+// Prevent Next.js from caching this route
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 interface StatusDistribution {
   status: string;
   count: number;

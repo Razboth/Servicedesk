@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { ChecklistUnit, ChecklistShiftType } from '@prisma/client';
+import { ChecklistType, ChecklistShiftType } from '@prisma/client';
 
 /**
  * GET /api/v2/checklist/templates
- * List all checklist templates, optionally filtered by unit and shift type
+ * List all checklist templates, optionally filtered by checklistType and shift type
  */
 export async function GET(request: NextRequest) {
   try {
@@ -15,37 +15,37 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const unit = searchParams.get('unit') as ChecklistUnit | null;
+    const checklistType = searchParams.get('checklistType') as ChecklistType | null;
     const shiftType = searchParams.get('shiftType') as ChecklistShiftType | null;
     const activeOnly = searchParams.get('activeOnly') !== 'false';
 
     // Build where clause
     const whereClause: {
-      unit?: ChecklistUnit;
+      checklistType?: ChecklistType;
       shiftType?: ChecklistShiftType;
       isActive?: boolean;
     } = {};
 
-    if (unit) whereClause.unit = unit;
+    if (checklistType) whereClause.checklistType = checklistType;
     if (shiftType) whereClause.shiftType = shiftType;
     if (activeOnly) whereClause.isActive = true;
 
     const templates = await prisma.checklistTemplateV2.findMany({
       where: whereClause,
       orderBy: [
-        { unit: 'asc' },
+        { checklistType: 'asc' },
         { shiftType: 'asc' },
         { section: 'asc' },
         { order: 'asc' },
       ],
     });
 
-    // Group by unit and shift type
+    // Group by checklistType and shift type
     const grouped = templates.reduce((acc, template) => {
-      const key = `${template.unit}-${template.shiftType}`;
+      const key = `${template.checklistType}-${template.shiftType}`;
       if (!acc[key]) {
         acc[key] = {
-          unit: template.unit,
+          checklistType: template.checklistType,
           shiftType: template.shiftType,
           sections: {},
           totalItems: 0,
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
 
       return acc;
     }, {} as Record<string, {
-      unit: ChecklistUnit;
+      checklistType: ChecklistType | null;
       shiftType: ChecklistShiftType;
       sections: Record<string, { section: string; sectionTitle: string; items: typeof templates }>;
       totalItems: number;
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const {
-      unit,
+      checklistType,
       shiftType,
       section,
       sectionTitle,
@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // Validate required fields
-    if (!unit || !shiftType || !section || !sectionTitle || !title || itemNumber === undefined || order === undefined) {
+    if (!checklistType || !shiftType || !section || !sectionTitle || !title || itemNumber === undefined || order === undefined) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
 
     const template = await prisma.checklistTemplateV2.create({
       data: {
-        unit,
+        checklistType,
         shiftType,
         section,
         sectionTitle,

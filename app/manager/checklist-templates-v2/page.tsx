@@ -41,12 +41,12 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-type ChecklistUnit = 'IT_OPERATIONS' | 'MONITORING';
-type ChecklistShiftType = 'HARIAN_KANTOR' | 'STANDBY_LEMBUR' | 'SHIFT_MALAM' | 'SHIFT_SIANG_WEEKEND';
+type ChecklistType = 'IT_INFRASTRUKTUR' | 'KEAMANAN_SIBER' | 'FRAUD_COMPLIANCE';
+type ChecklistShiftType = 'SHIFT_SIANG' | 'SHIFT_MALAM';
 
 interface Template {
   id: string;
-  unit: ChecklistUnit;
+  checklistType: ChecklistType;
   shiftType: ChecklistShiftType;
   section: string;
   sectionTitle: string;
@@ -60,16 +60,15 @@ interface Template {
   isActive: boolean;
 }
 
-const UNIT_OPTIONS: { value: ChecklistUnit; label: string }[] = [
-  { value: 'IT_OPERATIONS', label: 'IT Operations' },
-  { value: 'MONITORING', label: 'Monitoring' },
+const TYPE_OPTIONS: { value: ChecklistType; label: string }[] = [
+  { value: 'IT_INFRASTRUKTUR', label: 'IT & Infrastruktur' },
+  { value: 'KEAMANAN_SIBER', label: 'Keamanan Siber (KKS)' },
+  { value: 'FRAUD_COMPLIANCE', label: 'Fraud & Compliance' },
 ];
 
 const SHIFT_OPTIONS: { value: ChecklistShiftType; label: string }[] = [
-  { value: 'HARIAN_KANTOR', label: 'Harian Kantor' },
-  { value: 'STANDBY_LEMBUR', label: 'Standby Lembur' },
-  { value: 'SHIFT_MALAM', label: 'Shift Malam' },
-  { value: 'SHIFT_SIANG_WEEKEND', label: 'Shift Siang Weekend' },
+  { value: 'SHIFT_SIANG', label: 'Shift Siang (08:00-20:00)' },
+  { value: 'SHIFT_MALAM', label: 'Shift Malam (20:00-08:00)' },
 ];
 
 const SECTION_OPTIONS = ['A', 'B', 'C', 'D', 'E'];
@@ -79,7 +78,7 @@ export default function ChecklistTemplatesV2Page() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterUnit, setFilterUnit] = useState<ChecklistUnit | ''>('');
+  const [filterType, setFilterType] = useState<ChecklistType | ''>('');
   const [filterShift, setFilterShift] = useState<ChecklistShiftType | ''>('');
   const [filterSection, setFilterSection] = useState('');
   const [showInactive, setShowInactive] = useState(false);
@@ -90,8 +89,8 @@ export default function ChecklistTemplatesV2Page() {
   const [deleting, setDeleting] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<Partial<Template>>({
-    unit: 'IT_OPERATIONS',
-    shiftType: 'HARIAN_KANTOR',
+    checklistType: 'IT_INFRASTRUKTUR',
+    shiftType: 'SHIFT_SIANG',
     section: 'A',
     sectionTitle: '',
     itemNumber: 1,
@@ -108,7 +107,7 @@ export default function ChecklistTemplatesV2Page() {
     try {
       setLoading(true);
       const params = new URLSearchParams();
-      if (filterUnit) params.append('unit', filterUnit);
+      if (filterType) params.append('checklistType', filterType);
       if (filterShift) params.append('shiftType', filterShift);
       if (filterSection) params.append('section', filterSection);
       if (showInactive) params.append('includeInactive', 'true');
@@ -126,7 +125,7 @@ export default function ChecklistTemplatesV2Page() {
     } finally {
       setLoading(false);
     }
-  }, [filterUnit, filterShift, filterSection, showInactive]);
+  }, [filterType, filterShift, filterSection, showInactive]);
 
   useEffect(() => {
     if (session?.user?.id) {
@@ -136,8 +135,8 @@ export default function ChecklistTemplatesV2Page() {
 
   const handleOpenCreateDialog = () => {
     setFormData({
-      unit: 'IT_OPERATIONS',
-      shiftType: 'HARIAN_KANTOR',
+      checklistType: 'IT_INFRASTRUKTUR',
+      shiftType: 'SHIFT_SIANG',
       section: 'A',
       sectionTitle: '',
       itemNumber: 1,
@@ -321,12 +320,12 @@ export default function ChecklistTemplatesV2Page() {
                 </div>
               </div>
               <select
-                value={filterUnit}
-                onChange={(e) => setFilterUnit(e.target.value as ChecklistUnit | '')}
-                className="h-10 px-3 rounded-md border bg-background min-w-[150px]"
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value as ChecklistType | '')}
+                className="h-10 px-3 rounded-md border bg-background min-w-[180px]"
               >
-                <option value="">Semua Unit</option>
-                {UNIT_OPTIONS.map((opt) => (
+                <option value="">Semua Tipe</option>
+                {TYPE_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {opt.label}
                   </option>
@@ -377,7 +376,7 @@ export default function ChecklistTemplatesV2Page() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[60px]">#</TableHead>
-                    <TableHead>Unit / Shift</TableHead>
+                    <TableHead>Tipe / Shift</TableHead>
                     <TableHead>Section</TableHead>
                     <TableHead>Title</TableHead>
                     <TableHead>Tool/System</TableHead>
@@ -402,7 +401,7 @@ export default function ChecklistTemplatesV2Page() {
                         <TableCell>
                           <div className="space-y-1">
                             <Badge variant="outline" className="text-xs">
-                              {UNIT_OPTIONS.find((u) => u.value === template.unit)?.label}
+                              {TYPE_OPTIONS.find((t) => t.value === template.checklistType)?.label}
                             </Badge>
                             <Badge variant="secondary" className="text-xs block w-fit">
                               {SHIFT_OPTIONS.find((s) => s.value === template.shiftType)?.label}
@@ -497,15 +496,15 @@ export default function ChecklistTemplatesV2Page() {
             <div className="space-y-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>Unit</Label>
+                  <Label>Tipe Checklist</Label>
                   <select
-                    value={formData.unit || 'IT_OPERATIONS'}
+                    value={formData.checklistType || 'IT_INFRASTRUKTUR'}
                     onChange={(e) =>
-                      setFormData({ ...formData, unit: e.target.value as ChecklistUnit })
+                      setFormData({ ...formData, checklistType: e.target.value as ChecklistType })
                     }
                     className="w-full h-10 px-3 rounded-md border bg-background"
                   >
-                    {UNIT_OPTIONS.map((opt) => (
+                    {TYPE_OPTIONS.map((opt) => (
                       <option key={opt.value} value={opt.value}>
                         {opt.label}
                       </option>
@@ -515,7 +514,7 @@ export default function ChecklistTemplatesV2Page() {
                 <div>
                   <Label>Shift Type</Label>
                   <select
-                    value={formData.shiftType || 'HARIAN_KANTOR'}
+                    value={formData.shiftType || 'SHIFT_SIANG'}
                     onChange={(e) =>
                       setFormData({ ...formData, shiftType: e.target.value as ChecklistShiftType })
                     }

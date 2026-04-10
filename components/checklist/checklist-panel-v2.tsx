@@ -15,13 +15,15 @@ import {
   RefreshCw,
   CheckCircle2,
   AlertTriangle,
+  Server,
+  Shield,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 
-type ChecklistUnit = 'IT_OPERATIONS' | 'MONITORING';
-type ChecklistShiftType = 'HARIAN_KANTOR' | 'STANDBY_LEMBUR' | 'SHIFT_MALAM' | 'SHIFT_SIANG_WEEKEND';
+type ChecklistType = 'IT_INFRASTRUKTUR' | 'KEAMANAN_SIBER' | 'FRAUD_COMPLIANCE';
+type ChecklistShiftType = 'SHIFT_SIANG' | 'SHIFT_MALAM';
 type ChecklistRole = 'STAFF' | 'SUPERVISOR';
 
 interface ChecklistAssignment {
@@ -38,7 +40,7 @@ interface ChecklistAssignment {
 interface DailyChecklist {
   id: string;
   date: string;
-  unit: ChecklistUnit;
+  checklistType: ChecklistType;
   shiftType: ChecklistShiftType;
   status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED';
   completedAt: string | null;
@@ -62,33 +64,36 @@ interface ChecklistStats {
 }
 
 interface ChecklistPanelV2Props {
-  unit: ChecklistUnit;
+  checklistType: ChecklistType;
   shiftType: ChecklistShiftType;
   onStatsUpdate?: (stats: ChecklistStats | null) => void;
 }
 
 const SHIFT_LABELS: Record<ChecklistShiftType, string> = {
-  HARIAN_KANTOR: 'Harian Kantor',
-  STANDBY_LEMBUR: 'Standby Lembur',
-  SHIFT_MALAM: 'Shift Malam',
-  SHIFT_SIANG_WEEKEND: 'Shift Siang Weekend',
+  SHIFT_SIANG: 'Shift Siang (08:00-20:00)',
+  SHIFT_MALAM: 'Shift Malam (20:00-08:00)',
 };
 
-const UNIT_LABELS: Record<ChecklistUnit, string> = {
-  IT_OPERATIONS: 'IT Operations',
-  MONITORING: 'Monitoring',
+const TYPE_LABELS: Record<ChecklistType, string> = {
+  IT_INFRASTRUKTUR: 'IT & Infrastruktur',
+  KEAMANAN_SIBER: 'Keamanan Siber (KKS)',
+  FRAUD_COMPLIANCE: 'Fraud & Compliance',
+};
+
+const TYPE_COLORS: Record<ChecklistType, string> = {
+  IT_INFRASTRUKTUR: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
+  KEAMANAN_SIBER: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300',
+  FRAUD_COMPLIANCE: 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300',
 };
 
 // Periodic sections that should use grid view
 const PERIODIC_SECTIONS = ['C'];
 const PERIODIC_TIME_SLOTS: Record<ChecklistShiftType, string[]> = {
-  HARIAN_KANTOR: ['08:00', '10:00', '12:00', '14:00', '16:00'],
-  STANDBY_LEMBUR: ['17:00', '19:00'],
+  SHIFT_SIANG: ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00'],
   SHIFT_MALAM: ['20:00', '22:00', '00:00', '02:00', '04:00', '06:00'],
-  SHIFT_SIANG_WEEKEND: ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00'],
 };
 
-export function ChecklistPanelV2({ unit, shiftType, onStatsUpdate }: ChecklistPanelV2Props) {
+export function ChecklistPanelV2({ checklistType, shiftType, onStatsUpdate }: ChecklistPanelV2Props) {
   const [checklist, setChecklist] = useState<DailyChecklist | null>(null);
   const [stats, setStats] = useState<ChecklistStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -117,7 +122,7 @@ export function ChecklistPanelV2({ unit, shiftType, onStatsUpdate }: ChecklistPa
         }
         setError(null);
 
-        const response = await fetch(`/api/v2/checklist?unit=${unit}&shiftType=${shiftType}&_t=${Date.now()}`, {
+        const response = await fetch(`/api/v2/checklist?checklistType=${checklistType}&shiftType=${shiftType}&_t=${Date.now()}`, {
           cache: 'no-store',
         });
 
@@ -171,7 +176,7 @@ export function ChecklistPanelV2({ unit, shiftType, onStatsUpdate }: ChecklistPa
         setRefreshing(false);
       }
     },
-    [unit, shiftType, onStatsUpdate, calculateStats]
+    [checklistType, shiftType, onStatsUpdate, calculateStats]
   );
 
   useEffect(() => {
@@ -248,7 +253,7 @@ export function ChecklistPanelV2({ unit, shiftType, onStatsUpdate }: ChecklistPa
         <AlertTriangle className="h-8 w-8 text-muted-foreground mb-2" />
         <p className="text-muted-foreground">Tidak ada checklist tersedia untuk shift ini</p>
         <p className="text-sm text-muted-foreground mt-1">
-          {UNIT_LABELS[unit]} - {SHIFT_LABELS[shiftType]}
+          {TYPE_LABELS[checklistType]} - {SHIFT_LABELS[shiftType]}
         </p>
       </div>
     );
@@ -292,7 +297,7 @@ export function ChecklistPanelV2({ unit, shiftType, onStatsUpdate }: ChecklistPa
             </div>
           )}
           <span className="text-muted-foreground hidden sm:inline">•</span>
-          <Badge variant="outline">{UNIT_LABELS[unit]}</Badge>
+          <Badge variant="outline" className={TYPE_COLORS[checklistType]}>{TYPE_LABELS[checklistType]}</Badge>
           <Badge variant="secondary">{SHIFT_LABELS[shiftType]}</Badge>
         </div>
 

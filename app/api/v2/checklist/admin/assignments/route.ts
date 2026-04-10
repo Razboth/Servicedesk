@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { ChecklistUnit, ChecklistShiftType, ChecklistRole } from '@prisma/client';
+import { ChecklistType, ChecklistShiftType, ChecklistRole } from '@prisma/client';
 
 /**
  * GET /api/v2/checklist/admin/assignments
@@ -29,19 +29,19 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const date = searchParams.get('date');
-    const unit = searchParams.get('unit') as ChecklistUnit | null;
+    const checklistType = searchParams.get('checklistType') as ChecklistType | null;
     const shiftType = searchParams.get('shiftType') as ChecklistShiftType | null;
     const getUsers = searchParams.get('getUsers') === 'true';
 
     // If requesting available users (from standby pool)
     if (getUsers) {
-      const unitFilter = searchParams.get('forUnit') as ChecklistUnit | null;
+      const typeFilter = searchParams.get('forType') as ChecklistType | null;
 
       // Get users from standby pool
       const standbyUsers = await prisma.checklistStandbyV2.findMany({
         where: {
           isActive: true,
-          ...(unitFilter && { unit: unitFilter }),
+          ...(typeFilter && { checklistType: typeFilter }),
         },
         include: {
           user: {
@@ -50,28 +50,34 @@ export async function GET(request: NextRequest) {
               name: true,
               username: true,
               role: true,
+              checklistType: true,
             },
           },
         },
         orderBy: { user: { name: 'asc' } },
       });
 
-      const users = standbyUsers.map((s) => s.user);
+      const users = standbyUsers.map((s) => ({
+        ...s.user,
+        canBePrimary: s.canBePrimary,
+        canBeBuddy: s.canBeBuddy,
+        standbyChecklistType: s.checklistType,
+      }));
       return NextResponse.json({ users });
     }
 
     // Build where clause for checklists
     const whereClause: {
       date?: Date;
-      unit?: ChecklistUnit;
+      checklistType?: ChecklistType;
       shiftType?: ChecklistShiftType;
     } = {};
 
     if (date) {
       whereClause.date = new Date(date);
     }
-    if (unit) {
-      whereClause.unit = unit;
+    if (checklistType) {
+      whereClause.checklistType = checklistType;
     }
     if (shiftType) {
       whereClause.shiftType = shiftType;
@@ -89,6 +95,7 @@ export async function GET(request: NextRequest) {
                 name: true,
                 username: true,
                 role: true,
+                checklistType: true,
               },
             },
           },
@@ -102,7 +109,7 @@ export async function GET(request: NextRequest) {
       },
       orderBy: [
         { date: 'desc' },
-        { unit: 'asc' },
+        { checklistType: 'asc' },
         { shiftType: 'asc' },
       ],
     });
@@ -169,17 +176,17 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { date, unit, shiftType, userId, role } = body as {
+    const { date, checklistType, shiftType, userId, role } = body as {
       date: string;
-      unit: ChecklistUnit;
+      checklistType: ChecklistType;
       shiftType: ChecklistShiftType;
       userId: string;
       role: ChecklistRole;
     };
 
-    if (!date || !unit || !shiftType || !userId || !role) {
+    if (!date || !checklistType || !shiftType || !userId || !role) {
       return NextResponse.json(
-        { error: 'Missing required fields: date, unit, shiftType, userId, role' },
+        { error: 'Missing required fields: date, checklistType, shiftType, userId, role' },
         { status: 400 }
       );
     }
@@ -187,7 +194,7 @@ export async function POST(request: NextRequest) {
     // Verify user exists
     const targetUser = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, name: true, username: true, role: true },
+      select: { id: true, name: true, username: true, role: true, checklistType: true },
     });
 
     if (!targetUser) {
@@ -198,13 +205,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Find or create checklist
-    let checklist = await prisma.dailyChecklistV2.findUnique({
+    let checklist = await prisma.dailyChecklistV2.findFirst({
       where: {
-        date_unit_shiftType: {
-          date: new Date(date),
-          unit,
-          shiftType,
-        },
+        date: new Date(date),
+        checklistType,
+        shiftType,
       },
       include: {
         assignments: true,
@@ -215,7 +220,7 @@ export async function POST(request: NextRequest) {
       // Create checklist with items from templates
       const templates = await prisma.checklistTemplateV2.findMany({
         where: {
-          unit,
+          checklistType,
           shiftType,
           isActive: true,
         },
@@ -228,7 +233,7 @@ export async function POST(request: NextRequest) {
       checklist = await prisma.dailyChecklistV2.create({
         data: {
           date: new Date(date),
-          unit,
+          checklistType,
           shiftType,
           status: 'PENDING',
           items: {
@@ -287,13 +292,14 @@ export async function POST(request: NextRequest) {
             name: true,
             username: true,
             role: true,
+            checklistType: true,
           },
         },
         checklist: {
           select: {
             id: true,
             date: true,
-            unit: true,
+            checklistType: true,
             shiftType: true,
           },
         },

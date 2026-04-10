@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { ChecklistUnit, ChecklistShiftType, ChecklistRole, ServerChecklistStatus } from '@prisma/client';
+import { ChecklistType, ChecklistShiftType, ServerChecklistStatus } from '@prisma/client';
 import { isItemUnlocked, getLockStatusMessage, getCurrentTimeWITA } from '@/lib/time-lock';
 
 // Force dynamic rendering - no caching
@@ -40,31 +40,20 @@ function getChecklistDate(shiftType: ChecklistShiftType): Date {
 }
 
 /**
- * Determine which shift type applies based on current time and day of week
+ * Determine which shift type applies based on current time
+ * Simplified to 2 shifts: SHIFT_SIANG (08:00-20:00), SHIFT_MALAM (20:00-08:00)
  */
 function getCurrentShiftType(): ChecklistShiftType {
   const witaTime = getCurrentTimeWITA();
   const hour = witaTime.getHours();
-  const dayOfWeek = witaTime.getDay(); // 0 = Sunday, 6 = Saturday
-  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
   // Night shift: 20:00-07:59
   if (hour >= 20 || hour < 8) {
     return 'SHIFT_MALAM';
   }
 
-  // Weekend/holiday day shift: 08:00-19:59
-  if (isWeekend) {
-    return 'SHIFT_SIANG_WEEKEND';
-  }
-
-  // Weekday standby overtime: 17:00-19:59
-  if (hour >= 17) {
-    return 'STANDBY_LEMBUR';
-  }
-
-  // Weekday office hours: 08:00-16:59
-  return 'HARIAN_KANTOR';
+  // Day shift: 08:00-19:59
+  return 'SHIFT_SIANG';
 }
 
 /**
@@ -104,7 +93,7 @@ function sortNightChecklistItems<T extends { section: string; timeSlot: string |
 
 /**
  * GET /api/v2/checklist
- * Get checklist for current user based on unit and shift
+ * Get checklist for current user based on checklistType and shift
  */
 export async function GET(request: NextRequest) {
   try {
@@ -114,29 +103,27 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const unit = searchParams.get('unit') as ChecklistUnit | null;
+    const checklistType = searchParams.get('checklistType') as ChecklistType | null;
     const shiftType = searchParams.get('shiftType') as ChecklistShiftType | null;
     const dateParam = searchParams.get('date');
 
     // Determine shift type if not provided
     const effectiveShiftType = shiftType || getCurrentShiftType();
 
-    // Determine unit if not provided (default to IT_OPERATIONS)
-    const effectiveUnit = unit || 'IT_OPERATIONS';
+    // Determine checklistType if not provided (default to IT_INFRASTRUKTUR)
+    const effectiveChecklistType = checklistType || 'IT_INFRASTRUKTUR';
 
     // Get date for the checklist
     const checklistDate = dateParam
       ? new Date(dateParam)
       : getChecklistDate(effectiveShiftType);
 
-    // Find the checklist for this date/unit/shift
-    let checklist = await prisma.dailyChecklistV2.findUnique({
+    // Find the checklist for this date/checklistType/shift
+    let checklist = await prisma.dailyChecklistV2.findFirst({
       where: {
-        date_unit_shiftType: {
-          date: checklistDate,
-          unit: effectiveUnit,
-          shiftType: effectiveShiftType,
-        },
+        date: checklistDate,
+        checklistType: effectiveChecklistType,
+        shiftType: effectiveShiftType,
       },
       include: {
         items: {
@@ -160,12 +147,29 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    // Get shift assignment for buddy info
+    const shiftAssignment = await prisma.shiftAssignmentV2.findFirst({
+      where: {
+        date: checklistDate,
+        shiftType: effectiveShiftType,
+        isActive: true,
+      },
+      include: {
+        primaryUser: {
+          select: { id: true, name: true, username: true, checklistType: true },
+        },
+        buddyUser: {
+          select: { id: true, name: true, username: true, checklistType: true },
+        },
+      },
+    });
+
     // If no checklist exists, return empty state with template info
     if (!checklist) {
-      // Get templates for this unit/shift
+      // Get templates for this checklistType/shift
       const templates = await prisma.checklistTemplateV2.findMany({
         where: {
-          unit: effectiveUnit,
+          checklistType: effectiveChecklistType,
           shiftType: effectiveShiftType,
           isActive: true,
         },
@@ -179,10 +183,17 @@ export async function GET(request: NextRequest) {
         checklist: null,
         templateCount: templates.length,
         canCreate: templates.length > 0,
-        unit: effectiveUnit,
+        checklistType: effectiveChecklistType,
         shiftType: effectiveShiftType,
         date: checklistDate.toISOString().split('T')[0],
         currentTime: getCurrentTimeWITA().toISOString(),
+        shiftAssignment,
+        serverTime: {
+          wita: getCurrentTimeWITA().toISOString(),
+          witaHour: getCurrentTimeWITA().getHours(),
+          witaMinute: getCurrentTimeWITA().getMinutes(),
+          iso: new Date().toISOString(),
+        },
       });
       response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
       return response;
@@ -191,6 +202,11 @@ export async function GET(request: NextRequest) {
     // Check if current user is assigned
     const userAssignment = checklist.assignments.find(a => a.userId === session.user.id);
     const isNightChecklist = effectiveShiftType === 'SHIFT_MALAM';
+
+    // Check if user is primary or buddy for this shift
+    const isPrimaryUser = shiftAssignment?.primaryUserId === session.user.id;
+    const isBuddyUser = shiftAssignment?.buddyUserId === session.user.id;
+    const canTakeover = isBuddyUser && !shiftAssignment?.takenOver;
 
     // Add lock status to items
     const currentTime = getCurrentTimeWITA();
@@ -243,13 +259,23 @@ export async function GET(request: NextRequest) {
       isAssigned: !!userAssignment,
       canEdit: !!userAssignment && userAssignment.role === 'STAFF',
       isSupervisor: !!userAssignment && userAssignment.role === 'SUPERVISOR',
+      isPrimaryUser,
+      isBuddyUser,
+      canTakeover,
+      shiftAssignment,
       progress,
       totalItems,
       completedItems,
-      unit: effectiveUnit,
+      checklistType: effectiveChecklistType,
       shiftType: effectiveShiftType,
       date: checklistDate.toISOString().split('T')[0],
       currentTime: getCurrentTimeWITA().toISOString(),
+      serverTime: {
+        wita: getCurrentTimeWITA().toISOString(),
+        witaHour: getCurrentTimeWITA().getHours(),
+        witaMinute: getCurrentTimeWITA().getMinutes(),
+        iso: new Date().toISOString(),
+      },
     });
 
     // Prevent caching
@@ -268,7 +294,7 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/v2/checklist
- * Create a new checklist for the specified date/unit/shift
+ * Create a new checklist for the specified date/checklistType/shift
  */
 export async function POST(request: NextRequest) {
   try {
@@ -278,33 +304,31 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { unit, shiftType, date } = body as {
-      unit?: ChecklistUnit;
+    const { checklistType, shiftType, date } = body as {
+      checklistType?: ChecklistType;
       shiftType?: ChecklistShiftType;
       date?: string;
     };
 
     // Determine effective values
     const effectiveShiftType = shiftType || getCurrentShiftType();
-    const effectiveUnit = unit || 'IT_OPERATIONS';
+    const effectiveChecklistType = checklistType || 'IT_INFRASTRUKTUR';
     const checklistDate = date
       ? new Date(date)
       : getChecklistDate(effectiveShiftType);
 
     // Check if checklist already exists
-    const existing = await prisma.dailyChecklistV2.findUnique({
+    const existing = await prisma.dailyChecklistV2.findFirst({
       where: {
-        date_unit_shiftType: {
-          date: checklistDate,
-          unit: effectiveUnit,
-          shiftType: effectiveShiftType,
-        },
+        date: checklistDate,
+        checklistType: effectiveChecklistType,
+        shiftType: effectiveShiftType,
       },
     });
 
     if (existing) {
       return NextResponse.json(
-        { error: 'Checklist already exists for this date/unit/shift' },
+        { error: 'Checklist already exists for this date/type/shift' },
         { status: 409 }
       );
     }
@@ -312,7 +336,7 @@ export async function POST(request: NextRequest) {
     // Get templates
     const templates = await prisma.checklistTemplateV2.findMany({
       where: {
-        unit: effectiveUnit,
+        checklistType: effectiveChecklistType,
         shiftType: effectiveShiftType,
         isActive: true,
       },
@@ -324,7 +348,7 @@ export async function POST(request: NextRequest) {
 
     if (templates.length === 0) {
       return NextResponse.json(
-        { error: 'No templates found for this unit/shift type' },
+        { error: 'No templates found for this checklist type/shift' },
         { status: 400 }
       );
     }
@@ -335,7 +359,7 @@ export async function POST(request: NextRequest) {
       const newChecklist = await tx.dailyChecklistV2.create({
         data: {
           date: checklistDate,
-          unit: effectiveUnit,
+          checklistType: effectiveChecklistType,
           shiftType: effectiveShiftType,
           status: 'PENDING',
         },

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -27,48 +28,65 @@ import {
   UserPlus,
   UserMinus,
   Server,
-  Monitor,
+  Shield,
   AlertTriangle,
   Loader2,
   RefreshCw,
   Search,
+  UserCheck,
+  UserCog,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
-type ChecklistUnit = 'IT_OPERATIONS' | 'MONITORING';
+type ChecklistType = 'IT_INFRASTRUKTUR' | 'KEAMANAN_SIBER' | 'FRAUD_COMPLIANCE';
 
 interface User {
   id: string;
   name: string;
   username: string;
   role: string;
+  checklistType?: ChecklistType;
 }
 
 interface StandbyUser {
   id: string;
   userId: string;
-  unit: ChecklistUnit;
+  checklistType: ChecklistType;
+  canBePrimary: boolean;
+  canBeBuddy: boolean;
   isActive: boolean;
   addedAt: string;
   user: User;
   addedBy: { name: string };
 }
 
-const UNIT_CONFIG: Record<ChecklistUnit, { label: string; icon: typeof Server; color: string; bgColor: string }> = {
-  IT_OPERATIONS: {
-    label: 'IT Operations',
+const CHECKLIST_TYPE_CONFIG: Record<ChecklistType, { label: string; shortLabel: string; icon: typeof Server; color: string; bgColor: string; borderColor: string }> = {
+  IT_INFRASTRUKTUR: {
+    label: 'IT & Infrastruktur',
+    shortLabel: 'IT',
     icon: Server,
     color: 'text-blue-600',
     bgColor: 'bg-blue-50 dark:bg-blue-950/30',
+    borderColor: 'border-l-blue-500',
   },
-  MONITORING: {
-    label: 'Monitoring',
-    icon: Monitor,
-    color: 'text-purple-600',
-    bgColor: 'bg-purple-50 dark:bg-purple-950/30',
+  KEAMANAN_SIBER: {
+    label: 'Keamanan Siber (KKS)',
+    shortLabel: 'KKS',
+    icon: Shield,
+    color: 'text-red-600',
+    bgColor: 'bg-red-50 dark:bg-red-950/30',
+    borderColor: 'border-l-red-500',
+  },
+  FRAUD_COMPLIANCE: {
+    label: 'Fraud & Compliance',
+    shortLabel: 'Fraud',
+    icon: AlertTriangle,
+    color: 'text-amber-600',
+    bgColor: 'bg-amber-50 dark:bg-amber-950/30',
+    borderColor: 'border-l-amber-500',
   },
 };
 
@@ -78,13 +96,15 @@ export default function ChecklistStandbyPage() {
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [filterUnit, setFilterUnit] = useState<ChecklistUnit | ''>('');
+  const [filterType, setFilterType] = useState<ChecklistType | ''>('');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Dialog states
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState('');
-  const [selectedUnit, setSelectedUnit] = useState<ChecklistUnit>('IT_OPERATIONS');
+  const [selectedType, setSelectedType] = useState<ChecklistType>('IT_INFRASTRUKTUR');
+  const [canBePrimary, setCanBePrimary] = useState(true);
+  const [canBeBuddy, setCanBeBuddy] = useState(true);
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<string | null>(null);
 
@@ -94,7 +114,7 @@ export default function ChecklistStandbyPage() {
       else setRefreshing(true);
 
       const params = new URLSearchParams();
-      if (filterUnit) params.append('unit', filterUnit);
+      if (filterType) params.append('checklistType', filterType);
 
       const response = await fetch(`/api/v2/checklist/admin/standby?${params}`);
       if (response.ok) {
@@ -110,7 +130,7 @@ export default function ChecklistStandbyPage() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [filterUnit]);
+  }, [filterType]);
 
   const fetchAvailableUsers = async () => {
     try {
@@ -133,7 +153,9 @@ export default function ChecklistStandbyPage() {
   const handleOpenAddDialog = () => {
     fetchAvailableUsers();
     setSelectedUserId('');
-    setSelectedUnit('IT_OPERATIONS');
+    setSelectedType('IT_INFRASTRUKTUR');
+    setCanBePrimary(true);
+    setCanBeBuddy(true);
     setShowAddDialog(true);
   };
 
@@ -150,7 +172,9 @@ export default function ChecklistStandbyPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: selectedUserId,
-          unit: selectedUnit,
+          checklistType: selectedType,
+          canBePrimary,
+          canBeBuddy,
         }),
       });
 
@@ -232,7 +256,7 @@ export default function ChecklistStandbyPage() {
     );
   }
 
-  const allowedRoles = ['MANAGER_IT', 'ADMIN'];
+  const allowedRoles = ['MANAGER_IT', 'ADMIN', 'SUPER_ADMIN'];
   if (!allowedRoles.includes(session.user.role || '')) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -255,9 +279,9 @@ export default function ChecklistStandbyPage() {
               <Users className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <h1 className="text-2xl font-semibold tracking-tight">Staff Standby</h1>
+              <h1 className="text-2xl font-semibold tracking-tight">Staff Standby Pool</h1>
               <p className="text-sm text-muted-foreground">
-                Kelola daftar staff yang tersedia untuk ditugaskan ke checklist
+                Kelola daftar staff yang tersedia untuk ditugaskan ke checklist (Primary/Buddy)
               </p>
             </div>
           </div>
@@ -279,13 +303,14 @@ export default function ChecklistStandbyPage() {
                   />
                 </div>
                 <select
-                  value={filterUnit}
-                  onChange={(e) => setFilterUnit(e.target.value as ChecklistUnit | '')}
+                  value={filterType}
+                  onChange={(e) => setFilterType(e.target.value as ChecklistType | '')}
                   className="h-9 px-3 rounded-md border bg-background text-sm"
                 >
-                  <option value="">Semua Unit</option>
-                  <option value="IT_OPERATIONS">IT Operations</option>
-                  <option value="MONITORING">Monitoring</option>
+                  <option value="">Semua Tipe</option>
+                  <option value="IT_INFRASTRUKTUR">IT & Infrastruktur</option>
+                  <option value="KEAMANAN_SIBER">Keamanan Siber</option>
+                  <option value="FRAUD_COMPLIANCE">Fraud & Compliance</option>
                 </select>
               </div>
 
@@ -308,14 +333,16 @@ export default function ChecklistStandbyPage() {
         </Card>
 
         {/* Summary Cards */}
-        <div className="grid md:grid-cols-2 gap-4 mb-6">
-          {(['IT_OPERATIONS', 'MONITORING'] as ChecklistUnit[]).map((unit) => {
-            const config = UNIT_CONFIG[unit];
+        <div className="grid md:grid-cols-3 gap-4 mb-6">
+          {(['IT_INFRASTRUKTUR', 'KEAMANAN_SIBER', 'FRAUD_COMPLIANCE'] as ChecklistType[]).map((type) => {
+            const config = CHECKLIST_TYPE_CONFIG[type];
             const Icon = config.icon;
-            const count = standbyUsers.filter((s) => s.unit === unit && s.isActive).length;
+            const typeUsers = standbyUsers.filter((s) => s.checklistType === type && s.isActive);
+            const primaryCount = typeUsers.filter(s => s.canBePrimary).length;
+            const buddyCount = typeUsers.filter(s => s.canBeBuddy).length;
 
             return (
-              <Card key={unit} className={cn('border-l-4', unit === 'IT_OPERATIONS' ? 'border-l-blue-500' : 'border-l-purple-500')}>
+              <Card key={type} className={cn('border-l-4', config.borderColor)}>
                 <CardContent className="py-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -323,11 +350,18 @@ export default function ChecklistStandbyPage() {
                         <Icon className={cn('h-5 w-5', config.color)} />
                       </div>
                       <div>
-                        <p className="font-medium">{config.label}</p>
-                        <p className="text-sm text-muted-foreground">Staff Standby</p>
+                        <p className="font-medium">{config.shortLabel}</p>
+                        <p className="text-xs text-muted-foreground">{config.label}</p>
                       </div>
                     </div>
-                    <div className="text-3xl font-bold">{count}</div>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold">{typeUsers.length}</div>
+                      <div className="text-xs text-muted-foreground">
+                        <span className="text-green-600">{primaryCount} Primary</span>
+                        {' / '}
+                        <span className="text-blue-600">{buddyCount} Buddy</span>
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -340,7 +374,7 @@ export default function ChecklistStandbyPage() {
           <CardHeader>
             <CardTitle>Daftar Staff Standby</CardTitle>
             <CardDescription>
-              Staff yang terdaftar di sini dapat ditugaskan ke checklist harian
+              Staff yang terdaftar dapat ditugaskan sebagai Primary atau Buddy per shift
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -363,15 +397,16 @@ export default function ChecklistStandbyPage() {
                     <TableHead>Nama</TableHead>
                     <TableHead>Username</TableHead>
                     <TableHead>Role</TableHead>
-                    <TableHead>Unit</TableHead>
+                    <TableHead>Tipe Checklist</TableHead>
+                    <TableHead>Kemampuan</TableHead>
                     <TableHead>Ditambahkan</TableHead>
                     <TableHead className="text-right">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredStandbyUsers.map((standby) => {
-                    const unitConfig = UNIT_CONFIG[standby.unit];
-                    const UnitIcon = unitConfig.icon;
+                    const typeConfig = CHECKLIST_TYPE_CONFIG[standby.checklistType];
+                    const TypeIcon = typeConfig.icon;
 
                     return (
                       <TableRow key={standby.id}>
@@ -384,8 +419,24 @@ export default function ChecklistStandbyPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <UnitIcon className={cn('h-4 w-4', unitConfig.color)} />
-                            <span className="text-sm">{unitConfig.label}</span>
+                            <TypeIcon className={cn('h-4 w-4', typeConfig.color)} />
+                            <span className="text-sm">{typeConfig.shortLabel}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {standby.canBePrimary && (
+                              <Badge variant="outline" className="text-green-600 border-green-300 bg-green-50">
+                                <UserCheck className="h-3 w-3 mr-1" />
+                                Primary
+                              </Badge>
+                            )}
+                            {standby.canBeBuddy && (
+                              <Badge variant="outline" className="text-blue-600 border-blue-300 bg-blue-50">
+                                <UserCog className="h-3 w-3 mr-1" />
+                                Buddy
+                              </Badge>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
@@ -419,14 +470,14 @@ export default function ChecklistStandbyPage() {
 
         {/* Add Dialog */}
         <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-          <DialogContent>
+          <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <UserPlus className="h-5 w-5" />
                 Tambah Staff Standby
               </DialogTitle>
               <DialogDescription>
-                Pilih user dan unit untuk ditambahkan ke daftar standby
+                Pilih user dan tipe checklist untuk ditambahkan ke standby pool
               </DialogDescription>
             </DialogHeader>
 
@@ -448,24 +499,52 @@ export default function ChecklistStandbyPage() {
               </div>
 
               <div>
-                <label className="text-sm font-medium mb-2 block">Unit</label>
-                <div className="flex gap-2">
-                  {(['IT_OPERATIONS', 'MONITORING'] as ChecklistUnit[]).map((unit) => {
-                    const config = UNIT_CONFIG[unit];
+                <label className="text-sm font-medium mb-2 block">Tipe Checklist</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['IT_INFRASTRUKTUR', 'KEAMANAN_SIBER', 'FRAUD_COMPLIANCE'] as ChecklistType[]).map((type) => {
+                    const config = CHECKLIST_TYPE_CONFIG[type];
                     const Icon = config.icon;
                     return (
                       <Button
-                        key={unit}
+                        key={type}
                         type="button"
-                        variant={selectedUnit === unit ? 'default' : 'outline'}
-                        className="flex-1"
-                        onClick={() => setSelectedUnit(unit)}
+                        variant={selectedType === type ? 'default' : 'outline'}
+                        className="flex-col h-auto py-3 px-2"
+                        onClick={() => setSelectedType(type)}
                       >
-                        <Icon className="h-4 w-4 mr-2" />
-                        {config.label}
+                        <Icon className="h-5 w-5 mb-1" />
+                        <span className="text-xs">{config.shortLabel}</span>
                       </Button>
                     );
                   })}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">Kemampuan</label>
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="canBePrimary"
+                      checked={canBePrimary}
+                      onCheckedChange={(checked) => setCanBePrimary(checked as boolean)}
+                    />
+                    <label htmlFor="canBePrimary" className="text-sm flex items-center gap-2">
+                      <UserCheck className="h-4 w-4 text-green-600" />
+                      Dapat menjadi Primary (penanggung jawab utama)
+                    </label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="canBeBuddy"
+                      checked={canBeBuddy}
+                      onCheckedChange={(checked) => setCanBeBuddy(checked as boolean)}
+                    />
+                    <label htmlFor="canBeBuddy" className="text-sm flex items-center gap-2">
+                      <UserCog className="h-4 w-4 text-blue-600" />
+                      Dapat menjadi Buddy (backup/takeover)
+                    </label>
+                  </div>
                 </div>
               </div>
             </div>
@@ -474,7 +553,7 @@ export default function ChecklistStandbyPage() {
               <Button variant="outline" onClick={() => setShowAddDialog(false)}>
                 Batal
               </Button>
-              <Button onClick={handleAdd} disabled={!selectedUserId || adding}>
+              <Button onClick={handleAdd} disabled={!selectedUserId || adding || (!canBePrimary && !canBeBuddy)}>
                 {adding ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />

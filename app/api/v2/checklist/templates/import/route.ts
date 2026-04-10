@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { ChecklistUnit, ChecklistShiftType } from '@prisma/client';
+import { ChecklistType, ChecklistShiftType } from '@prisma/client';
 
 interface TemplateImportItem {
-  unit: ChecklistUnit;
+  checklistType: ChecklistType;
   shiftType: ChecklistShiftType;
   section: string;
   sectionTitle: string;
@@ -56,12 +56,12 @@ export async function POST(request: NextRequest) {
 
     // Validate all templates
     const errors: { index: number; error: string }[] = [];
-    const validUnits = ['IT_OPERATIONS', 'MONITORING'];
-    const validShiftTypes = ['HARIAN_KANTOR', 'STANDBY_LEMBUR', 'SHIFT_MALAM', 'SHIFT_SIANG_WEEKEND'];
+    const validTypes = ['IT_INFRASTRUKTUR', 'KEAMANAN_SIBER', 'FRAUD_COMPLIANCE'];
+    const validShiftTypes = ['SHIFT_SIANG', 'SHIFT_MALAM'];
 
     templates.forEach((t, index) => {
-      if (!t.unit || !validUnits.includes(t.unit)) {
-        errors.push({ index, error: `Invalid unit: ${t.unit}` });
+      if (!t.checklistType || !validTypes.includes(t.checklistType)) {
+        errors.push({ index, error: `Invalid checklistType: ${t.checklistType}` });
       }
       if (!t.shiftType || !validShiftTypes.includes(t.shiftType)) {
         errors.push({ index, error: `Invalid shiftType: ${t.shiftType}` });
@@ -97,13 +97,13 @@ export async function POST(request: NextRequest) {
 
     await prisma.$transaction(async (tx) => {
       if (mode === 'REPLACE_ALL') {
-        // Delete all existing templates for the units/shift types being imported
-        const unitShiftCombos = [...new Set(templates.map(t => `${t.unit}-${t.shiftType}`))];
-        for (const combo of unitShiftCombos) {
-          const [unit, shiftType] = combo.split('-');
+        // Delete all existing templates for the types/shift types being imported
+        const typeShiftCombos = [...new Set(templates.map(t => `${t.checklistType}-${t.shiftType}`))];
+        for (const combo of typeShiftCombos) {
+          const [checklistType, shiftType] = combo.split('-');
           await tx.checklistTemplateV2.deleteMany({
             where: {
-              unit: unit as ChecklistUnit,
+              checklistType: checklistType as ChecklistType,
               shiftType: shiftType as ChecklistShiftType,
             },
           });
@@ -111,10 +111,10 @@ export async function POST(request: NextRequest) {
       }
 
       for (const template of templates) {
-        // Check if template exists (by unit + shiftType + section + itemNumber)
+        // Check if template exists (by checklistType + shiftType + section + itemNumber)
         const existing = await tx.checklistTemplateV2.findFirst({
           where: {
-            unit: template.unit,
+            checklistType: template.checklistType,
             shiftType: template.shiftType,
             section: template.section,
             itemNumber: template.itemNumber,
@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
           // Create new
           await tx.checklistTemplateV2.create({
             data: {
-              unit: template.unit,
+              checklistType: template.checklistType,
               shiftType: template.shiftType,
               section: template.section,
               sectionTitle: template.sectionTitle,

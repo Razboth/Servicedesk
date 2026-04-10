@@ -19,14 +19,14 @@ import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
-type ChecklistUnit = 'IT_OPERATIONS' | 'MONITORING';
-type ChecklistShiftType = 'HARIAN_KANTOR' | 'STANDBY_LEMBUR' | 'SHIFT_MALAM' | 'SHIFT_SIANG_WEEKEND';
+type ChecklistType = 'IT_INFRASTRUKTUR' | 'KEAMANAN_SIBER' | 'FRAUD_COMPLIANCE';
+type ChecklistShiftType = 'SHIFT_SIANG' | 'SHIFT_MALAM';
 
 interface StaffProgress {
   userId: string;
   userName: string;
   checklistId: string;
-  unit: ChecklistUnit;
+  checklistType: ChecklistType;
   shiftType: ChecklistShiftType;
   status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED';
   stats: {
@@ -41,26 +41,25 @@ interface StaffProgress {
 }
 
 interface SupervisorDashboardProps {
-  unit: ChecklistUnit;
+  checklistType: ChecklistType;
   shiftType: ChecklistShiftType;
   date?: string;
   onViewChecklist?: (checklistId: string) => void;
 }
 
-const UNIT_LABELS: Record<ChecklistUnit, string> = {
-  IT_OPERATIONS: 'IT Operations',
-  MONITORING: 'Monitoring',
+const TYPE_LABELS: Record<ChecklistType, string> = {
+  IT_INFRASTRUKTUR: 'IT & Infrastruktur',
+  KEAMANAN_SIBER: 'Keamanan Siber (KKS)',
+  FRAUD_COMPLIANCE: 'Fraud & Compliance',
 };
 
 const SHIFT_LABELS: Record<ChecklistShiftType, string> = {
-  HARIAN_KANTOR: 'Harian Kantor',
-  STANDBY_LEMBUR: 'Standby Lembur',
-  SHIFT_MALAM: 'Shift Malam',
-  SHIFT_SIANG_WEEKEND: 'Shift Siang Weekend',
+  SHIFT_SIANG: 'Shift Siang (08:00-20:00)',
+  SHIFT_MALAM: 'Shift Malam (20:00-08:00)',
 };
 
 export function SupervisorDashboard({
-  unit,
+  checklistType,
   shiftType,
   date,
   onViewChecklist,
@@ -81,7 +80,7 @@ export function SupervisorDashboard({
         setError(null);
 
         const params = new URLSearchParams({
-          unit,
+          checklistType,
           shiftType,
           ...(date && { date }),
         });
@@ -104,7 +103,7 @@ export function SupervisorDashboard({
         setRefreshing(false);
       }
     },
-    [unit, shiftType, date]
+    [checklistType, shiftType, date]
   );
 
   useEffect(() => {
@@ -178,7 +177,7 @@ export function SupervisorDashboard({
             Dashboard Supervisor
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            {UNIT_LABELS[unit]} - {SHIFT_LABELS[shiftType]}
+            {TYPE_LABELS[checklistType]} - {SHIFT_LABELS[shiftType]}
           </p>
         </div>
         <Button

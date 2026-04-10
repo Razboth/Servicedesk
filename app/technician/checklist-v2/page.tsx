@@ -5,14 +5,14 @@ import { useSession } from 'next-auth/react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ChecklistPanelV2 } from '@/components/checklist';
 import { HandoverForm, HandoverAcknowledge } from '@/components/checklist';
 import {
   ClipboardCheck,
-  Monitor,
   Server,
+  Shield,
   Sun,
   Moon,
   Clock,
@@ -23,23 +23,26 @@ import {
   ChevronRight,
   FileText,
   Loader2,
+  UserCheck,
+  UserCog,
+  ArrowRightLeft,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
+import { cn } from '@/lib/utils';
 
-type ChecklistUnit = 'IT_OPERATIONS' | 'MONITORING';
-type ChecklistShiftType = 'HARIAN_KANTOR' | 'STANDBY_LEMBUR' | 'SHIFT_MALAM' | 'SHIFT_SIANG_WEEKEND';
+type ChecklistType = 'IT_INFRASTRUKTUR' | 'KEAMANAN_SIBER' | 'FRAUD_COMPLIANCE';
+type ChecklistShiftType = 'SHIFT_SIANG' | 'SHIFT_MALAM';
 
-interface ShiftInfo {
-  currentShift: ChecklistShiftType | null;
-  availableShifts: ChecklistShiftType[];
-  serverTime: {
-    wita: string;
-    witaHour: number;
-    witaMinute: number;
-  };
+interface ShiftAssignment {
+  id: string;
+  primaryUser: { id: string; name: string };
+  buddyUser?: { id: string; name: string };
+  primaryType: ChecklistType;
+  buddyType?: ChecklistType;
+  takenOver: boolean;
 }
 
 interface PendingHandover {
@@ -48,39 +51,52 @@ interface PendingHandover {
   handoverTime: string;
 }
 
-const UNIT_CONFIG = {
-  IT_OPERATIONS: {
-    label: 'IT Operations',
+const CHECKLIST_TYPE_CONFIG: Record<ChecklistType, { label: string; shortLabel: string; icon: typeof Server; color: string; bgColor: string }> = {
+  IT_INFRASTRUKTUR: {
+    label: 'IT & Infrastruktur',
+    shortLabel: 'IT',
     icon: Server,
     color: 'text-blue-600',
     bgColor: 'bg-blue-50 dark:bg-blue-950/30',
   },
-  MONITORING: {
-    label: 'Monitoring',
-    icon: Monitor,
-    color: 'text-purple-600',
-    bgColor: 'bg-purple-50 dark:bg-purple-950/30',
+  KEAMANAN_SIBER: {
+    label: 'Keamanan Siber (KKS)',
+    shortLabel: 'KKS',
+    icon: Shield,
+    color: 'text-red-600',
+    bgColor: 'bg-red-50 dark:bg-red-950/30',
+  },
+  FRAUD_COMPLIANCE: {
+    label: 'Fraud & Compliance',
+    shortLabel: 'Fraud',
+    icon: AlertTriangle,
+    color: 'text-amber-600',
+    bgColor: 'bg-amber-50 dark:bg-amber-950/30',
   },
 };
 
-const SHIFT_CONFIG: Record<ChecklistShiftType, { label: string; icon: typeof Sun; time: string }> = {
-  HARIAN_KANTOR: { label: 'Harian Kantor', icon: Sun, time: '08:00 - 17:00' },
-  STANDBY_LEMBUR: { label: 'Standby Lembur', icon: Clock, time: '17:00 - 20:00' },
-  SHIFT_MALAM: { label: 'Shift Malam', icon: Moon, time: '20:00 - 08:00' },
-  SHIFT_SIANG_WEEKEND: { label: 'Shift Siang Weekend', icon: Sun, time: '08:00 - 20:00' },
+const SHIFT_CONFIG: Record<ChecklistShiftType, { label: string; icon: typeof Sun; time: string; color: string }> = {
+  SHIFT_SIANG: { label: 'Shift Siang', icon: Sun, time: '08:00 - 20:00', color: 'text-amber-500' },
+  SHIFT_MALAM: { label: 'Shift Malam', icon: Moon, time: '20:00 - 08:00', color: 'text-indigo-500' },
 };
 
 export default function ChecklistV2Page() {
   const { data: session, status } = useSession();
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [selectedUnit, setSelectedUnit] = useState<ChecklistUnit>('IT_OPERATIONS');
+  const [selectedType, setSelectedType] = useState<ChecklistType>('IT_INFRASTRUKTUR');
   const [selectedShift, setSelectedShift] = useState<ChecklistShiftType | null>(null);
-  const [shiftInfo, setShiftInfo] = useState<ShiftInfo | null>(null);
+  const [currentShift, setCurrentShift] = useState<ChecklistShiftType | null>(null);
+  const [shiftAssignment, setShiftAssignment] = useState<ShiftAssignment | null>(null);
+  const [serverTime, setServerTime] = useState<{ witaHour: number; witaMinute: number } | null>(null);
   const [pendingHandovers, setPendingHandovers] = useState<PendingHandover[]>([]);
   const [showHandoverForm, setShowHandoverForm] = useState(false);
   const [selectedHandoverId, setSelectedHandoverId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [exportingPdf, setExportingPdf] = useState(false);
+
+  const isPrimaryUser = shiftAssignment?.primaryUser?.id === session?.user?.id;
+  const isBuddyUser = shiftAssignment?.buddyUser?.id === session?.user?.id;
+  const canTakeover = isBuddyUser && !shiftAssignment?.takenOver;
 
   const handleExportPDF = async () => {
     if (!selectedShift) {
@@ -90,10 +106,9 @@ export default function ChecklistV2Page() {
 
     setExportingPdf(true);
     try {
-      // Fetch fresh checklist data with cache busting
       const timestamp = Date.now();
       const checklistResponse = await fetch(
-        `/api/v2/checklist?unit=${selectedUnit}&shiftType=${selectedShift}&date=${selectedDate}&_t=${timestamp}`,
+        `/api/v2/checklist?checklistType=${selectedType}&shiftType=${selectedShift}&date=${selectedDate}&_t=${timestamp}`,
         { cache: 'no-store' }
       );
 
@@ -111,24 +126,20 @@ export default function ChecklistV2Page() {
       const { checklist, progress, totalItems, completedItems } = checklistData;
       const items = checklist.items || [];
 
-      // Create PDF
       const pdf = new jsPDF();
       const pageWidth = pdf.internal.pageSize.getWidth();
       let yPos = 20;
 
-      // Header
       pdf.setFontSize(18);
       pdf.setFont('helvetica', 'bold');
       pdf.text('LAPORAN CHECKLIST HARIAN', pageWidth / 2, yPos, { align: 'center' });
       yPos += 12;
 
-      // Subheader
       pdf.setFontSize(12);
       pdf.setFont('helvetica', 'normal');
-      pdf.text(`${UNIT_CONFIG[selectedUnit].label} - ${SHIFT_CONFIG[selectedShift].label}`, pageWidth / 2, yPos, { align: 'center' });
+      pdf.text(`${CHECKLIST_TYPE_CONFIG[selectedType].label} - ${SHIFT_CONFIG[selectedShift].label}`, pageWidth / 2, yPos, { align: 'center' });
       yPos += 20;
 
-      // Info box
       pdf.setFontSize(10);
       pdf.setDrawColor(200, 200, 200);
       pdf.rect(15, yPos, pageWidth - 30, 25);
@@ -141,30 +152,28 @@ export default function ChecklistV2Page() {
       pdf.text(`Progress: ${completedItems}/${totalItems} item selesai (${progress}%)`, 20, yPos);
       yPos += 15;
 
-      // Assignments
-      if (checklist.assignments && checklist.assignments.length > 0) {
+      if (shiftAssignment) {
         pdf.setFont('helvetica', 'bold');
         pdf.text('Petugas:', 20, yPos);
         pdf.setFont('helvetica', 'normal');
         yPos += 6;
-        checklist.assignments.forEach((a: any) => {
-          pdf.text(`- ${a.user?.name || 'Unknown'} (${a.role === 'SUPERVISOR' ? 'Supervisor' : 'Staff'})`, 25, yPos);
+        pdf.text(`- Primary: ${shiftAssignment.primaryUser.name} (${CHECKLIST_TYPE_CONFIG[shiftAssignment.primaryType].shortLabel})`, 25, yPos);
+        yPos += 5;
+        if (shiftAssignment.buddyUser) {
+          pdf.text(`- Buddy: ${shiftAssignment.buddyUser.name}${shiftAssignment.buddyType ? ` (${CHECKLIST_TYPE_CONFIG[shiftAssignment.buddyType].shortLabel})` : ''}`, 25, yPos);
           yPos += 5;
-        });
+        }
         yPos += 10;
       }
 
-      // Items by section
       const sections = checklist.sections || [];
 
       for (const section of sections) {
-        // Check if we need a new page
         if (yPos > 250) {
           pdf.addPage();
           yPos = 20;
         }
 
-        // Section header
         pdf.setFillColor(240, 240, 240);
         pdf.rect(15, yPos - 4, pageWidth - 30, 8, 'F');
         pdf.setFont('helvetica', 'bold');
@@ -172,57 +181,51 @@ export default function ChecklistV2Page() {
         pdf.text(`${section.section}. ${section.sectionTitle}`, 20, yPos);
         yPos += 10;
 
-        // Items
         pdf.setFont('helvetica', 'normal');
         pdf.setFontSize(9);
 
         for (const item of section.items) {
-          // Check if we need a new page
           if (yPos > 270) {
             pdf.addPage();
             yPos = 20;
           }
 
-          // Status indicator
           let statusText = '';
           let statusColor: [number, number, number] = [128, 128, 128];
 
           switch (item.status) {
             case 'COMPLETED':
               statusText = '[v]';
-              statusColor = [34, 197, 94]; // green
+              statusColor = [34, 197, 94];
               break;
             case 'FAILED':
               statusText = '[x]';
-              statusColor = [239, 68, 68]; // red
+              statusColor = [239, 68, 68];
               break;
             case 'NOT_APPLICABLE':
               statusText = '[N/A]';
-              statusColor = [156, 163, 175]; // gray
+              statusColor = [156, 163, 175];
               break;
             case 'NEEDS_ATTENTION':
               statusText = '[!]';
-              statusColor = [245, 158, 11]; // amber
+              statusColor = [245, 158, 11];
               break;
             default:
               statusText = '[ ]';
-              statusColor = [156, 163, 175]; // gray
+              statusColor = [156, 163, 175];
           }
 
           pdf.setTextColor(...statusColor);
           pdf.text(statusText, 20, yPos);
           pdf.setTextColor(0, 0, 0);
 
-          // Item title with time slot
           const timeSlotText = item.timeSlot ? ` (${item.timeSlot})` : '';
           const titleText = `${item.itemNumber}. ${item.title}${timeSlotText}`;
 
-          // Wrap long text
           const splitTitle = pdf.splitTextToSize(titleText, pageWidth - 60);
           pdf.text(splitTitle, 35, yPos);
           yPos += splitTitle.length * 4 + 2;
 
-          // Notes if any
           if (item.notes) {
             pdf.setFontSize(8);
             pdf.setTextColor(100, 100, 100);
@@ -240,7 +243,6 @@ export default function ChecklistV2Page() {
         yPos += 5;
       }
 
-      // Footer
       if (yPos > 260) {
         pdf.addPage();
         yPos = 20;
@@ -252,8 +254,7 @@ export default function ChecklistV2Page() {
       pdf.text(`Dicetak pada: ${format(new Date(), 'dd/MM/yyyy HH:mm')} WITA`, 20, yPos);
       pdf.text(`Status: ${checklist.status === 'COMPLETED' ? 'Selesai' : checklist.status === 'IN_PROGRESS' ? 'Sedang Dikerjakan' : 'Belum Dimulai'}`, pageWidth - 60, yPos);
 
-      // Save PDF
-      const filename = `Checklist_${selectedUnit}_${selectedShift}_${selectedDate}.pdf`;
+      const filename = `Checklist_${selectedType}_${selectedShift}_${selectedDate}.pdf`;
       pdf.save(filename);
 
       toast.success('PDF berhasil diunduh');
@@ -267,24 +268,47 @@ export default function ChecklistV2Page() {
 
   useEffect(() => {
     if (session?.user?.id) {
-      fetchShiftInfo();
+      fetchChecklistInfo();
       fetchPendingHandovers();
     }
-  }, [session, selectedDate]);
+  }, [session, selectedDate, selectedShift, selectedType]);
 
-  const fetchShiftInfo = async () => {
+  const fetchChecklistInfo = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/v2/checklist?date=${selectedDate}&getShiftInfo=true`);
+      const params = new URLSearchParams({
+        date: selectedDate,
+        checklistType: selectedType,
+      });
+      if (selectedShift) {
+        params.append('shiftType', selectedShift);
+      }
+
+      const response = await fetch(`/api/v2/checklist?${params}`);
       if (response.ok) {
         const data = await response.json();
-        setShiftInfo(data.shiftInfo);
-        if (data.shiftInfo?.currentShift && !selectedShift) {
-          setSelectedShift(data.shiftInfo.currentShift);
+
+        // Set server time and current shift
+        if (data.serverTime) {
+          setServerTime(data.serverTime);
+          // Determine current shift based on server time
+          const hour = data.serverTime.witaHour;
+          if (hour >= 8 && hour < 20) {
+            setCurrentShift('SHIFT_SIANG');
+            if (!selectedShift) setSelectedShift('SHIFT_SIANG');
+          } else {
+            setCurrentShift('SHIFT_MALAM');
+            if (!selectedShift) setSelectedShift('SHIFT_MALAM');
+          }
+        }
+
+        // Set shift assignment
+        if (data.shiftAssignment) {
+          setShiftAssignment(data.shiftAssignment);
         }
       }
     } catch (error) {
-      console.error('Error fetching shift info:', error);
+      console.error('Error fetching checklist info:', error);
     } finally {
       setLoading(false);
     }
@@ -299,6 +323,36 @@ export default function ChecklistV2Page() {
       }
     } catch (error) {
       console.error('Error fetching pending handovers:', error);
+    }
+  };
+
+  const handleTakeover = async () => {
+    if (!shiftAssignment) return;
+
+    const reason = prompt('Alasan takeover:');
+    if (!reason) return;
+
+    try {
+      const response = await fetch('/api/v2/checklist/shift/takeover', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          assignmentId: shiftAssignment.id,
+          reason,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to takeover');
+      }
+
+      toast.success(data.message);
+      fetchChecklistInfo();
+    } catch (error) {
+      console.error('Error taking over:', error);
+      toast.error(error instanceof Error ? error.message : 'Gagal melakukan takeover');
     }
   };
 
@@ -334,7 +388,7 @@ export default function ChecklistV2Page() {
     );
   }
 
-  const UnitIcon = UNIT_CONFIG[selectedUnit].icon;
+  const TypeIcon = CHECKLIST_TYPE_CONFIG[selectedType].icon;
 
   return (
     <div className="min-h-screen bg-background">
@@ -353,6 +407,77 @@ export default function ChecklistV2Page() {
             </div>
           </div>
         </div>
+
+        {/* Shift Assignment Info */}
+        {shiftAssignment && (
+          <Card className="mb-6 border-l-4 border-l-primary">
+            <CardContent className="py-4">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  {/* Primary */}
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-full bg-green-100 dark:bg-green-900">
+                      <UserCheck className="h-4 w-4 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Primary</p>
+                      <p className="text-sm font-medium">{shiftAssignment.primaryUser.name}</p>
+                    </div>
+                    {isPrimaryUser && (
+                      <Badge variant="outline" className="text-xs text-green-600 border-green-300">
+                        Anda
+                      </Badge>
+                    )}
+                  </div>
+
+                  {/* Buddy */}
+                  {shiftAssignment.buddyUser && (
+                    <>
+                      <div className="h-8 w-px bg-border" />
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 rounded-full bg-blue-100 dark:bg-blue-900">
+                          <UserCog className="h-4 w-4 text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Buddy</p>
+                          <p className="text-sm font-medium">{shiftAssignment.buddyUser.name}</p>
+                        </div>
+                        {isBuddyUser && (
+                          <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">
+                            Anda
+                          </Badge>
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                  {/* Takeover status */}
+                  {shiftAssignment.takenOver && (
+                    <>
+                      <div className="h-8 w-px bg-border" />
+                      <Badge variant="destructive" className="flex items-center gap-1">
+                        <ArrowRightLeft className="h-3 w-3" />
+                        Takeover
+                      </Badge>
+                    </>
+                  )}
+                </div>
+
+                {canTakeover && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleTakeover}
+                    className="border-amber-500 text-amber-700 hover:bg-amber-100"
+                  >
+                    <ArrowRightLeft className="h-4 w-4 mr-2" />
+                    Takeover Shift
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Pending Handovers Alert */}
         {pendingHandovers.length > 0 && (
@@ -414,11 +539,11 @@ export default function ChecklistV2Page() {
               </Button>
             </div>
             <div className="flex items-center gap-2">
-              {shiftInfo?.serverTime && (
+              {serverTime && (
                 <Badge variant="outline" className="text-xs">
                   <Clock className="h-3 w-3 mr-1" />
-                  {String(shiftInfo.serverTime.witaHour).padStart(2, '0')}:
-                  {String(shiftInfo.serverTime.witaMinute).padStart(2, '0')} WITA
+                  {String(serverTime.witaHour).padStart(2, '0')}:
+                  {String(serverTime.witaMinute).padStart(2, '0')} WITA
                 </Badge>
               )}
               <Button
@@ -433,19 +558,20 @@ export default function ChecklistV2Page() {
           </div>
         </div>
 
-        {/* Unit Selection Tabs */}
+        {/* Checklist Type Selection Tabs */}
         <Tabs
-          value={selectedUnit}
-          onValueChange={(v) => setSelectedUnit(v as ChecklistUnit)}
+          value={selectedType}
+          onValueChange={(v) => setSelectedType(v as ChecklistType)}
           className="mb-6"
         >
-          <TabsList className="grid w-full grid-cols-2 lg:w-[400px]">
-            {Object.entries(UNIT_CONFIG).map(([unit, config]) => {
+          <TabsList className="grid w-full grid-cols-3 lg:w-[600px]">
+            {Object.entries(CHECKLIST_TYPE_CONFIG).map(([type, config]) => {
               const Icon = config.icon;
               return (
-                <TabsTrigger key={unit} value={unit} className="gap-2">
+                <TabsTrigger key={type} value={type} className="gap-2">
                   <Icon className="h-4 w-4" />
-                  {config.label}
+                  <span className="hidden sm:inline">{config.label}</span>
+                  <span className="sm:hidden">{config.shortLabel}</span>
                 </TabsTrigger>
               );
             })}
@@ -455,27 +581,31 @@ export default function ChecklistV2Page() {
         {/* Shift Selection */}
         <div className="mb-6">
           <p className="text-sm font-medium mb-3">Pilih Shift</p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 gap-3 max-w-lg">
             {Object.entries(SHIFT_CONFIG).map(([shift, config]) => {
               const Icon = config.icon;
               const isSelected = selectedShift === shift;
-              const isCurrent = shiftInfo?.currentShift === shift;
+              const isCurrent = currentShift === shift;
 
               return (
                 <Button
                   key={shift}
                   variant={isSelected ? 'default' : 'outline'}
-                  className={`justify-start h-auto py-3 ${isSelected ? '' : 'hover:bg-muted/50'}`}
+                  className={cn(
+                    'justify-start h-auto py-3',
+                    !isSelected && 'hover:bg-muted/50',
+                    isCurrent && !isSelected && 'border-primary'
+                  )}
                   onClick={() => setSelectedShift(shift as ChecklistShiftType)}
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 w-full">
                     <Icon className="h-4 w-4" />
                     <div className="text-left">
                       <p className="text-sm font-medium">{config.label}</p>
                       <p className="text-xs opacity-70">{config.time}</p>
                     </div>
                     {isCurrent && (
-                      <Badge variant="secondary" className="ml-auto text-xs">
+                      <Badge variant={isSelected ? 'secondary' : 'outline'} className="ml-auto text-xs">
                         Sekarang
                       </Badge>
                     )}
@@ -492,11 +622,11 @@ export default function ChecklistV2Page() {
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${UNIT_CONFIG[selectedUnit].bgColor}`}>
-                    <UnitIcon className={`h-5 w-5 ${UNIT_CONFIG[selectedUnit].color}`} />
+                  <div className={cn('p-2 rounded-lg', CHECKLIST_TYPE_CONFIG[selectedType].bgColor)}>
+                    <TypeIcon className={cn('h-5 w-5', CHECKLIST_TYPE_CONFIG[selectedType].color)} />
                   </div>
                   <div>
-                    <CardTitle>{UNIT_CONFIG[selectedUnit].label}</CardTitle>
+                    <CardTitle>{CHECKLIST_TYPE_CONFIG[selectedType].label}</CardTitle>
                     <p className="text-sm text-muted-foreground">
                       {SHIFT_CONFIG[selectedShift].label} • {SHIFT_CONFIG[selectedShift].time}
                     </p>
@@ -524,7 +654,7 @@ export default function ChecklistV2Page() {
               </div>
             </CardHeader>
             <CardContent>
-              <ChecklistPanelV2 unit={selectedUnit} shiftType={selectedShift} />
+              <ChecklistPanelV2 checklistType={selectedType} shiftType={selectedShift} />
             </CardContent>
           </Card>
         ) : (

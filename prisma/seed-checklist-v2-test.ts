@@ -1,4 +1,4 @@
-import { PrismaClient, ChecklistUnit, ChecklistRole, ChecklistShiftType } from '@prisma/client'
+import { PrismaClient, ChecklistType, ChecklistRole, ChecklistShiftType } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
@@ -24,14 +24,20 @@ async function main() {
   const today = getWITADate()
   console.log(`📅 Using WITA date: ${today.toISOString().split('T')[0]}\n`)
 
-  // Test users configuration
+  // Test users configuration for 3 checklist types
   const testUsers = [
-    { username: 'staff_itops_1', name: 'Budi Santoso', unit: 'IT_OPERATIONS', checklistRole: 'STAFF' },
-    { username: 'staff_itops_2', name: 'Andi Wijaya', unit: 'IT_OPERATIONS', checklistRole: 'STAFF' },
-    { username: 'spv_itops', name: 'Dewi Lestari', unit: 'IT_OPERATIONS', checklistRole: 'SUPERVISOR' },
-    { username: 'staff_mon_1', name: 'Rudi Hartono', unit: 'MONITORING', checklistRole: 'STAFF' },
-    { username: 'staff_mon_2', name: 'Siti Rahayu', unit: 'MONITORING', checklistRole: 'STAFF' },
-    { username: 'spv_mon', name: 'Ahmad Fauzi', unit: 'MONITORING', checklistRole: 'SUPERVISOR' },
+    // IT Infrastructure team
+    { username: 'staff_it_1', name: 'Budi Santoso', checklistType: 'IT_INFRASTRUKTUR', checklistRole: 'STAFF' },
+    { username: 'staff_it_2', name: 'Andi Wijaya', checklistType: 'IT_INFRASTRUKTUR', checklistRole: 'STAFF' },
+    { username: 'spv_it', name: 'Dewi Lestari', checklistType: 'IT_INFRASTRUKTUR', checklistRole: 'SUPERVISOR' },
+    // Keamanan Siber (KKS) team
+    { username: 'staff_kks_1', name: 'Rudi Hartono', checklistType: 'KEAMANAN_SIBER', checklistRole: 'STAFF' },
+    { username: 'staff_kks_2', name: 'Siti Rahayu', checklistType: 'KEAMANAN_SIBER', checklistRole: 'STAFF' },
+    { username: 'spv_kks', name: 'Ahmad Fauzi', checklistType: 'KEAMANAN_SIBER', checklistRole: 'SUPERVISOR' },
+    // Fraud & Compliance team
+    { username: 'staff_fraud_1', name: 'Dian Permata', checklistType: 'FRAUD_COMPLIANCE', checklistRole: 'STAFF' },
+    { username: 'staff_fraud_2', name: 'Eko Prasetyo', checklistType: 'FRAUD_COMPLIANCE', checklistRole: 'STAFF' },
+    { username: 'spv_fraud', name: 'Fitri Handayani', checklistType: 'FRAUD_COMPLIANCE', checklistRole: 'SUPERVISOR' },
   ]
 
   // Step 1: Create users
@@ -39,7 +45,7 @@ async function main() {
     id: string
     username: string
     name: string
-    unit: string
+    checklistType: string
     checklistRole: string
   }> = []
 
@@ -62,7 +68,7 @@ async function main() {
       id: user.id,
       username: user.username,
       name: user.name,
-      unit: userData.unit,
+      checklistType: userData.checklistType,
       checklistRole: userData.checklistRole,
     })
     console.log(`✅ User: ${user.name} (${user.username})`)
@@ -77,43 +83,52 @@ async function main() {
   for (const user of createdUsers) {
     await prisma.checklistStandbyV2.upsert({
       where: { userId: user.id },
-      update: { unit: user.unit as ChecklistUnit, isActive: true },
+      update: { checklistType: user.checklistType as ChecklistType, isActive: true },
       create: {
         userId: user.id,
-        unit: user.unit as ChecklistUnit,
+        checklistType: user.checklistType as ChecklistType,
+        canBePrimary: true,
+        canBeBuddy: true,
         addedById: adminUser.id,
       },
     })
-    console.log(`   ${user.name} → ${user.unit}`)
+    console.log(`   ${user.name} → ${user.checklistType}`)
   }
 
-  // Step 3: Create checklists and assignments
-  const shifts = [
-    { unit: 'IT_OPERATIONS' as ChecklistUnit, shiftType: 'HARIAN_KANTOR' as ChecklistShiftType },
-    { unit: 'MONITORING' as ChecklistUnit, shiftType: 'SHIFT_MALAM' as ChecklistShiftType },
+  // Step 3: Create checklists and assignments for each type and shift
+  const shifts: Array<{ checklistType: ChecklistType; shiftType: ChecklistShiftType }> = [
+    { checklistType: 'IT_INFRASTRUKTUR' as ChecklistType, shiftType: 'SHIFT_SIANG' as ChecklistShiftType },
+    { checklistType: 'KEAMANAN_SIBER' as ChecklistType, shiftType: 'SHIFT_SIANG' as ChecklistShiftType },
+    { checklistType: 'FRAUD_COMPLIANCE' as ChecklistType, shiftType: 'SHIFT_SIANG' as ChecklistShiftType },
+    { checklistType: 'IT_INFRASTRUKTUR' as ChecklistType, shiftType: 'SHIFT_MALAM' as ChecklistShiftType },
   ]
 
   for (const shift of shifts) {
     // Get templates for this shift
     const templates = await prisma.checklistTemplateV2.findMany({
-      where: { unit: shift.unit, shiftType: shift.shiftType, isActive: true },
+      where: { checklistType: shift.checklistType, shiftType: shift.shiftType, isActive: true },
       orderBy: [{ section: 'asc' }, { order: 'asc' }],
     })
 
+    if (templates.length === 0) {
+      console.log(`\n⚠️  No templates found for ${shift.checklistType} - ${shift.shiftType}. Skipping...`)
+      continue
+    }
+
     // Check if checklist already exists
     const existingChecklist = await prisma.dailyChecklistV2.findUnique({
-      where: { date_unit_shiftType: { date: today, unit: shift.unit, shiftType: shift.shiftType } },
+      where: { date_checklistType_shiftType: { date: today, checklistType: shift.checklistType, shiftType: shift.shiftType } },
     })
 
     let checklist
     if (existingChecklist) {
       checklist = existingChecklist
-      console.log(`\n📅 Checklist exists: ${shift.unit} - ${shift.shiftType}`)
+      console.log(`\n📅 Checklist exists: ${shift.checklistType} - ${shift.shiftType}`)
     } else {
       checklist = await prisma.dailyChecklistV2.create({
         data: {
           date: today,
-          unit: shift.unit,
+          checklistType: shift.checklistType,
           shiftType: shift.shiftType,
           status: 'PENDING',
           items: {
@@ -133,11 +148,11 @@ async function main() {
           },
         },
       })
-      console.log(`\n📅 Created checklist: ${shift.unit} - ${shift.shiftType} (${templates.length} items)`)
+      console.log(`\n📅 Created checklist: ${shift.checklistType} - ${shift.shiftType} (${templates.length} items)`)
     }
 
     // Assign users
-    const usersForShift = createdUsers.filter((u) => u.unit === shift.unit)
+    const usersForShift = createdUsers.filter((u) => u.checklistType === shift.checklistType)
     for (const user of usersForShift) {
       await prisma.checklistAssignmentV2.upsert({
         where: { checklistId_userId: { checklistId: checklist.id, userId: user.id } },
@@ -154,8 +169,9 @@ async function main() {
 
   console.log('\n✨ Seed completed!')
   console.log('\n📝 Test credentials:')
-  console.log('   Username: staff_itops_1, staff_itops_2, spv_itops')
-  console.log('   Username: staff_mon_1, staff_mon_2, spv_mon')
+  console.log('   IT Infrastructure: staff_it_1, staff_it_2, spv_it')
+  console.log('   Keamanan Siber:    staff_kks_1, staff_kks_2, spv_kks')
+  console.log('   Fraud & Compliance: staff_fraud_1, staff_fraud_2, spv_fraud')
   console.log('   Password: Test123!')
 }
 

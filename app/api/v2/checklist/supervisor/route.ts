@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { ChecklistUnit, ChecklistShiftType } from '@prisma/client';
+import { ChecklistType, ChecklistShiftType } from '@prisma/client';
 import { getCurrentTimeWITA } from '@/lib/time-lock';
 
 /**
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const unit = searchParams.get('unit') as ChecklistUnit | null;
+    const checklistType = searchParams.get('checklistType') as ChecklistType | null;
     const dateParam = searchParams.get('date');
 
     // Parse date or use today
@@ -32,13 +32,13 @@ export async function GET(request: NextRequest) {
     // Build where clause
     const whereClause: {
       date: Date;
-      unit?: ChecklistUnit;
+      checklistType?: ChecklistType;
     } = {
       date: checklistDate,
     };
 
-    if (unit) {
-      whereClause.unit = unit;
+    if (checklistType) {
+      whereClause.checklistType = checklistType;
     }
 
     // Check if user is a supervisor for any checklist today
@@ -69,15 +69,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get all checklists for the date (filtered by supervisor's units if not manager)
-    const supervisedUnits = isManager
+    // Get all checklists for the date (filtered by supervisor's types if not manager)
+    const supervisedTypes = isManager
       ? undefined
-      : supervisorAssignments.map(a => a.checklist.unit);
+      : supervisorAssignments.map(a => a.checklist.checklistType);
 
     const checklists = await prisma.dailyChecklistV2.findMany({
       where: {
         date: checklistDate,
-        ...(supervisedUnits && { unit: { in: supervisedUnits } }),
+        ...(supervisedTypes && { checklistType: { in: supervisedTypes } }),
       },
       include: {
         items: {
@@ -109,7 +109,7 @@ export async function GET(request: NextRequest) {
         },
       },
       orderBy: [
-        { unit: 'asc' },
+        { checklistType: 'asc' },
         { shiftType: 'asc' },
       ],
     });
@@ -150,7 +150,7 @@ export async function GET(request: NextRequest) {
       return {
         id: checklist.id,
         date: checklist.date,
-        unit: checklist.unit,
+        checklistType: checklist.checklistType,
         shiftType: checklist.shiftType,
         status: checklist.status,
         completedAt: checklist.completedAt,
@@ -178,7 +178,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       date: checklistDate.toISOString().split('T')[0],
       isManager,
-      supervisedUnits: supervisedUnits || ['ALL'],
+      supervisedTypes: supervisedTypes || ['ALL'],
       summary,
       checklists: checklistsWithProgress,
     });

@@ -182,7 +182,10 @@ export default function ATMTechnicalIssuesReport() {
   const fetchData = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`/api/reports/atm-technical-issues?month=${selectedMonth}&year=${selectedYear}`)
+      const response = await fetch(
+        `/api/reports/atm-technical-issues?month=${selectedMonth}&year=${selectedYear}`,
+        { cache: 'no-store' }
+      )
       if (!response.ok) throw new Error('Failed to fetch data')
 
       const result = await response.json()
@@ -385,7 +388,7 @@ export default function ATMTechnicalIssuesReport() {
           <div>
             <h1 className="text-3xl font-bold">ATM Technical Issues Report</h1>
             <p className="text-muted-foreground mt-1">
-              Monthly statistics for {MONTHS[selectedMonth - 1]} {selectedYear}
+              Monthly statistics for {MONTHS[(data?.period?.month || selectedMonth) - 1]} {data?.period?.year || selectedYear}
             </p>
           </div>
           <div className="flex items-center gap-2">

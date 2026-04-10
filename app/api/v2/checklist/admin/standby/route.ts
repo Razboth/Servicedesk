@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { ChecklistUnit } from '@prisma/client';
+import { ChecklistType } from '@prisma/client';
 
 /**
  * GET /api/v2/checklist/admin/standby
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
       select: { role: true },
     });
 
-    if (!user || !['MANAGER_IT', 'ADMIN'].includes(user.role)) {
+    if (!user || !['MANAGER_IT', 'ADMIN', 'SUPER_ADMIN'].includes(user.role)) {
       return NextResponse.json(
         { error: 'Admin access required' },
         { status: 403 }
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const unit = searchParams.get('unit') as ChecklistUnit | null;
+    const checklistType = searchParams.get('checklistType') as ChecklistType | null;
     const getAvailable = searchParams.get('getAvailable') === 'true';
 
     // Get users NOT in standby pool (to add)
@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
           name: true,
           username: true,
           role: true,
+          checklistType: true,
         },
         orderBy: { name: 'asc' },
       });
@@ -56,9 +57,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Get standby users
-    const whereClause: { unit?: ChecklistUnit; isActive?: boolean } = {};
-    if (unit) {
-      whereClause.unit = unit;
+    const whereClause: { checklistType?: ChecklistType; isActive?: boolean } = {};
+    if (checklistType) {
+      whereClause.checklistType = checklistType;
     }
 
     const standbyUsers = await prisma.checklistStandbyV2.findMany({
@@ -70,6 +71,7 @@ export async function GET(request: NextRequest) {
             name: true,
             username: true,
             role: true,
+            checklistType: true,
           },
         },
         addedBy: {
@@ -108,7 +110,7 @@ export async function POST(request: NextRequest) {
       select: { role: true },
     });
 
-    if (!adminUser || !['MANAGER_IT', 'ADMIN'].includes(adminUser.role)) {
+    if (!adminUser || !['MANAGER_IT', 'ADMIN', 'SUPER_ADMIN'].includes(adminUser.role)) {
       return NextResponse.json(
         { error: 'Admin access required' },
         { status: 403 }
@@ -116,14 +118,16 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { userId, unit } = body as {
+    const { userId, checklistType, canBePrimary, canBeBuddy } = body as {
       userId: string;
-      unit: ChecklistUnit;
+      checklistType: ChecklistType;
+      canBePrimary?: boolean;
+      canBeBuddy?: boolean;
     };
 
-    if (!userId || !unit) {
+    if (!userId || !checklistType) {
       return NextResponse.json(
-        { error: 'Missing required fields: userId, unit' },
+        { error: 'Missing required fields: userId, checklistType' },
         { status: 400 }
       );
     }
@@ -144,41 +148,49 @@ export async function POST(request: NextRequest) {
     });
 
     if (existing) {
-      // Update unit if different
-      if (existing.unit !== unit) {
-        const updated = await prisma.checklistStandbyV2.update({
-          where: { userId },
-          data: { unit, isActive: true },
-          include: {
-            user: {
-              select: { id: true, name: true, username: true, role: true },
-            },
+      // Update if different
+      const updated = await prisma.checklistStandbyV2.update({
+        where: { userId },
+        data: {
+          checklistType,
+          canBePrimary: canBePrimary ?? true,
+          canBeBuddy: canBeBuddy ?? true,
+          isActive: true,
+        },
+        include: {
+          user: {
+            select: { id: true, name: true, username: true, role: true, checklistType: true },
           },
-        });
-        return NextResponse.json({
-          standbyUser: updated,
-          message: `${targetUser.name} updated to ${unit}`,
-        });
-      }
-      return NextResponse.json(
-        { error: 'User is already in standby pool' },
-        { status: 409 }
-      );
+        },
+      });
+      return NextResponse.json({
+        standbyUser: updated,
+        message: `${targetUser.name} updated to ${checklistType}`,
+      });
     }
 
-    // Add to standby pool
-    const standbyUser = await prisma.checklistStandbyV2.create({
-      data: {
-        userId,
-        unit,
-        addedById: session.user.id,
-      },
-      include: {
-        user: {
-          select: { id: true, name: true, username: true, role: true },
+    // Add to standby pool and update user's checklistType
+    const [standbyUser] = await prisma.$transaction([
+      prisma.checklistStandbyV2.create({
+        data: {
+          userId,
+          checklistType,
+          canBePrimary: canBePrimary ?? true,
+          canBeBuddy: canBeBuddy ?? true,
+          addedById: session.user.id,
         },
-      },
-    });
+        include: {
+          user: {
+            select: { id: true, name: true, username: true, role: true, checklistType: true },
+          },
+        },
+      }),
+      // Also update user's checklistType
+      prisma.user.update({
+        where: { id: userId },
+        data: { checklistType },
+      }),
+    ]);
 
     return NextResponse.json(
       {
@@ -191,6 +203,75 @@ export async function POST(request: NextRequest) {
     console.error('[Admin Standby] POST error:', error);
     return NextResponse.json(
       { error: 'Failed to add to standby pool' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * PUT /api/v2/checklist/admin/standby
+ * Update standby user settings
+ */
+export async function PUT(request: NextRequest) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Check admin role
+    const adminUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { role: true },
+    });
+
+    if (!adminUser || !['MANAGER_IT', 'ADMIN', 'SUPER_ADMIN'].includes(adminUser.role)) {
+      return NextResponse.json(
+        { error: 'Admin access required' },
+        { status: 403 }
+      );
+    }
+
+    const body = await request.json();
+    const { id, checklistType, canBePrimary, canBeBuddy, isActive } = body as {
+      id: string;
+      checklistType?: ChecklistType;
+      canBePrimary?: boolean;
+      canBeBuddy?: boolean;
+      isActive?: boolean;
+    };
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Missing required field: id' },
+        { status: 400 }
+      );
+    }
+
+    const updateData: any = {};
+    if (checklistType !== undefined) updateData.checklistType = checklistType;
+    if (canBePrimary !== undefined) updateData.canBePrimary = canBePrimary;
+    if (canBeBuddy !== undefined) updateData.canBeBuddy = canBeBuddy;
+    if (isActive !== undefined) updateData.isActive = isActive;
+
+    const standbyUser = await prisma.checklistStandbyV2.update({
+      where: { id },
+      data: updateData,
+      include: {
+        user: {
+          select: { id: true, name: true, username: true, role: true },
+        },
+      },
+    });
+
+    return NextResponse.json({
+      standbyUser,
+      message: 'Standby user updated',
+    });
+  } catch (error) {
+    console.error('[Admin Standby] PUT error:', error);
+    return NextResponse.json(
+      { error: 'Failed to update standby user' },
       { status: 500 }
     );
   }
@@ -213,7 +294,7 @@ export async function DELETE(request: NextRequest) {
       select: { role: true },
     });
 
-    if (!adminUser || !['MANAGER_IT', 'ADMIN'].includes(adminUser.role)) {
+    if (!adminUser || !['MANAGER_IT', 'ADMIN', 'SUPER_ADMIN'].includes(adminUser.role)) {
       return NextResponse.json(
         { error: 'Admin access required' },
         { status: 403 }

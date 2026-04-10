@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog,
@@ -17,11 +17,10 @@ import {
 import { SupervisorDashboard, ChecklistPanelV2 } from '@/components/checklist';
 import {
   Users,
-  Monitor,
   Server,
+  Shield,
   Sun,
   Moon,
-  Clock,
   AlertTriangle,
   CalendarDays,
   ChevronLeft,
@@ -29,33 +28,38 @@ import {
   Eye,
   UserPlus,
 } from 'lucide-react';
-import { format } from 'date-fns';
-import { id } from 'date-fns/locale';
 import { toast } from 'sonner';
 
-type ChecklistUnit = 'IT_OPERATIONS' | 'MONITORING';
-type ChecklistShiftType = 'HARIAN_KANTOR' | 'STANDBY_LEMBUR' | 'SHIFT_MALAM' | 'SHIFT_SIANG_WEEKEND';
+type ChecklistType = 'IT_INFRASTRUKTUR' | 'KEAMANAN_SIBER' | 'FRAUD_COMPLIANCE';
+type ChecklistShiftType = 'SHIFT_SIANG' | 'SHIFT_MALAM';
 
-const UNIT_CONFIG = {
-  IT_OPERATIONS: {
-    label: 'IT Operations',
+const CHECKLIST_TYPE_CONFIG: Record<ChecklistType, { label: string; shortLabel: string; icon: typeof Server; color: string; bgColor: string }> = {
+  IT_INFRASTRUKTUR: {
+    label: 'IT & Infrastruktur',
+    shortLabel: 'IT',
     icon: Server,
     color: 'text-blue-600',
     bgColor: 'bg-blue-50 dark:bg-blue-950/30',
   },
-  MONITORING: {
-    label: 'Monitoring',
-    icon: Monitor,
-    color: 'text-purple-600',
-    bgColor: 'bg-purple-50 dark:bg-purple-950/30',
+  KEAMANAN_SIBER: {
+    label: 'Keamanan Siber (KKS)',
+    shortLabel: 'KKS',
+    icon: Shield,
+    color: 'text-red-600',
+    bgColor: 'bg-red-50 dark:bg-red-950/30',
+  },
+  FRAUD_COMPLIANCE: {
+    label: 'Fraud & Compliance',
+    shortLabel: 'Fraud',
+    icon: AlertTriangle,
+    color: 'text-amber-600',
+    bgColor: 'bg-amber-50 dark:bg-amber-950/30',
   },
 };
 
 const SHIFT_CONFIG: Record<ChecklistShiftType, { label: string; icon: typeof Sun; time: string }> = {
-  HARIAN_KANTOR: { label: 'Harian Kantor', icon: Sun, time: '08:00 - 17:00' },
-  STANDBY_LEMBUR: { label: 'Standby Lembur', icon: Clock, time: '17:00 - 20:00' },
+  SHIFT_SIANG: { label: 'Shift Siang', icon: Sun, time: '08:00 - 20:00' },
   SHIFT_MALAM: { label: 'Shift Malam', icon: Moon, time: '20:00 - 08:00' },
-  SHIFT_SIANG_WEEKEND: { label: 'Shift Siang Weekend', icon: Sun, time: '08:00 - 20:00' },
 };
 
 interface User {
@@ -68,8 +72,8 @@ interface User {
 export default function SupervisorChecklistPage() {
   const { data: session, status } = useSession();
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [selectedUnit, setSelectedUnit] = useState<ChecklistUnit>('IT_OPERATIONS');
-  const [selectedShift, setSelectedShift] = useState<ChecklistShiftType>('HARIAN_KANTOR');
+  const [selectedType, setSelectedType] = useState<ChecklistType>('IT_INFRASTRUKTUR');
+  const [selectedShift, setSelectedShift] = useState<ChecklistShiftType>('SHIFT_SIANG');
   const [viewingChecklistId, setViewingChecklistId] = useState<string | null>(null);
   const [showAssignDialog, setShowAssignDialog] = useState(false);
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
@@ -118,7 +122,7 @@ export default function SupervisorChecklistPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          unit: selectedUnit,
+          checklistType: selectedType,
           shiftType: selectedShift,
           date: selectedDate,
           userId: selectedUserId,
@@ -185,7 +189,7 @@ export default function SupervisorChecklistPage() {
     );
   }
 
-  const UnitIcon = UNIT_CONFIG[selectedUnit].icon;
+  const TypeIcon = CHECKLIST_TYPE_CONFIG[selectedType].icon;
 
   return (
     <div className="min-h-screen bg-background">
@@ -252,19 +256,20 @@ export default function SupervisorChecklistPage() {
           </div>
         </div>
 
-        {/* Unit Selection Tabs */}
+        {/* Checklist Type Selection Tabs */}
         <Tabs
-          value={selectedUnit}
-          onValueChange={(v) => setSelectedUnit(v as ChecklistUnit)}
+          value={selectedType}
+          onValueChange={(v) => setSelectedType(v as ChecklistType)}
           className="mb-6"
         >
-          <TabsList className="grid w-full grid-cols-2 lg:w-[400px]">
-            {Object.entries(UNIT_CONFIG).map(([unit, config]) => {
+          <TabsList className="grid w-full grid-cols-3 lg:w-[600px]">
+            {Object.entries(CHECKLIST_TYPE_CONFIG).map(([type, config]) => {
               const Icon = config.icon;
               return (
-                <TabsTrigger key={unit} value={unit} className="gap-2">
+                <TabsTrigger key={type} value={type} className="gap-2">
                   <Icon className="h-4 w-4" />
-                  {config.label}
+                  <span className="hidden sm:inline">{config.label}</span>
+                  <span className="sm:hidden">{config.shortLabel}</span>
                 </TabsTrigger>
               );
             })}
@@ -274,7 +279,7 @@ export default function SupervisorChecklistPage() {
         {/* Shift Selection */}
         <div className="mb-6">
           <p className="text-sm font-medium mb-3">Pilih Shift</p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 gap-3 max-w-lg">
             {Object.entries(SHIFT_CONFIG).map(([shift, config]) => {
               const Icon = config.icon;
               const isSelected = selectedShift === shift;
@@ -303,11 +308,11 @@ export default function SupervisorChecklistPage() {
         <Card>
           <CardHeader className="pb-4">
             <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-lg ${UNIT_CONFIG[selectedUnit].bgColor}`}>
-                <UnitIcon className={`h-5 w-5 ${UNIT_CONFIG[selectedUnit].color}`} />
+              <div className={`p-2 rounded-lg ${CHECKLIST_TYPE_CONFIG[selectedType].bgColor}`}>
+                <TypeIcon className={`h-5 w-5 ${CHECKLIST_TYPE_CONFIG[selectedType].color}`} />
               </div>
               <div>
-                <CardTitle>{UNIT_CONFIG[selectedUnit].label}</CardTitle>
+                <CardTitle>{CHECKLIST_TYPE_CONFIG[selectedType].label}</CardTitle>
                 <p className="text-sm text-muted-foreground">
                   {SHIFT_CONFIG[selectedShift].label} • {SHIFT_CONFIG[selectedShift].time}
                 </p>
@@ -316,7 +321,7 @@ export default function SupervisorChecklistPage() {
           </CardHeader>
           <CardContent>
             <SupervisorDashboard
-              unit={selectedUnit}
+              checklistType={selectedType}
               shiftType={selectedShift}
               date={selectedDate}
               onViewChecklist={(checklistId) => setViewingChecklistId(checklistId)}
@@ -337,7 +342,7 @@ export default function SupervisorChecklistPage() {
               </DialogDescription>
             </DialogHeader>
             {viewingChecklistId && (
-              <ChecklistPanelV2 unit={selectedUnit} shiftType={selectedShift} />
+              <ChecklistPanelV2 checklistType={selectedType} shiftType={selectedShift} />
             )}
           </DialogContent>
         </Dialog>
@@ -351,7 +356,7 @@ export default function SupervisorChecklistPage() {
                 Tugaskan Staff
               </DialogTitle>
               <DialogDescription>
-                Pilih user untuk ditugaskan ke checklist {UNIT_CONFIG[selectedUnit].label} -{' '}
+                Pilih user untuk ditugaskan ke checklist {CHECKLIST_TYPE_CONFIG[selectedType].label} -{' '}
                 {SHIFT_CONFIG[selectedShift].label}
               </DialogDescription>
             </DialogHeader>
