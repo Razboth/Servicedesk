@@ -353,6 +353,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get shift assignment for auto-assigning users
+    const shiftAssignment = await prisma.shiftAssignmentV2.findFirst({
+      where: {
+        date: checklistDate,
+        shiftType: effectiveShiftType,
+        isActive: true,
+      },
+    });
+
     // Create checklist with items in a transaction
     const checklist = await prisma.$transaction(async (tx) => {
       // Create the checklist
@@ -383,6 +392,35 @@ export async function POST(request: NextRequest) {
         })),
       });
 
+      // Auto-assign users from shift assignment
+      if (shiftAssignment) {
+        const assignmentsToCreate = [];
+
+        // Assign primary user as STAFF
+        if (shiftAssignment.primaryUserId) {
+          assignmentsToCreate.push({
+            checklistId: newChecklist.id,
+            userId: shiftAssignment.primaryUserId,
+            role: 'STAFF' as const,
+          });
+        }
+
+        // Assign buddy user as STAFF (backup)
+        if (shiftAssignment.buddyUserId && shiftAssignment.buddyUserId !== shiftAssignment.primaryUserId) {
+          assignmentsToCreate.push({
+            checklistId: newChecklist.id,
+            userId: shiftAssignment.buddyUserId,
+            role: 'STAFF' as const,
+          });
+        }
+
+        if (assignmentsToCreate.length > 0) {
+          await tx.checklistAssignmentV2.createMany({
+            data: assignmentsToCreate,
+          });
+        }
+      }
+
       // Return checklist with items
       return tx.dailyChecklistV2.findUnique({
         where: { id: newChecklist.id },
@@ -393,7 +431,17 @@ export async function POST(request: NextRequest) {
               { order: 'asc' },
             ],
           },
-          assignments: true,
+          assignments: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  username: true,
+                },
+              },
+            },
+          },
         },
       });
     });

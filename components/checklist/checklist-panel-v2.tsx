@@ -156,6 +156,42 @@ export function ChecklistPanelV2({ checklistType, shiftType, onStatsUpdate }: Ch
         }
 
         const data = await response.json();
+
+        // Auto-create checklist if templates exist but no daily checklist yet
+        if (!data.checklist && data.canCreate && data.templateCount > 0) {
+          console.log('[Checklist] Auto-creating daily checklist from templates...');
+          const createResponse = await fetch('/api/v2/checklist', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              checklistType,
+              shiftType,
+            }),
+          });
+
+          if (createResponse.ok) {
+            const createData = await createResponse.json();
+            console.log('[Checklist] Created:', createData.checklist?.id);
+            // Re-fetch to get the full checklist with assignments
+            const refetchResponse = await fetch(`/api/v2/checklist?checklistType=${checklistType}&shiftType=${shiftType}&_t=${Date.now()}`, {
+              cache: 'no-store',
+            });
+            if (refetchResponse.ok) {
+              const refetchData = await refetchResponse.json();
+              setChecklist(refetchData.checklist);
+              setCurrentUserId(refetchData.currentUserId);
+              if (refetchData.checklist?.items) {
+                const calculatedStats = calculateStats(refetchData.checklist.items);
+                setStats(calculatedStats);
+                onStatsUpdate?.(calculatedStats);
+              }
+              return;
+            }
+          } else {
+            console.error('[Checklist] Failed to auto-create:', await createResponse.text());
+          }
+        }
+
         setChecklist(data.checklist);
         setCurrentUserId(data.currentUserId);
 
