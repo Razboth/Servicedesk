@@ -7,9 +7,9 @@ import { ServerMetricStatus } from '@prisma/client';
 interface ServerData {
   server_name: string;
   instance: string;
-  cpu_percent: number;
-  memory_percent: number;
-  storage_percent_max: number;
+  cpu_percent: number | null;
+  memory_percent: number | null;
+  storage_percent_max: number | null;
   status: 'OK' | 'CAUTION' | 'WARNING';
 }
 
@@ -107,15 +107,15 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      // Create all server snapshots
+      // Create all server snapshots (handle null values by defaulting to 0)
       await tx.serverMetricSnapshotV2.createMany({
         data: body.servers.map((server) => ({
           collectionId: newCollection.id,
           serverName: server.server_name,
           instance: server.instance,
-          cpuPercent: server.cpu_percent,
-          memoryPercent: server.memory_percent,
-          storagePercent: server.storage_percent_max,
+          cpuPercent: server.cpu_percent ?? 0,
+          memoryPercent: server.memory_percent ?? 0,
+          storagePercent: server.storage_percent_max ?? 0,
           status: server.status as ServerMetricStatus,
         })),
       });
