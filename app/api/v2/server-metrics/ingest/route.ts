@@ -34,6 +34,15 @@ export async function POST(request: NextRequest) {
   try {
     // Authenticate via API key
     const authResult = await authenticateApiKey(request);
+
+    // Debug logging
+    console.log('[Server Metrics V2] Auth result:', {
+      authenticated: authResult.authenticated,
+      error: authResult.error,
+      hasApiKey: !!authResult.apiKey,
+      permissions: authResult.apiKey?.permissions,
+    });
+
     if (!authResult.authenticated) {
       return NextResponse.json(
         { error: 'Unauthorized', message: authResult.error || 'Invalid or missing API key' },
@@ -42,9 +51,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Check for server-metrics:write permission
-    if (!checkApiPermission(authResult.apiKey!, 'server-metrics:write')) {
+    const hasPermission = checkApiPermission(authResult.apiKey!, 'server-metrics:write');
+    console.log('[Server Metrics V2] Permission check:', { hasPermission, required: 'server-metrics:write' });
+
+    if (!hasPermission) {
       return NextResponse.json(
-        { error: 'Forbidden', message: 'API key does not have server-metrics:write permission' },
+        { error: 'Forbidden', message: 'API key does not have server-metrics:write permission. Required: server-metrics:write or *' },
         { status: 403 }
       );
     }
