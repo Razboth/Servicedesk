@@ -55,6 +55,7 @@ export async function middleware(request: NextRequest) {
       '/api/monitoring/',
       '/api/omnichannel/',
       '/api/server-metrics/',
+      '/api/v2/server-metrics/',
       '/api/tickets/transaction-claim/',
       '/api/tickets/atm-claim',
       '/api/tickets/status',
