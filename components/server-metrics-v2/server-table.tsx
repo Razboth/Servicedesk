@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Table,
   TableBody,
@@ -18,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Search, ArrowUpDown, ArrowUp, ArrowDown, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface ServerData {
@@ -41,10 +42,16 @@ type SortDirection = 'asc' | 'desc';
 const statusOrder = { WARNING: 0, CAUTION: 1, OK: 2 };
 
 export function ServerTable({ servers }: ServerTableProps) {
+  const router = useRouter();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [sortField, setSortField] = useState<SortField>('status');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+  const handleServerClick = (instance: string) => {
+    const encodedInstance = encodeURIComponent(instance);
+    router.push(`/reports/server-metrics/server/${encodedInstance}`);
+  };
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -211,8 +218,17 @@ export function ServerTable({ servers }: ServerTableProps) {
               </TableRow>
             ) : (
               filteredAndSortedServers.map((server) => (
-                <TableRow key={server.id}>
-                  <TableCell className="font-medium">{server.serverName}</TableCell>
+                <TableRow
+                  key={server.id}
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => handleServerClick(server.instance)}
+                >
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      {server.serverName}
+                      <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  </TableCell>
                   <TableCell className="hidden md:table-cell font-mono text-sm text-muted-foreground">
                     {server.instance}
                   </TableCell>

@@ -7,6 +7,8 @@ import { Server, RefreshCw, Loader2, Clock, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { SummaryCards } from '@/components/server-metrics-v2/summary-cards';
 import { ServerTable } from '@/components/server-metrics-v2/server-table';
+import { CollectionSelector } from '@/components/server-metrics-v2/collection-selector';
+import { ExportButton } from '@/components/server-metrics-v2/export-button';
 
 interface ServerData {
   id: string;
@@ -37,13 +39,40 @@ interface MetricsData {
   createdAt: string;
 }
 
+interface CollectionSummary {
+  id: string;
+  fetchedAt: string;
+  fetchedAtLocal: string | null;
+  totalServers: number;
+  summary: {
+    warning: number;
+    caution: number;
+    ok: number;
+  };
+}
+
 export default function ServerMetricsPage() {
   const [data, setData] = useState<MetricsData | null>(null);
+  const [collections, setCollections] = useState<CollectionSummary[]>([]);
+  const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
 
-  const fetchData = useCallback(async (showRefreshState = false) => {
+  // Fetch collection history
+  const fetchCollections = useCallback(async () => {
+    try {
+      const response = await fetch('/api/v2/server-metrics/history?limit=50');
+      if (response.ok) {
+        const result = await response.json();
+        setCollections(result.data.collections);
+      }
+    } catch (error) {
+      console.error('Error fetching collections:', error);
+    }
+  }, []);
+
+  const fetchData = useCallback(async (collectionId: string | null = null, showRefreshState = false) => {
     try {
       if (showRefreshState) {
         setIsRefreshing(true);
@@ -51,7 +80,11 @@ export default function ServerMetricsPage() {
         setIsLoading(true);
       }
 
-      const response = await fetch('/api/v2/server-metrics');
+      const url = collectionId
+        ? `/api/v2/server-metrics/${collectionId}`
+        : '/api/v2/server-metrics';
+
+      const response = await fetch(url);
       if (!response.ok) {
         throw new Error('Gagal memuat data');
       }
@@ -68,19 +101,34 @@ export default function ServerMetricsPage() {
     }
   }, []);
 
+  const handleCollectionSelect = (collectionId: string | null) => {
+    setSelectedCollectionId(collectionId);
+    fetchData(collectionId, true);
+  };
+
+  const handleRefresh = () => {
+    setSelectedCollectionId(null);
+    fetchData(null, true);
+    fetchCollections();
+  };
+
   // Initial fetch
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+    fetchCollections();
+  }, [fetchData, fetchCollections]);
 
-  // Auto-refresh every 5 minutes
+  // Auto-refresh every 5 minutes (only if viewing latest)
   useEffect(() => {
+    if (selectedCollectionId) return; // Don't auto-refresh if viewing historical data
+
     const interval = setInterval(() => {
-      fetchData(true);
+      fetchData(null, true);
+      fetchCollections();
     }, 5 * 60 * 1000);
 
     return () => clearInterval(interval);
-  }, [fetchData]);
+  }, [fetchData, fetchCollections, selectedCollectionId]);
 
   if (isLoading) {
     return (
@@ -103,7 +151,7 @@ export default function ServerMetricsPage() {
               Belum ada data metrik server. Data akan muncul setelah sistem menerima data dari Grafana.
             </p>
           </div>
-          <Button onClick={() => fetchData(true)} variant="outline">
+          <Button onClick={() => fetchData(null, true)} variant="outline">
             <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
@@ -112,8 +160,18 @@ export default function ServerMetricsPage() {
     );
   }
 
+  // Prepare CSV export data
+  const exportData = data?.servers.map((server) => ({
+    'Server': server.serverName,
+    'Instance': server.instance,
+    'CPU (%)': server.cpuPercent.toFixed(1),
+    'Memory (%)': server.memoryPercent.toFixed(1),
+    'Storage (%)': server.storagePercent.toFixed(1),
+    'Status': server.status,
+  }));
+
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto py-6 space-y-6" id="report-content">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -143,17 +201,34 @@ export default function ServerMetricsPage() {
                 Sumber: Grafana
               </a>
             )}
+            {selectedCollectionId && (
+              <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded">
+                Melihat data historis
+              </span>
+            )}
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <CollectionSelector
+            collections={collections}
+            selectedId={selectedCollectionId}
+            onSelect={handleCollectionSelect}
+            isLoading={isRefreshing}
+          />
+          <ExportButton
+            contentId="report-content"
+            filename="server-metrics"
+            title="Laporan Metrik Server"
+            data={exportData}
+          />
           {lastRefresh && (
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-muted-foreground hidden lg:inline">
               Refresh: {lastRefresh.toLocaleTimeString('id-ID')}
             </span>
           )}
           <Button
             variant="outline"
-            onClick={() => fetchData(true)}
+            onClick={handleRefresh}
             disabled={isRefreshing}
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
