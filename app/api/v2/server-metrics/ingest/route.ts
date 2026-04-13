@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { auth } from '@/lib/auth';
 import { authenticateApiKey, checkApiPermission } from '@/lib/auth-api';
 import { ServerMetricStatus } from '@prisma/client';
 
@@ -32,32 +33,43 @@ interface IngestPayload {
 // POST /api/v2/server-metrics/ingest - Receive server metrics from Grafana
 export async function POST(request: NextRequest) {
   try {
-    // Authenticate via API key
+    // Try API key auth first
     const authResult = await authenticateApiKey(request);
 
     // Debug logging
-    console.log('[Server Metrics V2] Auth result:', {
+    console.log('[Server Metrics V2] API Key auth result:', {
       authenticated: authResult.authenticated,
       error: authResult.error,
-      hasApiKey: !!authResult.apiKey,
-      permissions: authResult.apiKey?.permissions,
     });
 
-    if (!authResult.authenticated) {
-      return NextResponse.json(
-        { error: 'Unauthorized', message: authResult.error || 'Invalid or missing API key' },
-        { status: 401 }
-      );
+    let isAuthorized = false;
+
+    if (authResult.authenticated) {
+      // Check for server-metrics:write permission
+      const hasPermission = checkApiPermission(authResult.apiKey!, 'server-metrics:write');
+      console.log('[Server Metrics V2] Permission check:', { hasPermission });
+
+      if (!hasPermission) {
+        return NextResponse.json(
+          { error: 'Forbidden', message: 'API key does not have server-metrics:write permission. Required: server-metrics:write or *' },
+          { status: 403 }
+        );
+      }
+      isAuthorized = true;
+    } else {
+      // Fallback: Try session auth (for admin users testing from app)
+      const session = await auth();
+      console.log('[Server Metrics V2] Session auth:', { hasSession: !!session, role: session?.user?.role });
+
+      if (session?.user?.role === 'ADMIN' || session?.user?.role === 'SUPER_ADMIN') {
+        isAuthorized = true;
+      }
     }
 
-    // Check for server-metrics:write permission
-    const hasPermission = checkApiPermission(authResult.apiKey!, 'server-metrics:write');
-    console.log('[Server Metrics V2] Permission check:', { hasPermission, required: 'server-metrics:write' });
-
-    if (!hasPermission) {
+    if (!isAuthorized) {
       return NextResponse.json(
-        { error: 'Forbidden', message: 'API key does not have server-metrics:write permission. Required: server-metrics:write or *' },
-        { status: 403 }
+        { error: 'Unauthorized', message: authResult.error || 'Invalid API key or insufficient permissions' },
+        { status: 401 }
       );
     }
 
