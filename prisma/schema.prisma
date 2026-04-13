@@ -3046,60 +3046,60 @@ model ServerMetrics {
   @@map("server_metrics")
 }
 
-// Server registry - stores server identification info for monitoring
-model MonitoredServer {
-  id          String   @id @default(cuid())
-  ipAddress   String   @unique
-  serverName  String?
-  description String?  @db.Text
-  category    String? // e.g., "Production", "Development", "Database"
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+// ============================================
+// Server Metrics V2 System (Grafana Integration)
+// ============================================
 
-  // Relations
-  metricSnapshots ServerMetricSnapshot[]
-
-  @@index([ipAddress])
-  @@index([category])
-  @@map("monitored_servers")
+enum ServerMetricStatus {
+  OK
+  CAUTION
+  WARNING
 }
 
-// Individual metric snapshot per server per collection
-model ServerMetricSnapshot {
-  id           String @id @default(cuid())
-  serverId     String
-  collectionId String // Groups snapshots from same API call
+// Collection of server metrics from a single Grafana fetch
+model ServerMetricCollectionV2 {
+  id             String   @id @default(cuid())
 
-  cpuPercent    Float?
-  memoryPercent Float?
-  storage       Json? // Array of {partition, usage}
+  // Metadata from Grafana
+  dashboard      String?
+  source         String?
+  fetchedAt      DateTime
+  fetchedAtLocal String?
+  timeRange      String?
 
-  timestamp   DateTime // From external system
-  collectedAt DateTime @default(now()) // When we received it
+  // Summary counts
+  totalServers   Int
+  warningCount   Int      @default(0)
+  cautionCount   Int      @default(0)
+  okCount        Int      @default(0)
 
-  // Relations
-  server     MonitoredServer  @relation(fields: [serverId], references: [id], onDelete: Cascade)
-  collection MetricCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
-
-  @@index([serverId, collectedAt])
-  @@index([collectionId])
-  @@map("server_metric_snapshots")
-}
-
-// Collection metadata - groups snapshots from single API call
-model MetricCollection {
-  id              String   @id @default(cuid())
-  fetchedAt       DateTime // fetched_at from payload
-  reportTimestamp DateTime // report_timestamp from payload
-  totalIps        Int
-  createdAt       DateTime @default(now())
+  createdAt      DateTime @default(now())
 
   // Relations
-  snapshots ServerMetricSnapshot[]
+  snapshots      ServerMetricSnapshotV2[]
 
   @@index([createdAt])
-  @@map("metric_collections")
+  @@map("server_metric_collections_v2")
+}
+
+// Individual server metric snapshot
+model ServerMetricSnapshotV2 {
+  id             String   @id @default(cuid())
+  collectionId   String
+
+  serverName     String
+  instance       String   // IP:port format
+  cpuPercent     Float
+  memoryPercent  Float
+  storagePercent Float    // Max storage usage
+  status         ServerMetricStatus
+
+  // Relations
+  collection     ServerMetricCollectionV2 @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  @@index([collectionId])
+  @@index([instance])
+  @@map("server_metric_snapshots_v2")
 }
 
 // Shift report container (one per shift assignment)
