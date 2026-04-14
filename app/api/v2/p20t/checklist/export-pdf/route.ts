@@ -250,6 +250,190 @@ export async function GET(request: NextRequest) {
         });
 
         yPos = (doc as any).lastAutoTable.finalY + 8;
+
+        // Fetch and display detail data for each monitoring type
+        // Get time range from checklist date
+        const checklistDate = new Date(date);
+        const marginMs = 5 * 60 * 1000;
+
+        // Find the latest time slot to get detail data
+        const latestTimeSlot = timeSlots[timeSlots.length - 1];
+        if (latestTimeSlot) {
+          const [hours, minutes] = latestTimeSlot.split(':').map(Number);
+          const targetTime = new Date(checklistDate.getFullYear(), checklistDate.getMonth(), checklistDate.getDate(), hours, minutes, 0, 0);
+          const marginStart = new Date(targetTime.getTime() - marginMs);
+          const marginEnd = new Date(targetTime.getTime() + marginMs);
+
+          // Check if we need a new page before details
+          if (yPos > 200) {
+            doc.addPage();
+            yPos = 20;
+          }
+
+          // Server Metrics Detail
+          const serverCollection = await prisma.serverMetricCollectionV2.findFirst({
+            where: { createdAt: { gte: marginStart, lte: marginEnd } },
+            orderBy: { createdAt: 'desc' },
+            include: {
+              snapshots: {
+                where: { status: { in: ['CAUTION', 'WARNING'] } },
+                orderBy: [{ status: 'asc' }, { serverName: 'asc' }],
+              },
+            },
+          });
+
+          if (serverCollection && serverCollection.snapshots.length > 0) {
+            doc.setFillColor(255, 152, 0); // Orange for server
+            doc.rect(14, yPos - 4, pageWidth - 28, 6, 'F');
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(255, 255, 255);
+            doc.text(`Detail Server Metrics - Cautions/Warnings (${serverCollection.snapshots.length} server)`, 16, yPos);
+            doc.setTextColor(0, 0, 0);
+            yPos += 4;
+
+            const serverData = serverCollection.snapshots.map((s, i) => [
+              String(i + 1),
+              s.serverName,
+              s.instance,
+              `${s.cpuPercent.toFixed(1)}%`,
+              `${s.memoryPercent.toFixed(1)}%`,
+              `${s.storagePercent.toFixed(1)}%`,
+              s.status,
+            ]);
+
+            autoTable(doc, {
+              startY: yPos,
+              head: [['No', 'Server', 'Instance', 'CPU', 'Memory', 'Storage', 'Status']],
+              body: serverData,
+              theme: 'grid',
+              headStyles: { fillColor: [255, 152, 0], fontSize: 7, fontStyle: 'bold' },
+              bodyStyles: { fontSize: 7 },
+              alternateRowStyles: { fillColor: [255, 248, 225] },
+              columnStyles: {
+                0: { cellWidth: 8, halign: 'center' },
+                1: { cellWidth: 35 },
+                2: { cellWidth: 35 },
+                3: { cellWidth: 18, halign: 'center' },
+                4: { cellWidth: 18, halign: 'center' },
+                5: { cellWidth: 18, halign: 'center' },
+                6: { cellWidth: 18, halign: 'center' },
+              },
+              margin: { left: 14, right: 14 },
+            });
+            yPos = (doc as any).lastAutoTable.finalY + 6;
+          }
+
+          // Check if we need a new page
+          if (yPos > 240) {
+            doc.addPage();
+            yPos = 20;
+          }
+
+          // Device Status Detail
+          const deviceCollection = await prisma.deviceStatusCollection.findFirst({
+            where: { createdAt: { gte: marginStart, lte: marginEnd } },
+            orderBy: { createdAt: 'desc' },
+            include: {
+              snapshots: {
+                where: { status: 'DOWN' },
+                orderBy: [{ groupName: 'asc' }, { serviceName: 'asc' }],
+              },
+            },
+          });
+
+          if (deviceCollection && deviceCollection.snapshots.length > 0) {
+            doc.setFillColor(244, 67, 54); // Red for down devices
+            doc.rect(14, yPos - 4, pageWidth - 28, 6, 'F');
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(255, 255, 255);
+            doc.text(`Detail Device Status - Down (${deviceCollection.snapshots.length} device)`, 16, yPos);
+            doc.setTextColor(0, 0, 0);
+            yPos += 4;
+
+            const deviceData = deviceCollection.snapshots.map((s, i) => [
+              String(i + 1),
+              s.groupName,
+              s.serviceName,
+              s.status,
+            ]);
+
+            autoTable(doc, {
+              startY: yPos,
+              head: [['No', 'Group', 'Service', 'Status']],
+              body: deviceData,
+              theme: 'grid',
+              headStyles: { fillColor: [244, 67, 54], fontSize: 7, fontStyle: 'bold' },
+              bodyStyles: { fontSize: 7 },
+              alternateRowStyles: { fillColor: [255, 235, 238] },
+              columnStyles: {
+                0: { cellWidth: 10, halign: 'center' },
+                1: { cellWidth: 50 },
+                2: { cellWidth: 80 },
+                3: { cellWidth: 20, halign: 'center' },
+              },
+              margin: { left: 14, right: 14 },
+            });
+            yPos = (doc as any).lastAutoTable.finalY + 6;
+          }
+
+          // Check if we need a new page
+          if (yPos > 240) {
+            doc.addPage();
+            yPos = 20;
+          }
+
+          // ATM Alarm Detail
+          const atmSnapshot = await prisma.atmAlarmSnapshot.findFirst({
+            where: { timestamp: { gte: marginStart, lte: marginEnd } },
+            orderBy: { timestamp: 'desc' },
+            include: {
+              alarmHistory: {
+                orderBy: [{ deviceId: 'asc' }],
+                include: { device: { select: { deviceId: true, location: true } } },
+              },
+            },
+          });
+
+          if (atmSnapshot && atmSnapshot.alarmHistory.length > 0) {
+            doc.setFillColor(156, 39, 176); // Purple for ATM
+            doc.rect(14, yPos - 4, pageWidth - 28, 6, 'F');
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(255, 255, 255);
+            doc.text(`Detail ATM Alarm (${atmSnapshot.alarmHistory.length} alarm)`, 16, yPos);
+            doc.setTextColor(0, 0, 0);
+            yPos += 4;
+
+            const atmData = atmSnapshot.alarmHistory.map((a, i) => [
+              String(i + 1),
+              a.deviceId,
+              a.location || a.device?.location || '-',
+              a.alarmType,
+            ]);
+
+            autoTable(doc, {
+              startY: yPos,
+              head: [['No', 'Device ID', 'Location', 'Alarm Type']],
+              body: atmData,
+              theme: 'grid',
+              headStyles: { fillColor: [156, 39, 176], fontSize: 7, fontStyle: 'bold' },
+              bodyStyles: { fontSize: 7 },
+              alternateRowStyles: { fillColor: [243, 229, 245] },
+              columnStyles: {
+                0: { cellWidth: 10, halign: 'center' },
+                1: { cellWidth: 30 },
+                2: { cellWidth: 80 },
+                3: { cellWidth: 40 },
+              },
+              margin: { left: 14, right: 14 },
+            });
+            yPos = (doc as any).lastAutoTable.finalY + 6;
+          }
+        }
+
+        yPos += 4;
       } else {
         // Regular table for Section A and C
         const tableData = sectionItems.map((item, index) => {
