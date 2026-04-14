@@ -40,6 +40,14 @@ import {
 } from '@/components/ui/table';
 import { toast } from 'sonner';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
   CalendarIcon,
   Sun,
   Moon,
@@ -57,6 +65,11 @@ import {
   Download,
   Loader2,
   Save,
+  FileText,
+  Info,
+  Server,
+  Wifi,
+  CreditCard,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -129,6 +142,87 @@ export default function P20TChecklistPage() {
   const [fetching, setFetching] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [notesDraft, setNotesDraft] = useState<Record<string, string>>({});
+  const [detailDialog, setDetailDialog] = useState<{
+    open: boolean;
+    type: string | null;
+    timeSlot: string | null;
+    title: string | null;
+    data: any[] | null;
+    loading: boolean;
+  }>({ open: false, type: null, timeSlot: null, title: null, data: null, loading: false });
+  const [exporting, setExporting] = useState(false);
+
+  const handleShowDetail = async (timeSlot: string, autoFetchType: string) => {
+    setDetailDialog({
+      open: true,
+      type: autoFetchType,
+      timeSlot,
+      title: null,
+      data: null,
+      loading: true,
+    });
+
+    try {
+      const dateStr = format(selectedDate, 'yyyy-MM-dd');
+      const response = await fetch('/api/v2/p20t/checklist/details', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          date: dateStr,
+          timeSlot,
+          autoFetchType,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Gagal mengambil detail');
+      }
+
+      setDetailDialog((prev) => ({
+        ...prev,
+        title: result.data.title,
+        data: result.data.details,
+        loading: false,
+      }));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Gagal mengambil detail');
+      setDetailDialog((prev) => ({ ...prev, loading: false }));
+    }
+  };
+
+  const handleExportPDF = async () => {
+    setExporting(true);
+    try {
+      const dateStr = format(selectedDate, 'yyyy-MM-dd');
+      const response = await fetch(
+        `/api/v2/p20t/checklist/export-pdf?date=${dateStr}&shift=${selectedShift}&category=${selectedCategory}`
+      );
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Gagal mengekspor PDF');
+      }
+
+      // Download the PDF
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `P20T-${selectedCategory}-${selectedShift}-${dateStr}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success('PDF berhasil diunduh');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Gagal mengekspor PDF');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const fetchChecklist = useCallback(async () => {
     setLoading(true);
@@ -284,9 +378,23 @@ export default function P20TChecklistPage() {
             Pusat Pengendalian Operasional Terpadu
           </p>
         </div>
-        <Button variant="outline" size="icon" onClick={fetchChecklist}>
-          <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={handleExportPDF}
+            disabled={exporting || loading || items.length === 0}
+          >
+            {exporting ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <FileText className="h-4 w-4 mr-2" />
+            )}
+            Export PDF
+          </Button>
+          <Button variant="outline" size="icon" onClick={fetchChecklist}>
+            <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -502,43 +610,57 @@ export default function P20TChecklistPage() {
                                         {timeSlot}
                                       </Badge>
                                     </TableCell>
-                                    {[serverMetrics, deviceStatus, atmAlarm].map((item, idx) => (
-                                      <TableCell key={idx}>
-                                        {item && (
-                                          <div className="flex items-center gap-2">
-                                            <Input
-                                              type="text"
-                                              placeholder="-"
-                                              value={item.value || ''}
-                                              onChange={(e) => handleValueChange(item, e.target.value)}
-                                              disabled={!canEdit || updating === item.id}
-                                              className={cn(
-                                                'w-20 h-8 text-center font-mono',
-                                                item.status === 'COMPLETED' && 'bg-green-50 border-green-300'
-                                              )}
-                                            />
-                                            {canEdit && (
+                                    {[serverMetrics, deviceStatus, atmAlarm].map((item, idx) => {
+                                      const autoFetchTypes = ['SERVER_METRICS', 'DEVICE_STATUS', 'ATM_ALARM'];
+                                      const DetailIcon = idx === 0 ? Server : idx === 1 ? Wifi : CreditCard;
+                                      return (
+                                        <TableCell key={idx}>
+                                          {item && (
+                                            <div className="flex items-center gap-1">
+                                              <Input
+                                                type="text"
+                                                placeholder="-"
+                                                value={item.value || ''}
+                                                onChange={(e) => handleValueChange(item, e.target.value)}
+                                                disabled={!canEdit || updating === item.id}
+                                                className={cn(
+                                                  'w-16 h-8 text-center font-mono',
+                                                  item.status === 'COMPLETED' && 'bg-green-50 border-green-300'
+                                                )}
+                                              />
                                               <Button
                                                 variant="ghost"
                                                 size="sm"
-                                                onClick={() => handleAutoFetch(item)}
-                                                disabled={updating === item.id || fetching === item.id}
+                                                onClick={() => handleShowDetail(timeSlot!, autoFetchTypes[idx])}
                                                 className="h-8 w-8 p-0"
+                                                title="Lihat detail"
                                               >
-                                                {fetching === item.id ? (
-                                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                                ) : (
-                                                  <Download className="h-4 w-4" />
-                                                )}
+                                                <DetailIcon className="h-4 w-4 text-muted-foreground" />
                                               </Button>
-                                            )}
-                                            {item.status === 'COMPLETED' && (
-                                              <CheckCircle2 className="h-4 w-4 text-green-500" />
-                                            )}
-                                          </div>
-                                        )}
-                                      </TableCell>
-                                    ))}
+                                              {canEdit && (
+                                                <Button
+                                                  variant="ghost"
+                                                  size="sm"
+                                                  onClick={() => handleAutoFetch(item)}
+                                                  disabled={updating === item.id || fetching === item.id}
+                                                  className="h-8 w-8 p-0"
+                                                  title="Ambil data otomatis"
+                                                >
+                                                  {fetching === item.id ? (
+                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                  ) : (
+                                                    <Download className="h-4 w-4" />
+                                                  )}
+                                                </Button>
+                                              )}
+                                              {item.status === 'COMPLETED' && (
+                                                <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                                              )}
+                                            </div>
+                                          )}
+                                        </TableCell>
+                                      );
+                                    })}
                                   </TableRow>
                                 );
                               })}
@@ -678,6 +800,109 @@ export default function P20TChecklistPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Detail Dialog */}
+      <Dialog
+        open={detailDialog.open}
+        onOpenChange={(open) => setDetailDialog((prev) => ({ ...prev, open }))}
+      >
+        <DialogContent className="max-w-2xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {detailDialog.type === 'SERVER_METRICS' && <Server className="h-5 w-5" />}
+              {detailDialog.type === 'DEVICE_STATUS' && <Wifi className="h-5 w-5" />}
+              {detailDialog.type === 'ATM_ALARM' && <CreditCard className="h-5 w-5" />}
+              {detailDialog.title || 'Detail'}
+            </DialogTitle>
+            <DialogDescription>
+              {detailDialog.timeSlot && `Data untuk jam ${detailDialog.timeSlot}`}
+              {detailDialog.data && ` - Total: ${detailDialog.data.length} item`}
+            </DialogDescription>
+          </DialogHeader>
+
+          <ScrollArea className="max-h-[60vh]">
+            {detailDialog.loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin" />
+              </div>
+            ) : !detailDialog.data || detailDialog.data.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <CheckCircle2 className="h-12 w-12 mx-auto mb-4 text-green-500" />
+                <p>Tidak ada data yang perlu ditampilkan</p>
+              </div>
+            ) : (
+              <div className="border rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="w-[50px]">No</TableHead>
+                      {detailDialog.type === 'SERVER_METRICS' && (
+                        <>
+                          <TableHead>Server</TableHead>
+                          <TableHead>Metric</TableHead>
+                          <TableHead>Value</TableHead>
+                        </>
+                      )}
+                      {detailDialog.type === 'DEVICE_STATUS' && (
+                        <>
+                          <TableHead>Group</TableHead>
+                          <TableHead>Service</TableHead>
+                          <TableHead>Status</TableHead>
+                        </>
+                      )}
+                      {detailDialog.type === 'ATM_ALARM' && (
+                        <>
+                          <TableHead>Device ID</TableHead>
+                          <TableHead>Location</TableHead>
+                          <TableHead>Alarm Type</TableHead>
+                        </>
+                      )}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {detailDialog.data.map((item, index) => (
+                      <TableRow key={index}>
+                        <TableCell className="text-center">{index + 1}</TableCell>
+                        {detailDialog.type === 'SERVER_METRICS' && (
+                          <>
+                            <TableCell className="font-medium">{item.server}</TableCell>
+                            <TableCell>{item.metric}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="text-yellow-600 border-yellow-400">
+                                {item.value}
+                              </Badge>
+                            </TableCell>
+                          </>
+                        )}
+                        {detailDialog.type === 'DEVICE_STATUS' && (
+                          <>
+                            <TableCell className="font-medium">{item.group}</TableCell>
+                            <TableCell>{item.service}</TableCell>
+                            <TableCell>
+                              <Badge variant="destructive">{item.status}</Badge>
+                            </TableCell>
+                          </>
+                        )}
+                        {detailDialog.type === 'ATM_ALARM' && (
+                          <>
+                            <TableCell className="font-medium font-mono">{item.deviceId}</TableCell>
+                            <TableCell>{item.location}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="text-red-600 border-red-400">
+                                {item.alarmType}
+                              </Badge>
+                            </TableCell>
+                          </>
+                        )}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
