@@ -111,22 +111,11 @@ model User {
   serverAccessChecklists ServerAccessDailyChecklist[] @relation("ServerAccessChecklists")
   checklistClaims        ChecklistClaim[]             @relation("ChecklistClaims")
 
-  // Checklist V2 - User specialization
-  checklistType ChecklistType? // User's checklist type specialization
-  canBeBuddy    Boolean        @default(false) // Can be assigned as standby buddy
-
-  // Checklist V2 relations
-  checklistStandbyV2        ChecklistStandbyV2?     @relation("ChecklistStandbyV2")
-  checklistStandbyAddedV2   ChecklistStandbyV2[]    @relation("ChecklistStandbyAddedByV2")
-  checklistAssignmentsV2    ChecklistAssignmentV2[] @relation("ChecklistAssignmentsV2")
-  checklistItemsCompletedV2 ChecklistItemV2[]       @relation("ChecklistItemsCompletedV2")
-  outgoingHandoversV2       ShiftHandoverV2[]       @relation("OutgoingHandoversV2")
-  incomingHandoversV2       ShiftHandoverV2[]       @relation("IncomingHandoversV2")
-
-  // Shift Assignment V2 relations (for buddy system)
-  primaryShiftAssignments ShiftAssignmentV2[] @relation("ShiftPrimary")
-  buddyShiftAssignments   ShiftAssignmentV2[] @relation("ShiftBuddy")
-  createdShiftAssignments ShiftAssignmentV2[] @relation("ShiftCreatedBy")
+  // P20T relations
+  p20tAssignments        P20TAssignment[]     @relation("P20TUserAssignments")
+  p20tAssignmentsCreated P20TAssignment[]     @relation("P20TAssignmentCreatedBy")
+  p20tChecklistItems     P20TChecklistItem[]  @relation("P20TItemCompletedBy")
+  p20tPoolMembership     P20TUserPool?        @relation("P20TPoolUser")
 
   // Import tracking
   importLogs ImportLog[] @relation("ImportLogCreatedBy")
@@ -3474,204 +3463,121 @@ model ChecklistClaim {
 }
 
 // ============================================
-// CHECKLIST V2 - New Implementation
+// P20T - Pusat Pengendalian Operasional Terpadu
 // ============================================
 
-// Checklist type based on specialization
-enum ChecklistType {
-  IT_INFRASTRUKTUR // IT & Infrastructure monitoring
-  KEAMANAN_SIBER // Cyber Security (KKS)
-  FRAUD_COMPLIANCE // Fraud & Compliance
+// P20T user category
+enum P20TCategory {
+  IT         // IT & Infrastructure
+  KKS        // Keamanan Siber (Cyber Security)
+  ANTI_FRAUD // Anti Fraud & Compliance
 }
 
-// Shift types for checklist scheduling (2 shifts)
-enum ChecklistShiftType {
-  SHIFT_SIANG // Day shift (08:00-20:00)
-  SHIFT_MALAM // Night shift (20:00-08:00)
+// P20T shift types
+enum P20TShift {
+  DAY   // 08:00 - 20:00
+  NIGHT // 20:00 - 08:00
 }
 
-// Role in checklist assignment
-enum ChecklistRole {
-  STAFF
-  SUPERVISOR
+// P20T checklist item status
+enum P20TItemStatus {
+  PENDING
+  COMPLETED
+  SKIPPED
+  NA
 }
 
-// Status for individual checklist items (V2)
-enum ChecklistItemStatusV2 {
-  PENDING // Not yet done
-  COMPLETED // V - Done/OK
-  FAILED // X - Error/Failed
-  NOT_APPLICABLE // - (dash) - N/A
-  NEEDS_ATTENTION // ! - Needs follow up
-}
-
-// Templates for V2 checklist items
-model ChecklistTemplateV2 {
-  id            String             @id @default(cuid())
-  checklistType ChecklistType
-  shiftType     ChecklistShiftType
-  section       String // A, B, C, D, E
-  sectionTitle  String // "MONITORING AWAL HARI (07:00-08:00)"
-  itemNumber    Int
-  title         String
-  description   String?
-  toolSystem    String? // "Grafana", "ServiceDesk", etc.
-  timeSlot      String? // "08:00", "10:00", etc. for periodic items
-  isRequired    Boolean            @default(true)
-  order         Int
-  isActive      Boolean            @default(true)
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
-
-  @@index([checklistType, shiftType, isActive])
-  @@index([section, order])
-  @@map("checklist_templates_v2")
-}
-
-// Daily checklist instance (one per date + checklistType + shift type)
-model DailyChecklistV2 {
-  id            String                @id @default(cuid())
-  date          DateTime              @db.Date
-  checklistType ChecklistType
-  shiftType     ChecklistShiftType
-  status        ServerChecklistStatus @default(PENDING)
-  createdAt     DateTime              @default(now())
-  updatedAt     DateTime              @updatedAt
-  completedAt   DateTime?
-
-  items        ChecklistItemV2[]
-  assignments  ChecklistAssignmentV2[]
-  handoverFrom ShiftHandoverV2[]       @relation("HandoverFrom")
-  handoverTo   ShiftHandoverV2[]       @relation("HandoverTo")
-
-  @@unique([date, checklistType, shiftType])
-  @@index([date, status])
-  @@map("daily_checklists_v2")
-}
-
-// Active standby pool - users available to be assigned to checklists
-model ChecklistStandbyV2 {
-  id            String        @id @default(cuid())
-  userId        String        @unique
-  checklistType ChecklistType
-  canBePrimary  Boolean       @default(true) // Can be assigned as primary
-  canBeBuddy    Boolean       @default(true) // Can be assigned as buddy
-  isActive      Boolean       @default(true)
-  addedAt       DateTime      @default(now())
-  addedById     String
-
-  user    User @relation("ChecklistStandbyV2", fields: [userId], references: [id])
-  addedBy User @relation("ChecklistStandbyAddedByV2", fields: [addedById], references: [id])
-
-  @@index([checklistType, isActive])
-  @@map("checklist_standby_v2")
-}
-
-// Assignment of users to checklists (Staff or Supervisor)
-model ChecklistAssignmentV2 {
-  id          String        @id @default(cuid())
-  checklistId String
+// P20T user assignment to date/shift/category
+model P20TAssignment {
+  id          String       @id @default(cuid())
+  date        DateTime     @db.Date
+  shift       P20TShift
+  category    P20TCategory
   userId      String
-  role        ChecklistRole
-  assignedAt  DateTime      @default(now())
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  createdById String?
 
-  checklist DailyChecklistV2 @relation(fields: [checklistId], references: [id], onDelete: Cascade)
-  user      User             @relation("ChecklistAssignmentsV2", fields: [userId], references: [id])
+  user      User  @relation("P20TUserAssignments", fields: [userId], references: [id])
+  createdBy User? @relation("P20TAssignmentCreatedBy", fields: [createdById], references: [id])
 
-  @@unique([checklistId, userId])
+  @@unique([date, shift, category])
+  @@index([date])
   @@index([userId])
-  @@map("checklist_assignments_v2")
+  @@map("p20t_assignments")
 }
 
-// Individual items in a daily checklist (V2)
-model ChecklistItemV2 {
-  id            String                @id @default(cuid())
+// P20T checklist template per category
+model P20TChecklistTemplate {
+  id          String       @id @default(cuid())
+  category    P20TCategory
+  section     String       // e.g., "A", "B", "C"
+  orderIndex  Int
+  title       String
+  description String?
+  inputType   String       @default("CHECKBOX") // CHECKBOX, TEXT, NUMBER
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  items P20TChecklistItem[]
+
+  @@index([category, section])
+  @@index([category, orderIndex])
+  @@map("p20t_checklist_templates")
+}
+
+// P20T daily checklist instance
+model P20TDailyChecklist {
+  id          String       @id @default(cuid())
+  date        DateTime     @db.Date
+  shift       P20TShift
+  category    P20TCategory
+  isCompleted Boolean      @default(false)
+  completedAt DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  items P20TChecklistItem[]
+
+  @@unique([date, shift, category])
+  @@index([date])
+  @@map("p20t_daily_checklists")
+}
+
+// P20T individual checklist item
+model P20TChecklistItem {
+  id            String         @id @default(cuid())
   checklistId   String
-  templateId    String?
-  section       String
-  sectionTitle  String
-  itemNumber    Int
-  title         String
-  description   String?
-  toolSystem    String?
-  timeSlot      String? // For periodic items and time-lock
-  isRequired    Boolean               @default(true)
-  order         Int
-  status        ChecklistItemStatusV2 @default(PENDING)
+  templateId    String
+  status        P20TItemStatus @default(PENDING)
+  value         String?        // For TEXT/NUMBER inputs
+  notes         String?
   completedAt   DateTime?
   completedById String?
-  notes         String?               @db.Text
 
-  checklist   DailyChecklistV2 @relation(fields: [checklistId], references: [id], onDelete: Cascade)
-  completedBy User?            @relation("ChecklistItemsCompletedV2", fields: [completedById], references: [id])
+  checklist   P20TDailyChecklist    @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  template    P20TChecklistTemplate @relation(fields: [templateId], references: [id])
+  completedBy User?                 @relation("P20TItemCompletedBy", fields: [completedById], references: [id])
 
-  @@index([checklistId, section])
-  @@index([checklistId, order])
-  @@map("checklist_items_v2")
+  @@unique([checklistId, templateId])
+  @@index([checklistId])
+  @@map("p20t_checklist_items")
 }
 
-// Shift handover log between shifts
-model ShiftHandoverV2 {
-  id              String    @id @default(cuid())
-  date            DateTime  @db.Date
-  fromChecklistId String
-  toChecklistId   String?
-  outgoingPicId   String
-  incomingPicId   String?
-  systemStatus    String    @db.Text // JSON: overall system status
-  openIssues      String?   @db.Text // JSON: list of pending issues
-  notes           String?   @db.Text
-  handoverTime    DateTime  @default(now())
-  acknowledgedAt  DateTime?
+// P20T user pool - users available for shift assignments
+model P20TUserPool {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  createdAt DateTime @default(now())
 
-  fromChecklist DailyChecklistV2  @relation("HandoverFrom", fields: [fromChecklistId], references: [id])
-  toChecklist   DailyChecklistV2? @relation("HandoverTo", fields: [toChecklistId], references: [id])
-  outgoingPic   User              @relation("OutgoingHandoversV2", fields: [outgoingPicId], references: [id])
-  incomingPic   User?             @relation("IncomingHandoversV2", fields: [incomingPicId], references: [id])
+  user User @relation("P20TPoolUser", fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([date])
-  @@index([outgoingPicId])
-  @@map("shift_handovers_v2")
-}
-
-// Shift assignment - 1 primary + 1 buddy per shift per day
-model ShiftAssignmentV2 {
-  id        String             @id @default(cuid())
-  date      DateTime           @db.Date
-  shiftType ChecklistShiftType // SHIFT_SIANG or SHIFT_MALAM
-
-  // Primary person
-  primaryUserId String
-  primaryType   ChecklistType // Which checklist type they fill
-
-  // Standby buddy (can be different type)
-  buddyUserId String?
-  buddyType   ChecklistType? // Buddy's own checklist type (for reference)
-
-  // Takeover tracking
-  takenOver       Boolean   @default(false)
-  takenOverAt     DateTime?
-  takenOverReason String?   @db.Text
-
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  createdById String
-
-  // Relations
-  primaryUser User  @relation("ShiftPrimary", fields: [primaryUserId], references: [id])
-  buddyUser   User? @relation("ShiftBuddy", fields: [buddyUserId], references: [id])
-  createdBy   User  @relation("ShiftCreatedBy", fields: [createdById], references: [id])
-
-  @@unique([date, shiftType]) // Only 1 assignment per shift per day
-  @@index([date])
-  @@index([primaryUserId])
-  @@index([buddyUserId])
-  @@map("shift_assignments_v2")
+  @@map("p20t_user_pool")
 }
 
 // ============================================
-// END CHECKLIST V2
+// END P20T
 // ============================================
 
 // Import/Export tracking
