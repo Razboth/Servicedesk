@@ -37,6 +37,21 @@ export async function GET(request: NextRequest) {
     const [year, month, day] = dateParam.split('-').map(Number);
     const date = new Date(Date.UTC(year, month - 1, day));
 
+    // Get assignment for this date/shift/category FIRST
+    const assignment = await prisma.p20TAssignment.findUnique({
+      where: {
+        date_shift_category: { date, shift, category },
+      },
+      include: {
+        user: {
+          select: { id: true, name: true, email: true },
+        },
+      },
+    });
+
+    // Check if current user can edit (is the assigned user)
+    const canEdit = assignment?.userId === session.user.id;
+
     // Get or create daily checklist
     let checklist = await prisma.p20TDailyChecklist.findUnique({
       where: {
@@ -60,7 +75,14 @@ export async function GET(request: NextRequest) {
     // If no checklist exists, create one with items from templates
     if (!checklist) {
       const templates = await prisma.p20TChecklistTemplate.findMany({
-        where: { category, isActive: true },
+        where: {
+          category,
+          isActive: true,
+          OR: [
+            { shift: shift }, // Templates specific to this shift
+            { shift: null },  // Templates that apply to all shifts
+          ],
+        },
         orderBy: [{ section: 'asc' }, { orderIndex: 'asc' }],
       });
 
@@ -69,8 +91,8 @@ export async function GET(request: NextRequest) {
           success: true,
           data: {
             checklist: null,
-            assignment: null,
-            canEdit: false,
+            assignment,
+            canEdit,
             message: 'Belum ada template checklist untuk kategori ini',
           },
         });
@@ -102,21 +124,6 @@ export async function GET(request: NextRequest) {
         },
       });
     }
-
-    // Get assignment for this date/shift/category
-    const assignment = await prisma.p20TAssignment.findUnique({
-      where: {
-        date_shift_category: { date, shift, category },
-      },
-      include: {
-        user: {
-          select: { id: true, name: true, email: true },
-        },
-      },
-    });
-
-    // Check if current user can edit (is the assigned user)
-    const canEdit = assignment?.userId === session.user.id;
 
     // Group items by section
     const itemsBySection = checklist.items.reduce((acc, item) => {

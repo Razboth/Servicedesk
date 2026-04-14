@@ -47,6 +47,8 @@ import {
   Lock,
   RefreshCw,
   Eye,
+  Download,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -70,6 +72,8 @@ interface ChecklistItem {
     title: string;
     description: string | null;
     inputType: string;
+    timeSlot: string | null;
+    autoFetchType: string | null;
   };
 }
 
@@ -114,6 +118,7 @@ export default function P20TChecklistPage() {
   const [canEdit, setCanEdit] = useState(false);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [fetching, setFetching] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
   const fetchChecklist = useCallback(async () => {
@@ -211,6 +216,43 @@ export default function P20TChecklistPage() {
 
   const handleNotesChange = (item: ChecklistItem, notes: string) => {
     updateItem(item.id, { notes });
+  };
+
+  const handleAutoFetch = async (item: ChecklistItem) => {
+    if (!item.template.autoFetchType || !item.template.timeSlot) return;
+
+    setFetching(item.id);
+    try {
+      const dateStr = format(selectedDate, 'yyyy-MM-dd');
+      const response = await fetch('/api/v2/p20t/checklist/auto-fetch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          date: dateStr,
+          timeSlot: item.template.timeSlot,
+          autoFetchType: item.template.autoFetchType,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Gagal mengambil data');
+      }
+
+      if (data.success && data.data) {
+        // Auto-fill the value field with fetched data
+        const value = String(data.data.value);
+        await updateItem(item.id, { value, status: 'COMPLETED' });
+        toast.success(`Data berhasil diambil: ${value}`);
+      } else {
+        toast.error(data.error || 'Data tidak ditemukan');
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Gagal mengambil data');
+    } finally {
+      setFetching(null);
+    }
   };
 
   const categoryInfo = CATEGORIES.find((c) => c.value === selectedCategory)!;
@@ -492,14 +534,33 @@ export default function P20TChecklistPage() {
                                   {/* Input for TEXT/NUMBER type */}
                                   {(item.template.inputType === 'TEXT' ||
                                     item.template.inputType === 'NUMBER') && (
-                                    <Input
-                                      type={item.template.inputType === 'NUMBER' ? 'number' : 'text'}
-                                      placeholder="Masukkan nilai..."
-                                      value={item.value || ''}
-                                      onChange={(e) => handleValueChange(item, e.target.value)}
-                                      disabled={!canEdit || isUpdating}
-                                      className="max-w-md"
-                                    />
+                                    <div className="flex items-center gap-2 max-w-md">
+                                      <Input
+                                        type={item.template.inputType === 'NUMBER' ? 'number' : 'text'}
+                                        placeholder="Masukkan nilai..."
+                                        value={item.value || ''}
+                                        onChange={(e) => handleValueChange(item, e.target.value)}
+                                        disabled={!canEdit || isUpdating}
+                                        className="flex-1"
+                                      />
+                                      {/* Auto-fetch button for items with autoFetchType */}
+                                      {canEdit && item.template.autoFetchType && (
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => handleAutoFetch(item)}
+                                          disabled={isUpdating || fetching === item.id}
+                                          className="shrink-0"
+                                        >
+                                          {fetching === item.id ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                          ) : (
+                                            <Download className="h-4 w-4" />
+                                          )}
+                                          <span className="ml-1 hidden sm:inline">Ambil</span>
+                                        </Button>
+                                      )}
+                                    </div>
                                   )}
 
                                   {/* Notes */}

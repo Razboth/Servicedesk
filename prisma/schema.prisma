@@ -3507,23 +3507,26 @@ model P20TAssignment {
   @@map("p20t_assignments")
 }
 
-// P20T checklist template per category
+// P20T checklist template per category and shift
 model P20TChecklistTemplate {
-  id          String       @id @default(cuid())
-  category    P20TCategory
-  section     String       // e.g., "A", "B", "C"
-  orderIndex  Int
-  title       String
-  description String?
-  inputType   String       @default("CHECKBOX") // CHECKBOX, TEXT, NUMBER
-  isActive    Boolean      @default(true)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id            String       @id @default(cuid())
+  category      P20TCategory
+  shift         P20TShift?   // null = applies to all shifts, DAY/NIGHT = shift-specific
+  section       String       // e.g., "A", "B", "C"
+  orderIndex    Int
+  title         String
+  description   String?
+  inputType     String       @default("CHECKBOX") // CHECKBOX, TEXT, NUMBER
+  timeSlot      String?      // e.g., "08:00", "10:00" for periodic items
+  autoFetchType String?      // "SERVER_METRICS", "DEVICE_STATUS", "ATM_ALARM"
+  isActive      Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
   items P20TChecklistItem[]
 
-  @@index([category, section])
-  @@index([category, orderIndex])
+  @@index([category, shift, section])
+  @@index([category, shift, orderIndex])
   @@map("p20t_checklist_templates")
 }
 
