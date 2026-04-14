@@ -839,8 +839,10 @@ export default function P20TChecklistPage() {
                       {detailDialog.type === 'SERVER_METRICS' && (
                         <>
                           <TableHead>Server</TableHead>
-                          <TableHead>Metric</TableHead>
-                          <TableHead>Value</TableHead>
+                          <TableHead>Instance</TableHead>
+                          <TableHead>CPU</TableHead>
+                          <TableHead>Memory</TableHead>
+                          <TableHead>Storage</TableHead>
                         </>
                       )}
                       {detailDialog.type === 'DEVICE_STATUS' && (
@@ -866,10 +868,20 @@ export default function P20TChecklistPage() {
                         {detailDialog.type === 'SERVER_METRICS' && (
                           <>
                             <TableCell className="font-medium">{item.server}</TableCell>
-                            <TableCell>{item.metric}</TableCell>
+                            <TableCell className="font-mono text-sm">{item.instance}</TableCell>
                             <TableCell>
                               <Badge variant="outline" className="text-yellow-600 border-yellow-400">
-                                {item.value}
+                                {item.cpu}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="text-yellow-600 border-yellow-400">
+                                {item.memory}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="text-yellow-600 border-yellow-400">
+                                {item.storage}
                               </Badge>
                             </TableCell>
                           </>

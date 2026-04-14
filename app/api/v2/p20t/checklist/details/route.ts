@@ -61,7 +61,6 @@ export async function POST(request: NextRequest) {
               },
               orderBy: [
                 { serverName: 'asc' },
-                { metricName: 'asc' },
               ],
             },
           },
@@ -71,8 +70,10 @@ export async function POST(request: NextRequest) {
           fetchedAt = collection.createdAt;
           details = collection.snapshots.map((s) => ({
             server: s.serverName,
-            metric: s.metricName,
-            value: s.numericValue ?? s.stringValue,
+            instance: s.instance,
+            cpu: `${s.cpuPercent.toFixed(1)}%`,
+            memory: `${s.memoryPercent.toFixed(1)}%`,
+            storage: `${s.storagePercent.toFixed(1)}%`,
             status: s.status,
           }));
         }
