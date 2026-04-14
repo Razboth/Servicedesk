@@ -252,17 +252,24 @@ export async function GET(request: NextRequest) {
         yPos = (doc as any).lastAutoTable.finalY + 8;
 
         // Fetch and display detail data for each monitoring type
-        // Get time range from checklist date
-        const checklistDate = new Date(date);
-        const marginMs = 5 * 60 * 1000;
+        // Get the date range for the entire checklist day
+        const [year, month, day] = dateStr.split('-').map(Number);
 
-        // Find the latest time slot to get detail data
-        const latestTimeSlot = timeSlots[timeSlots.length - 1];
-        if (latestTimeSlot) {
-          const [hours, minutes] = latestTimeSlot.split(':').map(Number);
-          const targetTime = new Date(checklistDate.getFullYear(), checklistDate.getMonth(), checklistDate.getDate(), hours, minutes, 0, 0);
-          const marginStart = new Date(targetTime.getTime() - marginMs);
-          const marginEnd = new Date(targetTime.getTime() + marginMs);
+        // For day shift: 08:00 - 20:00, for night shift: 20:00 - 08:00 (next day)
+        let dayStart: Date;
+        let dayEnd: Date;
+
+        if (shift === 'DAY') {
+          dayStart = new Date(year, month - 1, day, 8, 0, 0, 0);
+          dayEnd = new Date(year, month - 1, day, 20, 0, 0, 0);
+        } else {
+          // Night shift spans two days
+          dayStart = new Date(year, month - 1, day, 20, 0, 0, 0);
+          dayEnd = new Date(year, month - 1, day + 1, 8, 0, 0, 0);
+        }
+
+        // Query the most recent data within the shift period
+        {
 
           // Check if we need a new page before details
           if (yPos > 200) {
@@ -270,9 +277,9 @@ export async function GET(request: NextRequest) {
             yPos = 20;
           }
 
-          // Server Metrics Detail
+          // Server Metrics Detail - get most recent within shift
           const serverCollection = await prisma.serverMetricCollectionV2.findFirst({
-            where: { createdAt: { gte: marginStart, lte: marginEnd } },
+            where: { createdAt: { gte: dayStart, lte: dayEnd } },
             orderBy: { createdAt: 'desc' },
             include: {
               snapshots: {
@@ -332,7 +339,7 @@ export async function GET(request: NextRequest) {
 
           // Device Status Detail
           const deviceCollection = await prisma.deviceStatusCollection.findFirst({
-            where: { createdAt: { gte: marginStart, lte: marginEnd } },
+            where: { createdAt: { gte: dayStart, lte: dayEnd } },
             orderBy: { createdAt: 'desc' },
             include: {
               snapshots: {
@@ -386,7 +393,7 @@ export async function GET(request: NextRequest) {
 
           // ATM Alarm Detail
           const atmSnapshot = await prisma.atmAlarmSnapshot.findFirst({
-            where: { timestamp: { gte: marginStart, lte: marginEnd } },
+            where: { timestamp: { gte: dayStart, lte: dayEnd } },
             orderBy: { timestamp: 'desc' },
             include: {
               alarmHistory: {
