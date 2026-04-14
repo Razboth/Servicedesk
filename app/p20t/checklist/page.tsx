@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Calendar } from '@/components/ui/calendar';
 import {
@@ -55,6 +56,7 @@ import {
   Eye,
   Download,
   Loader2,
+  Save,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -126,6 +128,7 @@ export default function P20TChecklistPage() {
   const [updating, setUpdating] = useState<string | null>(null);
   const [fetching, setFetching] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [notesDraft, setNotesDraft] = useState<Record<string, string>>({});
 
   const fetchChecklist = useCallback(async () => {
     setLoading(true);
@@ -561,8 +564,10 @@ export default function P20TChecklistPage() {
                             <TableRow className="bg-muted/50">
                               <TableHead className="w-[50px]">No</TableHead>
                               <TableHead>Item</TableHead>
-                              <TableHead className="w-[200px]">Nilai / Status</TableHead>
-                              <TableHead className="w-[100px] text-center">Status</TableHead>
+                              <TableHead className={section === 'C' ? 'w-[400px]' : 'w-[200px]'}>
+                                {section === 'C' ? 'Catatan' : 'Nilai / Status'}
+                              </TableHead>
+                              <TableHead className="w-[80px] text-center">Status</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -602,13 +607,48 @@ export default function P20TChecklistPage() {
                                       )}
                                     </div>
                                   </TableCell>
-                                  <TableCell>
+                                  <TableCell className={section === 'C' ? 'w-[400px]' : ''}>
                                     {item.template.inputType === 'CHECKBOX' ? (
                                       <Checkbox
                                         checked={item.status === 'COMPLETED'}
                                         onCheckedChange={(checked) => handleCheckboxChange(item, !!checked)}
                                         disabled={!canEdit || isUpdating}
                                       />
+                                    ) : section === 'C' ? (
+                                      <div className="flex items-start gap-2">
+                                        <Textarea
+                                          placeholder="Tulis catatan permasalahan..."
+                                          value={notesDraft[item.id] ?? item.value ?? ''}
+                                          onChange={(e) => setNotesDraft(prev => ({ ...prev, [item.id]: e.target.value }))}
+                                          disabled={!canEdit || isUpdating}
+                                          className="min-h-[80px] text-sm"
+                                          rows={3}
+                                        />
+                                        {canEdit && (
+                                          <Button
+                                            variant="default"
+                                            size="sm"
+                                            onClick={() => {
+                                              const value = notesDraft[item.id] ?? item.value ?? '';
+                                              handleValueChange(item, value);
+                                              setNotesDraft(prev => {
+                                                const newDraft = { ...prev };
+                                                delete newDraft[item.id];
+                                                return newDraft;
+                                              });
+                                            }}
+                                            disabled={isUpdating || (notesDraft[item.id] === undefined && !item.value)}
+                                            className="shrink-0"
+                                          >
+                                            {isUpdating ? (
+                                              <Loader2 className="h-4 w-4 animate-spin" />
+                                            ) : (
+                                              <Save className="h-4 w-4" />
+                                            )}
+                                            <span className="ml-1">Simpan</span>
+                                          </Button>
+                                        )}
+                                      </div>
                                     ) : (
                                       <Input
                                         type={item.template.inputType === 'NUMBER' ? 'number' : 'text'}
