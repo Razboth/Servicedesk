@@ -5,6 +5,8 @@ import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import fs from 'fs';
+import path from 'path';
 
 type P20TShift = 'DAY' | 'NIGHT';
 type P20TCategory = 'IT' | 'KKS' | 'ANTI_FRAUD';
@@ -19,6 +21,11 @@ const SHIFT_LABELS: Record<P20TShift, string> = {
   DAY: 'Shift Siang (08:00 - 20:00)',
   NIGHT: 'Shift Malam (20:00 - 08:00)',
 };
+
+// BSG Brand Colors
+const BSG_RED: [number, number, number] = [229, 57, 53]; // #E53935
+const BSG_DARK_RED: [number, number, number] = [183, 28, 28]; // #B71C1C
+const BSG_GRAY: [number, number, number] = [97, 97, 97]; // #616161
 
 // GET /api/v2/p20t/checklist/export-pdf - Export checklist to PDF
 export async function GET(request: NextRequest) {
@@ -90,42 +97,75 @@ export async function GET(request: NextRequest) {
     // Create PDF
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
 
-    // Header
-    doc.setFontSize(16);
+    // Load BSG Logo
+    let logoBase64: string | null = null;
+    try {
+      const logoPath = path.join(process.cwd(), 'public', 'BSG Logo.png');
+      const logoBuffer = fs.readFileSync(logoPath);
+      logoBase64 = 'data:image/png;base64,' + logoBuffer.toString('base64');
+    } catch (e) {
+      console.warn('Could not load BSG logo:', e);
+    }
+
+    // ============ HEADER ============
+    // Red header bar
+    doc.setFillColor(...BSG_RED);
+    doc.rect(0, 0, pageWidth, 35, 'F');
+
+    // Logo
+    if (logoBase64) {
+      doc.addImage(logoBase64, 'PNG', 10, 5, 25, 25);
+    }
+
+    // Bank name and title
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
-    doc.text('P20T Checklist Report', pageWidth / 2, 20, { align: 'center' });
+    doc.text('PT BANK SULUTGO', 40, 14);
 
     doc.setFontSize(12);
     doc.setFont('helvetica', 'normal');
-    doc.text('Pusat Pengendalian Operasional Terpadu', pageWidth / 2, 28, { align: 'center' });
+    doc.text('Pusat Pengendalian Operasional Terpadu (P20T)', 40, 22);
 
-    // Info section
     doc.setFontSize(10);
-    let yPos = 40;
+    doc.text(`Checklist ${CATEGORY_LABELS[category]} - ${shift === 'DAY' ? 'Shift Siang' : 'Shift Malam'}`, 40, 29);
+
+    // Reset text color
+    doc.setTextColor(0, 0, 0);
+
+    // ============ INFO BOX ============
+    let yPos = 45;
+
+    // Info box with border
+    doc.setDrawColor(...BSG_RED);
+    doc.setLineWidth(0.5);
+    doc.roundedRect(14, yPos - 5, pageWidth - 28, 32, 2, 2, 'S');
+
+    // Left column
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...BSG_DARK_RED);
+    doc.text('Tanggal', 18, yPos + 2);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(0, 0, 0);
+    doc.text(format(date, 'EEEE, dd MMMM yyyy', { locale: idLocale }), 18, yPos + 8);
 
     doc.setFont('helvetica', 'bold');
-    doc.text('Kategori:', 14, yPos);
+    doc.setTextColor(...BSG_DARK_RED);
+    doc.text('Shift', 18, yPos + 16);
     doc.setFont('helvetica', 'normal');
-    doc.text(CATEGORY_LABELS[category], 45, yPos);
+    doc.setTextColor(0, 0, 0);
+    doc.text(SHIFT_LABELS[shift], 18, yPos + 22);
 
-    yPos += 6;
+    // Right column
     doc.setFont('helvetica', 'bold');
-    doc.text('Tanggal:', 14, yPos);
+    doc.setTextColor(...BSG_DARK_RED);
+    doc.text('Petugas', 110, yPos + 2);
     doc.setFont('helvetica', 'normal');
-    doc.text(format(date, 'EEEE, dd MMMM yyyy', { locale: idLocale }), 45, yPos);
-
-    yPos += 6;
-    doc.setFont('helvetica', 'bold');
-    doc.text('Shift:', 14, yPos);
-    doc.setFont('helvetica', 'normal');
-    doc.text(SHIFT_LABELS[shift], 45, yPos);
-
-    yPos += 6;
-    doc.setFont('helvetica', 'bold');
-    doc.text('Petugas:', 14, yPos);
-    doc.setFont('helvetica', 'normal');
-    doc.text(assignment?.user?.name || assignment?.user?.email || '-', 45, yPos);
+    doc.setTextColor(0, 0, 0);
+    doc.text(assignment?.user?.name || assignment?.user?.email || '-', 110, yPos + 8);
 
     // Progress
     const totalItems = checklist.items.length;
@@ -134,29 +174,35 @@ export async function GET(request: NextRequest) {
     ).length;
     const progress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
 
-    yPos += 6;
     doc.setFont('helvetica', 'bold');
-    doc.text('Progress:', 14, yPos);
+    doc.setTextColor(...BSG_DARK_RED);
+    doc.text('Progress', 110, yPos + 16);
     doc.setFont('helvetica', 'normal');
-    doc.text(`${completedItems}/${totalItems} (${progress}%)`, 45, yPos);
+    doc.setTextColor(0, 0, 0);
+    doc.text(`${completedItems}/${totalItems} item (${progress}%)`, 110, yPos + 22);
 
-    yPos += 12;
+    yPos += 38;
 
-    // Tables for each section
+    // ============ TABLES ============
     for (const section of sortedSections) {
       const sectionItems = itemsBySection[section];
       const hasTimeSlots = sectionItems.some((item) => item.template.timeSlot);
 
-      // Section header
+      // Section header with BSG color
       const sectionLabels: Record<string, string> = {
         A: 'Section A - Awal Hari',
         B: 'Section B - Monitoring Periodik',
         C: 'Section C - Akhir Hari',
       };
-      doc.setFontSize(11);
+
+      doc.setFillColor(...BSG_RED);
+      doc.rect(14, yPos - 4, pageWidth - 28, 7, 'F');
+      doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
-      doc.text(sectionLabels[section] || `Section ${section}`, 14, yPos);
-      yPos += 4;
+      doc.setTextColor(255, 255, 255);
+      doc.text(sectionLabels[section] || `Section ${section}`, 16, yPos + 1);
+      doc.setTextColor(0, 0, 0);
+      yPos += 6;
 
       if (hasTimeSlots) {
         // Periodic monitoring table (Section B)
@@ -170,38 +216,44 @@ export async function GET(request: NextRequest) {
           return [
             timeSlot,
             serverMetrics?.value || '-',
-            serverMetrics?.status === 'COMPLETED' ? 'V' : '',
+            serverMetrics?.status === 'COMPLETED' ? '\u2713' : '',
             deviceStatus?.value || '-',
-            deviceStatus?.status === 'COMPLETED' ? 'V' : '',
+            deviceStatus?.status === 'COMPLETED' ? '\u2713' : '',
             atmAlarm?.value || '-',
-            atmAlarm?.status === 'COMPLETED' ? 'V' : '',
+            atmAlarm?.status === 'COMPLETED' ? '\u2713' : '',
           ];
         });
 
         autoTable(doc, {
           startY: yPos,
-          head: [['Jam', 'Server Cautions', 'V', 'Device Down', 'V', 'ATM Alarm', 'V']],
+          head: [['Jam', 'Server', '\u2713', 'Device', '\u2713', 'ATM', '\u2713']],
           body: tableData,
           theme: 'grid',
-          headStyles: { fillColor: [66, 139, 202], fontSize: 8 },
+          headStyles: {
+            fillColor: BSG_DARK_RED,
+            fontSize: 8,
+            fontStyle: 'bold',
+            halign: 'center',
+          },
           bodyStyles: { fontSize: 8 },
+          alternateRowStyles: { fillColor: [255, 245, 245] },
           columnStyles: {
-            0: { cellWidth: 15, halign: 'center' },
-            1: { cellWidth: 25, halign: 'center' },
-            2: { cellWidth: 10, halign: 'center' },
-            3: { cellWidth: 25, halign: 'center' },
-            4: { cellWidth: 10, halign: 'center' },
-            5: { cellWidth: 25, halign: 'center' },
-            6: { cellWidth: 10, halign: 'center' },
+            0: { cellWidth: 18, halign: 'center', fontStyle: 'bold' },
+            1: { cellWidth: 22, halign: 'center' },
+            2: { cellWidth: 12, halign: 'center', textColor: [46, 125, 50] },
+            3: { cellWidth: 22, halign: 'center' },
+            4: { cellWidth: 12, halign: 'center', textColor: [46, 125, 50] },
+            5: { cellWidth: 22, halign: 'center' },
+            6: { cellWidth: 12, halign: 'center', textColor: [46, 125, 50] },
           },
           margin: { left: 14, right: 14 },
         });
 
-        yPos = (doc as any).lastAutoTable.finalY + 10;
+        yPos = (doc as any).lastAutoTable.finalY + 8;
       } else {
         // Regular table for Section A and C
         const tableData = sectionItems.map((item, index) => {
-          const statusSymbol = item.status === 'COMPLETED' ? 'V' : item.status === 'SKIPPED' ? 'S' : item.status === 'NA' ? 'N/A' : '';
+          const statusSymbol = item.status === 'COMPLETED' ? '\u2713' : item.status === 'SKIPPED' ? 'S' : item.status === 'NA' ? 'N/A' : '';
           const value = item.template.inputType === 'CHECKBOX' ? '' : (item.value || '-');
           const completedInfo = item.completedAt && item.completedBy
             ? `${item.completedBy.name} (${format(new Date(item.completedAt), 'HH:mm')})`
@@ -221,38 +273,62 @@ export async function GET(request: NextRequest) {
           head: [['No', 'Item', 'Nilai', 'Status', 'Diisi Oleh']],
           body: tableData,
           theme: 'grid',
-          headStyles: { fillColor: [66, 139, 202], fontSize: 8 },
+          headStyles: {
+            fillColor: BSG_DARK_RED,
+            fontSize: 8,
+            fontStyle: 'bold',
+          },
           bodyStyles: { fontSize: 8 },
+          alternateRowStyles: { fillColor: [255, 245, 245] },
           columnStyles: {
             0: { cellWidth: 10, halign: 'center' },
-            1: { cellWidth: 60 },
-            2: { cellWidth: 40 },
-            3: { cellWidth: 15, halign: 'center' },
+            1: { cellWidth: 55 },
+            2: { cellWidth: 45 },
+            3: { cellWidth: 15, halign: 'center', textColor: [46, 125, 50] },
             4: { cellWidth: 40 },
           },
           margin: { left: 14, right: 14 },
         });
 
-        yPos = (doc as any).lastAutoTable.finalY + 10;
+        yPos = (doc as any).lastAutoTable.finalY + 8;
       }
 
       // Check if we need a new page
-      if (yPos > 270) {
+      if (yPos > 260) {
         doc.addPage();
         yPos = 20;
       }
     }
 
-    // Footer with timestamp
-    const footerY = doc.internal.pageSize.getHeight() - 10;
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'italic');
-    doc.text(
-      `Dicetak pada: ${format(new Date(), 'dd/MM/yyyy HH:mm:ss')}`,
-      14,
-      footerY
-    );
-    doc.text('Bank SulutGo - P20T System', pageWidth - 14, footerY, { align: 'right' });
+    // ============ FOOTER ============
+    const totalPages = doc.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+
+      // Footer line
+      doc.setDrawColor(...BSG_RED);
+      doc.setLineWidth(0.5);
+      doc.line(14, pageHeight - 15, pageWidth - 14, pageHeight - 15);
+
+      // Footer text
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...BSG_GRAY);
+      doc.text(
+        `Dicetak: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`,
+        14,
+        pageHeight - 10
+      );
+      doc.text(
+        `Halaman ${i} dari ${totalPages}`,
+        pageWidth / 2,
+        pageHeight - 10,
+        { align: 'center' }
+      );
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...BSG_RED);
+      doc.text('PT Bank SulutGo', pageWidth - 14, pageHeight - 10, { align: 'right' });
+    }
 
     // Generate PDF buffer
     const pdfBuffer = Buffer.from(doc.output('arraybuffer'));
