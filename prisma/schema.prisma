@@ -3102,6 +3102,57 @@ model ServerMetricSnapshotV2 {
   @@map("server_metric_snapshots_v2")
 }
 
+// Device status from Grafana ATM Transaction Type Status dashboard
+enum DeviceServiceStatus {
+  OK
+  DOWN
+  INACTIVE
+  NUMERIC
+}
+
+// Collection of device status snapshots at a point in time
+model DeviceStatusCollection {
+  id             String   @id @default(cuid())
+
+  // Metadata from Grafana
+  dashboard      String?
+  source         String?
+  fetchedAt      DateTime
+  fetchedAtLocal String?
+  timeRange      String?
+
+  // Summary counts
+  totalServices  Int
+  okCount        Int      @default(0)
+  downCount      Int      @default(0)
+  inactiveCount  Int      @default(0)
+
+  createdAt      DateTime @default(now())
+
+  // Relations
+  snapshots      DeviceStatusSnapshot[]
+
+  @@index([createdAt])
+  @@map("device_status_collections")
+}
+
+// Individual device/service status snapshot
+model DeviceStatusSnapshot {
+  id             String              @id @default(cuid())
+  collectionId   String
+
+  serviceName    String              // e.g., "GW724 - Inq Saldo"
+  groupName      String              // e.g., "GW724 / AJ-ATMB"
+  status         DeviceServiceStatus
+
+  // Relations
+  collection     DeviceStatusCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  @@index([collectionId])
+  @@index([groupName])
+  @@map("device_status_snapshots")
+}
+
 // Shift report container (one per shift assignment)
 model ShiftReport {
   id                String            @id @default(cuid())
