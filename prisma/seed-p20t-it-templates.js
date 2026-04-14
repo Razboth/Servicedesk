@@ -60,7 +60,7 @@ async function main() {
   for (const timeSlot of DAY_TIME_SLOTS) {
     templates.push({
       category: 'IT', shift: 'DAY', section: 'B', orderIndex: dayOrderIndex++,
-      title: `[${timeSlot}] Server Metrics - Cautions`,
+      title: `[${timeSlot}] Server Metrics - Cautions/Warnings`,
       description: 'Cek /reports/server-metrics/ - catat yang Cautions',
       inputType: 'TEXT', timeSlot, autoFetchType: 'SERVER_METRICS',
     });
@@ -99,7 +99,7 @@ async function main() {
   for (const timeSlot of NIGHT_TIME_SLOTS) {
     templates.push({
       category: 'IT', shift: 'NIGHT', section: 'B', orderIndex: nightOrderIndex++,
-      title: `[${timeSlot}] Server Metrics - Cautions`,
+      title: `[${timeSlot}] Server Metrics - Cautions/Warnings`,
       description: 'Cek /reports/server-metrics/ - catat yang Cautions',
       inputType: 'TEXT', timeSlot, autoFetchType: 'SERVER_METRICS',
     });

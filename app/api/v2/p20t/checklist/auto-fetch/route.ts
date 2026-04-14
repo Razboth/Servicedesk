@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
 
     switch (autoFetchType) {
       case 'SERVER_METRICS': {
-        // Query ServerMetricCollectionV2 for cautionCount
+        // Query ServerMetricCollectionV2 for cautionCount + warningCount
         const collection = await prisma.serverMetricCollectionV2.findFirst({
           where: {
             createdAt: {
@@ -53,11 +53,11 @@ export async function POST(request: NextRequest) {
             },
           },
           orderBy: { createdAt: 'desc' },
-          select: { cautionCount: true, createdAt: true },
+          select: { cautionCount: true, warningCount: true, createdAt: true },
         });
 
         if (collection) {
-          value = collection.cautionCount;
+          value = collection.cautionCount + collection.warningCount;
           fetchedAt = collection.createdAt;
         }
         break;
