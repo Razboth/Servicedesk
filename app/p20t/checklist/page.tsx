@@ -806,8 +806,8 @@ export default function P20TChecklistPage() {
         open={detailDialog.open}
         onOpenChange={(open) => setDetailDialog((prev) => ({ ...prev, open }))}
       >
-        <DialogContent className="max-w-2xl max-h-[80vh]">
-          <DialogHeader>
+        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
               {detailDialog.type === 'SERVER_METRICS' && <Server className="h-5 w-5" />}
               {detailDialog.type === 'DEVICE_STATUS' && <Wifi className="h-5 w-5" />}
@@ -820,7 +820,7 @@ export default function P20TChecklistPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <ScrollArea className="max-h-[60vh]">
+          <ScrollArea className="h-[60vh] w-full">
             {detailDialog.loading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin" />
@@ -831,9 +831,9 @@ export default function P20TChecklistPage() {
                 <p>Tidak ada data yang perlu ditampilkan</p>
               </div>
             ) : (
-              <div className="border rounded-lg overflow-hidden">
+              <div className="border rounded-lg">
                 <Table>
-                  <TableHeader>
+                  <TableHeader className="sticky top-0 bg-background z-10">
                     <TableRow className="bg-muted/50">
                       <TableHead className="w-[50px]">No</TableHead>
                       {detailDialog.type === 'SERVER_METRICS' && (
