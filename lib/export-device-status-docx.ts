@@ -31,9 +31,9 @@ interface ExportData {
 const tableBorder = { style: BorderStyle.SINGLE, size: 1, color: '000000' };
 const cellBorders = { top: tableBorder, bottom: tableBorder, left: tableBorder, right: tableBorder };
 
-// Format date in Indonesian
-function formatIndonesianDate(date: Date): string {
-  return format(date, 'EEEE, dd MMMM yyyy', { locale: idLocale });
+// Format date in Indonesian with time
+function formatIndonesianDateTime(date: Date): string {
+  return format(date, "EEEE, dd MMMM yyyy 'Pukul' HH:mm 'WITA'", { locale: idLocale });
 }
 
 // Create title paragraph
@@ -76,7 +76,7 @@ function createHeaderTable(date: Date, userName: string): Table {
             width: { size: valueWidth, type: WidthType.DXA },
             children: [
               new Paragraph({
-                children: [new TextRun({ text: formatIndonesianDate(date), size: 22, font: 'Arial' })],
+                children: [new TextRun({ text: formatIndonesianDateTime(date), size: 22, font: 'Arial' })],
               }),
             ],
           }),

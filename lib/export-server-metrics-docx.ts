@@ -39,9 +39,9 @@ function extractIP(instance: string): string {
   return instance.split(':')[0];
 }
 
-// Format date in Indonesian
-function formatIndonesianDate(date: Date): string {
-  return format(date, 'EEEE, dd MMMM yyyy', { locale: idLocale });
+// Format date in Indonesian with time
+function formatIndonesianDateTime(date: Date): string {
+  return format(date, "EEEE, dd MMMM yyyy 'Pukul' HH:mm 'WITA'", { locale: idLocale });
 }
 
 // Create title paragraph
@@ -84,7 +84,7 @@ function createHeaderTable(date: Date, userName: string): Table {
             width: { size: valueWidth, type: WidthType.DXA },
             children: [
               new Paragraph({
-                children: [new TextRun({ text: formatIndonesianDate(date), size: 22, font: 'Arial' })],
+                children: [new TextRun({ text: formatIndonesianDateTime(date), size: 22, font: 'Arial' })],
               }),
             ],
           }),
