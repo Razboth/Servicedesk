@@ -220,6 +220,7 @@ export default function ServerMetricsPage() {
             filename="server-metrics"
             title="Laporan Metrik Server"
             data={exportData}
+            servers={data.servers}
           />
           {lastRefresh && (
             <span className="text-xs text-muted-foreground hidden lg:inline">

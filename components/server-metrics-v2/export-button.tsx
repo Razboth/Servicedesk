@@ -8,17 +8,29 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Download, FileText, FileSpreadsheet, Loader2 } from 'lucide-react';
+import { Download, FileText, FileSpreadsheet, Loader2, FileIcon as DocxIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { format } from 'date-fns';
+import { exportServerMetricsDocx } from '@/lib/export-server-metrics-docx';
+
+interface ServerData {
+  serverName: string;
+  instance: string;
+  cpuPercent: number;
+  memoryPercent: number;
+  storagePercent: number;
+  status: string;
+}
 
 interface ExportButtonProps {
   contentId: string;
   filename: string;
   title: string;
   data?: any[];
+  servers?: ServerData[];
+  userName?: string;
   onExportCSV?: () => void;
 }
 
@@ -27,6 +39,8 @@ export function ExportButton({
   filename,
   title,
   data,
+  servers,
+  userName = 'Admin',
   onExportCSV,
 }: ExportButtonProps) {
   const [isExporting, setIsExporting] = useState(false);
@@ -157,6 +171,40 @@ export function ExportButton({
     }
   };
 
+  const handleExportDocx = async () => {
+    if (!servers || servers.length === 0) {
+      toast.error('Tidak ada data server untuk diekspor');
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      const buffer = await exportServerMetricsDocx({
+        date: new Date(),
+        userName,
+        servers,
+      });
+
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `checklist-server-metrics-${format(new Date(), 'yyyy-MM-dd')}.docx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+
+      toast.success('DOCX berhasil diunduh');
+    } catch (error) {
+      console.error('Export DOCX error:', error);
+      toast.error('Gagal mengekspor DOCX');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -170,6 +218,10 @@ export function ExportButton({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={handleExportDocx}>
+          <DocxIcon className="h-4 w-4 mr-2" />
+          Export DOCX
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={handleExportPDF}>
           <FileText className="h-4 w-4 mr-2" />
           Export PDF
