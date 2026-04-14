@@ -1,20 +1,20 @@
 'use client';
 
 import { Card, CardContent } from '@/components/ui/card';
-import { Activity, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Activity, CheckCircle, XCircle, Pause } from 'lucide-react';
 
 interface SummaryCardsProps {
   totalServices: number;
   okCount: number;
   downCount: number;
-  inactiveCount: number;
+  idleCount: number;
 }
 
 export function SummaryCards({
   totalServices,
   okCount,
   downCount,
-  inactiveCount,
+  idleCount,
 }: SummaryCardsProps) {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -36,7 +36,7 @@ export function SummaryCards({
         <CardContent className="pt-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">OK</p>
+              <p className="text-sm font-medium text-muted-foreground">Up</p>
               <p className="text-2xl font-bold text-green-600">{okCount}</p>
             </div>
             <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
@@ -64,11 +64,11 @@ export function SummaryCards({
         <CardContent className="pt-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Inactive</p>
-              <p className="text-2xl font-bold text-gray-500">{inactiveCount}</p>
+              <p className="text-sm font-medium text-muted-foreground">Idle</p>
+              <p className="text-2xl font-bold text-gray-500">{idleCount}</p>
             </div>
             <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
-              <Clock className="h-6 w-6 text-gray-500" />
+              <Pause className="h-6 w-6 text-gray-500" />
             </div>
           </div>
         </CardContent>

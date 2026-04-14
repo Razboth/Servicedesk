@@ -35,11 +35,12 @@ function mapStatus(status: string): DeviceServiceStatus {
     case 'DOWN':
       return 'DOWN';
     case 'INACTIVE':
-      return 'INACTIVE';
+    case 'IDLE':
+      return 'IDLE';
     case 'NUMERIC':
       return 'NUMERIC';
     default:
-      return 'INACTIVE';
+      return 'IDLE';
   }
 }
 
@@ -110,7 +111,7 @@ export async function POST(request: NextRequest) {
         totalServices: body.summary.total_services,
         okCount: body.summary.ok_count,
         downCount: body.summary.down_count,
-        inactiveCount: body.summary.inactive_count,
+        idleCount: body.summary.inactive_count,
         snapshots: {
           create: body.services.map((service) => ({
             serviceName: service.title,

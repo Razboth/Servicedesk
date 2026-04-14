@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Activity, RefreshCw, Loader2, Clock, ExternalLink } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Activity, RefreshCw, Loader2, Clock, ExternalLink, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { SummaryCards } from '@/components/device-status/summary-cards';
 import { ServiceTable } from '@/components/device-status/service-table';
@@ -14,7 +15,7 @@ interface ServiceData {
   id: string;
   serviceName: string;
   groupName: string;
-  status: 'OK' | 'DOWN' | 'INACTIVE' | 'NUMERIC';
+  status: 'OK' | 'DOWN' | 'IDLE' | 'NUMERIC';
 }
 
 interface StatusData {
@@ -30,9 +31,8 @@ interface StatusData {
     totalServices: number;
     okCount: number;
     downCount: number;
-    inactiveCount: number;
+    idleCount: number;
   };
-  groups: Record<string, ServiceData[]>;
   services: ServiceData[];
   createdAt: string;
 }
@@ -45,7 +45,7 @@ interface CollectionSummary {
   summary: {
     ok: number;
     down: number;
-    inactive: number;
+    idle: number;
   };
 }
 
@@ -158,7 +158,7 @@ export default function DeviceStatusPage() {
   const exportData = data?.services.map((service) => ({
     'Nama Layanan': service.serviceName,
     'Grup': service.groupName,
-    'Status': service.status,
+    'Status': service.status === 'OK' ? 'UP' : service.status,
   }));
 
   return (
@@ -168,7 +168,7 @@ export default function DeviceStatusPage() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Activity className="h-6 w-6" />
-            Status Layanan
+            Device Monitoring
           </h1>
           <p className="text-muted-foreground">
             Monitor status layanan transaksi ATM dan digital banking
@@ -212,7 +212,6 @@ export default function DeviceStatusPage() {
             title="Laporan Status Layanan"
             data={exportData}
             services={data.services}
-            groups={data.groups}
           />
           {lastRefresh && (
             <span className="text-xs text-muted-foreground hidden lg:inline">
@@ -230,16 +229,28 @@ export default function DeviceStatusPage() {
         </div>
       </div>
 
+      {/* Status Legend */}
+      <Alert>
+        <Info className="h-4 w-4" />
+        <AlertDescription>
+          <div className="flex flex-wrap gap-4 text-sm">
+            <span><strong className="text-green-600">Up</strong> = Transaksi berhasil dalam 5 menit terakhir</span>
+            <span><strong className="text-red-600">Down</strong> = Terjadi error dalam 5 menit terakhir</span>
+            <span><strong className="text-gray-500">Idle</strong> = Tidak ada transaksi dalam 5 menit terakhir</span>
+          </div>
+        </AlertDescription>
+      </Alert>
+
       {/* Summary Cards */}
       <SummaryCards
         totalServices={data.summary.totalServices}
         okCount={data.summary.okCount}
         downCount={data.summary.downCount}
-        inactiveCount={data.summary.inactiveCount}
+        idleCount={data.summary.idleCount}
       />
 
       {/* Service Table */}
-      <ServiceTable services={data.services} groups={data.groups} />
+      <ServiceTable services={data.services} />
     </div>
   );
 }

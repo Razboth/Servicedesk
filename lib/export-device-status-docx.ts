@@ -26,7 +26,6 @@ interface ExportData {
   date: Date;
   userName: string;
   services: ServiceData[];
-  groups: Record<string, ServiceData[]>;
 }
 
 const tableBorder = { style: BorderStyle.SINGLE, size: 1, color: '000000' };
@@ -109,8 +108,8 @@ function createHeaderTable(date: Date, userName: string): Table {
   });
 }
 
-// Create data table for a group
-function createGroupTable(groupName: string, services: ServiceData[]): Table {
+// Create data table for all services
+function createDataTable(services: ServiceData[]): Table {
   const colWidths = [600, 5500, 2000];
 
   // Header row
@@ -172,16 +171,19 @@ function createDataCell(text: string, width: number, alignment = AlignmentType.L
 function createStatusCell(status: string, width: number): TableCell {
   let bgColor = 'FFFFFF';
   let textColor = '000000';
+  let displayStatus = status;
 
   if (status === 'DOWN') {
     bgColor = 'FFCDD2';
     textColor = 'C62828';
-  } else if (status === 'INACTIVE') {
+  } else if (status === 'IDLE' || status === 'INACTIVE') {
     bgColor = 'E0E0E0';
     textColor = '616161';
+    displayStatus = 'IDLE';
   } else if (status === 'OK') {
     bgColor = 'C8E6C9';
     textColor = '2E7D32';
+    displayStatus = 'UP';
   } else if (status === 'NUMERIC') {
     bgColor = 'BBDEFB';
     textColor = '1565C0';
@@ -195,22 +197,7 @@ function createStatusCell(status: string, width: number): TableCell {
     children: [
       new Paragraph({
         alignment: AlignmentType.CENTER,
-        children: [new TextRun({ text: status, bold: true, size: 20, font: 'Arial', color: textColor })],
-      }),
-    ],
-  });
-}
-
-// Create group title paragraph
-function createGroupTitle(groupName: string): Paragraph {
-  return new Paragraph({
-    spacing: { before: 200, after: 100 },
-    children: [
-      new TextRun({
-        text: groupName,
-        bold: true,
-        size: 24,
-        font: 'Arial',
+        children: [new TextRun({ text: displayStatus, bold: true, size: 20, font: 'Arial', color: textColor })],
       }),
     ],
   });
@@ -303,19 +290,10 @@ export async function exportDeviceStatusDocx(data: ExportData): Promise<Uint8Arr
     new Paragraph({ spacing: { after: 100 }, children: [] }),
     createHeaderTable(data.date, data.userName),
     new Paragraph({ spacing: { after: 200 }, children: [] }),
+    createDataTable(data.services),
+    new Paragraph({ spacing: { after: 300 }, children: [] }),
+    createFooterTable(data.userName),
   ];
-
-  // Add each group with its table
-  const groupNames = Object.keys(data.groups).sort();
-  for (const groupName of groupNames) {
-    const services = data.groups[groupName];
-    children.push(createGroupTitle(groupName));
-    children.push(createGroupTable(groupName, services));
-  }
-
-  // Add footer
-  children.push(new Paragraph({ spacing: { after: 300 }, children: [] }));
-  children.push(createFooterTable(data.userName));
 
   const doc = new Document({
     styles: {

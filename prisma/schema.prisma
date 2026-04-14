@@ -3106,7 +3106,7 @@ model ServerMetricSnapshotV2 {
 enum DeviceServiceStatus {
   OK
   DOWN
-  INACTIVE
+  IDLE
   NUMERIC
 }
 
@@ -3125,7 +3125,7 @@ model DeviceStatusCollection {
   totalServices  Int
   okCount        Int      @default(0)
   downCount      Int      @default(0)
-  inactiveCount  Int      @default(0)
+  idleCount      Int      @default(0)
 
   createdAt      DateTime @default(now())
 

@@ -21,7 +21,7 @@ interface CollectionSummary {
   summary: {
     ok: number;
     down: number;
-    inactive: number;
+    idle: number;
   };
 }
 
@@ -90,11 +90,11 @@ export function CollectionSelector({
                 </span>
               </div>
               <div className="flex gap-2 mt-1 text-xs">
-                <span className="text-green-600">{collection.summary.ok} OK</span>
+                <span className="text-green-600">{collection.summary.ok} Up</span>
                 {collection.summary.down > 0 && (
                   <span className="text-red-600">{collection.summary.down} Down</span>
                 )}
-                <span className="text-gray-500">{collection.summary.inactive} Inactive</span>
+                <span className="text-gray-500">{collection.summary.idle} Idle</span>
               </div>
             </div>
           </DropdownMenuItem>

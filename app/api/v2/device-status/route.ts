@@ -8,10 +8,7 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
       include: {
         snapshots: {
-          orderBy: [
-            { groupName: 'asc' },
-            { serviceName: 'asc' },
-          ],
+          orderBy: { serviceName: 'asc' },
         },
       },
     });
@@ -21,15 +18,6 @@ export async function GET(request: NextRequest) {
         success: true,
         data: null,
       });
-    }
-
-    // Group services by group name
-    const groups: Record<string, typeof collection.snapshots> = {};
-    for (const snapshot of collection.snapshots) {
-      if (!groups[snapshot.groupName]) {
-        groups[snapshot.groupName] = [];
-      }
-      groups[snapshot.groupName].push(snapshot);
     }
 
     return NextResponse.json({
@@ -47,9 +35,8 @@ export async function GET(request: NextRequest) {
           totalServices: collection.totalServices,
           okCount: collection.okCount,
           downCount: collection.downCount,
-          inactiveCount: collection.inactiveCount,
+          idleCount: collection.idleCount,
         },
-        groups,
         services: collection.snapshots.map((s) => ({
           id: s.id,
           serviceName: s.serviceName,

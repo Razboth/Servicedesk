@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
         totalServices: true,
         okCount: true,
         downCount: true,
-        inactiveCount: true,
+        idleCount: true,
         createdAt: true,
       },
     });
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
           summary: {
             ok: c.okCount,
             down: c.downCount,
-            inactive: c.inactiveCount,
+            idle: c.idleCount,
           },
         })),
       },

@@ -27,7 +27,6 @@ interface ExportButtonProps {
   title: string;
   data?: any[];
   services?: ServiceData[];
-  groups?: Record<string, ServiceData[]>;
   userName?: string;
 }
 
@@ -37,7 +36,6 @@ export function ExportButton({
   title,
   data,
   services,
-  groups,
   userName = 'Admin',
 }: ExportButtonProps) {
   const [isExporting, setIsExporting] = useState(false);
@@ -158,7 +156,7 @@ export function ExportButton({
   };
 
   const handleExportDocx = async () => {
-    if (!services || services.length === 0 || !groups) {
+    if (!services || services.length === 0) {
       toast.error('Tidak ada data layanan untuk diekspor');
       return;
     }
@@ -169,7 +167,6 @@ export function ExportButton({
         date: new Date(),
         userName,
         services,
-        groups,
       });
 
       const blob = new Blob([buffer], {
