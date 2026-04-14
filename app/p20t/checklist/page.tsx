@@ -12,7 +12,6 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Calendar } from '@/components/ui/calendar';
 import {
@@ -30,7 +29,14 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { toast } from 'sonner';
 import {
   CalendarIcon,
@@ -452,50 +458,135 @@ export default function P20TChecklistPage() {
               <p>Tidak ada checklist item</p>
             </div>
           ) : (
-            <ScrollArea className="h-[500px] pr-4">
-              <div className="space-y-6">
-                {Object.entries(itemsBySection)
-                  .sort(([a], [b]) => a.localeCompare(b))
-                  .map(([section, sectionItems]) => (
+            <div className="space-y-8">
+              {Object.entries(itemsBySection)
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([section, sectionItems]) => {
+                  // Check if this is Section B (periodic monitoring with time slots)
+                  const hasTimeSlots = sectionItems.some(item => item.template.timeSlot);
+
+                  if (hasTimeSlots) {
+                    // Group items by time slot for Section B
+                    const timeSlots = [...new Set(sectionItems.map(item => item.template.timeSlot))].sort();
+
+                    return (
+                      <div key={section} className="space-y-3">
+                        <h3 className="font-semibold text-lg flex items-center gap-2">
+                          <Badge variant="outline" className="text-base px-3 py-1">Section {section}</Badge>
+                          <span className="text-muted-foreground text-sm font-normal">Monitoring Periodik</span>
+                        </h3>
+                        <div className="border rounded-lg overflow-hidden">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="bg-muted/50">
+                                <TableHead className="w-[80px] font-semibold">Jam</TableHead>
+                                <TableHead className="font-semibold">Server Metrics (Cautions)</TableHead>
+                                <TableHead className="font-semibold">Device Status (Down)</TableHead>
+                                <TableHead className="font-semibold">ATM Alarm (Total)</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {timeSlots.map((timeSlot) => {
+                                const slotItems = sectionItems.filter(item => item.template.timeSlot === timeSlot);
+                                const serverMetrics = slotItems.find(item => item.template.autoFetchType === 'SERVER_METRICS');
+                                const deviceStatus = slotItems.find(item => item.template.autoFetchType === 'DEVICE_STATUS');
+                                const atmAlarm = slotItems.find(item => item.template.autoFetchType === 'ATM_ALARM');
+
+                                return (
+                                  <TableRow key={timeSlot} className="hover:bg-muted/30">
+                                    <TableCell className="font-medium text-center">
+                                      <Badge variant="secondary" className="font-mono">
+                                        {timeSlot}
+                                      </Badge>
+                                    </TableCell>
+                                    {[serverMetrics, deviceStatus, atmAlarm].map((item, idx) => (
+                                      <TableCell key={idx}>
+                                        {item && (
+                                          <div className="flex items-center gap-2">
+                                            <Input
+                                              type="text"
+                                              placeholder="-"
+                                              value={item.value || ''}
+                                              onChange={(e) => handleValueChange(item, e.target.value)}
+                                              disabled={!canEdit || updating === item.id}
+                                              className={cn(
+                                                'w-20 h-8 text-center font-mono',
+                                                item.status === 'COMPLETED' && 'bg-green-50 border-green-300'
+                                              )}
+                                            />
+                                            {canEdit && (
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => handleAutoFetch(item)}
+                                                disabled={updating === item.id || fetching === item.id}
+                                                className="h-8 w-8 p-0"
+                                              >
+                                                {fetching === item.id ? (
+                                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                                ) : (
+                                                  <Download className="h-4 w-4" />
+                                                )}
+                                              </Button>
+                                            )}
+                                            {item.status === 'COMPLETED' && (
+                                              <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                            )}
+                                          </div>
+                                        )}
+                                      </TableCell>
+                                    ))}
+                                  </TableRow>
+                                );
+                              })}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // Regular table for Section A and C
+                  return (
                     <div key={section} className="space-y-3">
-                      <h3 className="font-semibold text-lg border-b pb-2">
-                        Section {section}
+                      <h3 className="font-semibold text-lg flex items-center gap-2">
+                        <Badge variant="outline" className="text-base px-3 py-1">Section {section}</Badge>
+                        <span className="text-muted-foreground text-sm font-normal">
+                          {section === 'A' ? 'Awal Hari' : section === 'C' ? 'Akhir Hari' : ''}
+                        </span>
                       </h3>
-                      <div className="space-y-3">
-                        {sectionItems.map((item) => {
-                          const StatusIcon = STATUS_CONFIG[item.status].icon;
-                          const isUpdating = updating === item.id;
+                      <div className="border rounded-lg overflow-hidden">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-muted/50">
+                              <TableHead className="w-[50px]">No</TableHead>
+                              <TableHead>Item</TableHead>
+                              <TableHead className="w-[200px]">Nilai / Status</TableHead>
+                              <TableHead className="w-[100px] text-center">Status</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {sectionItems.map((item, index) => {
+                              const StatusIcon = STATUS_CONFIG[item.status].icon;
+                              const isUpdating = updating === item.id;
 
-                          return (
-                            <div
-                              key={item.id}
-                              className={cn(
-                                'p-4 rounded-lg border transition-colors',
-                                item.status === 'COMPLETED' && 'bg-green-50 border-green-200',
-                                item.status === 'SKIPPED' && 'bg-yellow-50 border-yellow-200',
-                                item.status === 'NA' && 'bg-gray-50 border-gray-200',
-                                isUpdating && 'opacity-50'
-                              )}
-                            >
-                              <div className="flex items-start gap-3">
-                                {/* Checkbox for CHECKBOX type */}
-                                {item.template.inputType === 'CHECKBOX' && (
-                                  <Checkbox
-                                    checked={item.status === 'COMPLETED'}
-                                    onCheckedChange={(checked) =>
-                                      handleCheckboxChange(item, !!checked)
-                                    }
-                                    disabled={!canEdit || isUpdating}
-                                    className="mt-1"
-                                  />
-                                )}
-
-                                <div className="flex-1 space-y-2">
-                                  <div className="flex items-start justify-between gap-2">
+                              return (
+                                <TableRow
+                                  key={item.id}
+                                  className={cn(
+                                    'hover:bg-muted/30',
+                                    item.status === 'COMPLETED' && 'bg-green-50/50',
+                                    isUpdating && 'opacity-50'
+                                  )}
+                                >
+                                  <TableCell className="font-medium text-center">
+                                    {index + 1}
+                                  </TableCell>
+                                  <TableCell>
                                     <div>
                                       <p className={cn(
                                         'font-medium',
-                                        item.status === 'COMPLETED' && 'line-through text-muted-foreground'
+                                        item.status === 'COMPLETED' && 'text-muted-foreground'
                                       )}>
                                         {item.template.title}
                                       </p>
@@ -504,101 +595,46 @@ export default function P20TChecklistPage() {
                                           {item.template.description}
                                         </p>
                                       )}
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      <StatusIcon
-                                        className={cn('h-5 w-5', STATUS_CONFIG[item.status].color)}
-                                      />
-                                      {canEdit && item.template.inputType === 'CHECKBOX' && (
-                                        <Select
-                                          value={item.status}
-                                          onValueChange={(v) =>
-                                            handleStatusChange(item, v as P20TItemStatus)
-                                          }
-                                          disabled={isUpdating}
-                                        >
-                                          <SelectTrigger className="w-[100px] h-8 text-xs">
-                                            <SelectValue />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            <SelectItem value="PENDING">Pending</SelectItem>
-                                            <SelectItem value="COMPLETED">Selesai</SelectItem>
-                                            <SelectItem value="SKIPPED">Dilewati</SelectItem>
-                                            <SelectItem value="NA">N/A</SelectItem>
-                                          </SelectContent>
-                                        </Select>
+                                      {item.completedAt && item.completedBy && (
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                          Oleh {item.completedBy.name} - {format(new Date(item.completedAt), 'HH:mm')}
+                                        </p>
                                       )}
                                     </div>
-                                  </div>
-
-                                  {/* Input for TEXT/NUMBER type */}
-                                  {(item.template.inputType === 'TEXT' ||
-                                    item.template.inputType === 'NUMBER') && (
-                                    <div className="flex items-center gap-2 max-w-md">
+                                  </TableCell>
+                                  <TableCell>
+                                    {item.template.inputType === 'CHECKBOX' ? (
+                                      <Checkbox
+                                        checked={item.status === 'COMPLETED'}
+                                        onCheckedChange={(checked) => handleCheckboxChange(item, !!checked)}
+                                        disabled={!canEdit || isUpdating}
+                                      />
+                                    ) : (
                                       <Input
                                         type={item.template.inputType === 'NUMBER' ? 'number' : 'text'}
-                                        placeholder="Masukkan nilai..."
+                                        placeholder="..."
                                         value={item.value || ''}
                                         onChange={(e) => handleValueChange(item, e.target.value)}
                                         disabled={!canEdit || isUpdating}
-                                        className="flex-1"
+                                        className="h-8"
                                       />
-                                      {/* Auto-fetch button for items with autoFetchType */}
-                                      {canEdit && item.template.autoFetchType && (
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          onClick={() => handleAutoFetch(item)}
-                                          disabled={isUpdating || fetching === item.id}
-                                          className="shrink-0"
-                                        >
-                                          {fetching === item.id ? (
-                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                          ) : (
-                                            <Download className="h-4 w-4" />
-                                          )}
-                                          <span className="ml-1 hidden sm:inline">Ambil</span>
-                                        </Button>
-                                      )}
-                                    </div>
-                                  )}
-
-                                  {/* Notes */}
-                                  {canEdit && (
-                                    <Textarea
-                                      placeholder="Catatan (opsional)..."
-                                      value={item.notes || ''}
-                                      onChange={(e) => handleNotesChange(item, e.target.value)}
-                                      disabled={isUpdating}
-                                      className="max-w-md text-sm"
-                                      rows={2}
+                                    )}
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    <StatusIcon
+                                      className={cn('h-5 w-5 mx-auto', STATUS_CONFIG[item.status].color)}
                                     />
-                                  )}
-
-                                  {/* Completed info */}
-                                  {item.completedAt && item.completedBy && (
-                                    <p className="text-xs text-muted-foreground">
-                                      Diselesaikan oleh {item.completedBy.name} pada{' '}
-                                      {format(new Date(item.completedAt), 'dd/MM/yyyy HH:mm')}
-                                    </p>
-                                  )}
-
-                                  {/* Show notes in view mode */}
-                                  {!canEdit && item.notes && (
-                                    <p className="text-sm text-muted-foreground bg-muted p-2 rounded">
-                                      Catatan: {item.notes}
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
                       </div>
                     </div>
-                  ))}
-              </div>
-            </ScrollArea>
+                  );
+                })}
+            </div>
           )}
         </CardContent>
       </Card>
