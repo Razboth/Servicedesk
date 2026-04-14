@@ -843,6 +843,7 @@ export default function P20TChecklistPage() {
                           <TableHead>CPU</TableHead>
                           <TableHead>Memory</TableHead>
                           <TableHead>Storage</TableHead>
+                          <TableHead>Status</TableHead>
                         </>
                       )}
                       {detailDialog.type === 'DEVICE_STATUS' && (
@@ -869,19 +870,18 @@ export default function P20TChecklistPage() {
                           <>
                             <TableCell className="font-medium">{item.server}</TableCell>
                             <TableCell className="font-mono text-sm">{item.instance}</TableCell>
+                            <TableCell>{item.cpu}</TableCell>
+                            <TableCell>{item.memory}</TableCell>
+                            <TableCell>{item.storage}</TableCell>
                             <TableCell>
-                              <Badge variant="outline" className="text-yellow-600 border-yellow-400">
-                                {item.cpu}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className="text-yellow-600 border-yellow-400">
-                                {item.memory}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className="text-yellow-600 border-yellow-400">
-                                {item.storage}
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  item.status === 'CAUTION' && 'text-yellow-600 border-yellow-400 bg-yellow-50',
+                                  item.status === 'WARNING' && 'text-orange-600 border-orange-400 bg-orange-50'
+                                )}
+                              >
+                                {item.status}
                               </Badge>
                             </TableCell>
                           </>

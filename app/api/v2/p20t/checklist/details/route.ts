@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
 
     switch (autoFetchType) {
       case 'SERVER_METRICS': {
-        title = 'Server Metrics - Cautions';
+        title = 'Server Metrics - Cautions & Warnings';
         // Query ServerMetricCollectionV2 with its snapshots
         const collection = await prisma.serverMetricCollectionV2.findFirst({
           where: {
@@ -57,9 +57,10 @@ export async function POST(request: NextRequest) {
           include: {
             snapshots: {
               where: {
-                status: 'CAUTION',
+                status: { in: ['CAUTION', 'WARNING'] },
               },
               orderBy: [
+                { status: 'asc' },
                 { serverName: 'asc' },
               ],
             },
