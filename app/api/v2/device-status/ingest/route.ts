@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { auth } from '@/lib/auth';
+import { authenticateApiKey, checkApiPermission } from '@/lib/auth-api';
 import { DeviceServiceStatus } from '@prisma/client';
 
 interface ServiceData {
@@ -43,6 +45,39 @@ function mapStatus(status: string): DeviceServiceStatus {
 
 export async function POST(request: NextRequest) {
   try {
+    // Try API key auth first
+    const authResult = await authenticateApiKey(request);
+
+    let isAuthorized = false;
+
+    if (authResult.authenticated) {
+      // Check for device-status:write or server-metrics:write permission
+      const hasPermission = checkApiPermission(authResult.apiKey!, 'device-status:write') ||
+                           checkApiPermission(authResult.apiKey!, 'server-metrics:write');
+
+      if (!hasPermission) {
+        return NextResponse.json(
+          { error: 'Forbidden', message: 'API key does not have device-status:write permission' },
+          { status: 403 }
+        );
+      }
+      isAuthorized = true;
+    } else {
+      // Fallback: Try session auth (for admin users testing from app)
+      const session = await auth();
+
+      if (session?.user?.role === 'ADMIN' || session?.user?.role === 'SUPER_ADMIN') {
+        isAuthorized = true;
+      }
+    }
+
+    if (!isAuthorized) {
+      return NextResponse.json(
+        { error: 'Unauthorized', message: authResult.error || 'Invalid API key or insufficient permissions' },
+        { status: 401 }
+      );
+    }
+
     const body: IngestPayload = await request.json();
 
     // Validate required fields
