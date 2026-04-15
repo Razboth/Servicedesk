@@ -13,10 +13,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { date, timeSlot, autoFetchType } = body as {
+    const { date, timeSlot, autoFetchType, shift } = body as {
       date: string;
       timeSlot: string;
       autoFetchType: AutoFetchType;
+      shift?: 'DAY' | 'NIGHT';
     };
 
     if (!date || !timeSlot || !autoFetchType) {
@@ -31,8 +32,15 @@ export async function POST(request: NextRequest) {
     const [hours, minutes] = timeSlot.split(':').map(Number);
     const [year, month, day] = date.split('-').map(Number);
 
+    // Handle night shift time slots that cross midnight
+    // For 00:00, 02:00, 04:00, 06:00, 08:00 - these are next day
+    let targetDay = day;
+    if (shift === 'NIGHT' && hours < 12) {
+      targetDay = day + 1;
+    }
+
     // Create target time in local timezone (Asia/Makassar = UTC+8)
-    const targetTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
+    const targetTime = new Date(year, month - 1, targetDay, hours, minutes, 0, 0);
 
     // 5-minute margin for finding nearest record
     const marginMs = 5 * 60 * 1000;

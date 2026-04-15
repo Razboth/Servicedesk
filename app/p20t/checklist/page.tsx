@@ -171,6 +171,7 @@ export default function P20TChecklistPage() {
           date: dateStr,
           timeSlot,
           autoFetchType,
+          shift: selectedShift,
         }),
       });
 
@@ -334,6 +335,7 @@ export default function P20TChecklistPage() {
           date: dateStr,
           timeSlot: item.template.timeSlot,
           autoFetchType: item.template.autoFetchType,
+          shift: selectedShift,
         }),
       });
 
