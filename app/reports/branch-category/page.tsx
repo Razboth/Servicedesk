@@ -177,15 +177,8 @@ export default function BranchCategoryReportPage() {
   const exportToExcel = () => {
     if (!data) return;
 
-    // Define fixed category columns
-    const categoryColumns = [
-      'USER-MANAGEMENT',
-      'SERVICE-REQUEST',
-      'TRANSACTION-CLAIM',
-      'ATM SERVICES',
-      'APPLICATION ERRORS',
-      'HARDWARE & SOFTWARE',
-    ];
+    // Get all unique category names from data and sort them
+    const allCategories = data.categorySummary.map((c) => c.categoryName);
 
     // Sort branches by branch code
     const sortedBranches = [...data.branchData].sort((a, b) => {
@@ -194,7 +187,7 @@ export default function BranchCategoryReportPage() {
       return a.branchCode.localeCompare(b.branchCode);
     });
 
-    // Build matrix rows
+    // Build matrix: one row per branch, categories as columns
     const rows: any[] = [];
 
     for (const branch of sortedBranches) {
@@ -203,49 +196,23 @@ export default function BranchCategoryReportPage() {
       };
 
       // Initialize all category columns to 0
-      for (const colName of categoryColumns) {
-        row[colName] = 0;
+      for (const catName of allCategories) {
+        row[catName] = 0;
       }
 
-      // Fill in actual counts - match category names (case-insensitive, partial match)
+      // Fill in actual counts from branch categories
       for (const cat of branch.categories) {
-        const catNameUpper = cat.categoryName.toUpperCase();
-
-        // Try to match with predefined columns
-        for (const colName of categoryColumns) {
-          if (catNameUpper.includes(colName.replace('-', ' ').replace('-', ' ')) ||
-              catNameUpper.includes(colName.replace('-', '')) ||
-              colName.includes(catNameUpper) ||
-              catNameUpper.replace(/[\s-]/g, '').includes(colName.replace(/[\s-]/g, ''))) {
-            row[colName] = (row[colName] || 0) + cat.count;
-            break;
-          }
-        }
-
-        // Specific mappings for common variations
-        if (catNameUpper.includes('USER') && catNameUpper.includes('MANAGEMENT')) {
-          row['USER-MANAGEMENT'] = (row['USER-MANAGEMENT'] || 0) + cat.count;
-        } else if (catNameUpper.includes('SERVICE') && catNameUpper.includes('REQUEST')) {
-          row['SERVICE-REQUEST'] = (row['SERVICE-REQUEST'] || 0) + cat.count;
-        } else if (catNameUpper.includes('TRANSACTION') || catNameUpper.includes('CLAIM')) {
-          row['TRANSACTION-CLAIM'] = (row['TRANSACTION-CLAIM'] || 0) + cat.count;
-        } else if (catNameUpper.includes('ATM')) {
-          row['ATM SERVICES'] = (row['ATM SERVICES'] || 0) + cat.count;
-        } else if (catNameUpper.includes('APPLICATION') || catNameUpper.includes('ERROR')) {
-          row['APPLICATION ERRORS'] = (row['APPLICATION ERRORS'] || 0) + cat.count;
-        } else if (catNameUpper.includes('HARDWARE') || catNameUpper.includes('SOFTWARE')) {
-          row['HARDWARE & SOFTWARE'] = (row['HARDWARE & SOFTWARE'] || 0) + cat.count;
-        }
+        row[cat.categoryName] = cat.count;
       }
 
       row['TOTAL'] = branch.totalTickets;
       rows.push(row);
     }
 
-    // Add totals row
+    // Add totals row at the bottom
     const totalsRow: any = { 'BRANCH NAME': 'TOTAL' };
-    for (const colName of categoryColumns) {
-      totalsRow[colName] = rows.reduce((sum, r) => sum + (r[colName] || 0), 0);
+    for (const catName of allCategories) {
+      totalsRow[catName] = rows.reduce((sum, r) => sum + (r[catName] || 0), 0);
     }
     totalsRow['TOTAL'] = data.totalTickets;
     rows.push(totalsRow);
@@ -253,28 +220,15 @@ export default function BranchCategoryReportPage() {
     const ws = XLSX.utils.json_to_sheet(rows);
 
     // Set column widths
-    ws['!cols'] = [
-      { wch: 30 }, // BRANCH NAME
-      { wch: 18 }, // USER-MANAGEMENT
-      { wch: 18 }, // SERVICE-REQUEST
-      { wch: 18 }, // TRANSACTION-CLAIM
-      { wch: 15 }, // ATM SERVICES
-      { wch: 20 }, // APPLICATION ERRORS
-      { wch: 20 }, // HARDWARE & SOFTWARE
-      { wch: 10 }, // TOTAL
-    ];
+    const colWidths = [{ wch: 35 }]; // BRANCH NAME
+    for (let i = 0; i < allCategories.length; i++) {
+      colWidths.push({ wch: 20 });
+    }
+    colWidths.push({ wch: 10 }); // TOTAL
+    ws['!cols'] = colWidths;
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Branch Category Report');
-
-    // Add summary sheet
-    const summaryRows = data.categorySummary.map((cat) => ({
-      'Category': cat.categoryName,
-      'Total Tickets': cat.count,
-      'Percentage': `${((cat.count / data.totalTickets) * 100).toFixed(1)}%`,
-    }));
-    const summaryWs = XLSX.utils.json_to_sheet(summaryRows);
-    XLSX.utils.book_append_sheet(wb, summaryWs, 'Category Summary');
 
     const fileName = `Branch-Category-Report-${format(startDate, 'yyyyMMdd')}-${format(endDate, 'yyyyMMdd')}.xlsx`;
     XLSX.writeFile(wb, fileName);
