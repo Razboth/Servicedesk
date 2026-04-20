@@ -103,6 +103,28 @@ const standardReports: Report[] = [
     badge: 'New',
     lastRun: 'Live'
   },
+  {
+    title: 'Quarterly Report',
+    description: 'Comprehensive quarterly analysis with trends, category breakdown, branch performance, and technician metrics',
+    href: '/reports/quarterly',
+    icon: Calendar,
+    type: 'standard',
+    roles: ['MANAGER', 'ADMIN'],
+    category: REPORT_CATEGORIES.ESSENTIAL,
+    badge: 'New',
+    lastRun: 'Live'
+  },
+  {
+    title: 'Branch Category Analysis',
+    description: 'Ticket distribution by branch and category with charts, expandable breakdown, and Excel export',
+    href: '/reports/branch-category',
+    icon: Building,
+    type: 'standard',
+    roles: ['MANAGER', 'ADMIN'],
+    category: REPORT_CATEGORIES.ANALYTICS,
+    badge: 'New',
+    lastRun: 'Live'
+  },
   // Service Reports
   {
     title: 'Service Status Breakdown',
