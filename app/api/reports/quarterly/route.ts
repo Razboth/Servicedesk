@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
         service: {
           include: {
             tier1Category: { select: { id: true, name: true } },
-            serviceCategory: { select: { id: true, name: true } },
+            category: { select: { id: true, name: true } },
           },
         },
         branch: { select: { id: true, name: true, code: true } },
@@ -112,8 +112,8 @@ export async function GET(request: NextRequest) {
     // ============ CATEGORY BREAKDOWN ============
     const categoryCounts: Record<string, { name: string; count: number }> = {};
     for (const ticket of tickets) {
-      const catId = ticket.service?.tier1Category?.id || ticket.service?.serviceCategory?.id || '__UNCATEGORIZED__';
-      const catName = ticket.service?.tier1Category?.name || ticket.service?.serviceCategory?.name || 'Uncategorized';
+      const catId = ticket.service?.tier1Category?.id || ticket.service?.category?.id || '__UNCATEGORIZED__';
+      const catName = ticket.service?.tier1Category?.name || ticket.service?.category?.name || 'Uncategorized';
       if (!categoryCounts[catId]) {
         categoryCounts[catId] = { name: catName, count: 0 };
       }
@@ -134,7 +134,7 @@ export async function GET(request: NextRequest) {
       const branchId = ticket.branchId || '__NO_BRANCH__';
       const branchName = ticket.branch?.name || 'No Branch';
       const branchCode = ticket.branch?.code || '-';
-      const catName = ticket.service?.tier1Category?.name || ticket.service?.serviceCategory?.name || 'Uncategorized';
+      const catName = ticket.service?.tier1Category?.name || ticket.service?.category?.name || 'Uncategorized';
 
       if (!branchCounts[branchId]) {
         branchCounts[branchId] = { name: branchName, code: branchCode, count: 0, categories: {} };

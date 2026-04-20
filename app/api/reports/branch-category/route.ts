@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
         service: {
           select: {
             tier1Category: { select: { id: true, name: true } },
-            serviceCategory: { select: { id: true, name: true } },
+            category: { select: { id: true, name: true } },
           },
         },
       },
@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
     for (const ticket of tickets) {
       const branchId = ticket.branchId || noBranchId;
       const categoryId = ticket.service?.tier1Category?.id ||
-                         ticket.service?.serviceCategory?.id ||
+                         ticket.service?.category?.id ||
                          uncategorizedId;
 
       if (!matrix[branchId]) {
