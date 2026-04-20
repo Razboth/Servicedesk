@@ -177,34 +177,93 @@ export default function BranchCategoryReportPage() {
   const exportToExcel = () => {
     if (!data) return;
 
-    // Prepare data for Excel
+    // Define fixed category columns
+    const categoryColumns = [
+      'USER-MANAGEMENT',
+      'SERVICE-REQUEST',
+      'TRANSACTION-CLAIM',
+      'ATM SERVICES',
+      'APPLICATION ERRORS',
+      'HARDWARE & SOFTWARE',
+    ];
+
+    // Sort branches by branch code
+    const sortedBranches = [...data.branchData].sort((a, b) => {
+      if (a.branchCode === '-') return 1;
+      if (b.branchCode === '-') return -1;
+      return a.branchCode.localeCompare(b.branchCode);
+    });
+
+    // Build matrix rows
     const rows: any[] = [];
 
-    for (const branch of data.branchData) {
-      for (const cat of branch.categories) {
-        rows.push({
-          'Branch': branch.branchName,
-          'Branch Code': branch.branchCode,
-          'Category': cat.categoryName,
-          'Ticket Count': cat.count,
-          'Percentage': branch.totalTickets > 0
-            ? `${((cat.count / branch.totalTickets) * 100).toFixed(1)}%`
-            : '0%',
-        });
+    for (const branch of sortedBranches) {
+      const row: any = {
+        'BRANCH NAME': branch.branchName,
+      };
+
+      // Initialize all category columns to 0
+      for (const colName of categoryColumns) {
+        row[colName] = 0;
       }
-      // Add subtotal row
-      rows.push({
-        'Branch': branch.branchName,
-        'Branch Code': branch.branchCode,
-        'Category': 'TOTAL',
-        'Ticket Count': branch.totalTickets,
-        'Percentage': '100%',
-      });
-      // Empty row for separation
-      rows.push({});
+
+      // Fill in actual counts - match category names (case-insensitive, partial match)
+      for (const cat of branch.categories) {
+        const catNameUpper = cat.categoryName.toUpperCase();
+
+        // Try to match with predefined columns
+        for (const colName of categoryColumns) {
+          if (catNameUpper.includes(colName.replace('-', ' ').replace('-', ' ')) ||
+              catNameUpper.includes(colName.replace('-', '')) ||
+              colName.includes(catNameUpper) ||
+              catNameUpper.replace(/[\s-]/g, '').includes(colName.replace(/[\s-]/g, ''))) {
+            row[colName] = (row[colName] || 0) + cat.count;
+            break;
+          }
+        }
+
+        // Specific mappings for common variations
+        if (catNameUpper.includes('USER') && catNameUpper.includes('MANAGEMENT')) {
+          row['USER-MANAGEMENT'] = (row['USER-MANAGEMENT'] || 0) + cat.count;
+        } else if (catNameUpper.includes('SERVICE') && catNameUpper.includes('REQUEST')) {
+          row['SERVICE-REQUEST'] = (row['SERVICE-REQUEST'] || 0) + cat.count;
+        } else if (catNameUpper.includes('TRANSACTION') || catNameUpper.includes('CLAIM')) {
+          row['TRANSACTION-CLAIM'] = (row['TRANSACTION-CLAIM'] || 0) + cat.count;
+        } else if (catNameUpper.includes('ATM')) {
+          row['ATM SERVICES'] = (row['ATM SERVICES'] || 0) + cat.count;
+        } else if (catNameUpper.includes('APPLICATION') || catNameUpper.includes('ERROR')) {
+          row['APPLICATION ERRORS'] = (row['APPLICATION ERRORS'] || 0) + cat.count;
+        } else if (catNameUpper.includes('HARDWARE') || catNameUpper.includes('SOFTWARE')) {
+          row['HARDWARE & SOFTWARE'] = (row['HARDWARE & SOFTWARE'] || 0) + cat.count;
+        }
+      }
+
+      row['TOTAL'] = branch.totalTickets;
+      rows.push(row);
     }
 
+    // Add totals row
+    const totalsRow: any = { 'BRANCH NAME': 'TOTAL' };
+    for (const colName of categoryColumns) {
+      totalsRow[colName] = rows.reduce((sum, r) => sum + (r[colName] || 0), 0);
+    }
+    totalsRow['TOTAL'] = data.totalTickets;
+    rows.push(totalsRow);
+
     const ws = XLSX.utils.json_to_sheet(rows);
+
+    // Set column widths
+    ws['!cols'] = [
+      { wch: 30 }, // BRANCH NAME
+      { wch: 18 }, // USER-MANAGEMENT
+      { wch: 18 }, // SERVICE-REQUEST
+      { wch: 18 }, // TRANSACTION-CLAIM
+      { wch: 15 }, // ATM SERVICES
+      { wch: 20 }, // APPLICATION ERRORS
+      { wch: 20 }, // HARDWARE & SOFTWARE
+      { wch: 10 }, // TOTAL
+    ];
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Branch Category Report');
 
