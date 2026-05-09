@@ -62,6 +62,7 @@ interface ATMMetrics {
   changePercentage: number
   openTickets: number
   inProgressTickets: number
+  pendingVendorTickets: number
   resolvedTickets: number
   closedTickets: number
   avgResolutionTime: number
@@ -85,6 +86,7 @@ interface ATMReportData {
     totalTickets: number
     openTickets: number
     inProgressTickets: number
+    pendingVendorTickets: number
     resolvedTickets: number
     closedTickets: number
     avgResolutionTime: number
@@ -479,6 +481,18 @@ export default function ATMTechnicalIssuesReport() {
                   <p className="text-xs text-muted-foreground">In Progress</p>
                 </div>
                 <Clock className="h-8 w-8 text-blue-400/20" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-l-4 border-l-orange-500">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-2xl font-bold">{data.summary.pendingVendorTickets}</p>
+                  <p className="text-xs text-muted-foreground">Pending Vendor</p>
+                </div>
+                <Building2 className="h-8 w-8 text-orange-500/20" />
               </div>
             </CardContent>
           </Card>

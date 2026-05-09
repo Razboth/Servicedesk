@@ -58,6 +58,7 @@ interface ATMMetrics {
   changePercentage: number;
   openTickets: number;
   inProgressTickets: number;
+  pendingVendorTickets: number;
   resolvedTickets: number;
   closedTickets: number;
   avgResolutionTime: number;
@@ -123,6 +124,7 @@ export async function GET(request: NextRequest) {
           totalTickets: 0,
           openTickets: 0,
           inProgressTickets: 0,
+          pendingVendorTickets: 0,
           resolvedTickets: 0,
           closedTickets: 0,
           avgResolutionTime: 0,
@@ -223,6 +225,7 @@ export async function GET(request: NextRequest) {
     const totalTickets = tickets.length;
     const openTickets = tickets.filter(t => t.status === 'OPEN').length;
     const inProgressTickets = tickets.filter(t => t.status === 'IN_PROGRESS').length;
+    const pendingVendorTickets = tickets.filter(t => t.status === 'PENDING_VENDOR').length;
     const resolvedTickets = tickets.filter(t => t.status === 'RESOLVED').length;
     const closedTickets = tickets.filter(t => t.status === 'CLOSED').length;
     const lastMonthTotal = lastMonthTickets.length;
@@ -435,12 +438,14 @@ export async function GET(request: NextRequest) {
       let atmTicketsResolved = 0;
       let atmOpenTickets = 0;
       let atmInProgressTickets = 0;
+      let atmPendingVendorTickets = 0;
       let atmResolvedTickets = 0;
       let atmClosedTickets = 0;
 
       for (const ticket of data.tickets) {
         if (ticket.status === 'OPEN') atmOpenTickets++;
         if (ticket.status === 'IN_PROGRESS') atmInProgressTickets++;
+        if (ticket.status === 'PENDING_VENDOR') atmPendingVendorTickets++;
         if (ticket.status === 'RESOLVED') atmResolvedTickets++;
         if (ticket.status === 'CLOSED') atmClosedTickets++;
 
@@ -498,6 +503,7 @@ export async function GET(request: NextRequest) {
         changePercentage: lastMonthCount > 0 ? Math.round((change / lastMonthCount) * 100) : (ticketCount > 0 ? 100 : 0),
         openTickets: atmOpenTickets,
         inProgressTickets: atmInProgressTickets,
+        pendingVendorTickets: atmPendingVendorTickets,
         resolvedTickets: atmResolvedTickets,
         closedTickets: atmClosedTickets,
         avgResolutionTime: atmTicketsResolved > 0
@@ -546,6 +552,7 @@ export async function GET(request: NextRequest) {
         totalTickets,
         openTickets,
         inProgressTickets,
+        pendingVendorTickets,
         resolvedTickets,
         closedTickets,
         avgResolutionTime,
