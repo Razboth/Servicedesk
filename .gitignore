@@ -102,3 +102,26 @@ public/tiles/
 *.xlsx
 sfd_diagrams/
 erd_diagrams/
+
+# Data dumps and backups
+backups/
+alarms_*.json
+device_status.json
+latest_metrics.json
+server_metrics.json
+
+# Build logs
+build-log.txt
+build-output*.txt
+
+# Debug and utility scripts (root level)
+check-*.js
+debug-*.js
+cleanup-*.js
+fix-*.js
+test-*.js
+!jest.config.js
+
+# Network monitor logs and modules
+network-monitor/node_modules/
+network-monitor/logs/*.json
