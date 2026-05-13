@@ -116,11 +116,38 @@ build-output*.txt
 
 # Debug and utility scripts (root level)
 check-*.js
+check-*.ts
 debug-*.js
 cleanup-*.js
+cleanup-*.ts
 fix-*.js
+fix-*.ts
 test-*.js
+test-*.ts
+inspect-*.ts
+clear-*.ts
+update-*.ts
 !jest.config.js
+
+# Seed scripts (root level)
+seed-*.js
+
+# Batch and shell scripts (root level)
+*.bat
+!docker/**/*.bat
+rebuild-and-start.sh
+verify-deployment.sh
+
+# Utility scripts
+pm2-start.js
+start-pm2.js
+server-with-socket.js
+soc-notification.json
+
+# Generated HTML diagrams
+Process-Flowcharts.html
+Ticket-Lifecycle-Diagram.html
+night_shift*.html
 
 # Network monitor logs and modules
 network-monitor/node_modules/
